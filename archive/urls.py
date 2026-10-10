@@ -44,6 +44,7 @@ urlpatterns = [
 
     # ---- 证照管理子模块 ----
     path("licenses/", views.license_list, name="license_list"),
+    path("licenses/import/", views.import_licenses, name="license_import"),
     path("licenses/new/", views.license_create, name="license_create"),
     path("licenses/<int:pk>/", views.license_detail, name="license_detail"),
     path("licenses/<int:pk>/edit/", views.license_edit, name="license_edit"),

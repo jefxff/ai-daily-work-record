@@ -7,6 +7,7 @@
 import csv
 import io
 import os
+import re
 from datetime import date, datetime, timedelta
 
 from django.contrib import messages
@@ -21,7 +22,7 @@ from accounts.decorators import perm_required
 from records.models import OperationLog
 
 from .forms import ArchiveForm, BorrowForm, CabinetForm, CategoryForm, LicenseForm, AnnualReviewForm, LicenseBorrowForm
-from .models import Archive, BorrowRecord, Cabinet, Category, License, LicenseBorrowRecord, _add_months
+from .models import AnnualReview, Archive, BorrowRecord, Cabinet, Category, License, LicenseBorrowRecord, _add_months
 
 
 # ---------- 辅助工具 ----------
@@ -1029,3 +1030,230 @@ def license_borrow_return(request, pk):
             return JsonResponse({"ok": True, "message": "归还成功"})
         return redirect("archive:license_borrow_list")
     return render(request, "archive/license_borrow_confirm_return.html", {"record": rec})
+
+
+# ---------- 证照批量导入 ----------
+
+LICENSE_FIELD_CHOICES = [
+    ("name", "证照名称"),
+    ("code", "证照编号"),
+    ("holder", "持证单位/保管部门"),
+    ("issuer", "发证机关/授予机关"),
+    ("issue_date", "发证/颁发日期"),
+    ("expire_date", "有效期至"),
+    ("next_review_date", "下次年审/到期预警日"),
+    ("review_cycle", "年审周期(月,文本自动解析)"),
+    ("last_review", "最近年审时间(自动建年审记录)"),
+    ("remark", "备注/变更记录"),
+]
+
+LICENSE_KEYWORD_MAP = {
+    "name": ["证照名称", "荣誉名称", "名称", "标题"],
+    "code": ["证照编号", "编号", "证书编号"],
+    "holder": ["持证单位", "保管部门", "保管部门/人", "荣誉归属", "归属"],
+    "issuer": ["发证机关", "授予机关", "颁发机关", "发证单位"],
+    "issue_date": ["发证日期", "颁发日期", "签发日期"],
+    "expire_date": ["有效期截至", "有效期至", "到期日期", "截止日期"],
+    "next_review_date": ["到期预警日", "下次年审", "年审日期"],
+    "review_cycle": ["年审/年检要求", "年审要求", "年检要求", "年审", "年检"],
+    "last_review": ["最近年审时间", "最近年审", "最近年审日期"],
+    "remark": ["备注", "变更记录", "变更", "说明"],
+}
+
+
+def _auto_map_license_columns(headers):
+    """根据表头文本自动推断证照字段映射（子串匹配，允许备注多列映射）。"""
+    mapping = {}
+    for col in headers:
+        col_s = col.strip()
+        for field, keywords in LICENSE_KEYWORD_MAP.items():
+            if any(kw in col_s for kw in keywords):
+                # remark 允许多列映射（变更记录 + 备注都导入）
+                if field == "remark" or field not in mapping.values():
+                    mapping[col] = field
+                    break
+    return mapping
+
+
+def _parse_review_cycle(text):
+    """解析年审周期文本为月数。'一年一审' → 12, '三年换证' → 36。"""
+    if not text or text.strip() in ("/", "-", "无", "不需要", "否"):
+        return 0
+    match = re.search(r"(\d+)\s*年", text)
+    if match:
+        return int(match.group(1)) * 12
+    match = re.search(r"(\d+)\s*个?月", text)
+    if match:
+        return int(match.group(1))
+    return 0
+
+
+def _parse_date_loose(raw_val):
+    """宽松日期解析，支持 datetime 字符串和多种格式。返回 date 或 None。"""
+    if not raw_val:
+        return None
+    raw_val = raw_val.strip()
+    if " " in raw_val:
+        raw_val = raw_val.split(" ")[0]
+    for fmt in ("%Y-%m-%d", "%Y/%m/%d", "%Y.%m.%d", "%m/%d/%Y"):
+        try:
+            return datetime.strptime(raw_val, fmt).date()
+        except ValueError:
+            continue
+    # 尝试补全不完整日期如 "2026/1/" → "2026/1/1"
+    parts = re.sub(r"[/.]", "/", raw_val).split("/")
+    if len(parts) >= 2 and parts[0].isdigit() and parts[1].isdigit():
+        try:
+            y, m = int(parts[0]), int(parts[1])
+            d = int(parts[2]) if len(parts) >= 3 and parts[2].isdigit() else 1
+            return date(y, m, d)
+        except (ValueError, IndexError):
+            pass
+    return None
+
+
+@login_required
+@perm_required("archive", "create")
+def import_licenses(request):
+    """证照批量导入：上传 → 列映射 → 执行导入。"""
+    if request.method == "GET":
+        return render(request, "archive/license_import_step1.html", {})
+
+    # ---- Step 1: 上传文件 → 解析 sheet → 返回列映射页面 ----
+    if request.POST.get("step") == "upload":
+        f = request.FILES.get("file")
+        if not f:
+            messages.error(request, "请选择 Excel 文件（.xlsx / .xls）")
+            return render(request, "archive/license_import_step1.html", {})
+        try:
+            sheets = _parse_excel_sheets(f)
+        except Exception as e:
+            messages.error(request, f"文件解析失败：{e}")
+            return render(request, "archive/license_import_step1.html", {})
+        if not sheets:
+            messages.error(request, "未读取到有效数据（可能 sheet 为空或表头不在第 1 行）")
+            return render(request, "archive/license_import_step1.html", {})
+        for sname, sdata in sheets.items():
+            auto_map = _auto_map_license_columns(sdata["headers"])
+            sdata["auto_mapping"] = auto_map
+            first_row = sdata["rows"][0] if sdata["rows"] else {}
+            sdata["header_choices"] = [
+                {
+                    "col": col,
+                    "auto": auto_map.get(col, ""),
+                    "sample": first_row.get(col, ""),
+                }
+                for col in sdata["headers"]
+            ]
+        request.session["license_import_sheets"] = sheets
+        return render(request, "archive/license_import_step2.html", {
+            "sheets": sheets, "field_choices": LICENSE_FIELD_CHOICES,
+        })
+
+    # ---- Step 2: 执行导入 ----
+    if request.POST.get("step") == "import":
+        sheets = request.session.get("license_import_sheets", {})
+        if not sheets:
+            messages.error(request, "会话已过期，请重新上传文件")
+            return render(request, "archive/license_import_step1.html", {})
+
+        total_created = 0
+        total_reviews = 0
+        total_errors = []
+
+        for sname, sdata in sheets.items():
+            mapping = {}
+            for col in sdata["headers"]:
+                val = request.POST.get(f"map__{sname}__{col}", "")
+                if val:
+                    mapping[col] = val
+
+            has_name = any(v == "name" for v in mapping.values())
+            if not has_name:
+                total_errors.append(f"[{sname}] 未映射「证照名称」列，跳过")
+                continue
+
+            created_codes = set()  # 跟踪本批次已创建的编号
+
+            for i, row in enumerate(sdata["rows"], start=2):
+                try:
+                    obj = {"creator": request.user}
+                    last_review_date = None
+                    remark_parts = []
+
+                    for col, val in row.items():
+                        field = mapping.get(col)
+                        if not field:
+                            continue
+                        raw_val = val.strip()
+                        if not raw_val:
+                            continue
+
+                        if field == "last_review":
+                            last_review_date = _parse_date_loose(raw_val)
+                        elif field in ("issue_date", "expire_date", "next_review_date"):
+                            parsed = _parse_date_loose(raw_val)
+                            if parsed:
+                                obj[field] = parsed
+                        elif field == "review_cycle":
+                            obj["review_cycle"] = _parse_review_cycle(raw_val)
+                        elif field == "remark":
+                            remark_parts.append(raw_val)
+                        else:
+                            obj[field] = raw_val[:200]
+
+                    if not obj.get("name"):
+                        continue
+
+                    # 处理编号："/" 等占位符视为空，自动生成
+                    code_val = obj.get("code", "")
+                    if not code_val or code_val in ("/", "-", "无", "—"):
+                        obj.pop("code", None)
+                        import random
+                        import string
+                        code_val = "LIC" + "".join(random.choices(string.digits, k=8))
+
+                    # 确保 DB 内和本批次内唯一
+                    while code_val in created_codes or License.objects.filter(code=code_val).exists():
+                        code_val = code_val + "D"
+                    obj["code"] = code_val
+                    created_codes.add(code_val)
+
+                    if remark_parts:
+                        obj["remark"] = " | ".join(remark_parts)
+
+                    lic = License.objects.create(**obj)
+                    total_created += 1
+
+                    # 如有最近年审时间，自动创建年审记录
+                    if last_review_date:
+                        AnnualReview.objects.create(
+                            license=lic,
+                            review_date=last_review_date,
+                            result="passed",
+                            reviewer=_operator(request),
+                            remark="台账导入自动生成",
+                        )
+                        total_reviews += 1
+
+                except Exception as e:
+                    total_errors.append(f"[{sname}]第{i}行：{e}")
+
+        _license_log(request, "导入", "证照批量导入",
+                     f"成功 {total_created} 条证照，{total_reviews} 条年审记录，失败 {len(total_errors)} 条")
+
+        if total_created:
+            messages.success(
+                request,
+                f"成功导入 {total_created} 条证照"
+                + (f"，{total_reviews} 条年审记录" if total_reviews else ""),
+            )
+        for err in total_errors[:10]:
+            messages.warning(request, err)
+        if len(total_errors) > 10:
+            messages.warning(request, f"……另有 {len(total_errors) - 10} 条错误未展示")
+
+        del request.session["license_import_sheets"]
+        return redirect("archive:license_list")
+
+    return redirect("archive:license_list")

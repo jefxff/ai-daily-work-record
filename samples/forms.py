@@ -54,7 +54,7 @@ class SampleForm(BootstrapModelForm):
             "supplier_type",
         ]
         widgets = {
-            "sample_date": forms.DateInput(attrs={"type": "date"}),
+            "sample_date": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
         }
 
     def __init__(self, *args, **kwargs):
@@ -91,8 +91,8 @@ class TestRecordForm(BootstrapModelForm):
             "remark",
         ]
         widgets = {
-            "test_date": forms.DateInput(attrs={"type": "date"}),
-            "incoming_date": forms.DateInput(attrs={"type": "date"}),
+            "test_date": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+            "incoming_date": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
             "test_result": forms.Textarea(attrs={"rows": 4}),
             "remark": forms.Textarea(attrs={"rows": 2}),
         }
@@ -167,7 +167,7 @@ class AuditRecordForm(BootstrapModelForm):
             "file",
         ]
         widgets = {
-            "audit_date": forms.DateInput(attrs={"type": "date"}),
+            "audit_date": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
             "audit_remark": forms.Textarea(attrs={"rows": 2, "placeholder": "可选：审厂发现问题、整改要求等"}),
             "file": forms.ClearableFileInput(
                 attrs={

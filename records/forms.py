@@ -8,7 +8,7 @@ class DecorationForm(forms.ModelForm):
         model = Decoration
         fields = ['project_name', 'constructor', 'project_address', 'start_date', 'original_price', 'final_price']
         widgets = {
-            'start_date': forms.DateInput(attrs={'type': 'date'}),
+            'start_date': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
             'project_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '请输入项目名称'}),
             'constructor': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '请输入施工方'}),
             'project_address': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '请输入项目地址'}),
@@ -55,8 +55,8 @@ class CustomerCreditForm(forms.ModelForm):
         model = CustomerCredit
         fields = ['proposal_date', 'site_date', 'customer_name', 'customer_type', 'salesperson', 'work_content', 'specific_content', 'pre_survey', 'work_method', 'result', 'remarks', 'has_assessment_period', 'assessment_start_date', 'assessment_end_date', 'assessment_content']
         widgets = {
-            'proposal_date': forms.DateInput(attrs={'type': 'date'}),
-            'site_date': forms.DateInput(attrs={'type': 'date'}),
+            'proposal_date': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+            'site_date': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
             'customer_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '请输入客户名称'}),
             'customer_type': forms.Select(attrs={'class': 'form-select'}),
             'salesperson': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '请输入业务员'}),
@@ -67,8 +67,8 @@ class CustomerCreditForm(forms.ModelForm):
             'result': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '请输入结果'}),
             'remarks': forms.Textarea(attrs={'class': 'form-control', 'placeholder': '请输入备注信息', 'rows': 3, 'maxlength': 500}),
             'has_assessment_period': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'assessment_start_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'assessment_end_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'assessment_start_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}, format='%Y-%m-%d'),
+            'assessment_end_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}, format='%Y-%m-%d'),
             'assessment_content': forms.Textarea(attrs={'class': 'form-control', 'placeholder': '请输入考核内容描述', 'rows': 2, 'maxlength': 500}),
         }
         labels = {
@@ -125,7 +125,7 @@ class CustomerComplaintForm(forms.ModelForm):
         model = CustomerComplaint
         fields = ['customer_name', 'responsible_salesperson', 'complaint_date', 'terminal_customer', 'product_model', 'our_shipment', 'customer_shipment', 'complaint_description', 'compensation_amount', 'is_insured', 'engineering_report', 'engineering_analysis', 'missing_materials', 'complaint_status', 'follow_up_status', 'remarks']
         widgets = {
-            'complaint_date': forms.DateInput(attrs={'type': 'date'}),
+            'complaint_date': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
             'customer_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '请输入客户名称'}),
             'responsible_salesperson': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '请输入责任业务员'}),
             'terminal_customer': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '请输入终端客户'}),
@@ -192,7 +192,7 @@ class RegulationForm(forms.ModelForm):
         model = Regulation
         fields = ['issue_date', 'title', 'content', 'doc_no']
         widgets = {
-            'issue_date': forms.DateInput(attrs={'type': 'date'}),
+            'issue_date': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
             'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '请输入标题'}),
             'content': forms.Textarea(attrs={'class': 'form-control', 'placeholder': '请输入主要内容', 'rows': 5}),
             'doc_no': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '请输入文件编号'}),
@@ -294,8 +294,8 @@ class InsuranceForm(forms.ModelForm):
         model = Insurance
         fields = ['company_name', 'title', 'order_number', 'premium', 'issue_date', 'end_date', 'department', 'remarks']
         widgets = {
-            'issue_date': forms.DateInput(attrs={'type': 'date'}),
-            'end_date': forms.DateInput(attrs={'type': 'date'}),
+            'issue_date': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+            'end_date': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
             'company_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '请输入公司名称'}),
             'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '请输入标题'}),
             'order_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '请输入单号'}),
