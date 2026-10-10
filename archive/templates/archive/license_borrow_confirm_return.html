@@ -1,0 +1,24 @@
+{% extends "records/base.html" %}
+{% load accounts_tags %}
+
+{% block page_title %}归还证照 - 档案管理{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="card" style="max-width:540px;margin:3rem auto;">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0">归还证照确认</h5>
+        </div>
+        <div class="card-body text-center">
+            <p class="mb-3">确认归还以下证照？</p>
+            <h5 class="mb-2">{{ record.license.code }} - {{ record.license.name }}</h5>
+            <p class="text-muted small mb-3">借阅人：{{ record.borrower }} &middot; 借出时间：{{ record.borrow_time|date:"Y-m-d H:i" }}</p>
+            <form method="POST">
+                {% csrf_token %}
+                <a href="{% url 'archive:license_borrow_list' %}" class="btn btn-outline-secondary btn-sm">取消</a>
+                <button type="submit" class="btn btn-success btn-sm">确认归还</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -5,9 +5,51 @@
 
 {% block extra_css %}
 <style>
-    /* 键值信息表：左对齐，标签列深色加粗（覆盖全局表格白字样式） */
-    .arc-detail-table td { text-align: left !important; padding: 0.55rem 0.75rem !important; }
-    .arc-detail-table td.arc-label { font-weight: 600; color: #262626; width: 110px; white-space: nowrap; background: #fafafa !important; border-radius: 4px; }
+    /* 区块标题：左侧蓝色竖条 */
+    .arc-sec-title { font-weight: 600; color: #1f1f1f; border-left: 3px solid #1677ff; padding-left: 0.6rem; margin-bottom: 0.85rem; }
+
+    /* === 信息卡片网格：紧凑双列键值对 === */
+    .arc-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+    .arc-info-item { display: flex; align-items: baseline; padding: 0.5rem 0.75rem; background: #fafbfc; border-radius: 6px; border: 1px solid #f0f2f5; transition: all 0.15s; }
+    .arc-info-item:hover { background: #f5f7fa; border-color: #e6e8eb; }
+    .arc-info-item.full { grid-column: 1 / -1; }
+    .arc-info-label { font-size: 0.78rem; color: #8c8c8c; font-weight: 500; min-width: 64px; max-width: 90px; white-space: nowrap; flex-shrink: 0; }
+    .arc-info-value { font-size: 0.88rem; color: #1f1f1f; font-weight: 500; word-break: break-all; line-height: 1.4; }
+    .arc-info-value.empty { color: #bfbfbf; font-weight: 400; }
+    .arc-info-value.highlight { color: #1677ff; font-weight: 600; }
+
+    /* 高亮状态徽章 */
+    .arc-status-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: 10px; font-size: 0.76rem; font-weight: 500; }
+    .arc-status-badge.in { background: #f6ffed; color: #389e0d; border: 1px solid #b7eb8f; }
+    .arc-status-badge.out { background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e; }
+
+    /* 标签 */
+    .arc-tag { display: inline-block; padding: 1px 8px; background: #f0f5ff; color: #2b5fd9; border-radius: 4px; font-size: 0.76rem; margin-right: 4px; }
+
+    /* 描述框 */
+    .arc-desc-box { background: linear-gradient(135deg, #f5f7fa 0%, #eef2f7 100%); border-radius: 8px; padding: 0.85rem 1rem; color: #555; white-space: pre-wrap; word-break: break-all; min-height: 64px; border-left: 3px solid #1677ff; }
+
+    /* 二维码容器 */
+    .arc-qrcode-box { display: inline-block; text-align: center; background: #fff; border: 1px solid #eef0f3; border-radius: 8px; padding: 10px 14px; }
+    .arc-qrcode-box img { width: 120px; height: 120px; display: block; }
+
+    /* 电子档案面板 */
+    .arc-file-panel { border: 1px solid #eef0f3; border-radius: 10px; padding: 1rem 1.25rem; background: #fafbfc; }
+    .arc-file-name { font-weight: 600; color: #1f1f1f; word-break: break-all; }
+    .arc-file-badge { background: #eef4ff !important; color: #2b5fd9 !important; font-weight: 500; }
+
+    /* 文件预览 */
+    .arc-preview-box img { max-width: 100%; max-height: 420px; border: 1px solid #eef0f3; border-radius: 8px; }
+    .arc-pdf-frame { width: 100%; height: 520px; border: 1px solid #eef0f3; border-radius: 8px; background: #fff; }
+
+    /* 右列快速摘要卡片 */
+    .arc-quick-stats { display: flex; flex-direction: column; gap: 0.6rem; flex: 1; min-width: 160px; }
+    .arc-quick-stat { background: #fafbfc; border: 1px solid #f0f2f5; border-radius: 6px; padding: 0.5rem 0.85rem; }
+    .arc-quick-label { font-size: 0.74rem; color: #8c8c8c; font-weight: 500; }
+    .arc-quick-value { font-size: 0.88rem; color: #1f1f1f; font-weight: 600; margin-top: 0.15rem; }
+
+    /* 响应式：窄屏单列 */
+    @media (max-width: 640px) { .arc-info-grid { grid-template-columns: 1fr; } .arc-qrcode-box { max-width: 220px; } }
 </style>
 {% endblock %}
 
@@ -28,41 +70,166 @@
                 {% endcan %}
             </div>
         </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-6">
-                    <table class="table arc-detail-table">
-                        <tr><td class="arc-label">档案编号</td><td>{{ archive.code }}</td></tr>
-                        <tr><td class="arc-label">档案名称</td><td>{{ archive.name }}</td></tr>
-                        <tr><td class="arc-label">存放位置</td><td><strong>{{ archive.location_path }}</strong><br><small class="text-muted">{{ archive.cabinet.location }}</small></td></tr>
-                        <tr><td class="arc-label">类别</td><td>{{ archive.category.full_path|default:"—" }}</td></tr>
-                        <tr><td class="arc-label">标签</td><td>{% for t in archive.tags_list %}<span class="badge bg-secondary me-1">{{ t }}</span>{% empty %}—{% endfor %}</td></tr>
-                        <tr><td class="arc-label">创建人</td><td>{{ archive.creator|default:"—" }}</td></tr>
-                        <tr><td class="arc-label">创建时间</td><td>{{ archive.created_at|date:"Y-m-d H:i" }}</td></tr>
-                        <tr><td class="arc-label">更新时间</td><td>{{ archive.updated_at|date:"Y-m-d H:i" }}</td></tr>
-                        <tr><td class="arc-label">借出状态</td>
-                            <td>{% if archive.is_borrowed %}<span class="badge bg-danger">借出中</span>{% else %}<span class="badge bg-success">在柜</span>{% endif %}</td>
-                        </tr>
-                    </table>
+        <div class="card-body arc-detail-body">
+            <div class="row g-4">
+                <!-- 左列：基本信息（紧凑双列网格） -->
+                <div class="col-lg-7">
+                    <h6 class="arc-sec-title">基本信息</h6>
+                    <div class="arc-info-grid">
+                        <div class="arc-info-item">
+                            <span class="arc-info-label">档案编号</span>
+                            <span class="arc-info-value highlight">{{ archive.code }}</span>
+                        </div>
+                        <div class="arc-info-item">
+                            <span class="arc-info-label">档案名称</span>
+                            <span class="arc-info-value">{{ archive.name }}</span>
+                        </div>
+                        <div class="arc-info-item">
+                            <span class="arc-info-label">公司/相对方</span>
+                            <span class="arc-info-value {% if not archive.counterpart %}empty{% endif %}">{{ archive.counterpart|default:"—" }}</span>
+                        </div>
+                        <div class="arc-info-item">
+                            <span class="arc-info-label">合同编号</span>
+                            <span class="arc-info-value {% if not archive.contract_no %}empty{% endif %}">{{ archive.contract_no|default:"—" }}</span>
+                        </div>
+                        <div class="arc-info-item">
+                            <span class="arc-info-label">费用/金额</span>
+                            <span class="arc-info-value {% if not archive.amount %}empty{% endif %}">{{ archive.amount|default:"—" }}</span>
+                        </div>
+                        <div class="arc-info-item">
+                            <span class="arc-info-label">签订日期</span>
+                            <span class="arc-info-value {% if not archive.sign_date %}empty{% endif %}">{{ archive.sign_date|default:"—" }}</span>
+                        </div>
+                        <div class="arc-info-item">
+                            <span class="arc-info-label">到期日期</span>
+                            {% if archive.expire_date %}
+                            <span class="arc-info-value">{{ archive.expire_date }}{% if archive.is_expiring %} <span class="arc-status-badge out">即将到期</span>{% endif %}</span>
+                            {% else %}<span class="arc-info-value empty">—</span>{% endif %}
+                        </div>
+                        <div class="arc-info-item">
+                            <span class="arc-info-label">部门</span>
+                            <span class="arc-info-value {% if not archive.department %}empty{% endif %}">{{ archive.department|default:"—" }}</span>
+                        </div>
+                        <div class="arc-info-item">
+                            <span class="arc-info-label">保密等级</span>
+                            <span class="arc-info-value {% if not archive.security_level %}empty{% endif %}">{{ archive.security_level|default:"—" }}</span>
+                        </div>
+                        <div class="arc-info-item">
+                            <span class="arc-info-label">档案标签</span>
+                            <span class="arc-info-value {% if not archive.archive_label %}empty{% endif %}">{{ archive.archive_label|default:"—" }}</span>
+                        </div>
+                        <div class="arc-info-item full">
+                            <span class="arc-info-label">存放位置</span>
+                            <span class="arc-info-value highlight">{{ archive.location_path }}{% if archive.cabinet %} <span class="text-muted small" style="font-weight:400;">（{{ archive.cabinet.location }}）</span>{% endif %}</span>
+                        </div>
+                        <div class="arc-info-item">
+                            <span class="arc-info-label">经办人</span>
+                            <span class="arc-info-value {% if not archive.handler %}empty{% endif %}">{{ archive.handler|default:"—" }}</span>
+                        </div>
+                        <div class="arc-info-item">
+                            <span class="arc-info-label">份数</span>
+                            <span class="arc-info-value {% if not archive.copies %}empty{% endif %}">{{ archive.copies|default:"—" }}</span>
+                        </div>
+                        <div class="arc-info-item">
+                            <span class="arc-info-label">附件</span>
+                            <span class="arc-info-value {% if not archive.attachment_desc %}empty{% endif %}">{{ archive.attachment_desc|default:"—" }}</span>
+                        </div>
+                        <div class="arc-info-item">
+                            <span class="arc-info-label">类别</span>
+                            <span class="arc-info-value {% if not archive.category %}empty{% endif %}">{{ archive.category.full_path|default:"—" }}</span>
+                        </div>
+                        <div class="arc-info-item full">
+                            <span class="arc-info-label">标签</span>
+                            <span class="arc-info-value">{% for t in archive.tags_list %}<span class="arc-tag">{{ t }}</span>{% empty %}<span class="empty">—</span>{% endfor %}</span>
+                        </div>
+                        <div class="arc-info-item">
+                            <span class="arc-info-label">创建人</span>
+                            <span class="arc-info-value {% if not archive.creator %}empty{% endif %}">{{ archive.creator|default:"—" }}</span>
+                        </div>
+                        <div class="arc-info-item">
+                            <span class="arc-info-label">创建时间</span>
+                            <span class="arc-info-value">{{ archive.created_at|date:"Y-m-d H:i" }}</span>
+                        </div>
+                        <div class="arc-info-item full">
+                            <span class="arc-info-label">借出状态</span>
+                            <span class="arc-info-value">{% if archive.is_borrowed %}<span class="arc-status-badge out">借出中</span>{% else %}<span class="arc-status-badge in">在柜</span>{% endif %}</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="col-md-6">
-                    {% if archive.description %}
-                    <h6>档案描述</h6>
-                    <p class="text-muted">{{ archive.description|linebreaksbr }}</p>
-                    {% endif %}
-                    <h6>位置二维码</h6>
-                    <img src="{% url 'archive:qrcode' archive.pk %}" alt="二维码" style="max-width:120px;border:1px solid #eee;padding:4px">
+                <!-- 右列：描述 + 二维码 + 关键摘要 -->
+                <div class="col-lg-5 d-flex flex-column gap-3">
+                    <div>
+                        <h6 class="arc-sec-title">档案描述</h6>
+                        {% if archive.description %}
+                        <div class="arc-desc-box">{{ archive.description }}</div>
+                        {% else %}
+                        <div class="arc-desc-box text-muted small">（未填写描述，可在「编辑」中补充）</div>
+                        {% endif %}
+                    </div>
+                    <div class="d-flex align-items-center gap-3 flex-wrap">
+                        <div>
+                            <h6 class="arc-sec-title">位置二维码</h6>
+                            <div class="arc-qrcode-box">
+                                <img src="{% url 'archive:qrcode' archive.pk %}" alt="位置二维码">
+                                <div class="small text-muted mt-1">扫码查看位置</div>
+                            </div>
+                        </div>
+                        <div class="arc-quick-stats">
+                            <div class="arc-quick-stat">
+                                <div class="arc-quick-label">类别</div>
+                                <div class="arc-quick-value">{{ archive.category.full_path|default:"未分类" }}</div>
+                            </div>
+                            <div class="arc-quick-stat">
+                                <div class="arc-quick-label">份数</div>
+                                <div class="arc-quick-value">{{ archive.copies|default:"0" }} 份</div>
+                            </div>
+                            <div class="arc-quick-stat">
+                                <div class="arc-quick-label">状态</div>
+                                <div class="arc-quick-value">{% if archive.is_borrowed %}<span class="arc-status-badge out">借出</span>{% else %}<span class="arc-status-badge in">在柜</span>{% endif %}</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            {% if archive.file %}
-            <hr>
-            <h6>电子档案</h6>
-            <div class="d-flex gap-2 align-items-center">
-                <a href="{{ archive.file.url }}" target="_blank" class="btn btn-sm btn-outline-primary">预览 / 下载</a>
-                <span class="text-muted">{{ archive.file.name }}</span>
+            <!-- 电子档案面板 -->
+            <div class="arc-file-panel mt-4">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                    <div>
+                        <h6 class="arc-sec-title mb-2">电子档案</h6>
+                        {% if archive.file %}
+                        <div class="arc-file-name">{{ archive.file_basename }}</div>
+                        <div class="mt-1">
+                            <span class="badge arc-file-badge me-1">大小 {{ archive.file.size|filesizeformat }}</span>
+                            <span class="badge arc-file-badge me-1">类型 {{ archive.file_ext }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% if archive.file %}
+                    <div class="d-flex gap-2">
+                        <a href="{{ archive.file.url }}" target="_blank" class="btn btn-sm btn-outline-primary">在线预览</a>
+                        <a href="{{ archive.file.url }}" download class="btn btn-sm btn-primary">下载文件</a>
+                    </div>
+                    {% endif %}
+                </div>
+                {% if archive.file %}
+                    {% if archive.is_image %}
+                    <div class="mt-3 text-center arc-preview-box">
+                        <a href="{{ archive.file.url }}" target="_blank">
+                            <img src="{{ archive.file.url }}" alt="档案预览">
+                        </a>
+                    </div>
+                    {% elif archive.is_pdf %}
+                    <div class="mt-3">
+                        <iframe src="{{ archive.file.url }}" title="PDF预览" class="arc-pdf-frame"></iframe>
+                    </div>
+                    {% else %}
+                    <p class="text-muted small mt-2 mb-0">该文件类型（{{ archive.file_ext }}）暂不支持在线预览，请下载后查看。</p>
+                    {% endif %}
+                {% else %}
+                <p class="text-muted small mt-2 mb-0">未上传电子档案文件。可在「编辑」中上传 PDF / 图片 / Word / Excel 等文件。</p>
+                {% endif %}
             </div>
-            {% endif %}
         </div>
     </div>
 
@@ -72,7 +239,7 @@
     <div class="card mb-4">
         <div class="card-header"><h5 class="mb-0">借阅登记</h5></div>
         <div class="card-body">
-            <a href="{% url 'archive:borrow_create' archive.pk %}" class="btn btn-primary">借阅此档案</a>
+            <a href="{% url 'archive:borrow_create' archive.pk %}" class="btn btn-primary" data-modal-add data-modal-title="借阅登记 - {{ archive.code }}">借阅此档案</a>
             <small class="text-muted ms-2">当前空位：{{ free_cells }}</small>
         </div>
     </div>

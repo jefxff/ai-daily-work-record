@@ -135,15 +135,16 @@ class BorrowFlowTests(TestCase):
 
     def test_borrow_then_return(self):
         self.client.force_login(self.user)
-        # 借阅
+        # 借阅（借阅人为自由输入的姓名）
         resp = self.client.post(
             reverse("archive:borrow_create", args=[self.arc.pk]),
-            {"borrower": self.user.pk, "due_time": "2099-01-01"},
+            {"borrower": "张三", "due_time": "2099-01-01"},
         )
         self.assertEqual(resp.status_code, 302)
         self.arc.refresh_from_db()
         self.assertTrue(self.arc.is_borrowed)
         rec = BorrowRecord.objects.first()
+        self.assertEqual(rec.borrower, "张三")
         # 归还
         resp = self.client.post(reverse("archive:borrow_return", args=[rec.pk]))
         self.assertEqual(resp.status_code, 302)

@@ -13,8 +13,10 @@
     .arc-stat-card.free .arc-stat-value { color: #52c41a; }
     .arc-stat-card.overdue .arc-stat-value { color: #f5222d; }
 
-    .arc-toolbar { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-bottom: 1.25rem; }
+    .arc-toolbar { display: flex; flex-wrap: nowrap; gap: 0.75rem; align-items: center; margin-bottom: 1.25rem; overflow-x: auto; }
     .arc-toolbar .form-control, .arc-toolbar .form-select { width: auto; min-width: 140px; }
+    .arc-toolbar form { flex-wrap: nowrap !important; }
+    .arc-toolbar .arc-actions { display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0; }
 
     .arc-cabinet-card { background: rgba(255,255,255,0.95); border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
     .arc-cabinet-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; }
@@ -33,6 +35,10 @@
     .arc-cell .cell-name { font-size: 0.6rem; opacity: 0.8; margin-top: 2px; }
     .arc-cell.borrowed { background: #fff1f0; border-color: #ffa39e; }
     .arc-cell.borrowed .cell-code { color: #cf1322; }
+    /* 即将到期档案格（30天内到期） */
+    .arc-cell.expiring { background: #fff7e6; border-color: #ffd591; }
+    .arc-cell.expiring .cell-code { color: #d46b08; }
+    .arc-cell.expiring .cell-name { color: #ad6800; }
 
     /* 搜索命中高亮 */
     a.arc-cell { text-decoration: none; }
@@ -83,12 +89,18 @@
             <div class="arc-stat-label">逾期未还</div>
         </div>
         {% endif %}
+        {% if expiring_count %}
+        <div class="arc-stat-card" style="background: rgba(255,247,230,0.95);">
+            <div class="arc-stat-value" style="color: #fa8c16;">{{ expiring_count }}</div>
+            <div class="arc-stat-label">即将到期（30天内）</div>
+        </div>
+        {% endif %}
     </div>
 
     <!-- 工具栏 -->
     <div class="arc-toolbar">
         <form method="get" class="d-flex flex-wrap gap-2">
-            <input type="text" name="aq" value="{{ aq }}" class="form-control" placeholder="搜索档案：名称 / 编号 / 标签 / 描述" style="min-width:240px">
+            <input type="text" name="aq" value="{{ aq }}" class="form-control" placeholder="搜索档案：名称 / 编号 / 相对方 / 合同号 / 部门 / 标签 / 经办人 / 描述" style="min-width:280px">
             <button class="btn btn-primary btn-sm" type="submit" title="搜索档案并在网格中定位">搜索档案</button>
             <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="柜号 / 位置">
             <select name="category" class="form-select">
@@ -101,6 +113,7 @@
                 <option value="">全部状态</option>
                 <option value="occupied" {% if status == "occupied" %}selected{% endif %}>已存放</option>
                 <option value="free" {% if status == "free" %}selected{% endif %}>空位</option>
+                <option value="expiring" {% if status == "expiring" %}selected{% endif %}>即将到期</option>
             </select>
             <select name="sort" class="form-select">
                 <option value="code" {% if sort == "code" %}selected{% endif %}>按柜号</option>
@@ -109,7 +122,7 @@
             </select>
             <button class="btn btn-primary btn-sm" type="submit">筛选</button>
         </form>
-        <div class="ms-auto d-flex gap-2 flex-wrap">
+        <div class="ms-auto arc-actions">
             {% can "archive" "create" %}
             <a href="{% url 'archive:cabinet_create' %}" class="btn btn-primary btn-sm" data-modal-add data-modal-title="新建档案柜">＋ 新建档案柜</a>
             {% endcan %}
@@ -117,9 +130,6 @@
             <a href="{% url 'archive:archive_create' %}" class="btn btn-success btn-sm" data-modal-add data-modal-title="录入档案">＋ 录入档案</a>
             {% endcan %}
             {% can "archive" "read" %}
-            <a href="{% url 'archive:category_list' %}" class="btn btn-outline-secondary btn-sm">类别管理</a>
-            <a href="{% url 'archive:borrow_list' %}" class="btn btn-outline-secondary btn-sm">借阅记录</a>
-            <a href="{% url 'archive:log_list' %}" class="btn btn-outline-secondary btn-sm">操作日志</a>
             <a href="{% url 'archive:export' %}" class="btn btn-outline-primary btn-sm">导出 CSV</a>
             {% endcan %}
         </div>
@@ -129,6 +139,7 @@
         <span><i style="background:#e6f7ff;border:1px solid #91d5ff"></i>已存放档案</span>
         <span><i style="background:#f6ffed;border:1px solid #b7eb8f"></i>空位（点击可录入）</span>
         <span><i style="background:#fff1f0;border:1px solid #ffa39e"></i>已借出</span>
+        <span><i style="background:#fff7e6;border:1px solid #ffd591"></i>即将到期</span>
         <span><i style="background:#fff7e6;border:1px solid #fa8c16"></i>搜索命中</span>
     </div>
 
@@ -137,7 +148,7 @@
         {% if match_count %}
             搜索「{{ aq }}」：命中 <strong>{{ match_count }}</strong> 份档案，已在网格中高亮，页面已自动定位到第一处
         {% else %}
-            搜索「{{ aq }}」：未找到匹配的档案（可尝试按名称、编号、标签或描述关键字搜索）
+            搜索「{{ aq }}」：未找到匹配的档案（可按名称、编号、相对方、合同号、部门、位置编码、标签、经办人或描述关键字搜索）
         {% endif %}
     </div>
     {% endif %}
@@ -166,7 +177,7 @@
             <div class="arc-grid" data-cols="{{ item.cabinet.cells_per_layer }}">
                 {% for cell in row %}
                     {% if cell %}
-                        <a class="arc-cell {% if cell.is_borrowed %}borrowed{% else %}occupied{% endif %} {% if cell.id in matched_ids %}arc-cell-hit{% endif %}" href="{% url 'archive:archive_detail' cell.pk %}">
+                        <a class="arc-cell {% if cell.is_borrowed %}borrowed{% elif cell.id in expiring_ids %}expiring{% else %}occupied{% endif %} {% if cell.id in matched_ids %}arc-cell-hit{% endif %}" href="{% url 'archive:archive_detail' cell.pk %}" title="{{ cell.name }}｜{{ cell.location_path }}{% if cell.is_borrowed %}（借出中）{% endif %}{% if cell.id in expiring_ids %}（即将到期：{{ cell.expire_date }}）{% endif %}">
                             <div><div class="cell-code">{{ cell.code }}</div><div class="cell-name">{{ cell.name }}</div></div>
                         </a>
                     {% else %}
@@ -193,13 +204,12 @@
     {% can "archive" "create" %}
     <div class="arc-cabinet-card">
         <h5 class="mb-3">批量导入档案</h5>
-        <form method="post" action="{% url 'archive:import' %}" enctype="multipart/form-data" class="d-flex flex-wrap gap-2 align-items-center">
-            {% csrf_token %}
-            <input type="file" name="file" accept=".xlsx,.csv" class="form-control" style="max-width:300px">
-            <button class="btn btn-primary btn-sm" type="submit">导入</button>
-            <a href="{% url 'archive:import_template' %}" class="btn btn-outline-success btn-sm">下载导入模板</a>
-        </form>
-        <small class="text-muted d-block mt-2">支持 .xlsx / .csv，模板内含详细填写说明；列：编号*、名称*、档案柜*、层*、格*、类别、标签、描述</small>
+        <p class="text-muted small mb-3">上传 Excel 台账文件，系统自动解析多 sheet 并智能匹配列头，你可以在下一步手动调整字段映射后执行导入。</p>
+        <a href="{% url 'archive:import_archives' %}" class="btn btn-primary btn-sm">
+            <i class="bi bi-upload"></i> 上传 Excel 台账
+        </a>
+        <a href="{% url 'archive:import_template' %}" class="btn btn-outline-success btn-sm">下载空白模板</a>
+    </div>
     </div>
     {% endcan %}
 </div>

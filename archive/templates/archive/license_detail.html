@@ -1,0 +1,175 @@
+{% extends "records/base.html" %}
+{% load accounts_tags %}
+
+{% block page_title %}{{ license.code }} - 证照详情{% endblock %}
+
+{% block extra_css %}
+<style>
+    .lic-sec-title { font-weight: 600; color: #1f1f1f; border-left: 3px solid #1677ff; padding-left: 0.6rem; margin-bottom: 0.85rem; }
+    .lic-detail-table { --bs-table-hover-bg: transparent; }
+    .lic-detail-table td { text-align: left !important; padding: 0.6rem 0.75rem !important; border: none; border-bottom: 1px dashed #f0f0f0; vertical-align: middle; }
+    .lic-detail-table tr:last-child td { border-bottom: none; }
+    .lic-detail-table td.lic-label { font-weight: 600; color: #262626; width: 110px; white-space: nowrap; background: #f5f7fa !important; border-radius: 6px; }
+    .lic-status-badge { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 0.78rem; font-weight: 500; }
+    .lic-status-badge.normal { background: #f6ffed; color: #389e0d; border: 1px solid #b7eb8f; }
+    .lic-status-badge.expiring { background: #fff7e6; color: #d46b08; border: 1px solid #ffd591; }
+    .lic-status-badge.expired { background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e; }
+    .lic-file-panel { border: 1px solid #eef0f3; border-radius: 10px; padding: 1rem 1.25rem; background: #fafbfc; }
+    .lic-preview-box img { max-width: 100%; max-height: 420px; border: 1px solid #eef0f3; border-radius: 8px; }
+    .lic-pdf-frame { width: 100%; height: 520px; border: 1px solid #eef0f3; border-radius: 8px; background: #fff; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <a href="{% url 'archive:license_list' %}" class="btn btn-link btn-sm mb-3 text-decoration-none">&larr;; 返回证照列表</a>
+
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">{{ license.code }} - {{ license.name }}</h4>
+            <div class="d-flex gap-2">
+                {% can "archive" "update" %}
+                <a href="{% url 'archive:license_edit' license.pk %}" class="btn btn-sm btn-primary" data-modal-edit data-modal-title="编辑证照">编辑</a>
+                {% endcan %}
+                {% can "archive" "create" %}
+                <a href="{% url 'archive:annual_review_create' license.pk %}" class="btn btn-sm btn-outline-success" data-modal-add data-modal-title="年审登记 - {{ license.code }}">年审登记</a>
+                {% if not license.is_borrowed %}
+                <a href="{% url 'archive:license_borrow_create' license.pk %}" class="btn btn-sm btn-outline-warning" data-modal-add data-modal-title="借阅登记 - {{ license.code }}">借阅</a>
+                {% endif %}
+                {% endcan %}
+                {% can "archive" "delete" %}
+                <a href="{% url 'archive:license_delete' license.pk %}" class="btn btn-sm btn-outline-danger" data-confirm="确定删除证照「{{ license.name }}」？此操作不可恢复。">删除</a>
+                {% endcan %}
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row g-4">
+                <!-- 左列：基本信息 -->
+                <div class="col-lg-7">
+                    <h6 class="lic-sec-title">基本信息</h6>
+                    <table class="table lic-detail-table mb-0">
+                        <tr><td class="lic-label">证照编号</td><td>{{ license.code }}</td></tr>
+                        <tr><td class="lic-label">证照名称</td><td>{{ license.name }}</td></tr>
+                        <tr><td class="lic-label">持证单位</td><td>{{ license.holder|default:"—" }}</td></tr>
+                        <tr><td class="lic-label">发证机关</td><td>{{ license.issuer|default:"—" }}</td></tr>
+                        <tr><td class="lic-label">发证日期</td><td>{{ license.issue_date|default:"—" }}</td></tr>
+                        <tr><td class="lic-label">有效期至</td>{% if license.expire_date %}<td>{{ license.expire_date }}{% if license.is_expiring or license.is_expired %} <span class="lic-status-badge {{ license.status }}">{{ license.status_display }}</span>{% endif %}</td>{% else %}<td>—</td>{% endif %}</tr>
+                        <tr><td class="lic-label">年审周期</td><td>{% if license.review_cycle %}{{ license.review_cycle }} 个月{% else %}不需年审{% endif %}</td></tr>
+                        <tr><td class="lic-label">下次年审日</td>{% if license.next_review_date %}<td>{{ license.next_review_date }}{% if license.is_expired %} <span class="lic-status-badge expired">已过期</span>{% elif license.is_expiring %} <span class="lic-status-badge expiring">即将到期</span>{% endif %}</td>{% else %}<td>—</td>{% endif %}</tr>
+                        <tr><td class="lic-label">状态</td><td><span class="lic-status-badge {{ license.status }}">{{ license.status_display }}</span>{% if license.is_borrowed %} <span class="lic-status-badge" style="background:#f9f0ff;color:#722ed1;border:1px solid #d3adf7;">借出中</span>{% endif %}</td></tr>
+                        <tr><td class="lic-label">创建人</td><td>{{ license.creator|default:"—" }}</td></tr>
+                        <tr><td class="lic-label">创建时间</td><td>{{ license.created_at|date:"Y-m-d H:i" }}</td></tr>
+                    </table>
+                </div>
+                <!-- 右列：备注 + 扫描件 -->
+                <div class="col-lg-5 d-flex flex-column">
+                    <h6 class="lic-sec-title">备注</h6>
+                    {% if license.remark %}
+                    <div style="background:#f5f7fa;border-radius:8px;padding:0.85rem 1rem;color:#555;white-space:pre-wrap;word-break:break-all;min-height:60px;">{{ license.remark }}</div>
+                    {% else %}
+                    <div style="background:#f5f7fa;border-radius:8px;padding:0.85rem 1rem;color:#8c8c8c;min-height:60px;">（未填写备注）</div>
+                    {% endif %}
+
+                    <div class="lic-file-panel mt-4">
+                        <h6 class="lic-sec-title mb-2">证照扫描件</h6>
+                        {% if license.scan_file %}
+                        <div style="font-weight:600;color:#1f1f1f;word-break:break-all;">{{ license.scan_basename }}</div>
+                        <div class="mt-1 mb-2">
+                            <span class="badge" style="background:#eef4ff;color:#2b5fd9;font-weight:500;">类型 {{ license.scan_ext }}</span>
+                        </div>
+                        <div class="d-flex gap-2 mb-2">
+                            <a href="{{ license.scan_file.url }}" target="_blank" class="btn btn-sm btn-outline-primary">在线预览</a>
+                            <a href="{{ license.scan_file.url }}" download class="btn btn-sm btn-primary">下载</a>
+                        </div>
+                        {% if license.is_image %}
+                        <div class="text-center lic-preview-box">
+                            <a href="{{ license.scan_file.url }}" target="_blank"><img src="{{ license.scan_file.url }}" alt="证照扫描件"></a>
+                        </div>
+                        {% elif license.is_pdf %}
+                        <iframe src="{{ license.scan_file.url }}" title="PDF预览" class="lic-pdf-frame"></iframe>
+                        {% else %}
+                        <p class="text-muted small mt-2 mb-0">该文件类型（{{ license.scan_ext }}）暂不支持在线预览，请下载后查看。</p>
+                        {% endif %}
+                        {% else %}
+                        <p class="text-muted small mb-0">未上传扫描件。可在「编辑」中上传。</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 年审历史 -->
+    <div class="card mb-4">
+        <div class="card-header"><h5 class="mb-0">年审历史</h5></div>
+        <div class="card-body">
+            <table class="table table-sm">
+                <thead><tr><th>年审日期</th><th>结果</th><th>经办人</th><th>新有效期至</th><th>备注</th></tr></thead>
+                <tbody>
+                {% for r in reviews %}
+                <tr>
+                    <td>{{ r.review_date }}</td>
+                    <td>{% if r.result == 'passed' %}<span class="badge bg-success">通过</span>{% elif r.result == 'failed' %}<span class="badge bg-danger">未通过</span>{% else %}<span class="badge bg-warning text-dark">待处理</span>{% endif %}</td>
+                    <td>{{ r.reviewer }}</td>
+                    <td>{{ r.new_expire_date|default:"—" }}</td>
+                    <td>{{ r.remark|default:"—" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center text-muted">暂无年审记录</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 借阅记录 -->
+    <div class="card mb-4">
+        <div class="card-header"><h5 class="mb-0">借阅记录</h5></div>
+        <div class="card-body">
+            <table class="table table-sm">
+                <thead><tr><th>借阅人</th><th>借阅时间</th><th>应还日期</th><th>实际归还</th><th>状态</th></tr></thead>
+                <tbody>
+                {% for b in borrows %}
+                <tr>
+                    <td>{{ b.borrower }}</td>
+                    <td>{{ b.borrow_time|date:"Y-m-d H:i" }}</td>
+                    <td>{{ b.due_time|date:"Y-m-d" }}</td>
+                    <td>{{ b.return_time|date:"Y-m-d H:i"|default:"—" }}</td>
+                    <td>
+                        <span class="badge {% if b.status == 'returned' %}bg-success{% elif b.status == 'overdue' %}bg-danger{% else %}bg-warning{% endif %}">{{ b.get_status_display }}</span>
+                        {% if b.status != 'returned' %}
+                        <a href="{% url 'archive:license_borrow_return' b.pk %}" class="btn btn-sm btn-outline-success ms-1" data-confirm="确认归还证照？">归还</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center text-muted">暂无借阅记录</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 操作历史 -->
+    <div class="card">
+        <div class="card-header"><h5 class="mb-0">操作历史</h5></div>
+        <div class="card-body">
+            <table class="table table-sm">
+                <thead><tr><th>时间</th><th>操作人</th><th>类型</th><th>摘要</th></tr></thead>
+                <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td>{{ log.operation_time|date:"Y-m-d H:i" }}</td>
+                    <td>{{ log.operator }}</td>
+                    <td>{{ log.operation_type }}</td>
+                    <td>{{ log.change_summary }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="text-center text-muted">暂无操作记录</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

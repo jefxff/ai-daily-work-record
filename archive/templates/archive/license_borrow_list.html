@@ -1,0 +1,72 @@
+{% extends "records/base.html" %}
+{% load accounts_tags %}
+
+{% block page_title %}证照借阅记录 - 档案管理{% endblock %}
+
+{% block extra_css %}
+<style>
+    .lic-table { background: rgba(255,255,255,0.95); border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .lic-table table { margin: 0; }
+    .lic-table th { background: #fafafa; font-weight: 600; color: #595959; text-align: center; padding: 12px; white-space: nowrap; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+    .lic-table td { text-align: center; padding: 10px 12px; border-bottom: 1px solid #f0f0f0; color: #1f2329; font-size: 14px; }
+    .lic-table tr:hover { background: #f5f7fa; }
+    .lic-table .text-left { text-align: left; }
+    .lic-empty { text-align: center; padding: 3rem 1rem; color: #8c8c8c; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header d-flex justify-content-between align-items-center mb-3">
+        <h3 class="page-title">证照借阅记录</h3>
+    </div>
+
+    <form class="mb-3" method="GET">
+        <select name="status" class="form-select" style="width:auto;" onchange="this.form.submit()">
+            <option value="">全部状态</option>
+            <option value="borrowed" {% if status == 'borrowed' %}selected{% endif %}>借出中</option>
+            <option value="returned" {% if status == 'returned' %}selected{% endif %}>已归还</option>
+            <option value="overdue" {% if status == 'overdue' %}selected{% endif %}>已逾期</option>
+        </select>
+    </form>
+
+    <div class="lic-table">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>证照编号</th>
+                    <th>证照名称</th>
+                    <th>借阅人</th>
+                    <th>借阅时间</th>
+                    <th>应还日期</th>
+                    <th>实际归还</th>
+                    <th>状态</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in records %}
+                <tr>
+                    <td><strong>{{ r.license.code }}</strong></td>
+                    <td class="text-left"><a href="{% url 'archive:license_detail' r.license.pk %}">{{ r.license.name }}</a></td>
+                    <td>{{ r.borrower }}</td>
+                    <td>{{ r.borrow_time|date:"Y-m-d H:i" }}</td>
+                    <td>{{ r.due_time|date:"Y-m-d" }}</td>
+                    <td>{{ r.return_time|date:"Y-m-d H:i"|default:"—" }}</td>
+                    <td>
+                        <span class="badge {% if r.status == 'returned' %}bg-success{% elif r.status == 'overdue' %}bg-danger{% else %}bg-warning text-dark{% endif %}">{{ r.get_status_display }}</span>
+                    </td>
+                    <td>
+                        {% if r.status != 'returned' %}
+                        <a href="{% url 'archive:license_borrow_return' r.pk %}" class="btn btn-sm btn-outline-success" data-confirm="确认归还？">归还</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="8" class="lic-empty">暂无借阅记录</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

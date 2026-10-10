@@ -1,0 +1,51 @@
+{% extends "records/base.html" %}
+{% load static %}
+
+{% block page_title %}导入档案 - 第1步{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-7">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0">导入档案 — 第 1 步：上传 Excel 文件</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <span class="badge bg-primary me-2">步骤 1</span>
+                        <span class="text-muted">上传文件</span>
+                        <span class="mx-2 text-muted">→</span>
+                        <span class="badge bg-light text-muted">步骤 2</span>
+                        <span class="text-muted">列映射</span>
+                        <span class="mx-2 text-muted">→</span>
+                        <span class="badge bg-light text-muted">步骤 3</span>
+                        <span class="text-muted">执行导入</span>
+                    </div>
+
+                    {% if messages %}
+                    {% for m in messages %}
+                    <div class="alert alert-{{ m.tags|default:'info' }} py-2">{{ m }}</div>
+                    {% endfor %}
+                    {% endif %}
+
+                    <form method="POST" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="hidden" name="step" value="upload">
+                        <div class="mb-3">
+                            <label class="form-label">选择 Excel 文件</label>
+                            <input type="file" name="file" class="form-control" accept=".xlsx,.xls,.csv" required>
+                            <div class="form-text">支持 .xlsx、.xls、.csv 格度。支持多 sheet，表头需在第 1 行。</div>
+                        </div>
+                        <div class="alert alert-info py-2 small">
+                            <strong>导入说明：</strong>上传后系统会自动解析所有 sheet 并智能匹配列头，你可以在下一步手动调整映射关系。
+                        </div>
+                        <button type="submit" class="btn btn-primary">上传并解析</button>
+                        <a href="{% url 'archive:overview' %}" class="btn btn-outline-secondary">返回</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,47 @@
+<form method="POST" data-modal-form action="{% url 'archive:borrow_create' archive.pk %}" novalidate>
+    {% csrf_token %}
+    <div class="brr-banner">
+        借出档案：<strong>{{ archive.code }} - {{ archive.name }}</strong>
+        <span class="brr-banner-path">{{ archive.location_path }} · {{ archive.cabinet.location }}</span>
+    </div>
+    <div class="brr-grid">
+        <div class="brr-field">
+            <label class="form-label">借阅人 <span style="color:#f5222d">*</span></label>
+            {{ form.borrower }}
+            {% for e in form.borrower.errors %}<div class="brr-error">{{ e }}</div>{% endfor %}
+        </div>
+        <div class="brr-field">
+            <label class="form-label">应归还日期 <span style="color:#f5222d">*</span></label>
+            {{ form.due_time }}
+            {% for e in form.due_time.errors %}<div class="brr-error">{{ e }}</div>{% endfor %}
+        </div>
+        <div class="brr-field brr-field-full">
+            <label class="form-label">备注</label>
+            {{ form.remark }}
+            {% for e in form.remark.errors %}<div class="brr-error">{{ e }}</div>{% endfor %}
+        </div>
+    </div>
+    {% if form.non_field_errors %}
+    <div class="brr-error" style="margin-top:0.75rem;">
+        {% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}
+    </div>
+    {% endif %}
+    {% if error_message %}
+    <div class="brr-error" style="margin-top:0.75rem;">{{ error_message }}</div>
+    {% endif %}
+    <div class="form-modal-actions">
+        <button type="button" class="btn-transparent" data-modal-close>取消</button>
+        <button type="submit" class="btn-transparent btn-delete" data-modal-save>确认借出</button>
+    </div>
+</form>
+<style>
+    .brr-banner { background: #f5f7fa; border-radius: 6px; padding: 0.6rem 0.85rem; font-size: 0.88rem; color: #1f2329; margin-bottom: 1rem; }
+    .brr-banner-path { display: block; color: #8c8c8c; font-size: 0.78rem; margin-top: 0.15rem; }
+    .brr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem 1rem; }
+    .brr-field-full { grid-column: 1 / -1; }
+    .brr-field label { display: block; font-weight: 600; color: #1f2329; font-size: 0.85rem; margin-bottom: 0.25rem; }
+    .brr-field .form-control { width: 100%; padding: 0.45rem 0.6rem; font-size: 0.88rem; border: 1px solid #d9d9d9; border-radius: 4px; background: #fff; color: #1f2329; }
+    .brr-field .form-control:focus { border-color: #1890ff; box-shadow: 0 0 0 2px rgba(24,144,255,0.1); outline: none; }
+    .brr-error { color: #f5222d; font-size: 0.8rem; margin-top: 0.25rem; }
+    @media (max-width: 560px) { .brr-grid { grid-template-columns: 1fr; } }
+</style>

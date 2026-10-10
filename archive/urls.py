@@ -36,9 +36,20 @@ urlpatterns = [
 
     # 导入导出
     path("import/template/", views.import_template, name="import_template"),
-    path("import/", views.import_archives, name="import"),
+    path("import/", views.import_archives, name="import_archives"),
     path("export/", views.export_archives, name="export"),
 
     # 操作日志
     path("logs/", views.log_list, name="log_list"),
+
+    # ---- 证照管理子模块 ----
+    path("licenses/", views.license_list, name="license_list"),
+    path("licenses/new/", views.license_create, name="license_create"),
+    path("licenses/<int:pk>/", views.license_detail, name="license_detail"),
+    path("licenses/<int:pk>/edit/", views.license_edit, name="license_edit"),
+    path("licenses/<int:pk>/delete/", views.license_delete, name="license_delete"),
+    path("licenses/<int:license_pk>/review/", views.annual_review_create, name="annual_review_create"),
+    path("licenses/<int:license_pk>/borrow/", views.license_borrow_create, name="license_borrow_create"),
+    path("licenses/borrows/", views.license_borrow_list, name="license_borrow_list"),
+    path("licenses/borrows/<int:pk>/return/", views.license_borrow_return, name="license_borrow_return"),
 ]

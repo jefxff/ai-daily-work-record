@@ -1,0 +1,24 @@
+{% extends "records/base.html" %}
+{% load accounts_tags %}
+
+{% block page_title %}删除证照 - 档案管理{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="card" style="max-width:540px;margin:3rem auto;">
+        <div class="card-header bg-danger text-white">
+            <h5 class="mb-0">删除证照确认</h5>
+        </div>
+        <div class="card-body text-center">
+            <p class="mb-3">确定要删除以下证照吗？</p>
+            <h5 class="mb-3">{{ license.code }} - {{ license.name }}</h5>
+            <p class="text-muted small">此操作不可恢复，关联的年审记录和借阅记录也将一并删除。</p>
+            <form method="POST">
+                {% csrf_token %}
+                <a href="{% url 'archive:license_detail' license.pk %}" class="btn btn-outline-secondary btn-sm">取消</a>
+                <button type="submit" class="btn btn-danger btn-sm">确认删除</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
