@@ -1,0 +1,47 @@
+{% extends 'records/base.html' %}
+{% load static %}
+{% load accounts_tags %}
+
+{% block page_title %}每日记录详情 - 每日工作记录管理网站{% endblock %}
+
+{% block top_nav_actions %}
+    <a href="{% url 'daily_record_list' %}" class="btn-transparent">返回列表</a>
+    {% can "daily_record" "update" %}
+    <a href="{% url 'daily_record_edit' record.id %}" class="btn-transparent" data-modal-edit data-modal-title="编辑每日记录">编辑记录</a>
+    {% endcan %}
+    {% can "daily_record" "delete" %}
+    <a href="{% url 'daily_record_delete' record.id %}" class="btn-transparent btn-delete" data-confirm="确定要删除这条记录吗？">删除记录</a>
+    {% endcan %}
+{% endblock %}
+
+{% block content %}
+    <!-- 详情卡片 -->
+    <div class="detail-card">
+        <h2 class="detail-title">每日记录详细信息</h2>
+
+        <div class="detail-row">
+            <div class="detail-label">日期及时间：</div>
+            <div class="detail-value">{{ record.record_date|date:'Y-m-d H:i:s' }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">提出部门：</div>
+            <div class="detail-value">{{ record.department }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">工作内容：</div>
+            <div class="detail-value">{{ record.work_content }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">工作状态：</div>
+            <div class="detail-value">{{ record.status }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">工作进度：</div>
+            <div class="detail-value">{{ record.progress }}%</div>
+        </div>
+    </div>
+{% endblock %}

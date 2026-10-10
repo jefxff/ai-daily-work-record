@@ -1,0 +1,18 @@
+{% extends "records/base.html" %}
+{% block page_title %}删除档案{% endblock %}
+{% block content %}
+<div class="container" style="max-width:500px">
+    <div class="card">
+        <div class="card-body">
+            <h4 class="mb-3">确认删除档案？</h4>
+            <p class="text-muted">档案：<strong>{{ archive.code }} - {{ archive.name }}</strong></p>
+            <p class="text-danger">此操作不可撤销，电子文件也将一并删除。</p>
+            <form method="POST">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">确认删除</button>
+                <a href="{% url 'archive:archive_detail' archive.pk %}" class="btn btn-link">取消</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

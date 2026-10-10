@@ -1,0 +1,132 @@
+{% extends "records/base.html" %}
+{% load accounts_tags %}
+
+{% block page_title %}{{ archive.code }} - 档案详情{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 键值信息表：左对齐，标签列深色加粗（覆盖全局表格白字样式） */
+    .arc-detail-table td { text-align: left !important; padding: 0.55rem 0.75rem !important; }
+    .arc-detail-table td.arc-label { font-weight: 600; color: #262626; width: 110px; white-space: nowrap; background: #fafafa !important; border-radius: 4px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <a href="{% url 'archive:overview' %}" class="btn btn-link btn-sm mb-3 text-decoration-none">← 返回档案总览</a>
+
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">{{ archive.code }} - {{ archive.name }}</h4>
+            <div class="d-flex gap-2">
+                {% can "archive" "update" %}
+                <a href="{% url 'archive:archive_edit' archive.pk %}" class="btn btn-sm btn-primary" data-modal-edit data-modal-title="编辑档案">编辑</a>
+                <a href="{% url 'archive:archive_move' archive.pk %}" class="btn btn-sm btn-outline-primary">移动位置</a>
+                {% endcan %}
+                {% can "archive" "delete" %}
+                <a href="{% url 'archive:archive_delete' archive.pk %}" class="btn btn-sm btn-outline-danger">删除</a>
+                {% endcan %}
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <table class="table arc-detail-table">
+                        <tr><td class="arc-label">档案编号</td><td>{{ archive.code }}</td></tr>
+                        <tr><td class="arc-label">档案名称</td><td>{{ archive.name }}</td></tr>
+                        <tr><td class="arc-label">存放位置</td><td><strong>{{ archive.location_path }}</strong><br><small class="text-muted">{{ archive.cabinet.location }}</small></td></tr>
+                        <tr><td class="arc-label">类别</td><td>{{ archive.category.full_path|default:"—" }}</td></tr>
+                        <tr><td class="arc-label">标签</td><td>{% for t in archive.tags_list %}<span class="badge bg-secondary me-1">{{ t }}</span>{% empty %}—{% endfor %}</td></tr>
+                        <tr><td class="arc-label">创建人</td><td>{{ archive.creator|default:"—" }}</td></tr>
+                        <tr><td class="arc-label">创建时间</td><td>{{ archive.created_at|date:"Y-m-d H:i" }}</td></tr>
+                        <tr><td class="arc-label">更新时间</td><td>{{ archive.updated_at|date:"Y-m-d H:i" }}</td></tr>
+                        <tr><td class="arc-label">借出状态</td>
+                            <td>{% if archive.is_borrowed %}<span class="badge bg-danger">借出中</span>{% else %}<span class="badge bg-success">在柜</span>{% endif %}</td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    {% if archive.description %}
+                    <h6>档案描述</h6>
+                    <p class="text-muted">{{ archive.description|linebreaksbr }}</p>
+                    {% endif %}
+                    <h6>位置二维码</h6>
+                    <img src="{% url 'archive:qrcode' archive.pk %}" alt="二维码" style="max-width:120px;border:1px solid #eee;padding:4px">
+                </div>
+            </div>
+
+            {% if archive.file %}
+            <hr>
+            <h6>电子档案</h6>
+            <div class="d-flex gap-2 align-items-center">
+                <a href="{{ archive.file.url }}" target="_blank" class="btn btn-sm btn-outline-primary">预览 / 下载</a>
+                <span class="text-muted">{{ archive.file.name }}</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 借阅操作 -->
+    {% can "archive" "create" %}
+    {% if not archive.is_borrowed %}
+    <div class="card mb-4">
+        <div class="card-header"><h5 class="mb-0">借阅登记</h5></div>
+        <div class="card-body">
+            <a href="{% url 'archive:borrow_create' archive.pk %}" class="btn btn-primary">借阅此档案</a>
+            <small class="text-muted ms-2">当前空位：{{ free_cells }}</small>
+        </div>
+    </div>
+    {% endif %}
+    {% endcan %}
+
+    <!-- 借阅历史 -->
+    <div class="card mb-4">
+        <div class="card-header"><h5 class="mb-0">借阅记录</h5></div>
+        <div class="card-body">
+            <table class="table">
+                <thead><tr><th>借阅人</th><th>借阅时间</th><th>应还日期</th><th>实际归还</th><th>状态</th></tr></thead>
+                <tbody>
+                {% for b in borrows %}
+                <tr>
+                    <td>{{ b.borrower }}</td>
+                    <td>{{ b.borrow_time|date:"Y-m-d H:i" }}</td>
+                    <td>{{ b.due_time|date:"Y-m-d" }}</td>
+                    <td>{{ b.return_time|date:"Y-m-d H:i"|default:"—" }}</td>
+                    <td>
+                        <span class="badge {% if b.status == 'returned' %}bg-success{% elif b.status == 'overdue' %}bg-danger{% else %}bg-warning{% endif %}">{{ b.get_status_display }}</span>
+                        {% if b.status != 'returned' %}
+                        <a href="{% url 'archive:borrow_return' b.pk %}" class="btn btn-sm btn-outline-success ms-1">归还</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center text-muted">暂无借阅记录</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 操作历史 -->
+    <div class="card">
+        <div class="card-header"><h5 class="mb-0">操作历史</h5></div>
+        <div class="card-body">
+            <table class="table table-sm">
+                <thead><tr><th>时间</th><th>操作人</th><th>类型</th><th>摘要</th></tr></thead>
+                <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td>{{ log.operation_time|date:"Y-m-d H:i" }}</td>
+                    <td>{{ log.operator }}</td>
+                    <td>{{ log.operation_type }}</td>
+                    <td>{{ log.change_summary }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="text-center text-muted">暂无操作记录</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

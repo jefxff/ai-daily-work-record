@@ -1,0 +1,82 @@
+{% extends 'records/base.html' %}
+{% load static %}
+{% load accounts_tags %}
+
+{% block page_title %}核价详情 - 每日工作记录管理网站{% endblock %}
+
+{% block top_nav_actions %}
+    <a href="{% url 'price_evaluation_list' %}" class="btn-transparent">返回列表</a>
+    {% can "price_evaluation" "update" %}
+    <a href="{% url 'price_evaluation_edit' evaluation.id %}" class="btn-transparent" data-modal-edit data-modal-title="编辑核价">编辑记录</a>
+    {% endcan %}
+    {% can "price_evaluation" "delete" %}
+    <a href="{% url 'price_evaluation_delete' evaluation.id %}" class="btn-transparent btn-delete" data-confirm="确定要删除这条记录吗？">删除记录</a>
+    {% endcan %}
+{% endblock %}
+
+{% block content %}
+    <!-- 详情卡片 -->
+    <div class="detail-card">
+        <h2 class="detail-title">核价详细信息</h2>
+
+        <div class="detail-row">
+            <div class="detail-label">项目分类：</div>
+            <div class="detail-value">{{ evaluation.project_category }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">项目提出部门：</div>
+            <div class="detail-value">{{ evaluation.proposing_department }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">提出人：</div>
+            <div class="detail-value">{{ evaluation.proposer }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">核价内容：</div>
+            <div class="detail-value">{{ evaluation.evaluation_content|default:"无" }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">供应商1名称：</div>
+            <div class="detail-value">{{ evaluation.supplier1_name|default:"无" }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">供应商1报价：</div>
+            <div class="detail-value">¥{{ evaluation.supplier1_price|default:0 }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">供应商2名称：</div>
+            <div class="detail-value">{{ evaluation.supplier2_name|default:"无" }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">供应商2报价：</div>
+            <div class="detail-value">¥{{ evaluation.supplier2_price|default:0 }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">供应商3名称：</div>
+            <div class="detail-value">{{ evaluation.supplier3_name|default:"无" }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">供应商3报价：</div>
+            <div class="detail-value">¥{{ evaluation.supplier3_price|default:0 }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">内控审核供应商：</div>
+            <div class="detail-value">{{ evaluation.internal_control_supplier|default:"无" }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">内控审核价：</div>
+            <div class="detail-value">¥{{ evaluation.internal_control_price }}</div>
+        </div>
+    </div>
+{% endblock %}

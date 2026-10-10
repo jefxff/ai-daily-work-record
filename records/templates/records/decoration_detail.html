@@ -1,0 +1,57 @@
+{% extends 'records/base.html' %}
+{% load static %}
+{% load accounts_tags %}
+
+{% block page_title %}装修记录详情 - 每日工作记录管理网站{% endblock %}
+
+{% block top_nav_actions %}
+    <a href="{% url 'decoration_list' %}" class="btn-transparent">返回列表</a>
+    {% can "decoration" "update" %}
+    <a href="{% url 'decoration_edit' decoration.id %}" class="btn-transparent" data-modal-edit data-modal-title="编辑装修">编辑记录</a>
+    {% endcan %}
+    {% can "decoration" "delete" %}
+    <a href="{% url 'decoration_delete' decoration.id %}" class="btn-transparent btn-delete" data-confirm="确定要删除这条记录吗？">删除记录</a>
+    {% endcan %}
+{% endblock %}
+
+{% block content %}
+    <!-- 详情卡片 -->
+    <div class="detail-card">
+        <h2 class="detail-title">装修记录详细信息</h2>
+
+        <div class="detail-row">
+            <div class="detail-label">项目名称：</div>
+            <div class="detail-value">{{ decoration.project_name }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">施工方：</div>
+            <div class="detail-value">{{ decoration.constructor }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">项目地址：</div>
+            <div class="detail-value">{{ decoration.project_address|default:"无" }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">开工日期：</div>
+            <div class="detail-value">{{ decoration.start_date|date:'Y-m-d'|default:"无" }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">原价：</div>
+            <div class="detail-value">¥{{ decoration.original_price|default:0 }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">核后价：</div>
+            <div class="detail-value">¥{{ decoration.final_price|default:0 }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">核减金额：</div>
+            <div class="detail-value">¥{{ decoration.reduced_price|default:0 }}</div>
+        </div>
+    </div>
+{% endblock %}

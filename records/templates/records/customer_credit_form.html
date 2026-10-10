@@ -1,0 +1,206 @@
+{% extends 'records/base.html' %}
+{% load static %}
+
+{% block page_title %}{% if form.instance.pk %}编辑客户账期{% else %}新增客户账期{% endif %} - 每日工作记录管理网站{% endblock %}
+
+{% block top_nav_actions %}
+    <a href="{% url 'customer_credit_list' %}" class="btn-transparent">返回列表</a>
+    <a href="{% url 'home' %}" class="btn-transparent">返回首页</a>
+{% endblock %}
+
+{% block content %}
+    <div class="form-container">
+        <h2 class="form-title">{% if form.instance.id %}编辑客户账期{% else %}新增客户账期{% endif %}</h2>
+
+        <form method="post">
+            {% csrf_token %}
+            {% if form.errors %}
+                <div class="alert alert-danger" role="alert">
+                    <strong>表单验证失败:</strong>
+                    <ul>
+                        {% for field in form %}
+                            {% for error in field.errors %}
+                                <li>{{ field.label }}: {{ error }}</li>
+                            {% endfor %}
+                        {% endfor %}
+                        {% for error in form.non_field_errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="id_proposal_date" class="form-label">提出日期 *</label>
+                        {{ form.proposal_date }}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="id_site_date" class="form-label">现场日期</label>
+                        {{ form.site_date }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="id_customer_name" class="form-label">客户名称 *</label>
+                        {{ form.customer_name }}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="id_customer_type" class="form-label">客户类型 *</label>
+                        {{ form.customer_type }}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="id_salesperson" class="form-label">业务员 *</label>
+                        {{ form.salesperson }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="id_work_content" class="form-label">工作内容</label>
+                {{ form.work_content }}
+            </div>
+
+            <div class="form-group">
+                <label for="id_specific_content" class="form-label">具体内容</label>
+                {{ form.specific_content }}
+            </div>
+
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="id_pre_survey" class="form-label">前期调查表</label>
+                        {{ form.pre_survey }}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="id_work_method" class="form-label">工作方式</label>
+                        {{ form.work_method }}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="id_result" class="form-label">结果 *</label>
+                        {{ form.result }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="id_remarks" class="form-label">备注</label>
+                {{ form.remarks }}
+                <small class="form-text">最多输入500个字符</small>
+            </div>
+
+            <!-- 业绩考核期模块 -->
+            <div id="assessment-section" class="assessment-section">
+                <h3>业绩考核期</h3>
+                <div class="form-group assessment-toggle-row">
+                    {{ form.has_assessment_period }}
+                    <label for="id_has_assessment_period" class="form-label">是否有业绩考核期</label>
+                    <small class="form-text">（仅普通客户适用）</small>
+                </div>
+                <div id="assessment-fields" style="display: none;">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="id_assessment_start_date" class="form-label">考核期开始日期</label>
+                                {{ form.assessment_start_date }}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="id_assessment_end_date" class="form-label">考核期结束日期</label>
+                                {{ form.assessment_end_date }}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="id_assessment_content" class="form-label">考核内容</label>
+                        {{ form.assessment_content }}
+                        <small class="form-text">描述考核指标、未达标后果等，最多500个字符</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">{% if form.instance.id %}保存修改{% else %}保存记录{% endif %}</button>
+                <a href="{% url 'customer_credit_list' %}" class="btn btn-outline-secondary">取消</a>
+            </div>
+        </form>
+    </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 业绩考核期模块 */
+    .assessment-section {
+        margin-top: 2rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid #f0f0f0;
+    }
+    .assessment-section h3 {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #1f2329;
+        margin-bottom: 1rem;
+    }
+    .assessment-toggle-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .assessment-toggle-row .form-label {
+        margin-bottom: 0;
+    }
+    .assessment-toggle-row .form-text {
+        margin-left: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    var customerType = document.getElementById('id_customer_type');
+    var assessmentSection = document.getElementById('assessment-section');
+    var assessmentCheckbox = document.getElementById('id_has_assessment_period');
+    var assessmentFields = document.getElementById('assessment-fields');
+
+    function toggleSection() {
+        // 仅普通客户显示业绩考核模块
+        if (customerType && customerType.value === '普通客户') {
+            assessmentSection.style.display = '';
+        } else {
+            assessmentSection.style.display = 'none';
+            assessmentCheckbox.checked = false;
+            assessmentFields.style.display = 'none';
+        }
+    }
+
+    function toggleFields() {
+        assessmentFields.style.display = assessmentCheckbox.checked ? '' : 'none';
+    }
+
+    if (customerType) {
+        customerType.addEventListener('change', toggleSection);
+        toggleSection();
+    }
+    if (assessmentCheckbox) {
+        assessmentCheckbox.addEventListener('change', toggleFields);
+        toggleFields();
+    }
+})();
+</script>
+{% endblock %}

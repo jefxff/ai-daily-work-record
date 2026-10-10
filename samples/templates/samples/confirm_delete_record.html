@@ -1,0 +1,28 @@
+{% extends "records/base.html" %}
+
+{% block page_title %}删除{{ kind }} - 试样管理{% endblock %}
+
+{% block content %}
+<div class="detail-card" style="max-width:560px;">
+    <h1 class="detail-title" style="font-size:1.25rem;">删除{{ kind }}确认</h1>
+    <div style="background:#fff1f0; border:1px solid #ffccc7; color:#f5222d; border-radius:6px; padding:0.9rem 1rem; margin-bottom:1.25rem; font-size:0.875rem; line-height:1.8;">
+        ⚠️ 确定要删除{{ kind }} <strong>{{ record_no }}</strong> 吗？<br>
+        {% if sample %}
+        删除后将按该样品的记录全集重新推导主档状态（状态机自动联动）。
+        {% endif %}
+        {% if partner %}
+        删除后系统将自动重排该供应商的审厂轮次编号。
+        {% endif %}
+    </div>
+    <form method="POST">
+        {% csrf_token %}
+        <div class="form-actions" style="border-top:none; padding-top:0;">
+            {% if sample %}<a class="btn-secondary" href="{% url 'samples:detail' sample.pk %}">取消</a>{% endif %}
+            {% if partner %}<a class="btn-secondary" href="{% url 'samples:partner_detail' partner.pk %}">取消</a>{% endif %}
+            <button type="submit" class="btn-primary" style="background:#f5222d !important; border-color:#f5222d !important;">确认删除</button>
+        </div>
+    </form>
+</div>
+
+{% include "samples/_toast.html" %}
+{% endblock %}

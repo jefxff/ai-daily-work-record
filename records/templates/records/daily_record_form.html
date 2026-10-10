@@ -1,0 +1,56 @@
+{% extends 'records/base.html' %}
+{% load static %}
+
+{% block page_title %}{% if record %}编辑每日记录{% else %}新增每日记录{% endif %} - 每日工作记录管理网站{% endblock %}
+
+{% block content %}
+    <div class="form-container">
+        <h2 class="form-title">{% if record %}编辑每日记录{% else %}新增每日记录{% endif %}</h2>
+
+        <form method="post">
+            {% csrf_token %}
+
+            <div class="form-group">
+                <label class="form-label">序号</label>
+                <input type="text" class="form-control" value="{% if record %}{{ forloop.counter }}{% else %}自动生成{% endif %}" disabled>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">日期及时间</label>
+                <input type="text" class="form-control" value="{% if record %}{{ record.record_date|date:'Y-m-d H:i:s' }}{% else %}{{ now|date:'Y-m-d H:i:s' }}{% endif %}" disabled>
+            </div>
+
+            <div class="form-group">
+                <label for="department" class="form-label">提出部门</label>
+                <input type="text" class="form-control" id="department" name="department" value="{% if record %}{{ record.department }}{% endif %}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="work_content" class="form-label">工作内容</label>
+                <textarea class="form-control" id="work_content" name="work_content" rows="4" required>{% if record %}{{ record.work_content }}{% endif %}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="status" class="form-label">工作状态</label>
+                <select class="form-select" id="status" name="status" required>
+                    <option value="完成" {% if record and record.status == '完成' %}selected{% endif %}>完成</option>
+                    <option value="未完成" {% if record and record.status == '未完成' %}selected{% elif not record %}selected{% endif %}>未完成</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="progress" class="form-label">工作进度</label>
+                <div class="input-group">
+                    <input type="number" class="form-control" id="progress" name="progress" min="0" max="100" value="{% if record %}{{ record.progress }}{% else %}0{% endif %}" required>
+                    <span class="input-group-text">%</span>
+                </div>
+                <div class="form-text">请输入0-100之间的数字</div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">{% if record %}保存修改{% else %}保存记录{% endif %}</button>
+                <a href="{% if record %}{% url 'daily_record_list' %}{% else %}{% url 'home' %}{% endif %}" class="btn btn-secondary">取消</a>
+            </div>
+        </form>
+    </div>
+{% endblock %}

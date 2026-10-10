@@ -1,0 +1,8 @@
+{% extends "records/base.html" %}
+{% block page_title %}{% if mode == 'edit' %}编辑{% else %}录入{% endif %}档案{% endblock %}
+{% block content %}
+<div class="container" style="max-width:700px">
+    <h1 class="page-title mb-4">{% if mode == 'edit' %}编辑{% else %}录入{% endif %}档案</h1>
+    {% include "archive/_archive_form_modal.html" %}
+</div>
+{% endblock %}

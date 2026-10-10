@@ -1,0 +1,473 @@
+{% extends 'records/base.html' %}
+{% load static %}
+{% load accounts_tags %}
+
+{% block page_title %}客户客诉列表 - 每日工作记录管理网站{% endblock %}
+
+{% block top_nav_actions %}
+    <form class="d-flex gap-2" method="GET" id="searchForm">
+        <input class="search-input" type="search" placeholder="搜索客户名称或业务员" name="search" value="{{ search_term }}">
+        <button class="btn-transparent" type="submit">搜索</button>
+    </form>
+    <!-- 筛选按钮 -->
+    <div class="filter-container">
+        <button class="btn-transparent" id="filterBtn">
+            <span>筛选</span>
+        </button>
+        <div class="filter-dropdown" id="filterDropdown">
+            <h4>筛选条件</h4>
+            <form id="filterForm" method="GET">
+                <input type="hidden" name="search" value="{{ search_term }}">
+                <div class="filter-group">
+                    <label>客户名称</label>
+                    <input type="text" name="customer_name" placeholder="模糊搜索客户名称" value="{{ customer_name_filter }}">
+                </div>
+                <div class="filter-group">
+                    <label>责任业务员</label>
+                    <select name="responsible_salesperson">
+                        <option value="">全部业务员</option>
+                        {% for salesperson in responsible_salespersons %}
+                        <option value="{{ salesperson }}" {% if responsible_salesperson_filter == salesperson %}selected{% endif %}>{{ salesperson }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>产品型号</label>
+                    <select name="product_model">
+                        <option value="">全部型号</option>
+                        {% for model in product_models %}
+                        <option value="{{ model }}" {% if product_model_filter == model %}selected{% endif %}>{{ model }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>是否报保险</label>
+                    <div class="radio-group">
+                        <label>
+                            <input type="radio" name="is_insured" value="" {% if not is_insured_filter %}checked{% endif %}> 全部
+                        </label>
+                        <label>
+                            <input type="radio" name="is_insured" value="true" {% if is_insured_filter == 'true' %}checked{% endif %}> 是
+                        </label>
+                        <label>
+                            <input type="radio" name="is_insured" value="false" {% if is_insured_filter == 'false' %}checked{% endif %}> 否
+                        </label>
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label>客诉状态</label>
+                    <select name="complaint_status">
+                        <option value="">全部状态</option>
+                        {% for choice in complaint_status_choices %}
+                        <option value="{{ choice.0 }}" {% if complaint_status_filter == choice.0 %}selected{% endif %}>{{ choice.1 }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-actions">
+                    <button type="button" class="filter-reset" id="resetFilter">重置筛选</button>
+                    <button type="submit" class="filter-apply">应用筛选</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% can "customer_complaint" "create" %}
+    <a href="{% url 'customer_complaint_add' %}" class="btn-transparent" data-modal-add data-modal-title="新增客户客诉">新增客户客诉</a>
+    {% endcan %}
+    <a href="{% url 'customer_complaint_export' %}" class="btn-transparent">下载Excel</a>
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h2>客户客诉<span class="total-hint">共 {{ complaints.paginator.count }} 条记录</span></h2>
+        <div class="filter-chips">
+            {% if search_term %}
+            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'search' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">搜索：{{ search_term }} ✕</a>
+            {% endif %}
+            {% if customer_name_filter %}
+            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'customer_name' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">客户：{{ customer_name_filter }} ✕</a>
+            {% endif %}
+            {% if responsible_salesperson_filter %}
+            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'responsible_salesperson' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">业务员：{{ responsible_salesperson_filter }} ✕</a>
+            {% endif %}
+            {% if product_model_filter %}
+            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'product_model' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">型号：{{ product_model_filter }} ✕</a>
+            {% endif %}
+            {% if is_insured_filter %}
+            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'is_insured' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">报保险：{% if is_insured_filter == 'true' %}是{% else %}否{% endif %} ✕</a>
+            {% endif %}
+            {% if complaint_status_filter %}
+            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'complaint_status' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">客诉状态：{{ complaint_status_filter }} ✕</a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="table-container">
+        <!-- 表格 -->
+        <div class="table-responsive">
+            <table class="table table-sticky">
+                <thead>
+                    <tr>
+                        <th class="col-optional">序号</th>
+                        <th>客户名称</th>
+                        <th>责任业务员</th>
+                        <th>客诉申请日期</th>
+                        <th>终端客户</th>
+                        <th>产品型号</th>
+                        <th class="col-optional">我司出货量</th>
+                        <th class="col-optional">客户出货量</th>
+                        <th>客诉现象及客户诉求描述</th>
+                        <th>客户诉求（赔偿金额）</th>
+                        <th>是否报保险</th>
+                        <th>工程报告</th>
+                        <th>工程部分析原因报告</th>
+                        <th>欠缺材料</th>
+                        <th>客诉状态</th>
+                        <th>跟进情况</th>
+                        <th class="col-optional">备注</th>
+                        <th class="col-actions">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for complaint in complaints %}
+                    <tr>
+                        <td class="col-optional">{{ forloop.counter }}</td>
+                        <td>{{ complaint.customer_name }}</td>
+                        <td>{{ complaint.responsible_salesperson }}</td>
+                        <td>{{ complaint.complaint_date|date:'Y-m-d' }}</td>
+                        <td>{{ complaint.terminal_customer|default:'' }}</td>
+                        <td>{{ complaint.product_model|default:'' }}</td>
+                        <td class="col-optional">{{ complaint.our_shipment|default:'' }}</td>
+                        <td class="col-optional">{{ complaint.customer_shipment|default:'' }}</td>
+                        <td title="{{ complaint.complaint_description|default:'' }}">{{ complaint.complaint_description|default:''|truncatechars:30 }}</td>
+                        <td>{% if complaint.compensation_amount %}¥{{ complaint.compensation_amount|floatformat:2 }}{% else %}-{% endif %}</td>
+                        <td>{% if complaint.is_insured %}<span class="status-badge warning">是</span>{% else %}<span class="status-badge default">否</span>{% endif %}</td>
+                        <td title="{{ complaint.engineering_report|default:'' }}">{{ complaint.engineering_report|default:''|truncatechars:30 }}</td>
+                        <td title="{{ complaint.engineering_analysis|default:'' }}">{{ complaint.engineering_analysis|default:''|truncatechars:30 }}</td>
+                        <td title="{{ complaint.missing_materials|default:'' }}">{{ complaint.missing_materials|default:''|truncatechars:20 }}</td>
+                        <td>
+                            {% if complaint.complaint_status == '已完成' %}
+                            <span class="status-badge success">{{ complaint.complaint_status }}</span>
+                            {% elif complaint.complaint_status == '处理中' %}
+                            <span class="status-badge warning">{{ complaint.complaint_status }}</span>
+                            {% else %}
+                            <span class="status-badge danger">{{ complaint.complaint_status }}</span>
+                            {% endif %}
+                        </td>
+                        <td title="{{ complaint.follow_up_status|default:'' }}">{{ complaint.follow_up_status|default:''|truncatechars:30 }}</td>
+                        <td class="col-optional" title="{{ complaint.remarks|default:'' }}">{{ complaint.remarks|default:''|truncatechars:30 }}</td>
+                        <td class="col-actions">
+                            <div style="display: flex; gap: 0.25rem; align-items: center; flex-wrap: nowrap;">
+                                <a href="{% url 'customer_detail' complaint.id %}" class="btn-transparent btn-sm" data-modal-detail data-modal-title="客户详情">详细</a>
+                                {% can "customer_complaint" "update" %}
+                                <a href="{% url 'customer_complaint_edit' complaint.id %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑客户客诉">编辑</a>
+                                {% endcan %}
+                                {% can "customer_complaint" "delete" %}
+                                <a href="{% url 'customer_complaint_delete' complaint.id %}" class="btn-transparent btn-sm btn-delete" onclick="return confirm('确定要删除这条记录吗？');">删除</a>
+                                {% endcan %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="18" class="empty-cell">📭 暂无数据</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 分页 -->
+        {% if complaints.has_other_pages %}
+        <div class="pagination-info">
+            <span>共 {{ complaints.paginator.count }} 条 · 第 {{ complaints.number }} / {{ complaints.paginator.num_pages }} 页</span>
+            <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                <form method="GET" style="display: flex; align-items: center; gap: 0.4rem;">
+                    {% for k, v in request.GET.items %}{% if k != 'per_page' and k != 'page' %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endif %}{% endfor %}
+                    <label style="font-size: 13px;">每页</label>
+                    <select class="per-page-select" name="per_page" onchange="this.form.submit()">
+                        <option value="10" {% if complaints.paginator.per_page == 10 %}selected{% endif %}>10</option>
+                        <option value="30" {% if complaints.paginator.per_page == 30 %}selected{% endif %}>30</option>
+                        <option value="50" {% if complaints.paginator.per_page == 50 %}selected{% endif %}>50</option>
+                    </select>
+                    <span style="font-size: 13px;">条</span>
+                </form>
+                <ul class="pagination">
+                    {% if complaints.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ complaints.previous_page_number }}" aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <a class="page-link" href="#" aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    {% for num in complaints.paginator.page_range %}
+                    {% if complaints.number == num %}
+                    <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+                    {% else %}
+                    <li class="page-item"><a class="page-link" href="?{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ num }}">{{ num }}</a></li>
+                    {% endif %}
+                    {% endfor %}
+
+                    {% if complaints.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ complaints.next_page_number }}" aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <a class="page-link" href="#" aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 宽表格优化：横向滚动 + 紧凑行高 + 单行省略 */
+    .table { min-width: 1560px; }
+    .table thead th, .table tbody td { padding: 10px 12px !important; font-size: 13px; }
+    .table tbody td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
+    .table tbody td:last-child { overflow: visible !important; }
+
+    /* 操作列固定在右侧，横向滚动时始终可见 */
+    .table-responsive { overflow-x: auto !important; }
+
+    .table thead th.col-actions,
+    .table tbody td.col-actions {
+        position: sticky !important;
+        right: 0;
+        background: #fff !important;
+        z-index: 10;
+        box-shadow: -3px 0 5px rgba(0,0,0,0.08);
+        border-left: 1px solid #e8e8e8;
+    }
+    .table tbody tr:hover td.col-actions {
+        background: #fafafa !important;
+    }
+    .table thead th.col-actions {
+        z-index: 20;
+        background: #fafafa !important;
+    }
+
+    /* 筛选按钮容器 */
+    .filter-container {
+        position: relative;
+        display: inline-block;
+    }
+
+    .filter-dropdown {
+        position: absolute;
+        top: calc(100% + 0.5rem);
+        right: 0;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        padding: 1.25rem;
+        min-width: 320px;
+        max-width: 90vw;
+        max-height: 70vh;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+    }
+
+    .filter-dropdown.show {
+        display: block;
+    }
+
+    .filter-dropdown h4 {
+        color: #333;
+        margin: 0 0 1rem 0;
+        font-size: 1rem;
+        font-weight: 600;
+    }
+
+    .filter-group {
+        margin-bottom: 1rem;
+    }
+
+    .filter-group label {
+        display: block;
+        color: #666;
+        font-size: 0.875rem;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+    }
+
+    .filter-group select,
+    .filter-group input {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 6px;
+        font-size: 0.875rem;
+        background: white;
+        color: #333;
+        cursor: pointer;
+    }
+
+    .filter-group select:focus,
+    .filter-group input:focus {
+        outline: none;
+        border-color: rgba(59, 130, 246, 0.5);
+    }
+
+    .filter-group input::placeholder {
+        color: #999;
+    }
+
+    .radio-group {
+        display: flex;
+        gap: 1rem;
+    }
+
+    .radio-group label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+        font-weight: normal;
+    }
+
+    .radio-group input[type="radio"] {
+        width: auto;
+        margin: 0;
+    }
+
+    .filter-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 1.25rem;
+        padding-top: 1rem;
+        border-top: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    .filter-apply,
+    .filter-reset {
+        flex: 1;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border: none;
+    }
+
+    .filter-apply {
+        background: rgba(59, 130, 246, 1);
+        color: white;
+    }
+
+    .filter-apply:hover {
+        background: rgba(59, 130, 246, 0.9);
+    }
+
+    .filter-reset {
+        background: rgba(0, 0, 0, 0.05);
+        color: #666;
+    }
+
+    .filter-reset:hover {
+        background: rgba(0, 0, 0, 0.1);
+    }
+
+    /* 加载状态 */
+    .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+        display: none;
+    }
+
+    .loading-overlay.show {
+        display: flex;
+    }
+
+    .loading-spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .table td a.customer-link {
+        color: #3498db;
+        text-decoration: underline;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .table td a.customer-link:hover {
+        color: #2980b9;
+        text-decoration: none;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 筛选按钮交互
+        const filterBtn = document.getElementById('filterBtn');
+        if (filterBtn) {
+            filterBtn.addEventListener('click', function(event) {
+                event.stopPropagation();
+                document.getElementById('filterDropdown').classList.toggle('show');
+            });
+        }
+
+        // 重置筛选按钮
+        const resetFilter = document.getElementById('resetFilter');
+        if (resetFilter) {
+            resetFilter.addEventListener('click', function() {
+                // 清空所有筛选条件
+                document.getElementById('filterForm').reset();
+                document.getElementById('filterForm').submit();
+            });
+        }
+
+        // 点击其他地方关闭筛选下拉菜单
+        document.addEventListener('click', function(event) {
+            if (!event.target.closest('#filterBtn') && !event.target.closest('#filterDropdown')) {
+                document.getElementById('filterDropdown').classList.remove('show');
+            }
+        });
+
+        // 表单提交时显示加载状态
+        const filterForm = document.getElementById('filterForm');
+        if (filterForm) {
+            filterForm.addEventListener('submit', function() {
+                document.getElementById('filterDropdown').classList.remove('show');
+            });
+        }
+    });
+</script>
+{% endblock %}

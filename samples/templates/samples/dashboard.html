@@ -1,0 +1,236 @@
+{% extends "records/base.html" %}
+
+{% block page_title %}试样看板 - 试样管理{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ===== 筛选区 ===== */
+    .dash-toolbar { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 0.9rem 1.25rem; margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; }
+    .range-tabs { display: flex; gap: 0.25rem; background: #f5f5f5; border-radius: 8px; padding: 3px; flex-wrap: wrap; }
+    .range-tab { border: none; background: transparent; color: #595959; border-radius: 6px; padding: 5px 16px; font-size: 0.85rem; cursor: pointer; text-decoration: none; transition: all 0.2s ease; }
+    .range-tab:hover { color: #1890ff; }
+    .range-tab.active { background: #fff; color: #1890ff; font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,0.12); }
+    .custom-range { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
+    .custom-range .sep { color: #bfbfbf; font-size: 0.8rem; }
+
+    /* ===== KPI 卡片 ===== */
+    .kpi-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 1rem; margin-bottom: 1.25rem; }
+    @media (max-width: 1400px) { .kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 768px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 480px) { .kpi-grid { grid-template-columns: 1fr; } }
+    .kpi-card { background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 1.1rem 1.25rem; position: relative; overflow: hidden; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.12); }
+    .kpi-card::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
+    .kpi-card.c-blue::after { background: #1890ff; }
+    .kpi-card.c-cyan::after { background: #13c2c2; }
+    .kpi-card.c-green::after { background: #52c41a; }
+    .kpi-card.c-geek::after { background: #2f54eb; }
+    .kpi-card.c-orange::after { background: #fa8c16; }
+    .kpi-card.c-red::after { background: #f5222d; }
+    .kpi-head { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem; }
+    .kpi-icon { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; flex-shrink: 0; }
+    .c-blue .kpi-icon { background: #e6f7ff; }
+    .c-cyan .kpi-icon { background: #e6fffb; }
+    .c-green .kpi-icon { background: #f6ffed; }
+    .c-geek .kpi-icon { background: #f0f5ff; }
+    .c-orange .kpi-icon { background: #fff7e6; }
+    .c-red .kpi-icon { background: #fff1f0; }
+    .kpi-label { font-size: 0.82rem; color: #8c8c8c; }
+    .kpi-value { font-size: 1.9rem; font-weight: 700; color: #1f2329; line-height: 1.15; font-variant-numeric: tabular-nums; }
+    .kpi-sub { font-size: 0.72rem; color: #bfbfbf; margin-top: 0.3rem; }
+    .kpi-sub.basis-switch { color: #8c8c8c; }
+    .kpi-sub.basis-switch a { color: #1890ff; }
+
+    /* ===== 图表区 ===== */
+    .board-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 1.25rem; margin-bottom: 1.25rem; }
+    @media (max-width: 1200px) { .board-grid { grid-template-columns: 1fr; } }
+    .board-card { background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 1.4rem 1.5rem; margin-bottom: 0; min-width: 0; }
+    .board-card.block { margin-bottom: 1.25rem; }
+    .board-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.1rem; }
+    .board-title { font-size: 0.95rem; font-weight: 600; color: #1f2329; margin: 0; display: flex; align-items: center; gap: 0.45rem; }
+    .board-title::before { content: ''; width: 4px; height: 14px; border-radius: 2px; background: #1890ff; }
+    .board-hint { font-size: 0.74rem; color: #bfbfbf; }
+
+    /* 月度趋势柱状图 */
+    .month-chart { display: flex; align-items: flex-end; gap: 8px; height: 190px; padding: 0 0.25rem; overflow-x: auto; }
+    .month-col { display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 42px; flex: 1; height: 100%; justify-content: flex-end; }
+    .month-val { font-size: 0.72rem; color: #595959; font-weight: 600; }
+    .m-bar { width: 55%; max-width: 34px; min-height: 3px; background: linear-gradient(180deg, #69c0ff, #1890ff); border-radius: 4px 4px 0 0; transition: opacity 0.2s ease; }
+    .month-col:hover .m-bar { opacity: 0.75; }
+    .month-label { font-size: 0.68rem; color: #8c8c8c; white-space: nowrap; }
+
+    /* 状态分布 */
+    .status-dist { display: flex; flex-direction: column; gap: 0.9rem; }
+    .status-row { display: flex; align-items: center; gap: 0.65rem; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .status-row .status-name { width: 76px; font-size: 0.82rem; color: #595959; flex-shrink: 0; }
+    .status-track { flex: 1; height: 10px; background: #f5f5f5; border-radius: 5px; overflow: hidden; }
+    .status-fill { height: 100%; border-radius: 5px; transition: width 0.5s ease; min-width: 0; }
+    .status-num { width: 40px; font-size: 0.85rem; color: #1f2329; font-weight: 700; text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+
+    /* 供应商 Top10 */
+    .supplier-list { display: flex; flex-direction: column; gap: 0.7rem; }
+    .supplier-row { display: flex; align-items: center; gap: 0.75rem; padding: 2px 6px; border-radius: 6px; transition: background 0.15s ease; }
+    .supplier-row:hover { background: #fafafa; }
+    .supplier-rank { width: 22px; height: 22px; border-radius: 6px; background: #f5f5f5; color: #8c8c8c; font-size: 0.72rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .supplier-rank.r1 { background: #fff1f0; color: #f5222d; }
+    .supplier-rank.r2 { background: #fff7e6; color: #fa8c16; }
+    .supplier-rank.r3 { background: #fffbe6; color: #faad14; }
+    .supplier-name { width: 180px; font-size: 0.85rem; color: #1f2329; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
+    .supplier-track { flex: 1; height: 12px; background: #f5f5f5; border-radius: 6px; overflow: hidden; }
+    .supplier-fill { height: 100%; background: linear-gradient(90deg, #69c0ff, #1890ff); border-radius: 6px; transition: width 0.5s ease; }
+    .supplier-num { width: 40px; font-size: 0.85rem; color: #1f2329; font-weight: 700; text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dash-toolbar">
+    <div class="range-tabs">
+        <a class="range-tab {% if range_key == 'month' %}active{% endif %}" href="?range=month&basis={{ basis }}">本月</a>
+        <a class="range-tab {% if range_key == 'quarter' %}active{% endif %}" href="?range=quarter&basis={{ basis }}">本季度</a>
+        <a class="range-tab {% if range_key == 'year' %}active{% endif %}" href="?range=year&basis={{ basis }}">本年度</a>
+        <a class="range-tab {% if range_key == 'all' %}active{% endif %}" href="?range=all&basis={{ basis }}">全部</a>
+    </div>
+    <form method="GET" class="custom-range">
+        <input type="hidden" name="range" value="custom">
+        <input type="hidden" name="basis" value="{{ basis }}">
+        <input type="date" name="date_from" value="{{ date_from }}" class="search-input" style="width:140px;">
+        <span class="sep">至</span>
+        <input type="date" name="date_to" value="{{ date_to }}" class="search-input" style="width:140px;">
+        <button type="submit" class="btn-primary btn-sm">查询</button>
+    </form>
+</div>
+
+<!-- KPI 卡片 -->
+<div class="kpi-grid">
+    <div class="kpi-card c-blue">
+        <div class="kpi-head"><span class="kpi-icon">📦</span><span class="kpi-label">样品总数</span></div>
+        <div class="kpi-value">{{ data.total }}</div>
+        <div class="kpi-sub">周期内送样登记数量</div>
+    </div>
+    <div class="kpi-card c-cyan">
+        <div class="kpi-head"><span class="kpi-icon">🏭</span><span class="kpi-label">送样供应商</span></div>
+        <div class="kpi-value">{{ data.supplier_count }}</div>
+        <div class="kpi-sub">去重供应商数</div>
+    </div>
+    <div class="kpi-card c-green">
+        <div class="kpi-head"><span class="kpi-icon">✅</span><span class="kpi-label">已通过样品</span></div>
+        <div class="kpi-value" style="color:#52c41a;">{{ data.passed }}</div>
+        <div class="kpi-sub basis-switch">
+            {% if basis == 'imported' %}口径：已正式导入 · <a href="?range={{ range_key }}&date_from={{ date_from }}&date_to={{ date_to }}&basis=test">切换为试样通过</a>
+            {% else %}口径：试样通过 · <a href="?range={{ range_key }}&date_from={{ date_from }}&date_to={{ date_to }}&basis=imported">切换为正式导入</a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="kpi-card c-geek">
+        <div class="kpi-head"><span class="kpi-icon">📈</span><span class="kpi-label">通过率</span></div>
+        <div class="kpi-value" style="color:#2f54eb;">{{ data.pass_rate }}%</div>
+        <div class="kpi-sub">已通过 ÷ 样品总数</div>
+    </div>
+    <div class="kpi-card c-orange">
+        <div class="kpi-head"><span class="kpi-icon">🚚</span><span class="kpi-label">在途样品</span></div>
+        <div class="kpi-value" style="color:#fa8c16;">{{ data.in_progress }}</div>
+        <div class="kpi-sub">待送样 + 试样中 + 小批量中</div>
+    </div>
+    <div class="kpi-card c-red">
+        <div class="kpi-head"><span class="kpi-icon">⛔</span><span class="kpi-label">已终止</span></div>
+        <div class="kpi-value" style="color:#f5222d;">{{ data.terminated }}</div>
+        <div class="kpi-sub">周期内终止样品数</div>
+    </div>
+</div>
+
+<div class="board-grid">
+    <!-- 月度送样趋势 -->
+    <div class="board-card">
+        <div class="board-head">
+            <h3 class="board-title">月度送样趋势</h3>
+            <span class="board-hint">按送样时间按月汇总</span>
+        </div>
+        {% if month_bars %}
+        <div class="month-chart">
+            {% for bar in month_bars %}
+            <div class="month-col" title="{{ bar.label }}：{{ bar.value }} 条">
+                <span class="month-val">{{ bar.value }}</span>
+                <div class="m-bar" data-h="{{ bar.h }}"></div>
+                <span class="month-label">{{ bar.label }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state"><div class="empty-icon">📊</div><div class="empty-text">该周期内暂无送样数据</div></div>
+        {% endif %}
+    </div>
+
+    <!-- 状态分布 -->
+    <div class="board-card">
+        <div class="board-head">
+            <h3 class="board-title">样品状态分布</h3>
+            <span class="board-hint">共 {{ data.total }} 条</span>
+        </div>
+        <div class="status-dist">
+            {% for item in status_dist %}
+            <div class="status-row">
+                <span class="status-dot" data-color="{{ item.color }}"></span>
+                <span class="status-name">{{ item.label }}</span>
+                <div class="status-track">
+                    <div class="status-fill" data-pct="{{ item.pct }}" data-color="{{ item.color }}"></div>
+                </div>
+                <span class="status-num">{{ item.count }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- 供应商 Top10 -->
+<div class="board-card block">
+    <div class="board-head">
+        <h3 class="board-title">送样供应商 Top10</h3>
+        <span class="board-hint">按周期内送样数量排序</span>
+    </div>
+    {% if supplier_bars %}
+    <div class="supplier-list">
+        {% for bar in supplier_bars %}
+        <div class="supplier-row">
+            <span class="supplier-rank r{{ forloop.counter }}">{{ forloop.counter }}</span>
+            <span class="supplier-name" title="{{ bar.name }}">{{ bar.name }}</span>
+            <div class="supplier-track">
+                <div class="supplier-fill" data-pct="{{ bar.pct }}"></div>
+            </div>
+            <span class="supplier-num">{{ bar.count }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state"><div class="empty-icon">🏭</div><div class="empty-text">该周期内暂无供应商送样记录</div></div>
+    {% endif %}
+</div>
+
+{% include "samples/_toast.html" %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // 动态样式通过 data-* 注入，避免 style 属性内出现模板语法
+    // 月度趋势柱高（视图按最大 38px 设计，此处等比放大适配 150px 绘图区）
+    document.querySelectorAll('.m-bar[data-h]').forEach(function (bar) {
+        var unit = parseInt(bar.dataset.h, 10) || 3;
+        var px = Math.max(4, Math.round(unit / 38 * 150));
+        bar.style.height = px + 'px';
+    });
+    // 状态分布：圆点颜色 + 条形宽度/颜色
+    document.querySelectorAll('.status-dot[data-color]').forEach(function (dot) {
+        if (dot.dataset.color) dot.style.background = dot.dataset.color;
+    });
+    document.querySelectorAll('.status-fill[data-pct]').forEach(function (el) {
+        el.style.width = el.dataset.pct + '%';
+        if (el.dataset.color) el.style.background = el.dataset.color;
+    });
+    // 供应商条形宽度
+    document.querySelectorAll('.supplier-fill[data-pct]').forEach(function (el) {
+        el.style.width = el.dataset.pct + '%';
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,66 @@
+# Django
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+env.bak/
+
+# 用户上传文件（业务文档，不入库）
+media/
+venv.bak/
+
+# Database
+db.sqlite3
+*.db
+*.sqlite3
+*.sqlite3.*
+db.sqlite3.*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Backups
+backups/
+*.zip
+*.bak
+
+# Temp files
+temp/
+*.tmp
+
+# Environment variables
+.env
+.env.local
+.env.prod
+
+# Documentation build
+_build/
+
+# Testing
+.coverage
+.pytest_cache/
+
+# Package files
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Project specific
+*.bat.old
+*.sh.old

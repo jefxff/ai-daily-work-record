@@ -1,0 +1,49 @@
+{% extends 'records/base.html' %}
+{% load static %}
+
+{% block page_title %}{% if form.instance.id %}编辑制度及处罚{% else %}新增制度及处罚{% endif %} - 每日工作记录管理网站{% endblock %}
+
+{% block top_nav_actions %}
+    <a href="{% url 'regulation_list' %}" class="btn-transparent">返回列表</a>
+    <a href="{% url 'home' %}" class="btn-transparent">返回首页</a>
+{% endblock %}
+
+{% block content %}
+    <div class="form-container">
+        <h2 class="form-title">{% if form.instance.id %}编辑制度及处罚{% else %}新增制度及处罚{% endif %}</h2>
+
+        <form method="post">
+            {% csrf_token %}
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="id_issue_date" class="form-label">出文日期 *</label>
+                        {{ form.issue_date }}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="id_title" class="form-label">标题 *</label>
+                        {{ form.title }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="id_content" class="form-label">主要内容 *</label>
+                {{ form.content }}
+            </div>
+
+            <div class="form-group">
+                <label for="id_doc_no" class="form-label">文件编号 *</label>
+                {{ form.doc_no }}
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">{% if form.instance.id %}保存修改{% else %}保存记录{% endif %}</button>
+                <a href="{% url 'regulation_list' %}" class="btn btn-outline-secondary">取消</a>
+            </div>
+        </form>
+    </div>
+{% endblock %}

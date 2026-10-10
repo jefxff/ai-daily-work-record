@@ -1,0 +1,104 @@
+{% extends 'records/base.html' %}
+{% load static %}
+
+{% block page_title %}{% if form.instance.pk %}编辑核价{% else %}新增核价{% endif %} - 每日工作记录管理网站{% endblock %}
+
+{% block top_nav_actions %}
+    <a href="{% url 'price_evaluation_list' %}" class="btn-transparent">返回列表</a>
+    <a href="{% url 'home' %}" class="btn-transparent">返回首页</a>
+{% endblock %}
+
+{% block content %}
+    <div class="form-container">
+        <h2 class="form-title">{% if form.instance.id %}编辑核价{% else %}新增核价{% endif %}</h2>
+
+        <form method="post">
+            {% csrf_token %}
+
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="id_project_category" class="form-label">项目分类 *</label>
+                        {{ form.project_category }}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="id_proposing_department" class="form-label">项目提出部门 *</label>
+                        {{ form.proposing_department }}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="id_proposer" class="form-label">提出人 *</label>
+                        {{ form.proposer }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="id_evaluation_content" class="form-label">核价内容</label>
+                {{ form.evaluation_content }}
+            </div>
+
+            <div class="row">
+                <div class="col-md-2">
+                    <div class="form-group">
+                        <label for="id_supplier1_name" class="form-label">供应商1名称</label>
+                        {{ form.supplier1_name }}
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="form-group">
+                        <label for="id_supplier1_price" class="form-label">供应商1报价</label>
+                        {{ form.supplier1_price }}
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="form-group">
+                        <label for="id_supplier2_name" class="form-label">供应商2名称</label>
+                        {{ form.supplier2_name }}
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="form-group">
+                        <label for="id_supplier2_price" class="form-label">供应商2报价</label>
+                        {{ form.supplier2_price }}
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="form-group">
+                        <label for="id_supplier3_name" class="form-label">供应商3名称</label>
+                        {{ form.supplier3_name }}
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="form-group">
+                        <label for="id_supplier3_price" class="form-label">供应商3报价</label>
+                        {{ form.supplier3_price }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="id_internal_control_supplier" class="form-label">内控审核供应商</label>
+                        {{ form.internal_control_supplier }}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="id_internal_control_price" class="form-label">内控审核价 *</label>
+                        {{ form.internal_control_price }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">{% if form.instance.id %}保存修改{% else %}保存记录{% endif %}</button>
+                <a href="{% url 'price_evaluation_list' %}" class="btn btn-outline-secondary">取消</a>
+            </div>
+        </form>
+    </div>
+{% endblock %}

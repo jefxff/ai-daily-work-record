@@ -1,0 +1,51 @@
+{% extends 'records/base.html' %}
+{% load static %}
+
+{% block page_title %}制度详情 - {{ regulation.title }} - 每日工作记录管理网站{% endblock %}
+
+{% block content %}
+    <!-- 制度基本信息 -->
+    <div class="detail-card">
+        <h2 class="detail-title">{{ regulation.title }}</h2>
+
+        <div class="detail-row">
+            <div class="detail-label">出文日期：</div>
+            <div class="detail-value">{{ regulation.issue_date|date:'Y-m-d' }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">文件编号：</div>
+            <div class="detail-value">{{ regulation.doc_no }}</div>
+        </div>
+
+        <div class="content-section">
+            <h4>主要内容</h4>
+            <p>{{ regulation.content|linebreaksbr }}</p>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 内容区域（Ant Design 风格） */
+    .content-section {
+        background: #fafafa;
+        border: 1px solid #f0f0f0;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-top: 1rem;
+    }
+
+    .content-section h4 {
+        color: #1f2329;
+        margin-bottom: 1rem;
+        font-weight: 600;
+    }
+
+    .content-section p {
+        color: #595959;
+        line-height: 1.6;
+        margin-bottom: 0;
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,9 @@
+<div class="detail-card">
+    <div class="detail-row"><div class="detail-label">出文日期：</div><div class="detail-value">{{ regulation.issue_date|date:'Y-m-d' }}</div></div>
+    <div class="detail-row"><div class="detail-label">文件编号：</div><div class="detail-value">{{ regulation.doc_no }}</div></div>
+</div>
+<div style="background:#fafafa;border:1px solid #f0f0f0;border-radius:8px;padding:1rem 1.2rem;margin-top:0.75rem;">
+    <h4 style="color:#1f2329;margin:0 0 0.75rem;font-weight:600;">主要内容</h4>
+    <p style="color:#595959;line-height:1.7;margin:0;">{{ regulation.content|linebreaksbr }}</p>
+</div>
+<style>#formModal.form-modal { width: 760px; }</style>

@@ -1,0 +1,229 @@
+{% extends "records/base.html" %}
+{% load accounts_tags %}
+
+{% block page_title %}档案总览 - 档案管理{% endblock %}
+
+{% block extra_css %}
+<style>
+    .arc-dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .arc-stat-card { background: rgba(255,255,255,0.95); border-radius: 12px; padding: 1.25rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .arc-stat-value { font-size: 1.8rem; font-weight: 700; color: #1f2329; }
+    .arc-stat-label { font-size: 0.8rem; color: #8c8c8c; margin-top: 0.25rem; }
+    .arc-stat-card.occupied .arc-stat-value { color: #fa8c16; }
+    .arc-stat-card.free .arc-stat-value { color: #52c41a; }
+    .arc-stat-card.overdue .arc-stat-value { color: #f5222d; }
+
+    .arc-toolbar { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-bottom: 1.25rem; }
+    .arc-toolbar .form-control, .arc-toolbar .form-select { width: auto; min-width: 140px; }
+
+    .arc-cabinet-card { background: rgba(255,255,255,0.95); border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .arc-cabinet-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; }
+    .arc-cabinet-title { font-size: 1.1rem; font-weight: 600; color: #1f2329; }
+    .arc-cabinet-meta { font-size: 0.8rem; color: #8c8c8c; }
+    .arc-progress { height: 6px; background: #f0f0f0; border-radius: 3px; overflow: hidden; margin-top: 0.4rem; }
+    .arc-progress-bar { height: 100%; background: linear-gradient(90deg, #1890ff, #13c2c2); }
+
+    .arc-grid { display: grid; gap: 6px; }
+    .arc-cell { aspect-ratio: 1.6; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; cursor: pointer; transition: all 0.2s; border: 1px solid transparent; text-align: center; padding: 2px; overflow: hidden; }
+    .arc-cell.free { background: #f6ffed; border-color: #b7eb8f; color: #52c41a; }
+    .arc-cell.free:hover { background: #f6ffed; border-color: #52c41a; box-shadow: 0 0 0 2px rgba(82,196,26,0.2); }
+    .arc-cell.occupied { background: #e6f7ff; border-color: #91d5ff; color: #096dd9; }
+    .arc-cell.occupied:hover { background: #bae7ff; border-color: #1890ff; }
+    .arc-cell .cell-code { font-weight: 600; line-height: 1.1; word-break: break-all; }
+    .arc-cell .cell-name { font-size: 0.6rem; opacity: 0.8; margin-top: 2px; }
+    .arc-cell.borrowed { background: #fff1f0; border-color: #ffa39e; }
+    .arc-cell.borrowed .cell-code { color: #cf1322; }
+
+    /* 搜索命中高亮 */
+    a.arc-cell { text-decoration: none; }
+    .arc-cell-hit { background: #fff7e6 !important; border-color: #fa8c16 !important; box-shadow: 0 0 0 3px rgba(250,140,22,0.45); position: relative; z-index: 2; animation: arcHitPulse 1.2s ease-in-out 2; }
+    .arc-cell-hit .cell-code { color: #d46b08; }
+    @keyframes arcHitPulse { 0%,100% { box-shadow: 0 0 0 3px rgba(250,140,22,0.45); } 50% { box-shadow: 0 0 0 6px rgba(250,140,22,0.25); } }
+
+    /* 搜索结果提示条 */
+    .arc-search-banner { padding: 0.65rem 1rem; border-radius: 8px; font-size: 0.88rem; margin-bottom: 1rem; }
+    .arc-search-banner.has-hit { background: #fff7e6; border: 1px solid #ffd591; color: #d46b08; }
+    .arc-search-banner.no-hit { background: #fff1f0; border: 1px solid #ffa39e; color: #cf1322; }
+
+    .arc-layer-label { font-size: 0.75rem; color: #8c8c8c; font-weight: 600; align-self: center; }
+    .arc-row { display: grid; grid-template-columns: 40px 1fr; gap: 6px; align-items: stretch; }
+
+    .arc-legend { display: flex; gap: 1rem; font-size: 0.78rem; color: #595959; margin-bottom: 1rem; flex-wrap: wrap; }
+    .arc-legend span { display: inline-flex; align-items: center; gap: 0.3rem; }
+    .arc-legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="page-title mb-4">档案管理 · 总览</h1>
+
+    <!-- 仪表盘 -->
+    <div class="arc-dashboard">
+        <div class="arc-stat-card">
+            <div class="arc-stat-value">{{ total_cabinets }}</div>
+            <div class="arc-stat-label">档案柜总数</div>
+        </div>
+        <div class="arc-stat-card occupied">
+            <div class="arc-stat-value">{{ total_archives }}</div>
+            <div class="arc-stat-label">档案总数</div>
+        </div>
+        <div class="arc-stat-card free">
+            <div class="arc-stat-value">{{ free_cells }}</div>
+            <div class="arc-stat-label">剩余空位</div>
+        </div>
+        <div class="arc-stat-card">
+            <div class="arc-stat-value">{{ occupancy }}%</div>
+            <div class="arc-stat-label">总占用率</div>
+            <div class="arc-progress"><div class="arc-progress-bar" data-w="{{ occupancy }}"></div></div>
+        </div>
+        {% if overdue_count %}
+        <div class="arc-stat-card overdue">
+            <div class="arc-stat-value">{{ overdue_count }}</div>
+            <div class="arc-stat-label">逾期未还</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- 工具栏 -->
+    <div class="arc-toolbar">
+        <form method="get" class="d-flex flex-wrap gap-2">
+            <input type="text" name="aq" value="{{ aq }}" class="form-control" placeholder="搜索档案：名称 / 编号 / 标签 / 描述" style="min-width:240px">
+            <button class="btn btn-primary btn-sm" type="submit" title="搜索档案并在网格中定位">搜索档案</button>
+            <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="柜号 / 位置">
+            <select name="category" class="form-select">
+                <option value="">全部类别</option>
+                {% for c in categories %}
+                <option value="{{ c.id }}" {% if category_id == c.id|stringformat:"s" %}selected{% endif %}>{{ c.full_path }}</option>
+                {% endfor %}
+            </select>
+            <select name="status" class="form-select">
+                <option value="">全部状态</option>
+                <option value="occupied" {% if status == "occupied" %}selected{% endif %}>已存放</option>
+                <option value="free" {% if status == "free" %}selected{% endif %}>空位</option>
+            </select>
+            <select name="sort" class="form-select">
+                <option value="code" {% if sort == "code" %}selected{% endif %}>按柜号</option>
+                <option value="location" {% if sort == "location" %}selected{% endif %}>按位置</option>
+                <option value="used" {% if sort == "used" %}selected{% endif %}>按占用率</option>
+            </select>
+            <button class="btn btn-primary btn-sm" type="submit">筛选</button>
+        </form>
+        <div class="ms-auto d-flex gap-2 flex-wrap">
+            {% can "archive" "create" %}
+            <a href="{% url 'archive:cabinet_create' %}" class="btn btn-primary btn-sm" data-modal-add data-modal-title="新建档案柜">＋ 新建档案柜</a>
+            {% endcan %}
+            {% can "archive" "create" %}
+            <a href="{% url 'archive:archive_create' %}" class="btn btn-success btn-sm" data-modal-add data-modal-title="录入档案">＋ 录入档案</a>
+            {% endcan %}
+            {% can "archive" "read" %}
+            <a href="{% url 'archive:category_list' %}" class="btn btn-outline-secondary btn-sm">类别管理</a>
+            <a href="{% url 'archive:borrow_list' %}" class="btn btn-outline-secondary btn-sm">借阅记录</a>
+            <a href="{% url 'archive:log_list' %}" class="btn btn-outline-secondary btn-sm">操作日志</a>
+            <a href="{% url 'archive:export' %}" class="btn btn-outline-primary btn-sm">导出 CSV</a>
+            {% endcan %}
+        </div>
+    </div>
+
+    <div class="arc-legend">
+        <span><i style="background:#e6f7ff;border:1px solid #91d5ff"></i>已存放档案</span>
+        <span><i style="background:#f6ffed;border:1px solid #b7eb8f"></i>空位（点击可录入）</span>
+        <span><i style="background:#fff1f0;border:1px solid #ffa39e"></i>已借出</span>
+        <span><i style="background:#fff7e6;border:1px solid #fa8c16"></i>搜索命中</span>
+    </div>
+
+    {% if aq %}
+    <div class="arc-search-banner {% if match_count %}has-hit{% else %}no-hit{% endif %}">
+        {% if match_count %}
+            搜索「{{ aq }}」：命中 <strong>{{ match_count }}</strong> 份档案，已在网格中高亮，页面已自动定位到第一处
+        {% else %}
+            搜索「{{ aq }}」：未找到匹配的档案（可尝试按名称、编号、标签或描述关键字搜索）
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- 档案柜网格 -->
+    {% for item in cabinet_data %}
+    <div class="arc-cabinet-card">
+        <div class="arc-cabinet-header">
+            <div>
+                <div class="arc-cabinet-title">{{ item.cabinet.code }} <small class="text-muted">{{ item.cabinet.location }}</small></div>
+                <div class="arc-cabinet-meta">{{ item.cabinet.layers }} 层 × {{ item.cabinet.cells_per_layer }} 格 · 已用 {{ item.cabinet.used_cells }} / {{ item.cabinet.total_cells }} · 占用率 {{ item.cabinet.occupancy_rate }}%</div>
+                <div class="arc-progress" style="width:200px"><div class="arc-progress-bar" data-w="{{ item.cabinet.occupancy_rate }}"></div></div>
+            </div>
+            <div class="d-flex gap-1">
+                {% can "archive" "update" %}
+                <a href="{% url 'archive:cabinet_edit' item.cabinet.pk %}" class="btn btn-sm btn-outline-secondary" data-modal-edit data-modal-title="编辑档案柜">编辑</a>
+                {% endcan %}
+                {% can "archive" "delete" %}
+                <a href="{% url 'archive:cabinet_delete' item.cabinet.pk %}" class="btn btn-sm btn-outline-danger">删除</a>
+                {% endcan %}
+            </div>
+        </div>
+        {% for row in item.matrix %}
+        <div class="arc-row mb-1">
+            <div class="arc-layer-label">第 {{ forloop.counter }} 层</div>
+            <div class="arc-grid" data-cols="{{ item.cabinet.cells_per_layer }}">
+                {% for cell in row %}
+                    {% if cell %}
+                        <a class="arc-cell {% if cell.is_borrowed %}borrowed{% else %}occupied{% endif %} {% if cell.id in matched_ids %}arc-cell-hit{% endif %}" href="{% url 'archive:archive_detail' cell.pk %}">
+                            <div><div class="cell-code">{{ cell.code }}</div><div class="cell-name">{{ cell.name }}</div></div>
+                        </a>
+                    {% else %}
+                        {% if request.user|can_do:'archive.create' %}
+                        <a class="arc-cell free" href="{% url 'archive:archive_create' %}?cabinet={{ item.cabinet.pk }}&layer={{ forloop.parentloop.counter }}&cell={{ forloop.counter }}" data-modal-add data-modal-title="录入档案">
+                            <div class="cell-code">空位</div>
+                        </a>
+                        {% else %}
+                        <div class="arc-cell free"><div class="cell-code">空位</div></div>
+                        {% endif %}
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% empty %}
+    <div class="arc-cabinet-card text-center text-muted py-5">
+        暂无档案柜。{% can "archive" "create" %}<a href="{% url 'archive:cabinet_create' %}" data-modal-add data-modal-title="新建档案柜">立即新建</a>{% endcan %}
+    </div>
+    {% endfor %}
+
+    <!-- 批量导入 -->
+    {% can "archive" "create" %}
+    <div class="arc-cabinet-card">
+        <h5 class="mb-3">批量导入档案</h5>
+        <form method="post" action="{% url 'archive:import' %}" enctype="multipart/form-data" class="d-flex flex-wrap gap-2 align-items-center">
+            {% csrf_token %}
+            <input type="file" name="file" accept=".xlsx,.csv" class="form-control" style="max-width:300px">
+            <button class="btn btn-primary btn-sm" type="submit">导入</button>
+            <a href="{% url 'archive:import_template' %}" class="btn btn-outline-success btn-sm">下载导入模板</a>
+        </form>
+        <small class="text-muted d-block mt-2">支持 .xlsx / .csv，模板内含详细填写说明；列：编号*、名称*、档案柜*、层*、格*、类别、标签、描述</small>
+    </div>
+    {% endcan %}
+</div>
+
+<script>
+/* 动态样式值通过 data-* 属性由 JS 应用（避免模板变量写入 style 属性） */
+(function () {
+    document.querySelectorAll('.arc-progress-bar[data-w]').forEach(function (el) {
+        el.style.width = el.getAttribute('data-w') + '%';
+    });
+    document.querySelectorAll('.arc-grid[data-cols]').forEach(function (el) {
+        el.style.gridTemplateColumns = 'repeat(' + el.getAttribute('data-cols') + ', 1fr)';
+    });
+})();
+</script>
+
+{% if aq and match_count %}
+<script>
+(function () {
+    setTimeout(function () {
+        var hit = document.querySelector('.arc-cell-hit');
+        if (hit) hit.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 300);
+})();
+</script>
+{% endif %}
+{% endblock %}

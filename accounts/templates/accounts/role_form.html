@@ -1,0 +1,138 @@
+{% extends 'records/base.html' %}
+
+{% block page_title %}{% if mode == 'create' %}新建角色{% else %}编辑角色{% endif %} - 每日工作记录{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>{% if mode == 'create' %}新建角色{% else %}编辑角色：{{ role.name }}{% endif %}</h2>
+</div>
+<form method="post">
+    {% csrf_token %}
+    <div style="background:#fff; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.08); padding:1.5rem; margin-bottom:1.25rem; max-width:860px;">
+        {% if form.code.errors or form.non_field_errors %}
+        <div style="background:#fff1f0; border:1px solid #ffa39e; color:#cf1322; border-radius:6px; padding:0.6rem 0.85rem; margin-bottom:1rem; font-size:0.85rem;">
+            {{ form.code.errors|join:'；' }}{{ form.non_field_errors|join:'；' }}
+        </div>
+        {% endif %}
+        <div class="row" style="display:flex; gap:1rem; flex-wrap:wrap;">
+            <div class="mb-3" style="flex:1; min-width:200px;">
+                <label class="form-label" style="font-size:0.875rem; color:#595959; font-weight:500;">{{ form.code.label }}</label>
+                {% if mode == 'edit' %}
+                <input type="text" class="form-control" value="{{ role.code }}" disabled>
+                <input type="hidden" name="code" value="{{ role.code }}">
+                {% else %}
+                <input type="text" name="code" class="form-control" value="{{ form.code.value|default:'' }}" maxlength="50" required>
+                <div style="color:#8c8c8c; font-size:0.76rem; margin-top:2px;">{{ form.code.help_text }}</div>
+                {% endif %}
+            </div>
+            <div class="mb-3" style="flex:1; min-width:200px;">
+                <label class="form-label" style="font-size:0.875rem; color:#595959; font-weight:500;">{{ form.name.label }}</label>
+                {% if mode == 'edit' and role.is_builtin %}
+                <input type="text" class="form-control" value="{{ role.name }}" disabled>
+                <input type="hidden" name="name" value="{{ role.name }}">
+                {% else %}
+                <input type="text" name="name" class="form-control" value="{{ form.name.value|default:'' }}" maxlength="50" required>
+                {% endif %}
+            </div>
+        </div>
+        <div class="mb-3">
+            <label class="form-label" style="font-size:0.875rem; color:#595959; font-weight:500;">{{ form.description.label }}</label>
+            {% if mode == 'edit' and role.is_builtin %}
+            <textarea class="form-control" rows="2" disabled>{{ role.description }}</textarea>
+            <input type="hidden" name="description" value="{{ role.description }}">
+            {% else %}
+            <textarea name="description" class="form-control" rows="2">{{ form.description.value|default:'' }}</textarea>
+            {% endif %}
+        </div>
+        <div class="mb-2">
+            {% if mode == 'edit' and role.is_builtin %}
+            <label style="display:flex; gap:0.5rem; align-items:center; font-size:0.88rem;">
+                <input type="checkbox" class="form-check-input" {% if role.is_active %}checked{% endif %} disabled>
+                {{ form.is_active.label }}
+                <input type="hidden" name="is_active" value="{% if role.is_active %}on{% endif %}">
+                <span style="color:#bfbfbf; font-size:0.76rem;">（内置角色基础信息不可修改）</span>
+            </label>
+            {% else %}
+            <label style="display:flex; gap:0.5rem; align-items:center; font-size:0.88rem;">
+                <input type="checkbox" name="is_active" class="form-check-input"
+                       {% if mode == 'create' or form.is_active.value %}checked{% endif %}>
+                {{ form.is_active.label }}
+            </label>
+            {% endif %}
+        </div>
+    </div>
+
+    <div style="background:#fff; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.08); padding:1.5rem; max-width:860px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:1rem;">
+            <h3 style="font-size:1rem; font-weight:600; margin:0;">权限矩阵</h3>
+            <div style="display:flex; gap:0.5rem;">
+                {% if mode == 'create' or not role.is_builtin %}
+                <button type="button" class="btn-transparent btn-sm" id="checkAll">全部勾选</button>
+                <button type="button" class="btn-transparent btn-sm" id="uncheckAll">全部清除</button>
+                {% else %}
+                <span style="color:#bfbfbf; font-size:0.8rem;">内置角色权限由系统统一定义，仅供查看</span>
+                {% endif %}
+            </div>
+        </div>
+        <div style="overflow-x:auto;">
+            <table class="table" style="min-width:520px;">
+                <thead>
+                    <tr>
+                        <th style="min-width:180px;">模块</th>
+                        <th style="width:72px; text-align:center;">新增</th>
+                        <th style="width:72px; text-align:center;">读取</th>
+                        <th style="width:72px; text-align:center;">编辑</th>
+                        <th style="width:72px; text-align:center;">删除</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in matrix %}
+                    <tr {% if m.is_system %}data-module-group="system" style="background:#fafafa;"{% else %}data-module-group="business"{% endif %}>
+                        <td>
+                            <strong>{{ m.name }}</strong>
+                            <span style="color:#bfbfbf; font-size:0.75rem; margin-left:0.4rem;">{{ m.key }}</span>
+                        </td>
+                        {% for a in m.actions %}
+                        <td style="text-align:center;">
+                            {% if a %}
+                            <input type="checkbox" name="perms" value="{{ a.code }}" class="form-check-input perm-cb"
+                                   {% if a.checked %}checked{% endif %}
+                                   {% if mode == 'edit' and role.is_builtin %}disabled title="内置角色权限由系统统一定义"{% endif %}>
+                            {% else %}
+                            <span style="color:#d9d9d9;">—</span>
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <p style="color:#8c8c8c; font-size:0.78rem; margin:0.5rem 0 0;">
+            说明：勾选"读取"后该模块才会出现在用户侧边栏；金属价格仅支持读取/编辑，数据展示仅支持读取（由系统统一规定，不可越权勾选）。
+        </p>
+        <div style="display:flex; gap:0.75rem; margin-top:1.25rem;">
+            {% if mode == 'create' or not role.is_builtin %}
+            <button type="submit" class="btn-primary btn-sm" style="padding:0.5rem 1.5rem;">
+                {% if mode == 'create' %}创建角色{% else %}保存权限{% endif %}
+            </button>
+            {% endif %}
+            <a href="{% url 'accounts:role_list' %}" class="btn-transparent btn-sm">返回列表</a>
+        </div>
+    </div>
+</form>
+{% include "accounts/_messages_toast.html" %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    var checkAll = document.getElementById('checkAll');
+    var uncheckAll = document.getElementById('uncheckAll');
+    if (checkAll) checkAll.addEventListener('click', function () {
+        document.querySelectorAll('.perm-cb').forEach(function (cb) { cb.checked = true; });
+    });
+    if (uncheckAll) uncheckAll.addEventListener('click', function () {
+        document.querySelectorAll('.perm-cb').forEach(function (cb) { cb.checked = false; });
+    });
+</script>
+{% endblock %}

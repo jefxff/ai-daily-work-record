@@ -1,0 +1,8 @@
+{% extends "records/base.html" %}
+{% block page_title %}{% if mode == 'edit' %}编辑{% else %}新建{% endif %}档案柜{% endblock %}
+{% block content %}
+<div class="container" style="max-width:600px">
+    <h1 class="page-title mb-4">{% if mode == 'edit' %}编辑{% else %}新建{% endif %}档案柜</h1>
+    {% include "archive/_cabinet_form_modal.html" %}
+</div>
+{% endblock %}

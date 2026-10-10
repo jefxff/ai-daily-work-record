@@ -1,0 +1,50 @@
+{% extends 'records/base.html' %}
+
+{% block page_title %}我的会话 - 每日工作记录{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>登录会话管理<span class="total-hint">共 {{ sessions|length }} 个有效会话</span></h2>
+    <form method="post" action="{% url 'accounts:session_revoke_others' %}"
+          data-confirm="确定要下线除当前设备外的全部会话吗？">
+        {% csrf_token %}
+        <button type="submit" class="btn-transparent btn-sm" style="border-color:#ffa39e; color:#cf1322;">下线其它全部设备</button>
+    </form>
+</div>
+<div class="table-container">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>登录时间</th>
+                <th>IP 地址</th>
+                <th>浏览器/设备</th>
+                <th>有效期至</th>
+                <th style="width:110px;">状态/操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in sessions %}
+            <tr>
+                <td>{{ s.login_ts|date:'Y-m-d H:i:s'|default:'—' }}</td>
+                <td>{{ s.login_ip|default:'—' }}</td>
+                <td style="max-width:360px; word-break:break-all; font-size:0.82rem; color:#595959;">{{ s.login_ua|default:'—' }}</td>
+                <td>{{ s.expire_at|date:'Y-m-d H:i' }}</td>
+                <td>
+                    {% if s.is_current %}
+                    <span class="status-badge success">当前设备</span>
+                    {% else %}
+                    <form method="post" action="{% url 'accounts:session_revoke' s.key %}" data-confirm="确定下线该会话吗？">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-transparent btn-sm" style="border-color:#ffa39e; color:#cf1322;">下线</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="empty-cell">📭 暂无有效会话（当前会话未识别，请重新登录后查看）</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<p style="color:#8c8c8c; font-size:0.8rem; margin-top:0.75rem;">说明：会话默认 8 小时无活动自动过期；修改密码后，除当前设备外的全部会话将立即失效。</p>
+{% endblock %}

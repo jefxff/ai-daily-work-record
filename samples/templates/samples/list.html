@@ -1,0 +1,264 @@
+{% extends "records/base.html" %}
+{% load accounts_tags %}
+
+{% block page_title %}样品台账 - 试样管理{% endblock %}
+
+{% block extra_css %}
+<style>
+    .samples-table { min-width: 1040px; }
+    .samples-table td, .samples-table th { white-space: nowrap; }
+    .samples-table td.td-ellipsis { max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+    .samples-table td.actions-cell, .samples-table th.actions-cell { white-space: nowrap; }
+    .samples-table thead th { background: #fff; color: #1f2329; font-weight: 600; font-size: 0.82rem; border-bottom: 2px solid #e8e8e8; padding: 10px 12px; }
+    .samples-table td { padding: 11px 12px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+    .samples-table tbody tr:hover { background: #fafafa; }
+    .samples-table td:first-child a { color: #1f2329; text-decoration: none; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .samples-table td:first-child a:hover { color: #1890ff; }
+    .mat-main, .mat-sub { max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+    .mat-main { font-weight: 600; color: #1f2329; }
+    .mat-sub { font-size: 0.74rem; color: #8c8c8c; margin-top: 2px; }
+    .progress-cell { display: flex; align-items: center; gap: 0.6rem; color: #1890ff; font-size: 0.82rem; }
+    .progress-cell .p-divider { width: 1px; height: 14px; background: #e8e8e8; flex-shrink: 0; }
+    .btn-detail { color: #1890ff !important; border-color: #91d5ff !important; background: #e6f7ff !important; }
+    .btn-detail:hover { background: #bae7ff !important; }
+    .filter-bar { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 1rem 1.25rem; margin-bottom: 1.25rem; }
+    .filter-row { display: flex; flex-wrap: nowrap; gap: 0.5rem 0.7rem; align-items: center; }
+    @media (max-width: 1080px) { .filter-row { flex-wrap: wrap; } }
+    /* 操作按钮：置于 chips 行右侧，规避日期控件重排导致的错位 */
+    .chip-actions { margin-left: auto; display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
+    .chip-actions .btn-primary, .chip-actions .btn-secondary {
+        height: 30px; padding: 0 14px !important; line-height: 1; margin: 0;
+        display: inline-flex; align-items: center; box-sizing: border-box; font-size: 0.8rem;
+    }
+    .filter-form label { font-size: 0.85rem; color: #595959; white-space: nowrap; }
+    .filter-form .form-control, .filter-form .form-select { height: 34px; font-size: 0.85rem; }
+    .f-capsule { display: flex; align-items: stretch; height: 34px; border: 1px solid #d9d9d9; border-radius: 6px; background: #fff; overflow: hidden; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+    .f-capsule:hover { border-color: #40a9ff; }
+    .f-capsule:focus-within { border-color: #1890ff; box-shadow: 0 0 0 2px rgba(24,144,255,0.1); }
+    .cap-label { display: flex; align-items: center; padding: 0 10px; font-size: 0.8rem; color: #8c8c8c; background: #fafafa; border-right: 1px solid #f0f0f0; white-space: nowrap; }
+    .f-capsule .form-control, .f-capsule .form-select { border: none !important; box-shadow: none !important; height: 32px; border-radius: 0; font-size: 0.85rem; }
+    .f-capsule .form-control:focus, .f-capsule .form-select:focus { outline: none; }
+    .f-capsule .form-select { appearance: none; -webkit-appearance: none; padding-right: 26px; background: #fff url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23bfbfbf' d='M6 8.5 1.5 4h9z'/%3E%3C/svg%3E") no-repeat right 9px center / 12px; }
+    .search-cap { position: relative; flex: 0 0 auto; }
+    .search-cap .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 0.78rem; color: #bfbfbf; pointer-events: none; z-index: 1; }
+    .search-cap .form-control { width: 180px; padding-left: 28px; }
+    .cap-date { width: 96px !important; font-size: 0.82rem !important; }
+    .range-sep { display: flex; align-items: center; color: #bfbfbf; font-size: 0.75rem; padding: 0 4px; border-left: 1px solid #f0f0f0; border-right: 1px solid #f0f0f0; background: #fff; }
+    .filter-form input[type="checkbox"] { accent-color: #1890ff; cursor: pointer; }
+    .del-toggle { display: flex; align-items: center; gap: 0.3rem; font-size: 0.8rem; color: #595959; white-space: nowrap; cursor: pointer; }
+    /* 原生日期控件内部尺寸钉死，防止异步渲染撑高胶囊 */
+    .f-capsule input[type="date"]::-webkit-date-and-time-value { min-height: 30px; }
+    .f-capsule input[type="date"]::-webkit-calendar-picker-indicator { margin: 0; padding: 0; }
+    .form-actions { display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0; }
+    /* 状态快捷筛选 */
+    .quick-chips { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.85rem; padding-bottom: 0.85rem; border-bottom: 1px dashed #f0f0f0; }
+    .q-chip { font-size: 0.8rem; color: #595959; background: #f5f5f5; border-radius: 999px; padding: 3px 14px; text-decoration: none; transition: all 0.15s ease; }
+    .q-chip:hover { color: #1890ff; background: #e6f7ff; }
+    .q-chip.active { color: #fff; background: #1890ff; font-weight: 500; }
+    /* 已删除行 */
+    .row-deleted td { color: #bfbfbf !important; background: #fafafa !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>样品台账<span class="total-hint">共 {{ page_obj.paginator.count }} 条</span></h2>
+    <div class="filter-chips">
+        <a class="btn-transparent" href="{% url 'samples:export' %}{% if query_string %}?{{ query_string }}{% endif %}">⬇ 导出 Excel</a>
+        {% can "samples" "create" %}
+        <a class="btn-primary" href="{% url 'samples:create' %}" data-modal-add data-modal-title="送样登记">＋ 送样登记</a>
+        {% endcan %}
+    </div>
+</div>
+
+<!-- 筛选栏 -->
+<div class="filter-bar">
+    <form method="GET" class="filter-form">
+        {% if request.GET.per_page %}<input type="hidden" name="per_page" value="{{ request.GET.per_page }}">{% endif %}
+        <!-- 状态快捷筛选 -->
+        <div class="quick-chips">
+            <a class="q-chip {% if not flt.status %}active{% endif %}" href="?{% for k, v in request.GET.items %}{% if k != 'status' and k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">全部状态</a>
+            {% for key, label in status_choices %}
+            <a class="q-chip {% if flt.status == key %}active{% endif %}" href="?{% for k, v in request.GET.items %}{% if k != 'status' and k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}status={{ key }}">{{ label }}</a>
+            {% endfor %}
+            <div class="chip-actions">
+                <label class="del-toggle">
+                    <input type="checkbox" name="show_deleted" value="1" {% if flt.show_deleted %}checked{% endif %}>含已删除
+                </label>
+                <button type="submit" class="btn-primary">查询</button>
+                <a class="btn-secondary" href="{% url 'samples:list' %}">重置</a>
+            </div>
+        </div>
+        <div class="filter-row">
+            <div class="f-capsule search-cap">
+                <span class="search-icon">🔍</span>
+                <input type="text" class="form-control search-input" name="keyword" value="{{ flt.keyword }}" placeholder="编号 / 物料 / 型号" aria-label="关键词">
+            </div>
+            <div class="f-capsule">
+                <span class="cap-label">供应商</span>
+                <select id="fltSupplier" name="supplier" class="form-select" style="width:108px;">
+                    <option value="">全部</option>
+                    {% for s in suppliers %}
+                    <option value="{{ s.pk }}" {% if flt.supplier_id == s.pk|stringformat:"s" %}selected{% endif %}>{{ s.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="f-capsule">
+                <span class="cap-label">状态</span>
+                <select id="fltStatus" name="status" class="form-select" style="width:92px;">
+                    <option value="">全部</option>
+                    {% for key, label in status_choices %}
+                    <option value="{{ key }}" {% if flt.status == key %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="f-capsule">
+                <span class="cap-label">登记人</span>
+                <select id="fltRegistrar" name="registrar" class="form-select" style="width:88px;">
+                    <option value="">全部</option>
+                    {% for r in registrars %}
+                    <option value="{{ r }}" {% if flt.registrar == r %}selected{% endif %}>{{ r }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="f-capsule">
+                <span class="cap-label">送样时间</span>
+                <input type="date" name="date_from" value="{{ flt.date_from|date:'Y-m-d' }}" class="form-control cap-date" title="送样开始日期">
+                <span class="range-sep">至</span>
+                <input type="date" name="date_to" value="{{ flt.date_to|date:'Y-m-d' }}" class="form-control cap-date" title="送样结束日期">
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="table-container">
+    <div class="table-responsive">
+        <table class="table table-sticky samples-table">
+            <thead>
+                <tr>
+                    <th>样品编号</th>
+                    <th>物料名称 / 型号</th>
+                    <th class="col-optional">物料规格</th>
+                    <th>供应商</th>
+                    <th>送样时间</th>
+                    <th>当前状态</th>
+                    <th>跟进进度</th>
+                    <th>登记人</th>
+                    <th class="actions-cell">操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sample in page_obj %}
+                <tr {% if sample.is_deleted %}class="row-deleted"{% endif %}>
+                    <td><a href="{% url 'samples:detail' sample.pk %}">{{ sample.sample_no }}</a></td>
+                    <td title="{{ sample.material_name }} {{ sample.model }}"><div class="mat-main">{{ sample.material_name }}</div><div class="mat-sub">{{ sample.model }}</div></td>
+                    <td class="col-optional td-ellipsis" title="{{ sample.spec }}">{{ sample.spec|default:'—' }}</td>
+                    <td class="td-ellipsis" title="{{ sample.supplier.name|default:'' }}">{{ sample.supplier.name|default:'—' }}</td>
+                    <td>{{ sample.sample_date|date:'Y-m-d' }}</td>
+                    <td><span class="status-badge {{ sample.status_badge_class }}">{{ sample.get_status_display }}</span></td>
+                    <td>
+                        <div class="progress-cell">
+                            <span>试样 {{ sample.latest_test_round|default:0 }} 轮</span>
+                            <span class="p-divider"></span>
+                            <span>小批量 {{ sample.latest_batch_round|default:0 }} 批</span>
+                        </div>
+                    </td>
+                    <td class="col-optional">{{ sample.registrar|default:'—' }}</td>
+                    <td class="actions-cell">
+                        <div style="display:flex; gap:0.25rem; align-items:center; flex-wrap:nowrap;">
+                            <a href="{% url 'samples:detail' sample.pk %}" class="btn-transparent btn-sm btn-detail">详细</a>
+                            {% if sample.is_deleted %}
+                            {% can "samples" "update" %}
+                            <form method="POST" action="{% url 'samples:restore' sample.pk %}" style="margin:0;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-transparent btn-sm" data-confirm="确定要恢复该样品吗？">恢复</button>
+                            </form>
+                            {% endcan %}
+                            {% else %}
+                            {% can "samples" "update" %}
+                            <a href="{% url 'samples:edit' sample.pk %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑样品">编辑</a>
+                            {% endcan %}
+                            {% can "samples" "delete" %}
+                            <a href="{% url 'samples:delete' sample.pk %}" class="btn-transparent btn-sm btn-delete">删除</a>
+                            {% endcan %}
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="9" class="empty-cell">📭 暂无样品数据</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 分页 -->
+    {% if page_obj.has_other_pages %}
+    <div class="pagination-info">
+        <span>共 {{ page_obj.paginator.count }} 条 · 第 {{ page_obj.number }} / {{ page_obj.paginator.num_pages }} 页</span>
+        <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+            <form method="GET" style="display: flex; align-items: center; gap: 0.4rem;">
+                {% for k, v in request.GET.items %}{% if k != 'per_page' and k != 'page' %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endif %}{% endfor %}
+                <label style="font-size: 13px;">每页</label>
+                <select class="per-page-select" name="per_page" onchange="this.form.submit()">
+                    <option value="10" {% if page_obj.paginator.per_page == 10 %}selected{% endif %}>10</option>
+                    <option value="30" {% if page_obj.paginator.per_page == 30 %}selected{% endif %}>30</option>
+                    <option value="50" {% if page_obj.paginator.per_page == 50 %}selected{% endif %}>50</option>
+                </select>
+                <span style="font-size: 13px;">条</span>
+            </form>
+            <ul class="pagination">
+                {% if page_obj.has_previous %}
+                <li class="page-item"><a class="page-link" href="?{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}">&laquo;</a></li>
+                {% else %}
+                <li class="page-item disabled"><a class="page-link" href="#">&laquo;</a></li>
+                {% endif %}
+                {% for num in page_obj.paginator.page_range %}
+                {% if num == page_obj.number %}
+                <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+                {% elif num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+                <li class="page-item"><a class="page-link" href="?{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ num }}">{{ num }}</a></li>
+                {% endif %}
+                {% endfor %}
+                {% if page_obj.has_next %}
+                <li class="page-item"><a class="page-link" href="?{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ page_obj.next_page_number }}">&raquo;</a></li>
+                {% else %}
+                <li class="page-item disabled"><a class="page-link" href="#">&raquo;</a></li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% include "samples/_toast.html" %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var ff = document.querySelector('.filter-form');
+    if (!ff) return;
+    // 提交前禁用空值控件，保持 URL 干净
+    function cleanSubmit() {
+        ff.querySelectorAll('input[name], select[name]').forEach(function (el) {
+            if (el.type === 'checkbox') { el.disabled = !el.checked; }
+            else { el.disabled = !el.value; }
+        });
+        ff.submit();
+    }
+    ff.addEventListener('submit', function (e) { e.preventDefault(); cleanSubmit(); });
+    // 下拉/日期变更后自动查询
+    ff.querySelectorAll('select').forEach(function (s) {
+        s.addEventListener('change', cleanSubmit);
+    });
+    ff.querySelectorAll('input[type="date"]').forEach(function (d) {
+        d.addEventListener('change', cleanSubmit);
+    });
+    // 含已删除勾选后自动查询
+    ff.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
+        cb.addEventListener('change', cleanSubmit);
+    });
+});
+</script>
+{% endblock %}

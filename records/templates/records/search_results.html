@@ -1,0 +1,412 @@
+{% extends 'records/base.html' %}
+{% load static %}
+
+{% block page_title %}搜索结果{% endblock %}
+
+{% block top_nav_actions %}
+    <a href="{% url 'home' %}" class="btn-transparent">返回首页</a>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .search-term {
+        color: #1890ff;
+        font-weight: 600;
+    }
+
+    .no-results {
+        color: #595959;
+        text-align: center;
+        padding: 3rem;
+        background: #ffffff;
+        border-radius: 8px;
+        margin-top: 2rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .no-results h3 {
+        color: #1f2329;
+        margin-bottom: 0.5rem;
+    }
+
+    .back-link {
+        display: block;
+        text-align: center;
+        margin-top: 2rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>搜索结果<span class="total-hint">关键词：{{ search_term }}{% if daily_record_results %} · 每日记录 {{ daily_record_results|length }} 条{% endif %}{% if decoration_results %} · 装修 {{ decoration_results|length }} 条{% endif %}{% if customer_credit_results %} · 账期 {{ customer_credit_results|length }} 条{% endif %}{% if customer_complaint_results %} · 客诉 {{ customer_complaint_results|length }} 条{% endif %}{% if regulation_results %} · 制度 {{ regulation_results|length }} 条{% endif %}{% if price_evaluation_results %} · 核价 {{ price_evaluation_results|length }} 条{% endif %}{% if insurance_results %} · 保险 {{ insurance_results|length }} 条{% endif %}{% if complaint_results %} · 诉讼 {{ complaint_results|length }} 条{% endif %}</span></h2>
+    <div class="filter-chips">
+        {% if search_term %}
+        <a class="filter-chip" href="{% url 'search' %}">搜索：{{ search_term }} ✕</a>
+        {% endif %}
+    </div>
+</div>
+<h1 class="page-title">搜索结果 - 关键词: <span class="search-term">{{ search_term }}</span></h1>
+
+<!-- 装修记录结果 -->
+{% if decoration_results %}
+<div class="table-container">
+    <h2 class="section-title">装修记录</h2>
+    <table class="table table-hover table-sticky">
+        <thead>
+            <tr>
+                <th>项目名称</th>
+                <th>施工方</th>
+                <th>项目地址</th>
+                <th>开工日期</th>
+                <th>原价</th>
+                <th>核后价</th>
+                <th>核减金额</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for decoration in decoration_results %}
+            <tr>
+                <td>{{ decoration.project_name }}</td>
+                <td>{{ decoration.constructor }}</td>
+                <td>{{ decoration.project_address|default:'' }}</td>
+                <td>{{ decoration.start_date|date:'Y-m-d' }}</td>
+                <td>¥{{ decoration.original_price|default:0|floatformat:2 }}</td>
+                <td>¥{{ decoration.final_price|floatformat:2 }}</td>
+                <td>¥{{ decoration.reduced_price|default:0|floatformat:2 }}</td>
+                <td>
+                    <a href="{% url 'decoration_edit' decoration.id %}" class="btn-transparent" data-modal-edit data-modal-title="编辑装修">编辑</a>
+                    <a href="{% url 'decoration_delete' decoration.id %}" class="btn-transparent" style="background: rgba(245, 34, 45, 0.1); color: #f5222d; border-color: #ffa39e; margin-left: 0.5rem;" onclick="return confirm('确定要删除这条记录吗？');">删除</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- 客户账期结果 -->
+{% if customer_credit_results %}
+<div class="table-container">
+    <h2 class="section-title">客户账期</h2>
+    <table class="table table-hover table-sticky">
+        <thead>
+            <tr>
+                <th>提出日期</th>
+                <th>客户名称</th>
+                <th>业务员</th>
+                <th>工作内容</th>
+                <th>结果</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for credit in customer_credit_results %}
+            <tr>
+                <td>{{ credit.proposal_date|date:'Y-m-d' }}</td>
+                <td>{{ credit.customer_name }}</td>
+                <td>{{ credit.salesperson }}</td>
+                <td>{{ credit.work_content|default:''|truncatechars:30 }}</td>
+                <td>
+                    {% if credit.result == '不同意' %}
+                    <span class="status-badge danger">{{ credit.result }}</span>
+                    {% elif credit.result == '待定' %}
+                    <span class="status-badge warning">{{ credit.result }}</span>
+                    {% elif credit.result == '同意' %}
+                    <span class="status-badge success">{{ credit.result }}</span>
+                    {% else %}
+                    <span class="status-badge default">{{ credit.result }}</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{% url 'customer_credit_edit' credit.id %}" class="btn-transparent" data-modal-edit data-modal-title="编辑客户账期">编辑</a>
+                    <a href="{% url 'customer_credit_delete' credit.id %}" class="btn-transparent" style="background: rgba(245, 34, 45, 0.1); color: #f5222d; border-color: #ffa39e; margin-left: 0.5rem;" onclick="return confirm('确定要删除这条记录吗？');">删除</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- 客户客诉结果 -->
+{% if customer_complaint_results %}
+<div class="table-container">
+    <h2 class="section-title">客户客诉</h2>
+    <table class="table table-hover table-sticky">
+        <thead>
+            <tr>
+                <th>客户名称</th>
+                <th>责任业务员</th>
+                <th>客诉申请日期</th>
+                <th>客诉现象</th>
+                <th>客诉状态</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for complaint in customer_complaint_results %}
+            <tr>
+                <td>{{ complaint.customer_name }}</td>
+                <td>{{ complaint.responsible_salesperson }}</td>
+                <td>{{ complaint.complaint_date|date:'Y-m-d' }}</td>
+                <td>{{ complaint.complaint_description|default:''|truncatechars:30 }}</td>
+                <td>
+                    {% if complaint.complaint_status == '已完成' %}
+                    <span class="status-badge success">{{ complaint.complaint_status }}</span>
+                    {% elif complaint.complaint_status == '处理中' %}
+                    <span class="status-badge warning">{{ complaint.complaint_status }}</span>
+                    {% else %}
+                    <span class="status-badge danger">{{ complaint.complaint_status }}</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{% url 'customer_complaint_edit' complaint.id %}" class="btn-transparent" data-modal-edit data-modal-title="编辑客户客诉">编辑</a>
+                    <a href="{% url 'customer_complaint_delete' complaint.id %}" class="btn-transparent" style="background: rgba(245, 34, 45, 0.1); color: #f5222d; border-color: #ffa39e; margin-left: 0.5rem;" onclick="return confirm('确定要删除这条记录吗？');">删除</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- 制度及处罚结果 -->
+{% if regulation_results %}
+<div class="table-container">
+    <h2 class="section-title">制度及处罚</h2>
+    <table class="table table-hover table-sticky">
+        <thead>
+            <tr>
+                <th>出文日期</th>
+                <th>标题</th>
+                <th>主要内容</th>
+                <th>文件编号</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for regulation in regulation_results %}
+            <tr>
+                <td>{{ regulation.issue_date|date:'Y-m-d' }}</td>
+                <td>{{ regulation.title }}</td>
+                <td>{{ regulation.content|truncatechars:50 }}</td>
+                <td>{{ regulation.doc_no }}</td>
+                <td>
+                    <a href="{% url 'regulation_edit' regulation.id %}" class="btn-transparent" data-modal-edit data-modal-title="编辑制度">编辑</a>
+                    <a href="{% url 'regulation_delete' regulation.id %}" class="btn-transparent" style="background: rgba(245, 34, 45, 0.1); color: #f5222d; border-color: #ffa39e; margin-left: 0.5rem;" onclick="return confirm('确定要删除这条记录吗？');">删除</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- 核价结果 -->
+{% if price_evaluation_results %}
+<div class="table-container">
+    <h2 class="section-title">核价</h2>
+    <table class="table table-hover table-sticky">
+        <thead>
+            <tr>
+                <th>项目分类</th>
+                <th>项目提出部门</th>
+                <th>提出人</th>
+                <th>核价内容</th>
+                <th>内控审核价</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for evaluation in price_evaluation_results %}
+            <tr>
+                <td>{{ evaluation.project_category }}</td>
+                <td>{{ evaluation.proposing_department }}</td>
+                <td>{{ evaluation.proposer }}</td>
+                <td>{{ evaluation.evaluation_content|default:''|truncatechars:30 }}</td>
+                <td>¥{{ evaluation.internal_control_price|floatformat:2 }}</td>
+                <td>
+                    <a href="{% url 'price_evaluation_edit' evaluation.id %}" class="btn-transparent" data-modal-edit data-modal-title="编辑核价">编辑</a>
+                    <a href="{% url 'price_evaluation_delete' evaluation.id %}" class="btn-transparent" style="background: rgba(245, 34, 45, 0.1); color: #f5222d; border-color: #ffa39e; margin-left: 0.5rem;" onclick="return confirm('确定要删除这条记录吗？');">删除</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- 每日记录结果 -->
+{% if daily_record_results %}
+<div class="table-container">
+    <h2 class="section-title">每日记录</h2>
+    <table class="table table-hover table-sticky">
+        <thead>
+            <tr>
+                <th>日期及时间</th>
+                <th>提出部门</th>
+                <th>工作内容</th>
+                <th>工作状态</th>
+                <th>工作进度</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for record in daily_record_results %}
+            <tr>
+                <td>{{ record.record_date|date:'Y-m-d H:i' }}</td>
+                <td>{{ record.department }}</td>
+                <td>{{ record.work_content|truncatechars:50 }}</td>
+                <td>
+                    {% if record.status == '未完成' %}
+                    <span class="status-badge danger">{{ record.status }}</span>
+                    {% elif record.status == '进行中' %}
+                    <span class="status-badge warning">{{ record.status }}</span>
+                    {% else %}
+                    <span class="status-badge success">{{ record.status }}</span>
+                    {% endif %}
+                </td>
+                <td>{{ record.progress }}%</td>
+                <td>
+                    <a href="{% url 'daily_record_edit' record.id %}" class="btn-transparent" data-modal-edit data-modal-title="编辑每日记录">编辑</a>
+                    <a href="{% url 'daily_record_delete' record.id %}" class="btn-transparent" style="background: rgba(245, 34, 45, 0.1); color: #f5222d; border-color: #ffa39e; margin-left: 0.5rem;" onclick="return confirm('确定要删除这条记录吗？');">删除</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- 保险记录结果 -->
+{% if insurance_results %}
+<div class="table-container">
+    <h2 class="section-title">保险记录</h2>
+    <table class="table table-hover table-sticky">
+        <thead>
+            <tr>
+                <th>公司名称</th>
+                <th>标题</th>
+                <th>单号</th>
+                <th>保费</th>
+                <th>签发日期</th>
+                <th>截止日期</th>
+                <th>部门</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for insurance in insurance_results %}
+            <tr>
+                <td>{{ insurance.company_name }}</td>
+                <td>{{ insurance.title }}</td>
+                <td>{{ insurance.order_number|default:'' }}</td>
+                <td>¥{{ insurance.premium|floatformat:2 }}</td>
+                <td>{{ insurance.issue_date|date:'Y-m-d' }}</td>
+                <td>{{ insurance.end_date|date:'Y-m-d' }}</td>
+                <td>{{ insurance.department }}</td>
+                <td>
+                    <a href="{% url 'insurance_edit' insurance.id %}" class="btn-transparent" data-modal-edit data-modal-title="编辑保险">编辑</a>
+                    <a href="{% url 'insurance_delete' insurance.id %}" class="btn-transparent" style="background: rgba(245, 34, 45, 0.1); color: #f5222d; border-color: #ffa39e; margin-left: 0.5rem;" onclick="return confirm('确定要删除这条记录吗？');">删除</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- 金属价格结果 -->
+{% if metal_price_results %}
+<div class="table-container">
+    <h2 class="section-title">金属价格</h2>
+    <table class="table table-hover table-sticky">
+        <thead>
+            <tr>
+                <th>金属名称</th>
+                <th>价格</th>
+                <th>单位</th>
+                <th>涨跌</th>
+                <th>爬取日期</th>
+                <th>爬取时间</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for price in metal_price_results %}
+            <tr>
+                <td>{{ price.metal_name }}</td>
+                <td>{{ price.price|floatformat:2 }}</td>
+                <td>{{ price.unit }}</td>
+                <td>{{ price.price_change|default:0|floatformat:2 }}</td>
+                <td>{{ price.crawl_date|date:'Y-m-d' }}</td>
+                <td>{{ price.crawl_time|date:'Y-m-d H:i:s' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- 诉讼结果 -->
+{% if complaint_results %}
+<div class="table-container">
+    <h2 class="section-title">诉讼</h2>
+    <table class="table table-hover table-sticky">
+        <thead>
+            <tr>
+                <th>纠纷类型</th>
+                <th>被告</th>
+                <th>案号</th>
+                <th>涉案金额（元）</th>
+                <th>受理法院</th>
+                <th>代理律师</th>
+                <th>进度</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for complaint in complaint_results %}
+            <tr>
+                <td>{{ complaint.dispute_type }}</td>
+                <td>{{ complaint.defendant }}</td>
+                <td>{{ complaint.case_number }}</td>
+                <td>¥{{ complaint.amount|floatformat:2 }}</td>
+                <td>{{ complaint.court }}</td>
+                <td>{{ complaint.lawyer }}</td>
+                <td>
+                    {% if complaint.progress == '结案' %}
+                    <span class="status-badge success">{{ complaint.progress }}</span>
+                    {% elif complaint.progress == '审理中' %}
+                    <span class="status-badge info">{{ complaint.progress }}</span>
+                    {% elif complaint.progress == '立案' %}
+                    <span class="status-badge warning">{{ complaint.progress }}</span>
+                    {% else %}
+                    <span class="status-badge default">{{ complaint.progress }}</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{% url 'complaint_edit' complaint.id %}" class="btn-transparent" data-modal-edit data-modal-title="编辑诉讼">编辑</a>
+                    <a href="{% url 'complaint_delete' complaint.id %}" class="btn-transparent" style="background: rgba(245, 34, 45, 0.1); color: #f5222d; border-color: #ffa39e; margin-left: 0.5rem;" onclick="return confirm('确定要删除这条记录吗？');">删除</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- 无结果提示 -->
+{% if not decoration_results and not customer_credit_results and not customer_complaint_results and not regulation_results and not price_evaluation_results and not daily_record_results and not insurance_results and not metal_price_results and not complaint_results %}
+<div class="no-results">
+    <h3>未找到与 "{{ search_term }}" 相关的记录</h3>
+    <p>请尝试使用其他关键词进行搜索</p>
+</div>
+{% endif %}
+
+<!-- 返回首页链接 -->
+<div class="back-link">
+    <a href="{% url 'home' %}" class="btn-transparent">返回首页</a>
+</div>
+{% endblock %}

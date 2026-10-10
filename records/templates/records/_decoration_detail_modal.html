@@ -1,0 +1,10 @@
+<div class="detail-card">
+    <div class="detail-row"><div class="detail-label">项目名称：</div><div class="detail-value">{{ decoration.project_name }}</div></div>
+    <div class="detail-row"><div class="detail-label">施工方：</div><div class="detail-value">{{ decoration.constructor }}</div></div>
+    <div class="detail-row"><div class="detail-label">项目地址：</div><div class="detail-value">{{ decoration.project_address|default:"无" }}</div></div>
+    <div class="detail-row"><div class="detail-label">开工日期：</div><div class="detail-value">{{ decoration.start_date|date:'Y-m-d'|default:"无" }}</div></div>
+    <div class="detail-row"><div class="detail-label">原价：</div><div class="detail-value">¥{{ decoration.original_price|default:0 }}</div></div>
+    <div class="detail-row"><div class="detail-label">核后价：</div><div class="detail-value">¥{{ decoration.final_price|default:0 }}</div></div>
+    <div class="detail-row"><div class="detail-label">核减金额：</div><div class="detail-value">¥{{ decoration.reduced_price|default:0 }}</div></div>
+</div>
+<style>#formModal.form-modal { width: 720px; }</style>

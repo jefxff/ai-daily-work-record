@@ -1,0 +1,8 @@
+{% extends "records/base.html" %}
+{% load accounts_tags %}
+
+{% block page_title %}{{ sample.sample_no }} - 试样管理{% endblock %}
+
+{% block content %}
+{% include "samples/_sample_detail_body.html" %}
+{% endblock %}

@@ -1,0 +1,67 @@
+{% extends 'records/base.html' %}
+{% load static %}
+{% load accounts_tags %}
+
+{% block page_title %}诉讼详情 - 每日工作记录管理网站{% endblock %}
+
+{% block top_nav_actions %}
+    <a href="{% url 'complaint_list' %}" class="btn-transparent">返回列表</a>
+    {% can "complaint" "update" %}
+    <a href="{% url 'complaint_edit' complaint.id %}" class="btn-transparent" data-modal-edit data-modal-title="编辑诉讼">编辑记录</a>
+    {% endcan %}
+    {% can "complaint" "delete" %}
+    <a href="{% url 'complaint_delete' complaint.id %}" class="btn-transparent btn-delete" data-confirm="确定要删除这条记录吗？">删除记录</a>
+    {% endcan %}
+{% endblock %}
+
+{% block content %}
+    <!-- 详情卡片 -->
+    <div class="detail-card">
+        <h2 class="detail-title">诉讼详细信息</h2>
+
+        <div class="detail-row">
+            <div class="detail-label">纠纷类型：</div>
+            <div class="detail-value">{{ complaint.dispute_type }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">被告：</div>
+            <div class="detail-value">{{ complaint.defendant }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">案号：</div>
+            <div class="detail-value">{{ complaint.case_number }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">涉案金额：</div>
+            <div class="detail-value">¥{{ complaint.amount }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">受理法院：</div>
+            <div class="detail-value">{{ complaint.court }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">代理律师：</div>
+            <div class="detail-value">{{ complaint.lawyer }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">进度：</div>
+            <div class="detail-value">{{ complaint.progress }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">详细进度：</div>
+            <div class="detail-value">{{ complaint.detailed_progress|default:"无" }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">备注：</div>
+            <div class="detail-value">{{ complaint.remarks|default:"无" }}</div>
+        </div>
+    </div>
+{% endblock %}

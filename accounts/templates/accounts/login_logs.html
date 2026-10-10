@@ -1,0 +1,73 @@
+{% extends 'records/base.html' %}
+
+{% block page_title %}登录日志 - 每日工作记录{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>登录日志<span class="total-hint">共 {{ total }} 条记录</span></h2>
+    <form method="GET" class="d-flex gap-2" style="gap:0.5rem; display:flex;">
+        <input class="search-input" type="search" placeholder="按用户名搜索" name="username" value="{{ f_username }}">
+        <select name="result" class="search-input" style="width:auto;">
+            <option value="">全部结果</option>
+            <option value="success" {% if f_result == 'success' %}selected{% endif %}>成功</option>
+            <option value="failed" {% if f_result == 'failed' %}selected{% endif %}>失败</option>
+        </select>
+        <button class="btn-transparent" type="submit">筛选</button>
+        <a class="btn-transparent" href="{% url 'accounts:login_logs' %}" style="text-decoration:none; display:inline-flex; align-items:center;">重置</a>
+    </form>
+</div>
+<div class="table-container">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>时间</th>
+                <th>用户名</th>
+                <th>类型</th>
+                <th>结果</th>
+                <th>IP</th>
+                <th>说明</th>
+                <th>User-Agent</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in page %}
+            <tr>
+                <td style="white-space:nowrap;">{{ log.created_at|date:'Y-m-d H:i:s' }}</td>
+                <td>{{ log.username }}</td>
+                <td>{{ log.get_login_type_display }}</td>
+                <td>
+                    {% if log.success %}
+                    <span class="status-badge success">成功</span>
+                    {% else %}
+                    <span class="status-badge danger">失败</span>
+                    {% endif %}
+                </td>
+                <td>{{ log.ip|default:'—' }}</td>
+                <td>{{ log.reason|default:'—' }}</td>
+                <td style="max-width:320px; word-break:break-all; font-size:0.78rem; color:#8c8c8c;">{{ log.user_agent|default:'—' }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="empty-cell">📭 暂无日志</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if page.has_other_pages %}
+    <div class="pagination-info">
+        <span>共 {{ total }} 条 · 第 {{ page.number }} / {{ page.paginator.num_pages }} 页</span>
+        <ul class="pagination">
+            {% if page.has_previous %}
+            <li class="page-item"><a class="page-link" href="?username={{ f_username }}&result={{ f_result }}&page={{ page.previous_page_number }}">上一页</a></li>
+            {% else %}
+            <li class="page-item disabled"><span class="page-link">上一页</span></li>
+            {% endif %}
+            {% if page.has_next %}
+            <li class="page-item"><a class="page-link" href="?username={{ f_username }}&result={{ f_result }}&page={{ page.next_page_number }}">下一页</a></li>
+            {% else %}
+            <li class="page-item disabled"><span class="page-link">下一页</span></li>
+            {% endif %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

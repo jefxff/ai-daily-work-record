@@ -1,0 +1,384 @@
+{% extends 'records/base.html' %}
+{% load static %}
+
+{% block page_title %}数据下载{% endblock %}
+
+{% block top_nav_actions %}
+    <a href="{% url 'home' %}" class="btn-transparent">返回首页</a>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 数据下载页面特定样式（Ant Design 风格） */
+    .download-container {
+        margin-top: 2rem;
+    }
+
+    .download-header {
+        background: transparent;
+        border-radius: 0;
+        padding: 0;
+        margin-bottom: 2rem;
+        box-shadow: none;
+    }
+
+    .download-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #1f2329;
+        margin-bottom: 1rem;
+    }
+
+    .download-description {
+        color: #8c8c8c;
+        font-size: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .download-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 0;
+    }
+
+    .stat-card {
+        background: #ffffff;
+        border: none;
+        border-radius: 8px;
+        padding: 1.25rem 1rem;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        transition: all 0.25s ease;
+    }
+
+    .stat-card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        transform: translateY(-1px);
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #1f2329;
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        color: #8c8c8c;
+    }
+
+    .download-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 2rem;
+    }
+
+    .download-card {
+        background: #ffffff;
+        border-radius: 8px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s ease;
+        border: none;
+    }
+
+    .download-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    }
+
+    .download-card-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .download-icon {
+        font-size: 2rem;
+        margin-right: 1rem;
+    }
+
+    .download-card-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #1f2329;
+    }
+
+    .download-card-description {
+        color: #8c8c8c;
+        font-size: 0.9rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .download-card-stats {
+        margin-bottom: 1.5rem;
+    }
+
+    .download-count {
+        color: #595959;
+        font-size: 1rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .download-actions {
+        display: flex;
+        gap: 1rem;
+    }
+
+    /* 加载状态 */
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        display: none;
+    }
+
+    .loading-spinner {
+        width: 50px;
+        height: 50px;
+        border: 5px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: #1890ff;
+        animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="download-container">
+    <!-- 页面头部 -->
+    <div class="download-header">
+        <h2 class="download-title">数据导出中心</h2>
+        <p class="download-description">
+            从以下模块导出Excel格式的数据，方便您进行数据分析和备份。
+            所有数据均来源于系统数据库，确保数据的准确性和完整性。
+        </p>
+
+        <!-- 数据统计 -->
+        <div class="download-stats">
+            <div class="stat-card">
+                <div class="stat-value">{{ decoration_count }}</div>
+                <div class="stat-label">装修记录</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ customer_credit_count }}</div>
+                <div class="stat-label">客户账期</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ customer_complaint_count }}</div>
+                <div class="stat-label">客户客诉</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ complaint_count }}</div>
+                <div class="stat-label">诉讼记录</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ regulation_count }}</div>
+                <div class="stat-label">制度及处罚</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ price_evaluation_count }}</div>
+                <div class="stat-label">核价记录</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ insurance_count }}</div>
+                <div class="stat-label">保险记录</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ daily_record_count }}</div>
+                <div class="stat-label">每日记录</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 下载模块 -->
+    <div class="download-grid">
+        <!-- 装修模块 -->
+        <div class="download-card">
+            <div class="download-card-header">
+                <div class="download-icon">🏠</div>
+                <h3 class="download-card-title">装修记录</h3>
+            </div>
+            <p class="download-card-description">
+                导出装修项目的详细记录，包括项目名称、施工方、项目地址、开工日期、价格等信息。
+            </p>
+            <div class="download-card-stats">
+                <div class="download-count">共 {{ decoration_count }} 条记录</div>
+            </div>
+            <div class="download-actions">
+                <a href="{% url 'decoration_export' %}" class="btn-transparent" onclick="showLoading()">
+                    下载Excel
+                </a>
+            </div>
+        </div>
+
+        <!-- 客户账期模块 -->
+        <div class="download-card">
+            <div class="download-card-header">
+                <div class="download-icon">💳</div>
+                <h3 class="download-card-title">客户账期</h3>
+            </div>
+            <p class="download-card-description">
+                导出客户账期的详细记录，包括客户名称、业务员、工作内容、工作方式、结果等信息。
+            </p>
+            <div class="download-card-stats">
+                <div class="download-count">共 {{ customer_credit_count }} 条记录</div>
+            </div>
+            <div class="download-actions">
+                <a href="{% url 'customer_credit_export' %}" class="btn-transparent" onclick="showLoading()">
+                    下载Excel
+                </a>
+            </div>
+        </div>
+
+        <!-- 客户客诉模块 -->
+        <div class="download-card">
+            <div class="download-card-header">
+                <div class="download-icon">📞</div>
+                <h3 class="download-card-title">客户客诉</h3>
+            </div>
+            <p class="download-card-description">
+                导出客户客诉的详细记录，包括客户名称、责任业务员、客诉日期、产品型号、客诉状态等信息。
+            </p>
+            <div class="download-card-stats">
+                <div class="download-count">共 {{ customer_complaint_count }} 条记录</div>
+            </div>
+            <div class="download-actions">
+                <a href="{% url 'customer_complaint_export' %}" class="btn-transparent" onclick="showLoading()">
+                    下载Excel
+                </a>
+            </div>
+        </div>
+
+        <!-- 诉讼模块 -->
+        <div class="download-card">
+            <div class="download-card-header">
+                <div class="download-icon">⚖️</div>
+                <h3 class="download-card-title">诉讼记录</h3>
+            </div>
+            <p class="download-card-description">
+                导出诉讼案件的详细记录，包括纠纷类型、被告、案号、法院、律师、进度等信息。
+            </p>
+            <div class="download-card-stats">
+                <div class="download-count">共 {{ complaint_count }} 条记录</div>
+            </div>
+            <div class="download-actions">
+                <a href="{% url 'complaint_export' %}" class="btn-transparent" onclick="showLoading()">
+                    下载Excel
+                </a>
+            </div>
+        </div>
+
+        <!-- 制度及处罚模块 -->
+        <div class="download-card">
+            <div class="download-card-header">
+                <div class="download-icon">📋</div>
+                <h3 class="download-card-title">制度及处罚</h3>
+            </div>
+            <p class="download-card-description">
+                导出制度及处罚的详细记录，包括出文日期、标题、主要内容、文件编号等信息。
+            </p>
+            <div class="download-card-stats">
+                <div class="download-count">共 {{ regulation_count }} 条记录</div>
+            </div>
+            <div class="download-actions">
+                <a href="{% url 'regulation_export' %}" class="btn-transparent" onclick="showLoading()">
+                    下载Excel
+                </a>
+            </div>
+        </div>
+
+        <!-- 核价模块 -->
+        <div class="download-card">
+            <div class="download-card-header">
+                <div class="download-icon">💰</div>
+                <h3 class="download-card-title">核价记录</h3>
+            </div>
+            <p class="download-card-description">
+                导出核价的详细记录，包括项目分类、提出部门、提出人、核价内容、各供应商报价等信息。
+            </p>
+            <div class="download-card-stats">
+                <div class="download-count">共 {{ price_evaluation_count }} 条记录</div>
+            </div>
+            <div class="download-actions">
+                <a href="{% url 'price_evaluation_export' %}" class="btn-transparent" onclick="showLoading()">
+                    下载Excel
+                </a>
+            </div>
+        </div>
+
+        <!-- 保险模块 -->
+        <div class="download-card">
+            <div class="download-card-header">
+                <div class="download-icon">📄</div>
+                <h3 class="download-card-title">保险记录</h3>
+            </div>
+            <p class="download-card-description">
+                导出保险的详细记录，包括公司名称、标题、单号、保费、签发日期、截止日期等信息。
+            </p>
+            <div class="download-card-stats">
+                <div class="download-count">共 {{ insurance_count }} 条记录</div>
+            </div>
+            <div class="download-actions">
+                <a href="{% url 'insurance_export' %}" class="btn-transparent" onclick="showLoading()">
+                    下载Excel
+                </a>
+            </div>
+        </div>
+
+        <!-- 每日记录模块 -->
+        <div class="download-card">
+            <div class="download-card-header">
+                <div class="download-icon">📅</div>
+                <h3 class="download-card-title">每日记录</h3>
+            </div>
+            <p class="download-card-description">
+                导出每日工作记录的详细信息，包括日期、提出部门、工作内容、工作状态、工作进度等信息。
+            </p>
+            <div class="download-card-stats">
+                <div class="download-count">共 {{ daily_record_count }} 条记录</div>
+            </div>
+            <div class="download-actions">
+                <a href="{% url 'daily_record_export' %}" class="btn-transparent" onclick="showLoading()">
+                    下载Excel
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 加载状态 -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-spinner"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 显示加载状态
+    function showLoading() {
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        if (loadingOverlay) {
+            loadingOverlay.style.display = 'flex';
+
+            // 3秒后自动隐藏加载状态
+            setTimeout(function() {
+                loadingOverlay.style.display = 'none';
+                window.showToast('下载开始，文件正在生成...', 'success');
+            }, 1000);
+        }
+    }
+</script>
+{% endblock %}

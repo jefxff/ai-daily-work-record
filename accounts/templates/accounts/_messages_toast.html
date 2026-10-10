@@ -1,0 +1,13 @@
+{% if messages %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var t;
+    {% for message in messages %}
+    t = '{{ message|escapejs }}';
+    if (window.showToast) {
+        window.showToast(t, '{% if message.tags == "error" %}error{% elif message.tags == "warning" %}info{% else %}success{% endif %}');
+    }
+    {% endfor %}
+});
+</script>
+{% endif %}

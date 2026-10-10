@@ -1,0 +1,21 @@
+{% extends "records/base.html" %}
+
+{% block page_title %}删除供应商档案 - 试样管理{% endblock %}
+
+{% block content %}
+<div class="detail-card" style="max-width:560px;">
+    <h1 class="detail-title" style="font-size:1.25rem;">删除供应商档案确认</h1>
+    <div style="background:#fff1f0; border:1px solid #ffccc7; color:#f5222d; border-radius:6px; padding:0.9rem 1rem; margin-bottom:1.25rem; font-size:0.875rem; line-height:1.8;">
+        ⚠️ 确定要删除供应商档案 <strong>{{ partner.name }}</strong>（{{ partner.partner_code }}）吗？
+    </div>
+    <form method="POST">
+        {% csrf_token %}
+        <div class="form-actions" style="border-top:none; padding-top:0;">
+            <a class="btn-secondary" href="{% url 'samples:partner_list' %}">取消</a>
+            <button type="submit" class="btn-primary" style="background:#f5222d !important; border-color:#f5222d !important;">确认删除</button>
+        </div>
+    </form>
+</div>
+
+{% include "samples/_toast.html" %}
+{% endblock %}

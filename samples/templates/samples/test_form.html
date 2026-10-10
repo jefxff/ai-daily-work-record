@@ -1,0 +1,64 @@
+{% extends "records/base.html" %}
+
+{% block page_title %}{% if record %}编辑试样记录{% else %}新增试样记录{% endif %} - 试样管理{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1.5rem; }
+    @media (max-width: 768px) { .form-grid { grid-template-columns: 1fr; } }
+    .field-error { color: #f5222d; font-size: 0.8rem; margin-top: 0.25rem; }
+    .form-hint { color: #8c8c8c; font-size: 0.8rem; margin-top: 0.25rem; }
+    .full-width { grid-column: 1 / -1; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <h1 class="form-title">{% if record %}编辑第 {{ record.round_no }} 轮试样记录{% else %}新增第 {{ next_round }} 轮试样记录{% endif %}</h1>
+    <p style="color:#8c8c8c; font-size:0.875rem; margin-top:-0.75rem; margin-bottom:1.25rem;">
+        样品：<a href="{% url 'samples:detail' sample.pk %}">{{ sample.sample_no }}</a> · {{ sample.material_name }} / {{ sample.model }} · 当前状态：<span class="status-badge {{ sample.status_badge_class }}">{{ sample.get_status_display }}</span>
+    </p>
+    <form method="POST" novalidate>
+        {% csrf_token %}
+        <div class="form-grid">
+            {% for field in form.visible_fields %}
+                {% if field.name == 'terminate_reason' %}
+                <div class="form-group full-width" id="terminateReasonGroup" style="display:none;">
+                {% elif field.name == 'test_result' %}
+                <div class="form-group full-width">
+                {% else %}
+                <div class="form-group">
+                {% endif %}
+                    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}</label>
+                    {{ field }}
+                    {% if field.help_text %}<div class="form-hint">{{ field.help_text }}</div>{% endif %}
+                    {% for error in field.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+            {% endfor %}
+        </div>
+        {% if form.non_field_errors %}
+        <div class="field-error" style="margin-bottom:1rem;">
+            {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+        </div>
+        {% endif %}
+        <div class="form-actions">
+            <a class="btn-secondary" href="{% url 'samples:detail' sample.pk %}">返回详情</a>
+            <button type="submit" class="btn-primary">保存</button>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // 评审结论为「不通过」时显示终止原因（必填）
+    var conclusion = document.getElementById('id_review_conclusion');
+    var group = document.getElementById('terminateReasonGroup');
+    function toggle() {
+        if (conclusion && group) group.style.display = conclusion.value === 'fail' ? '' : 'none';
+    }
+    if (conclusion) { conclusion.addEventListener('change', toggle); toggle(); }
+});
+</script>
+
+{% include "samples/_toast.html" %}
+{% endblock %}

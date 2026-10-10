@@ -1,0 +1,27 @@
+{% extends "records/base.html" %}
+
+{% block page_title %}操作日志 - 档案管理{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="page-title mb-4">档案管理 · 操作日志</h1>
+    <div class="card">
+        <table class="table">
+            <thead><tr><th>时间</th><th>操作人</th><th>类型</th><th>对象</th><th>摘要</th></tr></thead>
+            <tbody>
+            {% for log in logs %}
+            <tr>
+                <td>{{ log.operation_time|date:"Y-m-d H:i" }}</td>
+                <td>{{ log.operator }}</td>
+                <td>{{ log.operation_type }}</td>
+                <td>{{ log.object_identifier }}</td>
+                <td>{{ log.change_summary }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center text-muted">暂无操作记录</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

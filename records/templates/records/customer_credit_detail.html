@@ -1,0 +1,77 @@
+{% extends 'records/base.html' %}
+{% load static %}
+{% load accounts_tags %}
+
+{% block page_title %}客户账期详情 - 每日工作记录管理网站{% endblock %}
+
+{% block top_nav_actions %}
+    <a href="{% url 'customer_credit_list' %}" class="btn-transparent">返回列表</a>
+    {% can "customer_credit" "update" %}
+    <a href="{% url 'customer_credit_edit' credit.id %}" class="btn-transparent" data-modal-edit data-modal-title="编辑客户账期">编辑记录</a>
+    {% endcan %}
+    {% can "customer_credit" "delete" %}
+    <a href="{% url 'customer_credit_delete' credit.id %}" class="btn-transparent btn-delete" data-confirm="确定要删除这条记录吗？">删除记录</a>
+    {% endcan %}
+{% endblock %}
+
+{% block content %}
+    <!-- 详情卡片 -->
+    <div class="detail-card">
+        <h2 class="detail-title">客户账期详细信息</h2>
+
+        <div class="detail-row">
+            <div class="detail-label">提出日期：</div>
+            <div class="detail-value">{{ credit.proposal_date|date:'Y-m-d'|default:"无" }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">现场日期：</div>
+            <div class="detail-value">{{ credit.site_date|date:'Y-m-d'|default:"无" }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">客户名称：</div>
+            <div class="detail-value">{{ credit.customer_name }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">客户类型：</div>
+            <div class="detail-value">{{ credit.customer_type }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">业务员：</div>
+            <div class="detail-value">{{ credit.salesperson }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">工作内容：</div>
+            <div class="detail-value">{{ credit.work_content|default:"无" }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">具体内容：</div>
+            <div class="detail-value">{{ credit.specific_content|default:"无" }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">前期调查表：</div>
+            <div class="detail-value">{{ credit.pre_survey|default:"无" }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">工作方式：</div>
+            <div class="detail-value">{{ credit.work_method|default:"无" }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">结果：</div>
+            <div class="detail-value">{{ credit.result }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">备注：</div>
+            <div class="detail-value">{{ credit.remarks|default:"无" }}</div>
+        </div>
+    </div>
+{% endblock %}

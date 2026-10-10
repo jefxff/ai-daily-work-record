@@ -1,0 +1,34 @@
+<div class="detail-card">
+    <div class="detail-row"><div class="detail-label">客户名称：</div><div class="detail-value">{{ complaint.customer_name }}</div></div>
+    <div class="detail-row"><div class="detail-label">责任业务员：</div><div class="detail-value">{{ complaint.responsible_salesperson }}</div></div>
+    <div class="detail-row"><div class="detail-label">客诉申请日期：</div><div class="detail-value">{{ complaint.complaint_date|date:'Y-m-d' }}</div></div>
+    <div class="detail-row"><div class="detail-label">终端客户：</div><div class="detail-value">{{ complaint.terminal_customer|default:'-' }}</div></div>
+    <div class="detail-row"><div class="detail-label">产品型号：</div><div class="detail-value">{{ complaint.product_model|default:'-' }}</div></div>
+    <div class="detail-row"><div class="detail-label">我司出货量：</div><div class="detail-value">{{ complaint.our_shipment|default:'-' }}</div></div>
+    <div class="detail-row"><div class="detail-label">客户出货量：</div><div class="detail-value">{{ complaint.customer_shipment|default:'-' }}</div></div>
+    <div class="detail-row"><div class="detail-label">客诉现象及客户诉求描述：</div><div class="detail-value">{{ complaint.complaint_description|default:'-' }}</div></div>
+    <div class="detail-row"><div class="detail-label">客户诉求（赔偿金额）：</div><div class="detail-value">{% if complaint.compensation_amount %}¥{{ complaint.compensation_amount|floatformat:2 }}{% else %}-{% endif %}</div></div>
+    <div class="detail-row"><div class="detail-label">是否报保险：</div><div class="detail-value">{% if complaint.is_insured %}是{% else %}否{% endif %}</div></div>
+    <div class="detail-row"><div class="detail-label">工程报告：</div><div class="detail-value">{{ complaint.engineering_report|default:'-' }}</div></div>
+    <div class="detail-row"><div class="detail-label">工程部分析原因报告：</div><div class="detail-value">{{ complaint.engineering_analysis|default:'-' }}</div></div>
+    <div class="detail-row"><div class="detail-label">欠缺材料：</div><div class="detail-value">{{ complaint.missing_materials|default:'-' }}</div></div>
+    <div class="detail-row"><div class="detail-label">客诉状态：</div><div class="detail-value">{{ complaint.complaint_status }}</div></div>
+    <div class="detail-row"><div class="detail-label">跟进情况：</div><div class="detail-value">{{ complaint.follow_up_status|default:'-' }}</div></div>
+    <div class="detail-row"><div class="detail-label">备注：</div><div class="detail-value">{{ complaint.remarks|default:'-' }}</div></div>
+</div>
+{% if other_complaints.exists %}
+<div style="margin-top:1rem;">
+    <h4 style="color:#1f2329;margin:0 0 0.75rem;font-weight:600;">其他客诉记录</h4>
+    {% for other in other_complaints %}
+    <div style="background:#fafafa;border:1px solid #f0f0f0;border-radius:8px;padding:0.75rem 1rem;margin-bottom:0.5rem;">
+        <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:0.25rem 1rem;font-size:0.85rem;">
+            <span><b>日期：</b>{{ other.complaint_date|date:'Y-m-d' }}</span>
+            <span><b>产品型号：</b>{{ other.product_model|default:'-' }}</span>
+            <span><b>状态：</b>{{ other.complaint_status }}</span>
+        </div>
+        <div style="margin-top:0.35rem;font-size:0.85rem;color:#595959;">{{ other.complaint_description|default:'-'|truncatechars:120 }}</div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+<style>#formModal.form-modal { width: 760px; }</style>

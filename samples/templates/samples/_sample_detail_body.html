@@ -1,0 +1,491 @@
+{% load accounts_tags %}
+<style>
+    /* ===== 顶部基本信息卡 ===== */
+    .header-card { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 1.25rem 1.5rem 1.4rem; margin-bottom: 1.25rem; }
+    .head-top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem; }
+    .head-title { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+    .head-title h2 { margin: 0; font-size: 1.3rem; color: #1f2329; }
+    .head-actions { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+    .info-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.9rem 1.75rem; }
+    @media (max-width: 1200px) { .info-grid { grid-template-columns: 1fr 1fr 1fr; } }
+    @media (max-width: 992px) { .info-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 576px) { .info-grid { grid-template-columns: 1fr; } }
+    .info-item { min-width: 0; }
+    #supplierTypeSelect { border-radius: 6px; border: 1px solid #d9d9d9; color: #1f2329; }
+    #supplierTypeSelect:focus { border-color: #1890ff; outline: none; box-shadow: 0 0 0 2px rgba(24,144,255,0.1); }
+    .info-label { color: #8c8c8c; font-size: 0.76rem; margin-bottom: 0.2rem; }
+    .info-value { color: #1f2329; font-size: 0.875rem; word-break: break-all; line-height: 1.5; }
+
+    /* 步骤条 */
+    .step-bar { display: flex; align-items: center; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 1.25rem 2rem; margin-bottom: 1.25rem; }
+    .step-item { display: flex; align-items: center; flex: 1; }
+    .step-item:last-child { flex: 0 0 auto; }
+    .step-dot { width: 32px; height: 32px; border-radius: 50%; background: #f0f0f0; color: #8c8c8c; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 600; flex-shrink: 0; }
+    .step-item.done .step-dot { background: #1890ff; color: #fff; }
+    .step-item.current .step-dot { background: #1890ff; color: #fff; box-shadow: 0 0 0 4px rgba(24,144,255,0.2); }
+    .step-item.terminated .step-dot { background: #f5222d; color: #fff; }
+    .step-label { margin-left: 0.5rem; font-size: 0.85rem; color: #8c8c8c; white-space: nowrap; }
+    .step-item.done .step-label, .step-item.current .step-label { color: #1f2329; font-weight: 500; }
+    .step-line { flex: 1; height: 2px; background: #f0f0f0; margin: 0 0.75rem; min-width: 24px; }
+    .step-item.done .step-line { background: #1890ff; }
+
+    /* ===== 主体两栏：左时间轴 / 右记录 ===== */
+    .detail-layout { display: grid; grid-template-columns: 420px minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+    @media (max-width: 1200px) { .detail-layout { grid-template-columns: 360px minmax(0, 1fr); } }
+    @media (max-width: 992px) { .detail-layout { grid-template-columns: 1fr; } }
+    .detail-left { position: sticky; top: 70px; }
+    @media (max-width: 992px) { .detail-left { position: static; } }
+
+    /* 记录区块 */
+    .record-card { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 1.5rem; margin-bottom: 1.25rem; }
+    .record-card .table { width: 100%; table-layout: fixed; }
+    .record-card .table th, .record-card .table td { overflow: hidden; text-overflow: ellipsis; }
+    .record-card .table td { white-space: nowrap; }
+    .record-card .table .btn { white-space: nowrap; }
+    .table-test th:nth-child(1) { width: 13%; }
+    .table-test th:nth-child(2) { width: 132px; }
+    .table-test th:nth-child(3) { width: 116px; }
+    .table-test th:nth-child(4) { width: auto; }
+    .table-test th:nth-child(5) { width: 10%; }
+    .table-test th:nth-child(6) { width: 11%; }
+    .table-test th:nth-child(7) { width: 7%; }
+    .table-test th:nth-child(8) { width: 10%; }
+    .table-test th:nth-child(9) { width: 11%; }
+    .table-batch th:nth-child(1) { width: 16%; }
+    .table-batch th:nth-child(2) { width: 7%; }
+    .table-batch th:nth-child(3) { width: 12%; }
+    .table-batch th:nth-child(4) { width: 10%; }
+    .table-batch th:nth-child(5) { width: 16%; }
+    .table-batch th:nth-child(6) { width: 10%; }
+    .table-batch th:nth-child(7) { width: 10%; }
+    .table-batch th:nth-child(8) { width: 19%; }
+    .table-audit th:nth-child(1) { width: 16%; }
+    .table-audit th:nth-child(2) { width: 13%; }
+    .table-audit th:nth-child(3) { width: 12%; }
+    .table-audit th:nth-child(4) { width: 10%; }
+    .table-audit th:nth-child(5) { width: 20%; }
+    .table-audit th:nth-child(6) { width: 11%; }
+    .table-audit th:nth-child(7) { width: 18%; }
+    .record-card .table thead th { background: #fff; color: #1f2329; font-weight: 600; font-size: 0.82rem; border-bottom: 2px solid #e8e8e8; padding: 10px 8px; white-space: nowrap; }
+    .record-card .table td { padding: 12px 8px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+    .record-card .table tbody tr:hover { background: #fafafa; }
+    .round-main { font-weight: 600; color: #1f2329; }
+    .round-sub { font-size: 0.74rem; color: #8c8c8c; margin-top: 2px; }
+    .mark-yes { color: #52c41a; font-weight: 600; }
+    .mark-no { color: #bfbfbf; }
+    .audit-hint { background: #fafafa; border-radius: 6px; padding: 8px 12px; font-size: 0.8rem; color: #595959; margin-bottom: 0.9rem; }
+    .cover-hint { font-size: 0.8rem; color: #8c8c8c; }
+    .detail-left .record-card { margin-bottom: 0; }
+    .record-title { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .record-title h3 { font-size: 1rem; font-weight: 600; color: #1f2329; margin: 0; display: flex; align-items: center; gap: 0.5rem; }
+    .record-title h3::before { content: ''; width: 4px; height: 15px; border-radius: 2px; background: #1890ff; flex-shrink: 0; }
+    .deleted-banner { background: #fff1f0; border: 1px solid #ffccc7; color: #f5222d; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; }
+
+    /* 证明材料卡片 */
+    .proof-banner { background: #e6f7ff; border: 1px solid #91d5ff; border-radius: 8px; padding: 10px 14px; font-size: 0.82rem; color: #1f2329; margin-bottom: 1rem; line-height: 1.6; }
+    .proof-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 1200px) { .proof-grid { grid-template-columns: 1fr; } }
+    .proof-card { border: 1.5px solid #13c2c2; border-radius: 10px; padding: 1rem 1.25rem; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .proof-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .proof-card.has-files { border-color: #1890ff; }
+    .proof-head { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+    .proof-num { width: 20px; height: 20px; border-radius: 50%; background: #13c2c2; color: #fff; font-size: 0.72rem; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .has-files .proof-num { background: #1890ff; }
+    .proof-head .proof-name { font-weight: 600; color: #1f2329; font-size: 0.9rem; flex: 1; min-width: 0; }
+    .proof-count { font-size: 0.72rem; color: #8c8c8c; background: #f5f5f5; border-radius: 10px; padding: 2px 10px; flex-shrink: 0; }
+    .proof-desc { color: #8c8c8c; font-size: 0.78rem; margin-bottom: 0.75rem; }
+    .proof-empty { text-align: center; color: #bfbfbf; font-size: 0.8rem; padding: 10px 0 14px; }
+    .proof-files { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .proof-file { display: flex; align-items: center; gap: 0.6rem; background: #fafafa; border-radius: 6px; padding: 0.5rem 0.6rem; }
+    .proof-file img { width: 44px; height: 44px; object-fit: cover; border-radius: 4px; border: 1px solid #f0f0f0; flex-shrink: 0; }
+    .proof-file-icon { width: 44px; height: 44px; border-radius: 4px; background: #fff1f0; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0; }
+    .proof-file-meta { flex: 1; min-width: 0; }
+    .proof-file-name { font-size: 0.82rem; color: #1f2329; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .proof-file-sub { font-size: 0.72rem; color: #8c8c8c; }
+    .upload-form { border-top: 1px dashed #f0f0f0; padding-top: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem; }
+    .upload-form textarea { font-size: 0.82rem; resize: vertical; }
+    .upload-form input[type="file"] { font-size: 0.78rem; color: #595959; background: #fafafa; border: 1px dashed #d9d9d9; border-radius: 6px; padding: 6px 8px; cursor: pointer; transition: border-color 0.2s ease; }
+    .upload-form input[type="file"]:hover { border-color: #1890ff; }
+    .upload-form textarea { border-radius: 6px; }
+    .btn-upload { width: 100%; border: none; border-radius: 6px; background: #13c2c2; color: #fff; font-size: 0.82rem; font-weight: 500; padding: 7px 0; cursor: pointer; }
+    .btn-upload:hover { opacity: 0.85; }
+    .has-files .btn-upload { background: #1890ff; }
+
+    /* 时间轴 */
+    .timeline { position: relative; padding-left: 28px; }
+    .timeline::before { content: ''; position: absolute; left: 9px; top: 6px; bottom: 6px; width: 2px; background: #f0f0f0; }
+    .tl-event { position: relative; padding: 0 0 1.25rem 0.75rem; border-radius: 8px; transition: background 0.15s ease; }
+    .tl-event:hover { background: rgba(24, 144, 255, 0.04); }
+    .tl-event:last-child { padding-bottom: 0; }
+    .tl-dot { position: absolute; left: -28px; top: 4px; width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 2px solid #d9d9d9; display: flex; align-items: center; justify-content: center; font-size: 10px; }
+    .tl-dot.c-info { border-color: #1890ff; }
+    .tl-dot.c-success { border-color: #52c41a; }
+    .tl-dot.c-warning { border-color: #fa8c16; }
+    .tl-dot.c-danger { border-color: #f5222d; }
+    .tl-dot.c-light { border-color: #d9d9d9; }
+    .tl-head { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; }
+    .tl-title { font-weight: 600; color: #1f2329; font-size: 0.9rem; }
+    .tl-time { font-size: 0.75rem; color: #bfbfbf; }
+    .tl-lines { margin-top: 0.3rem; }
+    .tl-lines div { font-size: 0.82rem; color: #595959; line-height: 1.7; }
+    .tl-thumbs { display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap; }
+    .tl-thumbs img { width: 56px; height: 56px; object-fit: cover; border-radius: 4px; border: 1px solid #f0f0f0; }
+    .tl-file-chip { font-size: 0.75rem; color: #1890ff; background: #e6f7ff; border-radius: 4px; padding: 2px 8px; }
+
+    /* 弹窗内覆盖：取消吸顶、加宽弹窗、内容区可滚动 */
+    #formModalBody .detail-left { position: static; }
+    #formModal.form-modal { width: 1100px; max-width: 95vw; }
+    #formModalBody { max-height: 82vh; overflow-y: auto; }
+</style>
+
+{% if sample.is_deleted %}
+<div class="deleted-banner">
+    <span>🗑️ 该样品已删除{% if sample.deleted_at %}（删除时间 {{ sample.deleted_at|date:'Y-m-d H:i' }}）{% endif %}，删除后不再出现在台账列表中。</span>
+    {% can "samples" "update" %}
+    <form method="POST" action="{% url 'samples:restore' sample.pk %}" style="margin:0;">
+        {% csrf_token %}
+        <button type="submit" class="btn-transparent btn-sm" data-confirm="确定要恢复该样品吗？">恢复样品</button>
+    </form>
+    {% endcan %}
+</div>
+{% endif %}
+
+<!-- ===== 顶部：基本信息卡（标题 + 操作 + 字段网格） ===== -->
+<div class="header-card">
+    <div class="head-top">
+        <div class="head-title">
+            <h2>{{ sample.sample_no }}</h2>
+            <span class="status-badge {{ sample.status_badge_class }}">{{ sample.get_status_display }}</span>
+        </div>
+        <div class="head-actions">
+            <a class="btn-secondary" href="{% if list_qs %}{% url 'samples:list' %}?{{ list_qs }}{% else %}{% url 'samples:list' %}{% endif %}">← 返回列表</a>
+            {% if not sample.is_deleted %}
+            {% can "samples" "update" %}
+            <a class="btn-transparent" href="{% url 'samples:edit' sample.pk %}" data-modal-edit data-modal-title="编辑样品">编辑</a>
+            {% if can_terminate %}<a class="btn-transparent" href="{% url 'samples:terminate' sample.pk %}" style="background:#fff7e6 !important; color:#fa8c16 !important; border-color:#ffd591 !important;">终止</a>{% endif %}
+            {% endcan %}
+            {% can "samples" "delete" %}
+            <a class="btn-transparent btn-delete" href="{% url 'samples:delete' sample.pk %}">删除</a>
+            {% endcan %}
+            {% endif %}
+        </div>
+    </div>
+    <div class="info-grid">
+        <div class="info-item"><div class="info-label">物料名称</div><div class="info-value">{{ sample.material_name }}</div></div>
+        <div class="info-item"><div class="info-label">型号</div><div class="info-value">{{ sample.model }}</div></div>
+        <div class="info-item"><div class="info-label">物料规格</div><div class="info-value">{{ sample.spec|default:'—' }}</div></div>
+        <div class="info-item"><div class="info-label">供应商</div><div class="info-value">{% if sample.supplier %}<a href="{% url 'samples:partner_detail' sample.supplier.pk %}" data-modal-detail data-modal-title="{{ sample.supplier.name }} 档案">{{ sample.supplier.name }}</a>{% else %}—{% endif %}</div></div>
+        <div class="info-item">
+            <div class="info-label">供应商类型</div>
+            <div class="info-value">
+                {% if not sample.is_deleted %}
+                {% if request.user|can_do:'samples.update' %}
+                <select id="supplierTypeSelect" class="form-select" style="width:170px; display:inline-block; height:30px; font-size:0.82rem;" data-url="{% url 'samples:supplier_type_update' sample.pk %}">
+                    <option value="existing" {% if sample.supplier_type == 'existing' %}selected{% endif %}>已合作供应商</option>
+                    <option value="new" {% if sample.supplier_type == 'new' %}selected{% endif %}>新增供应商</option>
+                </select>
+                {% else %}{{ sample.get_supplier_type_display }}{% endif %}
+                {% else %}{{ sample.get_supplier_type_display }}{% endif %}
+            </div>
+        </div>
+        <div class="info-item"><div class="info-label">来料数量</div><div class="info-value">{{ sample.incoming_qty|default:'—' }}</div></div>
+        <div class="info-item"><div class="info-label">送样时间</div><div class="info-value">{{ sample.sample_date|date:'Y-m-d' }}</div></div>
+        <div class="info-item"><div class="info-label">登记人 / 时间</div><div class="info-value">{{ sample.registrar|default:'—' }} · {{ sample.registered_at|date:'Y-m-d H:i' }}</div></div>
+        {% if sample.status == 'imported' %}
+        <div class="info-item"><div class="info-label">正式导入</div><div class="info-value">{{ sample.imported_by|default:'—' }} · {{ sample.imported_at|date:'Y-m-d H:i' }}</div></div>
+        {% endif %}
+        {% if sample.status == 'terminated' %}
+        <div class="info-item"><div class="info-label">终止信息</div><div class="info-value" style="color:#f5222d;">{{ sample.terminate_reason }}（{{ sample.terminated_by|default:'—' }} · {{ sample.terminated_at|date:'Y-m-d H:i' }}）</div></div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ===== 步骤条卡片 ===== -->
+<div class="step-bar">
+    <div class="step-item {% if status_index >= 0 %}done{% endif %} {% if status_index == 0 and not sample.is_terminal %}current{% endif %}">
+        <div class="step-dot">1</div><span class="step-label">送样登记</span>
+        <div class="step-line"></div>
+    </div>
+    <div class="step-item {% if status_index >= 1 %}done{% endif %} {% if status_index == 1 %}current{% endif %}">
+        <div class="step-dot">2</div><span class="step-label">试样验证</span>
+        <div class="step-line"></div>
+    </div>
+    <div class="step-item {% if status_index >= 2 %}done{% endif %} {% if status_index == 2 %}current{% endif %}">
+        <div class="step-dot">3</div><span class="step-label">小批量验证</span>
+        <div class="step-line"></div>
+    </div>
+    {% if sample.status == 'terminated' %}
+    <div class="step-item terminated">
+        <div class="step-dot">⛔</div><span class="step-label" style="color:#f5222d;">已终止</span>
+    </div>
+    {% else %}
+    <div class="step-item {% if status_index >= 3 %}done{% endif %} {% if status_index == 3 %}current{% endif %}">
+        <div class="step-dot">4</div><span class="step-label">正式导入</span>
+    </div>
+    {% endif %}
+</div>
+
+<!-- ===== 主体两栏 ===== -->
+<div class="detail-layout">
+    <!-- 左：全流程时间轴 -->
+    <div class="detail-left">
+        <div class="record-card">
+            <div class="record-title">
+                <h3>🕒 全流程时间轴</h3>
+                <span class="total-hint">共 {{ timeline|length }} 项</span>
+            </div>
+            <div class="timeline">
+                {% for event in timeline %}
+                <div class="tl-event">
+                    <div class="tl-dot c-{{ event.color }}">{{ event.icon }}</div>
+                    <div class="tl-head">
+                        <span class="tl-title">{{ event.title }}</span>
+                        {% if event.time %}<span class="tl-time">{{ event.time|date:'Y-m-d H:i' }}</span>{% else %}<span class="tl-time">待处理</span>{% endif %}
+                    </div>
+                    <div class="tl-lines">
+                        {% for line in event.lines %}<div>{{ line }}</div>{% endfor %}
+                    </div>
+                    {% if event.is_proof and event.proof_thumbs %}
+                    <div class="tl-thumbs">
+                        {% for thumb in event.proof_thumbs %}
+                            {% if thumb.is_image %}<a href="{{ thumb.url }}" target="_blank"><img src="{{ thumb.url }}" alt="{{ thumb.name }}" title="{{ thumb.name }}"></a>
+                            {% else %}<a class="tl-file-chip" href="{{ thumb.url }}" target="_blank">📄 {{ thumb.name|truncatechars:16 }}</a>{% endif %}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    {% if event.is_proof and event.proof_pending %}
+                    <div style="margin-top:0.4rem;"><a class="tl-file-chip" href="#proof-card-{{ event.proof_stage }}" style="text-decoration:none;">→ 去上传</a></div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 右：试样 / 小批量 / 审厂 / 证明材料 -->
+    <div class="detail-right">
+        <!-- 试样记录 -->
+        <div class="record-card">
+            <div class="record-title">
+                <h3>🧪 试样记录（共 {{ test_records|length }} 轮）</h3>
+                {% if can_add_test and request.user|can_do:'samples.create' %}<a class="btn-primary btn-sm" href="{% url 'samples:test_create' sample.pk %}" data-modal-add data-modal-title="新增第{{ test_records|length|add:'1' }}轮试样记录">＋ 新增第{{ test_records|length|add:"1" }}轮</a>{% endif %}
+            </div>
+            {% if test_records %}
+            <div class="table-responsive">
+                <table class="table table-test">
+                    <thead>
+                        <tr><th>轮次</th><th>试产日期</th><th>封装形式</th><th>测试结果</th><th>评审结论</th><th>报告编码</th><th class="col-optional">通知</th><th class="col-optional">操作人</th><th>操作</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for record in test_records %}
+                        <tr>
+                            <td><div class="round-main">第 {{ record.round_no }} 轮</div><div class="round-sub">{{ record.test_no }}</div></td>
+                            <td>{{ record.test_date|date:'Y-m-d' }}</td>
+                            <td title="{{ record.package_type }}">{{ record.package_type|default:'—' }}</td>
+                            <td class="td-ellipsis" title="{{ record.test_result }}">{{ record.test_result }}</td>
+                            <td><span class="status-badge {{ record.conclusion_badge }}">{{ record.get_review_conclusion_display }}</span></td>
+                            <td>{{ record.report_code }}</td>
+                            <td class="col-optional">{% if record.notified %}<span class="mark-yes">✓</span>{% else %}<span class="mark-no">—</span>{% endif %}</td>
+                            <td class="col-optional">{{ record.operator|default:'—' }}</td>
+                            <td>
+                                <div style="display:flex; gap:0.25rem; align-items:center; flex-wrap:nowrap;">
+                                    {% can "samples" "update" %}
+                                    <a href="{% url 'samples:test_edit' sample.pk record.pk %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑第{{ record.round_no }}轮试样记录">编辑</a>
+                                    {% endcan %}
+                                    {% can "samples" "delete" %}
+                                    <a href="{% url 'samples:test_delete' sample.pk record.pk %}" class="btn-transparent btn-sm btn-delete">删除</a>
+                                    {% endcan %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state"><div class="empty-icon">🧪</div><div class="empty-text">暂无试样记录{% if can_add_test %}，点击右上角新增{% endif %}</div></div>
+            {% endif %}
+        </div>
+
+        <!-- 小批量记录 -->
+        <div class="record-card">
+            <div class="record-title">
+                <h3>🏭 小批量验证记录（共 {{ batch_records|length }} 批）</h3>
+                {% if can_add_batch and request.user|can_do:'samples.create' %}<a class="btn-primary btn-sm" href="{% url 'samples:batch_create' sample.pk %}" data-modal-add data-modal-title="新增第{{ batch_records|length|add:'1' }}批小批量记录">＋ 新增第{{ batch_records|length|add:"1" }}批</a>{% endif %}
+            </div>
+            {% if batch_records %}
+            <div class="table-responsive">
+                <table class="table table-batch">
+                    <thead>
+                        <tr><th>批次</th><th>下单</th><th>结果</th><th class="col-optional">单价(元)</th><th class="col-optional">可替代型号</th><th>录入金蝶</th><th class="col-optional">操作人</th><th>操作</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for record in batch_records %}
+                        <tr>
+                            <td><div class="round-main">第 {{ record.round_no }} 批</div><div class="round-sub">{{ record.batch_no }}</div></td>
+                            <td>{% if record.ordered %}<span class="mark-yes">✓</span>{% else %}<span class="mark-no">—</span>{% endif %}</td>
+                            <td><span class="status-badge {{ record.result_badge }}">{{ record.get_batch_result_display }}</span></td>
+                            <td class="col-optional">{{ record.unit_price|default_if_none:'—' }}</td>
+                            <td class="col-optional">{{ record.alternative_model|default:'—' }}</td>
+                            <td>{% if record.kingdee_entered %}<span class="mark-yes">✓</span>{% else %}<span class="mark-no">—</span>{% endif %}</td>
+                            <td class="col-optional">{{ record.operator|default:'—' }}</td>
+                            <td>
+                                <div style="display:flex; gap:0.25rem; align-items:center; flex-wrap:nowrap;">
+                                    {% can "samples" "update" %}
+                                    <a href="{% url 'samples:batch_edit' sample.pk record.pk %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑第{{ record.round_no }}批小批量记录">编辑</a>
+                                    {% endcan %}
+                                    {% can "samples" "delete" %}
+                                    <a href="{% url 'samples:batch_delete' sample.pk record.pk %}" class="btn-transparent btn-sm btn-delete">删除</a>
+                                    {% endcan %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state"><div class="empty-icon">🏭</div><div class="empty-text">暂无小批量记录{% if can_add_batch %}，点击右上角新增{% endif %}</div></div>
+            {% endif %}
+        </div>
+
+        <!-- 审厂记录（新增供应商） -->
+        {% if sample.supplier_type == 'new' or audit_records %}
+        <div class="record-card">
+            <div class="record-title">
+                <h3>📋 现场审核验证记录（共 {{ audit_records|length }} 轮）</h3>
+                {% if can_add_audit and sample.supplier and request.user|can_do:'samples.create' %}<a class="btn-transparent btn-sm" href="{% url 'samples:audit_create' sample.supplier.pk %}" data-modal-add data-modal-title="新增审厂记录">＋ 登记审厂</a>{% endif %}
+            </div>
+            {% if sample.supplier %}
+            <div class="audit-hint">① 审厂记录按供应商管理，同一供应商的所有样品共享，删除操作请前往 <a href="{% url 'samples:partner_detail' sample.supplier.pk %}" data-modal-detail data-modal-title="{{ sample.supplier.name }} 档案">供应商档案</a>。</div>
+            {% endif %}
+            {% if audit_records %}
+            <div class="table-responsive">
+                <table class="table table-audit">
+                    <thead>
+                        <tr><th>轮次</th><th>审厂日期</th><th>审厂结果</th><th class="col-optional">操作人</th><th class="col-optional">备注</th><th>审核文件</th><th>操作</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for record in audit_records %}
+                        <tr>
+                            <td><div class="round-main">第 {{ record.round_no }} 轮</div><div class="round-sub">{{ record.audit_no }}</div></td>
+                            <td>{{ record.audit_date|date:'Y-m-d' }}</td>
+                            <td><span class="status-badge {{ record.result_badge }}">{{ record.get_audit_result_display }}</span></td>
+                            <td class="col-optional">{{ record.auditor|default:'—' }}</td>
+                            <td class="col-optional td-ellipsis" title="{{ record.audit_remark }}">{{ record.audit_remark|default:'—' }}</td>
+                            <td>{% if record.file %}<a href="{{ record.file.url }}" target="_blank">📎 查看</a>{% else %}—{% endif %}</td>
+                            <td>
+                                <div style="display:flex; gap:0.25rem; align-items:center; flex-wrap:nowrap;">
+                                    {% can "samples" "update" %}
+                                    <a href="{% url 'samples:audit_edit' sample.supplier.pk record.pk %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑第{{ record.round_no }}轮审厂记录">编辑</a>
+                                    {% endcan %}
+                                    {% can "samples" "delete" %}
+                                    <a href="{% url 'samples:audit_delete' sample.supplier.pk record.pk %}" class="btn-transparent btn-sm btn-delete">删除</a>
+                                    {% endcan %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">新增供应商尚未安排审厂{% if can_add_audit %}，点击右上角登记审厂记录{% endif %}</div></div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- 证明材料 -->
+        <div class="record-card" id="proofs" style="margin-bottom:0;">
+            <div class="record-title">
+                <h3>📎 业务流程证明材料</h3>
+                <span class="cover-hint">已覆盖阶段：{{ proof_completed }} / {{ proof_total }}</span>
+            </div>
+            <div class="proof-banner">① 请按业务流程依次上传各节点凭证：所有材料需清晰可见，关键信息（订单号、日期、人员等）完整可辨认，确保流程可追溯与合规。</div>
+            <div class="proof-grid">
+                {% for stage in proof_stages %}
+                <div class="proof-card {% if stage.attachments %}has-files{% endif %}" id="proof-card-{{ stage.value }}">
+                    <div class="proof-head">
+                        <span class="proof-num">{{ stage.num }}</span>
+                        <span>{{ stage.icon }}</span>
+                        <span class="proof-name">{{ stage.label }}</span>
+                        <span class="proof-count">{% if stage.attachments %}{{ stage.attachments|length }} 个文件{% else %}未上传{% endif %}</span>
+                    </div>
+                    <div class="proof-desc">{{ stage.desc }}</div>
+                    {% if stage.attachments %}
+                    <div class="proof-files">
+                        {% for att in stage.attachments %}
+                        <div class="proof-file">
+                            {% if att.is_image %}
+                            <a href="{{ att.file.url }}" target="_blank"><img src="{{ att.file.url }}" alt="{{ att.original_name }}"></a>
+                            {% else %}
+                            <a class="proof-file-icon" href="{{ att.file.url }}" target="_blank" style="text-decoration:none;">📄</a>
+                            {% endif %}
+                            <div class="proof-file-meta">
+                                <div class="proof-file-name"><a href="{{ att.file.url }}" target="_blank">{{ att.original_name }}</a></div>
+                                <div class="proof-file-sub">{{ att.uploaded_by|default:'—' }} · {{ att.created_at|date:'Y-m-d H:i' }}{% if att.remark %} · {{ att.remark }}{% endif %}</div>
+                            </div>
+                            {% if can_upload_proof and request.user|can_do:'samples.delete' %}
+                            <form method="POST" action="{% url 'samples:proof_delete' sample.pk att.pk %}" style="margin:0;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-transparent btn-sm btn-delete" data-confirm="确定要删除该证明材料吗？">删除</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="proof-empty">暂未上传凭证</div>
+                    {% endif %}
+                    {% if can_upload_proof and request.user|can_do:'samples.create' %}
+                    <form class="upload-form" method="POST" action="{% url 'samples:proof_upload' sample.pk stage.value %}" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="file" name="file" class="form-control form-control-sm" required
+                               accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar,.7z">
+                        <textarea name="remark" class="form-control form-control-sm" rows="1" placeholder="可选：注明订单号/日期/人员等关键信息"></textarea>
+                        <button type="submit" class="btn-upload">⬆ 上传 {{ stage.label }}</button>
+                    </form>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% include "samples/_toast.html" %}
+
+<script>
+(function () {
+    // 供应商类型 AJAX 切换（弹窗注入时 DOM 已就绪，直接执行）
+    var sel = document.getElementById('supplierTypeSelect');
+    if (!sel) return;
+    var original = sel.value;
+    sel.addEventListener('change', function () {
+        if (sel.value === original) return;
+        var url = sel.dataset.url;
+        var fd = new FormData();
+        fd.append('supplier_type', sel.value);
+        fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+        fetch(url, { method: 'POST', body: fd })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.ok) {
+                    if (window.showToast) window.showToast('供应商类型已更新', 'success');
+                    else alert('供应商类型已更新');
+                    setTimeout(function(){ window.location.reload(); }, 600);
+                }
+                else {
+                    if (window.showToast) window.showToast(data.error || '更新失败', 'error');
+                    else alert(data.error || '更新失败');
+                    sel.value = original;
+                }
+            })
+            .catch(function () {
+                if (window.showToast) window.showToast('网络错误，更新失败', 'error');
+                else alert('网络错误，更新失败');
+                sel.value = original;
+            });
+    });
+})();
+</script>

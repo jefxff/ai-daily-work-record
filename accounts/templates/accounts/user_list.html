@@ -1,0 +1,132 @@
+{% extends 'records/base.html' %}
+{% load accounts_tags %}
+
+{% block page_title %}用户管理 - 每日工作记录{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>用户管理<span class="total-hint">共 {{ total }} 个用户</span></h2>
+    <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+        <form method="GET" style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+            <input class="search-input" type="search" placeholder="搜索用户名/姓名" name="q" value="{{ f_q }}">
+            <select class="search-input" name="role" style="width:auto;">
+                <option value="">全部角色</option>
+                {% for r in roles %}
+                <option value="{{ r.id }}" {% if f_role == r.id|stringformat:'s' %}selected{% endif %}>{{ r.name }}</option>
+                {% endfor %}
+            </select>
+            <select class="search-input" name="status" style="width:auto;">
+                <option value="">全部状态</option>
+                <option value="active" {% if f_status == 'active' %}selected{% endif %}>正常</option>
+                <option value="inactive" {% if f_status == 'inactive' %}selected{% endif %}>停用/待审核</option>
+            </select>
+            <button class="btn-transparent" type="submit">筛选</button>
+            <a class="btn-transparent" href="{% url 'accounts:user_list' %}" style="text-decoration:none; display:inline-flex; align-items:center;">重置</a>
+        </form>
+        {% can "system" "create" %}
+        <a class="btn-primary btn-sm" href="{% url 'accounts:user_create' %}" data-modal-add data-modal-title="新建用户">+ 新建用户</a>
+        {% endcan %}
+    </div>
+</div>
+<div class="table-container">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>用户名</th>
+                <th>姓名</th>
+                <th>部门</th>
+                <th>岗位</th>
+                <th>角色</th>
+                <th>状态</th>
+                <th>创建时间</th>
+                <th style="width:220px;">操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for u in page %}
+            <tr>
+                <td>
+                    <strong>{{ u.username }}</strong>
+                    {% if u.is_superuser %}<span class="status-badge warning">超级管理员</span>{% endif %}
+                </td>
+                <td>{{ u.profile.real_name|default:'—' }}</td>
+                <td>{{ u.profile.department|default:'—' }}</td>
+                <td>{{ u.profile.position|default:'—' }}</td>
+                <td>
+                    {% for r in u.rbac_roles.all %}
+                    <span class="status-badge info">{{ r.name }}</span>
+                    {% empty %}
+                    <span style="color:#bfbfbf;">未分配</span>
+                    {% endfor %}
+                </td>
+                <td>
+                    {% if u.is_active %}
+                    <span class="status-badge success">正常</span>
+                    {% else %}
+                    <span class="status-badge danger">⚠️ 待审核/停用</span>
+                    {% endif %}
+                </td>
+                <td style="white-space:nowrap;">{{ u.date_joined|date:'Y-m-d H:i' }}</td>
+                <td style="white-space:nowrap;">
+                    {% can "system" "update" %}
+                    {% if u.is_superuser and not request.user.is_superuser %}
+                    <span style="color:#bfbfbf; font-size:0.78rem;">无权操作超管</span>
+                    {% else %}
+                    {% if not u.is_active %}
+                    <form method="post" action="{% url 'accounts:user_approve' u.id %}" style="display:inline;"
+                          data-confirm="确定审核通过「{{ u.username }}」并激活账号吗？">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-transparent btn-sm" style="border-color:#b7eb8f; color:#389e0d;">通过</button>
+                    </form>
+                    {% endif %}
+                    <a class="btn-transparent btn-sm" href="{% url 'accounts:user_edit' u.id %}" data-modal-edit data-modal-title="编辑用户：{{ u.username }}">编辑/角色</a>
+                    <a class="btn-transparent btn-sm" href="{% url 'accounts:user_reset_password' u.id %}">重置密码</a>
+                    {% if u.id != request.user.id %}
+                        {% if u.is_active %}
+                        <form method="post" action="{% url 'accounts:user_toggle' u.id %}" style="display:inline;"
+                              data-confirm="确定停用「{{ u.username }}」吗？停用后该账号将立即无法登录。">
+                            {% csrf_token %}
+                            <input type="hidden" name="active" value="false">
+                            <button type="submit" class="btn-transparent btn-sm" style="border-color:#ffa39e; color:#cf1322;">停用</button>
+                        </form>
+                        {% else %}
+                        <form method="post" action="{% url 'accounts:user_toggle' u.id %}" style="display:inline;"
+                              data-confirm="确定启用「{{ u.username }}」吗？">
+                            {% csrf_token %}
+                            <input type="hidden" name="active" value="true">
+                            <button type="submit" class="btn-transparent btn-sm">启用</button>
+                        </form>
+                        {% endif %}
+                    {% else %}
+                    <span style="color:#bfbfbf; font-size:0.78rem;">当前账号</span>
+                    {% endif %}
+                    {% endif %}
+                    {% endcan %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="8" class="empty-cell">📭 暂无符合条件的用户</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if page.has_other_pages %}
+    <div class="pagination-info">
+        <span>共 {{ total }} 条 · 第 {{ page.number }} / {{ page.paginator.num_pages }} 页</span>
+        <ul class="pagination">
+            {% if page.has_previous %}
+            <li class="page-item"><a class="page-link" href="?q={{ f_q }}&role={{ f_role }}&status={{ f_status }}&page={{ page.previous_page_number }}">上一页</a></li>
+            {% else %}
+            <li class="page-item disabled"><span class="page-link">上一页</span></li>
+            {% endif %}
+            {% if page.has_next %}
+            <li class="page-item"><a class="page-link" href="?q={{ f_q }}&role={{ f_role }}&status={{ f_status }}&page={{ page.next_page_number }}">下一页</a></li>
+            {% else %}
+            <li class="page-item disabled"><span class="page-link">下一页</span></li>
+            {% endif %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+{% include "accounts/_messages_toast.html" %}
+{% endblock %}

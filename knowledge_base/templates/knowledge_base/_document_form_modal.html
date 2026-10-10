@@ -1,0 +1,61 @@
+<form method="post" data-modal-form action="{{ request.path }}">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <div class="kb-modal-alert">{{ form.non_field_errors|join:'；' }}</div>
+    {% endif %}
+
+    <div class="kb-field">
+        <label class="form-label">{{ form.title.label }} <span style="color:#f5222d;">*</span></label>
+        {{ form.title }}
+        {% if form.title.errors %}<div class="kb-error">{{ form.title.errors|join:'；' }}</div>{% endif %}
+    </div>
+
+    <div class="kb-row">
+        <div class="kb-field">
+            <label class="form-label">{{ form.category.label }}</label>
+            {{ form.category }}
+            {% if form.category.errors %}<div class="kb-error">{{ form.category.errors|join:'；' }}</div>{% endif %}
+        </div>
+        <div class="kb-field">
+            <label class="form-label">{{ form.status.label }}</label>
+            {{ form.status }}
+            {% if form.status.errors %}<div class="kb-error">{{ form.status.errors|join:'；' }}</div>{% endif %}
+        </div>
+    </div>
+
+    <div class="kb-field">
+        <label class="form-label">{{ form.summary.label }}</label>
+        {{ form.summary }}
+        {% if form.summary.errors %}<div class="kb-error">{{ form.summary.errors|join:'；' }}</div>{% endif %}
+    </div>
+
+    <div class="kb-field">
+        <label class="form-label">{{ form.content.label }}（支持 Markdown） <span style="color:#f5222d;">*</span></label>
+        {{ form.content }}
+        {% if form.content.errors %}<div class="kb-error">{{ form.content.errors|join:'；' }}</div>{% endif %}
+    </div>
+
+    <div class="kb-field">
+        <label class="form-label">{{ form.tags.label }}</label>
+        {{ form.tags }}
+        {% if form.tags.errors %}<div class="kb-error">{{ form.tags.errors|join:'；' }}</div>{% endif %}
+    </div>
+
+    <div class="form-modal-actions">
+        <button type="button" class="btn-transparent" data-modal-close>取消</button>
+        <button type="submit" class="btn-transparent btn-delete" data-modal-save>保存</button>
+    </div>
+</form>
+
+<style>
+    #formModal.form-modal { width: 860px; }
+    #formModalBody .kb-field { margin-bottom: 0.85rem; }
+    #formModalBody .kb-field > .form-label { font-size: 0.875rem; color: #595959; font-weight: 500; display: block; margin-bottom: 0.25rem; }
+    #formModalBody .kb-field .form-control { width: 100%; }
+    #formModalBody textarea[name="content"] { min-height: 320px; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem; line-height: 1.6; }
+    #formModalBody .kb-row { display: flex; gap: 1rem; }
+    #formModalBody .kb-row .kb-field { flex: 1; }
+    #formModalBody .kb-error { color: #f5222d; font-size: 0.78rem; margin-top: 2px; }
+    #formModalBody .kb-modal-alert { background: #fff1f0; border: 1px solid #ffa39e; color: #cf1322; border-radius: 6px; padding: 0.6rem 0.85rem; margin-bottom: 1rem; font-size: 0.85rem; }
+</style>

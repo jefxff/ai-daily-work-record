@@ -1,0 +1,85 @@
+<form method="post" data-modal-form action="{{ request.path }}" autocomplete="off">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <div class="ac-modal-alert">{{ form.non_field_errors|join:'；' }}</div>
+    {% endif %}
+
+    {% if mode == 'create' %}
+    <div class="ac-field">
+        <label class="form-label">用户名 <span style="color:#f5222d;">*</span></label>
+        <input type="text" name="username" class="form-control" value="{{ form.username.value|default:'' }}" maxlength="150" required>
+        {% if form.username.errors %}<div class="ac-error">{{ form.username.errors|join:'；' }}</div>{% endif %}
+    </div>
+    <div class="ac-field">
+        <label class="form-label">初始密码 <span style="color:#f5222d;">*</span></label>
+        <input type="password" name="password" class="form-control" autocomplete="new-password" required>
+        {% if form.password.errors %}<div class="ac-error">{{ form.password.errors|join:'；' }}</div>{% endif %}
+    </div>
+    {% else %}
+    <div class="ac-hint-block">用户名不可修改。如需重置登录密码，请使用「重置密码」功能。</div>
+    {% endif %}
+
+    <div class="ac-field">
+        <label class="form-label">姓名</label>
+        <input type="text" name="real_name" class="form-control" value="{{ form.real_name.value|default:'' }}" maxlength="50">
+        {% if form.real_name.errors %}<div class="ac-error">{{ form.real_name.errors|join:'；' }}</div>{% endif %}
+    </div>
+    <div class="ac-field">
+        <label class="form-label">部门</label>
+        <input type="text" name="department" class="form-control" value="{{ form.department.value|default:'' }}" maxlength="100">
+        {% if form.department.errors %}<div class="ac-error">{{ form.department.errors|join:'；' }}</div>{% endif %}
+    </div>
+    <div class="ac-field">
+        <label class="form-label">岗位</label>
+        <input type="text" name="position" class="form-control" value="{{ form.position.value|default:'' }}" maxlength="100">
+        {% if form.position.errors %}<div class="ac-error">{{ form.position.errors|join:'；' }}</div>{% endif %}
+    </div>
+
+    <div class="ac-field">
+        <label class="form-label" style="font-weight:600; display:block; margin-bottom:0.4rem;">分配角色（可多选，权限取并集）</label>
+        <div class="ac-roles">
+            {% for r in roles %}
+            <label class="ac-check">
+                <input type="checkbox" name="roles" value="{{ r.id }}" class="form-check-input"
+                       {% if r.id in selected_role_ids %}checked{% endif %}>
+                {{ r.name }}
+                {% if r.is_builtin %}<span class="status-badge default">内置</span>{% endif %}
+                <span class="ac-desc">{{ r.description }}</span>
+            </label>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="ac-field" style="display:flex; flex-direction:column; gap:0.4rem;">
+        <label class="ac-check">
+            {{ form.is_active }} {{ form.is_active.label }}
+        </label>
+        {% if mode == 'edit' %}
+        <label class="ac-check" style="{% if not request.user.is_superuser %}opacity:0.55;{% endif %}">
+            {% if request.user.is_superuser %}{{ form.is_staff }}{% else %}
+            <input type="checkbox" class="form-check-input" disabled {% if form.is_staff.value %}checked{% endif %}>
+            {% endif %}
+            {{ form.is_staff.label }}
+            {% if not request.user.is_superuser %}<span class="ac-desc">（仅超级管理员可修改）</span>{% endif %}
+        </label>
+        {% endif %}
+    </div>
+
+    <div class="form-modal-actions">
+        <button type="button" class="btn-transparent" data-modal-close>取消</button>
+        <button type="submit" class="btn-transparent btn-delete" data-modal-save>{% if mode == 'create' %}创建用户{% else %}保存修改{% endif %}</button>
+    </div>
+</form>
+
+<style>
+    #formModalBody .ac-field { margin-bottom: 0.9rem; }
+    #formModalBody .ac-field > .form-label { font-size: 0.875rem; color: #595959; font-weight: 500; }
+    #formModalBody .ac-field .form-control { width: 100%; }
+    #formModalBody .ac-roles { display: flex; flex-direction: column; gap: 0.4rem; }
+    #formModalBody .ac-check { display: flex; gap: 0.5rem; align-items: center; font-size: 0.88rem; font-weight: 400; }
+    #formModalBody .ac-desc { color: #bfbfbf; font-size: 0.78rem; font-weight: 400; }
+    #formModalBody .ac-error { color: #cf1322; font-size: 0.78rem; margin-top: 2px; }
+    #formModalBody .ac-hint-block { font-size: 0.85rem; color: #8c8c8c; background: #fafafa; border-radius: 4px; padding: 0.5rem 0.75rem; margin-bottom: 0.9rem; }
+    #formModalBody .ac-modal-alert { background: #fff1f0; border: 1px solid #ffa39e; color: #cf1322; border-radius: 6px; padding: 0.6rem 0.85rem; margin-bottom: 1rem; font-size: 0.85rem; }
+</style>

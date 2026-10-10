@@ -1,0 +1,96 @@
+{% extends 'records/base.html' %}
+{% load static %}
+
+{% block page_title %}{{ title }} - 每日工作记录管理网站{% endblock %}
+
+{% block content %}
+    <div class="form-container">
+        <h2 class="form-title">{{ title }}</h2>
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="id_company_name" class="form-label">公司名称</label>
+                        {{ form.company_name }}
+                        {% if form.company_name.errors %}
+                        <div class="text-danger">
+                            {{ form.company_name.errors.0 }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="form-group">
+                        <label for="id_title" class="form-label">标题</label>
+                        {{ form.title }}
+                        {% if form.title.errors %}
+                        <div class="text-danger">
+                            {{ form.title.errors.0 }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="form-group">
+                        <label for="id_order_number" class="form-label">单号</label>
+                        {{ form.order_number }}
+                        {% if form.order_number.errors %}
+                        <div class="text-danger">
+                            {{ form.order_number.errors.0 }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="form-group">
+                        <label for="id_premium" class="form-label">保费</label>
+                        {{ form.premium }}
+                        {% if form.premium.errors %}
+                        <div class="text-danger">
+                            {{ form.premium.errors.0 }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="id_issue_date" class="form-label">签发日期</label>
+                        {{ form.issue_date }}
+                        {% if form.issue_date.errors %}
+                        <div class="text-danger">
+                            {{ form.issue_date.errors.0 }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="form-group">
+                        <label for="id_end_date" class="form-label">截止日期</label>
+                        {{ form.end_date }}
+                        {% if form.end_date.errors %}
+                        <div class="text-danger">
+                            {{ form.end_date.errors.0 }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="form-group">
+                        <label for="id_department" class="form-label">部门</label>
+                        {{ form.department }}
+                        {% if form.department.errors %}
+                        <div class="text-danger">
+                            {{ form.department.errors.0 }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="form-group">
+                        <label for="id_remarks" class="form-label">备注</label>
+                        {{ form.remarks }}
+                        {% if form.remarks.errors %}
+                        <div class="text-danger">
+                            {{ form.remarks.errors.0 }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">保存</button>
+                <a href="{% url 'insurance_list' %}" class="btn btn-secondary">取消</a>
+            </div>
+        </form>
+    </div>
+{% endblock %}

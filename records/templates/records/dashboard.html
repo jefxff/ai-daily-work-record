@@ -1,0 +1,1084 @@
+{% extends 'records/base.html' %}
+{% load static %}
+
+{% block page_title %}数据展示 - 汇总看板 - 每日工作记录管理网站{% endblock %}
+
+{% block top_nav_actions %}
+    <form class="d-flex gap-2" method="GET">
+        <input class="search-input" type="search" placeholder="搜索" name="search" value="{{ search_term }}">
+        <button class="btn-transparent" type="submit">搜索</button>
+    </form>
+{% endblock %}
+
+{% block content %}
+    <div class="dashboard-container">
+        <!-- 概览卡片 -->
+        <div class="overview-card">
+            <div class="overview-header">
+                <h2 class="overview-title">数据概览</h2>
+                <div class="overview-meta">
+                    <span class="update-time" id="updateTime">加载中...</span>
+                    <button class="refresh-btn" id="refreshBtn">刷新数据</button>
+                </div>
+            </div>
+            <div class="overview-stats">
+                <div class="stat-item">
+                    <div class="stat-value">8</div>
+                    <div class="stat-label">业务模块</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ total_records }}</div>
+                    <div class="stat-label">总记录数</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ completion_rate }}%</div>
+                    <div class="stat-label">完成率</div>
+                </div>
+                <div class="stat-item pending-stat">
+                    <div class="stat-value">{{ pending_count }}</div>
+                    <div class="stat-label">待处理</div>
+                </div>
+            </div>
+            <div style="margin-top: 1rem; display: flex; align-items: center; gap: 1rem;">
+                <span style="font-size: 0.75rem; color: #8c8c8c; white-space: nowrap;">近 7 天每日记录</span>
+                <div class="trend-bars">
+                    {% for d in weekly_trend %}
+                    <div class="trend-bar" title="{{ d.date }}：{{ d.c }} 条" data-h="{% widthratio d.c trend_max 40 %}"></div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- 待处理项目卡片 -->
+        <div class="pending-card" data-pending-count="{{ pending_count }}">
+            <div class="pending-header">
+                <div class="pending-title">
+                    <h3>📋 待处理事项</h3>
+                    <span class="pending-count">{{ pending_count }} 条</span>
+                </div>
+                <div class="pending-filter">
+                    <button class="filter-btn active" data-filter="all">全部</button>
+                    <button class="filter-btn" data-filter="daily">📝 每日记录{% if daily_pending_count > 0 %}<span class="badge">{{ daily_pending_count }}</span>{% endif %}</button>
+                    <button class="filter-btn" data-filter="customer_complaint">📞 客户客诉{% if complaint_pending_count > 0 %}<span class="badge">{{ complaint_pending_count }}</span>{% endif %}</button>
+                    <button class="filter-btn" data-filter="lawsuit">⚖️ 诉讼案件{% if lawsuit_pending_count > 0 %}<span class="badge">{{ lawsuit_pending_count }}</span>{% endif %}</button>
+                </div>
+            </div>
+
+            <div class="pending-list" id="pendingList">
+                {% if pending_items %}
+                    {% for item in pending_items %}
+                    <div class="pending-item {{ item.type }}{% if forloop.counter > 10 %} pending-hidden{% endif %}" data-type="{{ item.type }}" {% if forloop.counter > 10 %}style="display: none;"{% endif %} onclick="window.location.href='{{ item.url }}'">
+                        <div class="pending-icon">{{ item.type_icon }}</div>
+                        <div class="pending-content">
+                            <div class="pending-title-text">{{ item.title }}</div>
+                            <div class="pending-meta">
+                                <span class="pending-type">{{ item.type_name }}</span>
+                                <span>{{ item.department }}</span>
+                                <span>{{ item.created_at }}</span>
+                                <span class="pending-status {{ item.status }}">{{ item.status }}</span>
+                            </div>
+                        </div>
+                        <div class="pending-actions">
+                            <button class="action-btn" title="查看详情" onclick="event.stopPropagation(); window.location.href='{{ item.url }}'">👁️</button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="pending-empty">
+                        <p>🎉 暂无待处理事项</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            {% if pending_count > 10 %}
+            <div class="pending-footer">
+                <button class="view-all-btn" id="viewAllPendingBtn">展开全部 {{ pending_count }} 条待处理事项 ▼</button>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- 业务模块卡片 -->
+        <div class="modules-grid">
+            <!-- 装修模块 -->
+            <div class="module-card module-decoration">
+                <div class="module-header">
+                    <div class="module-icon">🏠</div>
+                    <h3 class="module-title">装修模块</h3>
+                    <span class="module-status status-normal">正常</span>
+                </div>
+                <div class="module-stats">
+                    <div class="module-main-stat">{{ total_decorations }}</div>
+                    <div class="module-sub-stats">
+                        <div class="sub-stat">
+                            <div class="sub-stat-value">{{ decoration_list_count }}</div>
+                            <div class="sub-stat-label">总项目</div>
+                        </div>
+                        <div class="sub-stat">
+                            <div class="sub-stat-value">¥{{ decoration_reduced_total|stringformat:"d" }}</div>
+                            <div class="sub-stat-label">核减金额</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="data-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>项目名称</th>
+                                <th>状态</th>
+                                <th>金额</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for decoration in decorations|slice:':5' %}
+                            <tr>
+                                <td>{{ decoration.project_name }}</td>
+                                <td>{% if decoration.final_price %}已完成{% else %}进行中{% endif %}</td>
+                                <td>¥{{ decoration.original_price|default:0|stringformat:"d" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="empty-cell">📭 暂无数据</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="module-footer">
+                    <a href="{% url 'decoration_list' %}" class="view-more-btn">查看更多</a>
+                </div>
+            </div>
+
+            <!-- 客户账期模块 -->
+            <div class="module-card module-credit">
+                <div class="module-header">
+                    <div class="module-icon">💳</div>
+                    <h3 class="module-title">客户账期</h3>
+                    <span class="module-status status-warning">警告</span>
+                </div>
+                <div class="module-stats">
+                    <div class="module-main-stat">{{ total_customers }}</div>
+                    <div class="module-sub-stats" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem;">
+                        <div class="sub-stat">
+                            <div class="sub-stat-value">{{ credit_total_count }}</div>
+                            <div class="sub-stat-label">总记录数</div>
+                        </div>
+                        <div class="sub-stat">
+                            <div class="sub-stat-value">{{ credit_pending_site_count }}</div>
+                            <div class="sub-stat-label">待去现场</div>
+                        </div>
+                        <div class="sub-stat">
+                            <div class="sub-stat-value">{{ credit_agree_count }}</div>
+                            <div class="sub-stat-label">同意数</div>
+                        </div>
+                        <div class="sub-stat">
+                            <div class="sub-stat-value">{{ credit_disagree_count }}</div>
+                            <div class="sub-stat-label">不同意数</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="data-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>客户名称</th>
+                                <th>账期</th>
+                                <th>结果</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for credit in customer_credits|slice:':5' %}
+                            <tr>
+                                <td>{{ credit.customer_name }}</td>
+                                <td>{{ credit.work_method|default:'- ' }}</td>
+                                <td>{{ credit.result|default:'- ' }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="empty-cell">📭 暂无数据</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="module-footer">
+                    <a href="{% url 'customer_credit_list' %}" class="view-more-btn">查看更多</a>
+                </div>
+            </div>
+
+            <!-- 客户客诉模块 -->
+            <div class="module-card module-complaint">
+                <div class="module-header">
+                    <div class="module-icon">📞</div>
+                    <h3 class="module-title">客户客诉</h3>
+                    <span class="module-status status-normal">正常</span>
+                </div>
+                <div class="module-stats">
+                    <div class="module-main-stat">{{ complaint_total_count }}</div>
+                    <div class="module-sub-stats">
+                        <div class="sub-stat">
+                            <div class="sub-stat-value">{{ complaint_total_count }}</div>
+                            <div class="sub-stat-label">总记录数</div>
+                        </div>
+                        <div class="sub-stat">
+                            <div class="sub-stat-value">{{ complaint_completed_count }}</div>
+                            <div class="sub-stat-label">已完成数</div>
+                        </div>
+                        <div class="sub-stat">
+                            <div class="sub-stat-value">{{ complaint_incomplete_count }}</div>
+                            <div class="sub-stat-label">未完成数</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="data-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>客户名称</th>
+                                <th>类型</th>
+                                <th>状态</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for complaint in customer_complaints|slice:':5' %}
+                            <tr>
+                                <td>{{ complaint.customer_name }}</td>
+                                <td>{{ complaint.complaint_status }}</td>
+                                <td>{{ complaint.follow_up_status }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="empty-cell">📭 暂无数据</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="module-footer">
+                    <a href="{% url 'customer_complaint_list' %}" class="view-more-btn">查看更多</a>
+                </div>
+            </div>
+
+            <!-- 诉讼模块 -->
+            <div class="module-card module-lawsuit">
+                <div class="module-header">
+                    <div class="module-icon">⚖️</div>
+                    <h3 class="module-title">诉讼模块</h3>
+                    <span class="module-status status-error">异常</span>
+                </div>
+                <div class="module-stats">
+                    <div class="module-main-stat">{{ lawsuit_total_count }}</div>
+                    <div class="module-sub-stats">
+                        <div class="sub-stat">
+                            <div class="sub-stat-value">{{ lawsuit_total_count }}</div>
+                            <div class="sub-stat-label">总记录数</div>
+                        </div>
+                        <div class="sub-stat">
+                            <div class="sub-stat-value">{{ lawsuit_completed_count }}</div>
+                            <div class="sub-stat-label">完成数量</div>
+                        </div>
+                        <div class="sub-stat">
+                            <div class="sub-stat-value">{{ lawsuit_incomplete_count }}</div>
+                            <div class="sub-stat-label">未完成数量</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="data-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>被告</th>
+                                <th>案号</th>
+                                <th>进度</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for complaint in complaints|slice:':5' %}
+                            <tr>
+                                <td>{{ complaint.defendant }}</td>
+                                <td>{{ complaint.case_number }}</td>
+                                <td>{{ complaint.progress }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="empty-cell">📭 暂无数据</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="module-footer">
+                    <a href="{% url 'complaint_list' %}" class="view-more-btn">查看更多</a>
+                </div>
+            </div>
+
+            <!-- 制度及处罚模块 -->
+            <div class="module-card module-regulation">
+                <div class="module-header">
+                    <div class="module-icon">📋</div>
+                    <h3 class="module-title">制度及处罚</h3>
+                    <span class="module-status status-normal">正常</span>
+                </div>
+                <div class="module-stats">
+                    <div class="module-main-stat">{{ total_regulations }}</div>
+                    <div class="module-sub-stats">
+                        <div class="sub-stat">
+                            <div class="sub-stat-value">{{ regulation_list_count }}</div>
+                            <div class="sub-stat-label">总记录</div>
+                        </div>
+                        <div class="sub-stat">
+                            <div class="sub-stat-value">{{ regulation_recent_count }}</div>
+                            <div class="sub-stat-label">最新</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="data-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>标题</th>
+                                <th>类型</th>
+                                <th>出文日期</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for regulation in regulations|slice:':5' %}
+                            <tr>
+                                <td>{{ regulation.title }}</td>
+                                <td>{{ regulation.type|default:'- ' }}</td>
+                                <td>{{ regulation.issue_date|date:"Y-m-d"|default:'- ' }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="empty-cell">📭 暂无数据</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="module-footer">
+                    <a href="{% url 'regulation_list' %}" class="view-more-btn">查看更多</a>
+                </div>
+            </div>
+
+            <!-- 核价模块 -->
+            <div class="module-card module-price">
+                <div class="module-header">
+                    <div class="module-icon">💰</div>
+                    <h3 class="module-title">核价模块</h3>
+                    <span class="module-status status-normal">正常</span>
+                </div>
+                <div class="module-stats">
+                    <div class="module-main-stat">{{ price_total_count }}</div>
+                    <div class="module-sub-stats">
+                        <div class="sub-stat">
+                            <div class="sub-stat-value">{{ price_total_count }}</div>
+                            <div class="sub-stat-label">总记录数</div>
+                        </div>
+                        <div class="sub-stat">
+                            <div class="sub-stat-value">¥{{ price_reduction_total|stringformat:"d" }}</div>
+                            <div class="sub-stat-label">核减金额</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="data-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>项目分类</th>
+                                <th>提出部门</th>
+                                <th>内控审核价</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for evaluation in price_evaluations|slice:':5' %}
+                            <tr>
+                                <td>{{ evaluation.project_category }}</td>
+                                <td>{{ evaluation.proposing_department }}</td>
+                                <td>¥{{ evaluation.internal_control_price }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="empty-cell">📭 暂无数据</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="module-footer">
+                    <a href="{% url 'price_evaluation_list' %}" class="view-more-btn">查看更多</a>
+                </div>
+            </div>
+
+            <!-- 保险模块 -->
+            <div class="module-card module-insurance">
+                <div class="module-header">
+                    <div class="module-icon">📄</div>
+                    <h3 class="module-title">保险模块</h3>
+                    <span class="module-status status-normal">正常</span>
+                </div>
+                <div class="module-stats">
+                    <div class="module-main-stat">{{ insurance_total_count }}</div>
+                    <div class="module-sub-stats">
+                        <div class="sub-stat">
+                            <div class="sub-stat-value">{{ insurance_total_count }}</div>
+                            <div class="sub-stat-label">总记录数</div>
+                        </div>
+                        <div class="sub-stat">
+                            <div class="sub-stat-value">{{ insurance_not_expired_count }}</div>
+                            <div class="sub-stat-label">未到期保险</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="data-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>公司名称</th>
+                                <th>标题</th>
+                                <th>截止日期</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for insurance in insurances|slice:':5' %}
+                            <tr>
+                                <td>{{ insurance.company_name }}</td>
+                                <td>{{ insurance.title }}</td>
+                                <td>{{ insurance.end_date|date:"Y-m-d" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="empty-cell">📭 暂无数据</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="module-footer">
+                    <a href="{% url 'insurance_list' %}" class="view-more-btn">查看更多</a>
+                </div>
+            </div>
+
+            <!-- 每日记录模块 -->
+            <div class="module-card module-daily">
+                <div class="module-header">
+                    <div class="module-icon">📅</div>
+                    <h3 class="module-title">每日记录</h3>
+                    <span class="module-status status-normal">正常</span>
+                </div>
+                <div class="module-stats">
+                    <div class="module-main-stat">{{ daily_total_count }}</div>
+                    <div class="module-sub-stats">
+                        <div class="sub-stat">
+                            <div class="sub-stat-value">{{ daily_total_count }}</div>
+                            <div class="sub-stat-label">总记录数</div>
+                        </div>
+                        <div class="sub-stat">
+                            <div class="sub-stat-value">{{ daily_incomplete_count }}</div>
+                            <div class="sub-stat-label">未完成记录</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="data-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>部门</th>
+                                <th>工作内容</th>
+                                <th>状态</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for record in daily_records|slice:':5' %}
+                            <tr>
+                                <td>{{ record.department }}</td>
+                                <td>{{ record.work_content|truncatechars:20 }}</td>
+                                <td>{{ record.status }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="empty-cell">📭 暂无数据</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="module-footer">
+                    <a href="{% url 'daily_record_list' %}" class="view-more-btn">查看更多</a>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 数据看板（Ant Design 风格，与首页统一） */
+    .dashboard-container {
+        margin-top: 0;
+    }
+
+    /* 概览卡片 */
+    .overview-card {
+        background: #ffffff;
+        border: none;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .overview-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .overview-title {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #1f2329;
+    }
+
+    .overview-meta {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .update-time {
+        color: #8c8c8c;
+        font-size: 0.875rem;
+    }
+
+    .refresh-btn {
+        background: #fff;
+        border: 1px solid #d9d9d9;
+        border-radius: 4px;
+        padding: 0.375rem 0.875rem;
+        color: #595959;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .refresh-btn:hover {
+        color: #1890ff;
+        border-color: #1890ff;
+    }
+
+    .overview-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+
+    .stat-item {
+        text-align: center;
+        padding: 1rem;
+        background: #fafafa;
+        border-radius: 8px;
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #1f2329;
+        margin-bottom: 0.25rem;
+    }
+
+    .pending-stat .stat-value { color: #f5222d; }
+
+    .stat-label {
+        font-size: 0.875rem;
+        color: #8c8c8c;
+    }
+
+    /* 待处理项目卡片 */
+    .pending-card {
+        background: #ffffff;
+        border: none;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .pending-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .pending-title {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .pending-title h3 {
+        margin: 0;
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #1f2329;
+    }
+
+    .pending-count {
+        background: #fff1f0;
+        color: #f5222d;
+        border-radius: 10px;
+        padding: 0.25rem 0.75rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+
+    .pending-filter {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .filter-btn {
+        background: #fff;
+        border: 1px solid #d9d9d9;
+        border-radius: 4px;
+        padding: 0.375rem 0.75rem;
+        color: #595959;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+    }
+
+    .filter-btn:hover {
+        color: #1890ff;
+        border-color: #1890ff;
+    }
+
+    .filter-btn.active {
+        background: #e6f7ff;
+        border-color: #91d5ff;
+        color: #1890ff;
+    }
+
+    /* 待处理数量徽章样式 */
+    .pending-card .badge {
+        background: #f5222d;
+        color: #fff;
+        border-radius: 10px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 4px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .pending-list {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .pending-list::-webkit-scrollbar { width: 6px; }
+    .pending-list::-webkit-scrollbar-track { background: #f5f5f5; border-radius: 3px; }
+    .pending-list::-webkit-scrollbar-thumb { background: #d9d9d9; border-radius: 3px; }
+
+    .pending-item {
+        display: flex;
+        align-items: center;
+        padding: 1rem;
+        margin-bottom: 0.5rem;
+        background: #fafafa;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        border-left: 3px solid transparent;
+    }
+
+    .pending-item:hover {
+        background: #e6f7ff;
+    }
+
+    .pending-item.daily { border-left-color: #1890ff; }
+    .pending-item.customer_complaint { border-left-color: #fa8c16; }
+    .pending-item.lawsuit { border-left-color: #f5222d; }
+
+    .pending-icon {
+        font-size: 1.5rem;
+        margin-right: 1rem;
+        flex-shrink: 0;
+    }
+
+    .pending-content { flex: 1; min-width: 0; }
+
+    .pending-title-text {
+        font-weight: 500;
+        margin-bottom: 0.25rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: #1f2329;
+    }
+
+    .pending-meta {
+        display: flex;
+        gap: 1rem;
+        font-size: 0.875rem;
+        color: #8c8c8c;
+        flex-wrap: wrap;
+    }
+
+    .pending-type {
+        background: #f0f0f0;
+        color: #595959;
+        padding: 0.125rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+    }
+
+    .pending-status {
+        padding: 0.125rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+    }
+
+    .pending-status.未完成 { background: #fff1f0; color: #f5222d; }
+    .pending-status.立案 { background: #fff7e6; color: #fa8c16; }
+    .pending-status.审理中 { background: #f5f5f5; color: #595959; }
+
+    .pending-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-left: 1rem;
+        flex-shrink: 0;
+    }
+
+    .action-btn {
+        background: #fff;
+        border: 1px solid #f0f0f0;
+        border-radius: 4px;
+        padding: 0.5rem;
+        color: #8c8c8c;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .action-btn:hover {
+        background: #e6f7ff;
+        color: #1890ff;
+        border-color: #91d5ff;
+    }
+
+    .pending-empty {
+        text-align: center;
+        padding: 2rem;
+        color: #bfbfbf;
+    }
+
+    .pending-footer {
+        display: flex;
+        justify-content: center;
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid #f0f0f0;
+    }
+
+    .view-all-btn {
+        background: #fff;
+        border: 1px solid #d9d9d9;
+        border-radius: 4px;
+        padding: 0.5rem 1.5rem;
+        color: #595959;
+        text-decoration: none;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .view-all-btn:hover {
+        color: #1890ff;
+        border-color: #1890ff;
+    }
+
+    /* 业务模块卡片 */
+    .modules-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .module-card {
+        background: #ffffff;
+        border: none;
+        border-radius: 8px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        transition: all 0.25s ease;
+    }
+
+    .module-card:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    }
+
+    .module-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .module-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 1rem;
+        background: #e6f7ff;
+        font-size: 1.25rem;
+        flex-shrink: 0;
+    }
+
+    .module-title {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #1f2329;
+    }
+
+    .module-status {
+        margin-left: auto;
+        padding: 0.25rem 0.75rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 400;
+    }
+
+    .status-normal { background: #f6ffed; color: #52c41a; border: 1px solid #b7eb8f; }
+    .status-warning { background: #fff7e6; color: #fa8c16; border: 1px solid #ffd591; }
+    .status-error { background: #fff1f0; color: #f5222d; border: 1px solid #ffa39e; }
+
+    .module-stats { margin-bottom: 1rem; }
+
+    .module-main-stat {
+        font-size: 2rem;
+        font-weight: 600;
+        color: #1f2329;
+        margin-bottom: 0.5rem;
+    }
+
+    .module-sub-stats {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .sub-stat {
+        flex: 1;
+        text-align: center;
+        padding: 0.5rem;
+        background: #fafafa;
+        border-radius: 6px;
+    }
+
+    .sub-stat-value {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #1f2329;
+    }
+
+    .sub-stat-label {
+        font-size: 0.75rem;
+        color: #8c8c8c;
+    }
+
+    /* 数据表格 */
+    .data-table {
+        margin-bottom: 1rem;
+        overflow-x: auto;
+    }
+
+    .data-table table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.875rem;
+    }
+
+    .data-table th {
+        background: #fafafa;
+        padding: 0.5rem;
+        text-align: left;
+        color: #595959;
+        font-weight: 500;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .data-table td {
+        padding: 0.5rem;
+        color: #595959;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .data-table tr:hover td { background: #fafafa; }
+
+    /* 查看更多按钮 */
+    .module-footer {
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    .view-more-btn {
+        background: #fff;
+        border: 1px solid #d9d9d9;
+        border-radius: 4px;
+        padding: 0.375rem 0.875rem;
+        color: #595959;
+        text-decoration: none;
+        font-size: 0.85rem;
+        transition: all 0.2s ease;
+    }
+
+    .view-more-btn:hover {
+        color: #1890ff;
+        border-color: #1890ff;
+        text-decoration: none;
+    }
+
+    /* 响应式设计 */
+    @media (max-width: 768px) {
+        .pending-header {
+            flex-direction: column;
+            gap: 1rem;
+            align-items: flex-start;
+        }
+
+        .pending-filter { flex-wrap: wrap; }
+        .pending-item { flex-wrap: wrap; }
+
+        .pending-actions {
+            margin-left: 0;
+            margin-top: 0.5rem;
+            width: 100%;
+            justify-content: flex-end;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 页面加载时设置当前时间
+        function setCurrentTime() {
+            const updateTime = document.getElementById('updateTime');
+            if (updateTime) {
+                const now = new Date();
+                const formattedTime = now.toLocaleString('zh-CN', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                }).replace(/\//g, '-');
+                updateTime.textContent = formattedTime;
+            }
+        }
+
+        // 页面加载完成后设置当前时间
+        document.addEventListener('DOMContentLoaded', setCurrentTime);
+
+        // 刷新数据功能
+        const refreshBtn = document.getElementById('refreshBtn');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', function() {
+                const updateTime = document.getElementById('updateTime');
+
+                // 显示加载状态
+                this.textContent = '刷新中...';
+                this.disabled = true;
+
+                // 重新加载页面以获取最新数据
+                setTimeout(function() {
+                    location.reload();
+                }, 500);
+            });
+        }
+
+        // 定时刷新时间显示（每秒更新）
+        setInterval(setCurrentTime, 1000);
+
+        // 待处理事项筛选功能
+        const filterButtons = document.querySelectorAll('.filter-btn');
+        const pendingItems = document.querySelectorAll('.pending-item');
+
+        filterButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                // 移除所有按钮的active状态
+                filterButtons.forEach(btn => btn.classList.remove('active'));
+                // 添加当前按钮的active状态
+                this.classList.add('active');
+
+                const filter = this.dataset.filter;
+
+                pendingItems.forEach(item => {
+                    if (filter === 'all' || item.dataset.type === filter) {
+                        item.style.display = 'flex';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
+        });
+
+        // 查看全部待处理事项按钮 - 展开/收起功能
+        const viewAllBtn = document.getElementById('viewAllPendingBtn');
+        const pendingCard = document.querySelector('.pending-card');
+        const pendingList = document.getElementById('pendingList');
+        const pendingCount = pendingCard ? parseInt(pendingCard.dataset.pendingCount) : 0;
+        if (viewAllBtn) {
+            viewAllBtn.addEventListener('click', function() {
+                const hiddenItems = document.querySelectorAll('.pending-hidden');
+                const isExpanded = viewAllBtn.classList.contains('expanded');
+
+                if (isExpanded) {
+                    // 收起：隐藏第11条之后的内容，恢复最大高度限制
+                    hiddenItems.forEach(item => {
+                        item.style.display = 'none';
+                    });
+                    pendingList.style.maxHeight = '400px';
+                    pendingList.style.overflowY = 'auto';
+                    viewAllBtn.textContent = '展开全部 ' + pendingCount + ' 条待处理事项 ▼';
+                    viewAllBtn.classList.remove('expanded');
+                } else {
+                    // 展开：显示所有内容，移除最大高度限制，让页面自适应
+                    hiddenItems.forEach(item => {
+                        item.style.display = 'flex';
+                    });
+                    pendingList.style.maxHeight = 'none';
+                    pendingList.style.overflowY = 'visible';
+                    viewAllBtn.textContent = '收起多余待处理事项 ▲';
+                    viewAllBtn.classList.add('expanded');
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,489 @@
+{% extends 'records/base.html' %}
+{% load static %}
+{% load accounts_tags %}
+
+{% block page_title %}每日工作记录管理网站{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <!-- 每日记录卡片 -->
+    {% can_view "daily_record" %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card" data-url="{% url 'daily_record_list' %}">
+            <div class="card-body card-daily">
+                <h5 class="card-title">每日记录</h5>
+                <div class="card-content">
+                    <div class="card-main">
+                        <div class="card-subtitle">总记录数</div>
+                        <div class="card-value">{{ total_daily_records }}</div>
+                    </div>
+                    <div class="card-stats">
+                        <div class="card-stat">
+                            <span class="card-stat-label">未完成</span>
+                            <span class="card-stat-value">{{ incomplete_daily_records_count|default:0 }}</span>
+                        </div>
+                    </div>
+                </div>
+                <div style="margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <span style="font-size: 0.7rem; color: #8c8c8c; white-space: nowrap;">近 7 天</span>
+                    <div class="trend-bars" style="height: 28px;">
+                        {% for d in weekly_trend %}
+                        <div class="trend-bar" title="{{ d.date }}：{{ d.c }} 条" data-h="{% widthratio d.c trend_max 28 %}"></div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endcan_view %}
+
+    <!-- 客户账期卡片 -->
+    {% can_view "customer_credit" %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card" data-url="{% url 'customer_credit_list' %}">
+            <div class="card-body card-credit">
+                <h5 class="card-title">客户账期</h5>
+                <div class="card-content">
+                    <div class="card-main">
+                        <div class="card-subtitle">总客户数</div>
+                        <div class="card-value">{{ total_customers }}</div>
+                    </div>
+                    <div class="card-stats">
+                        <div class="card-stat">
+                            <span class="card-stat-label">同意</span>
+                            <span class="card-stat-value">{{ agree_count }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endcan_view %}
+
+    <!-- 客户客诉卡片 -->
+    {% can_view "customer_complaint" %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card" data-url="{% url 'customer_complaint_list' %}">
+            <div class="card-body card-complaint">
+                <h5 class="card-title">客户客诉</h5>
+                <div class="card-content">
+                    <div class="card-main">
+                        <div class="card-subtitle">总客诉数</div>
+                        <div class="card-value">{{ total_complaints }}</div>
+                    </div>
+                    <div class="card-stats">
+                        <div class="card-stat">
+                            <span class="card-stat-label">未完成</span>
+                            <span class="card-stat-value">{{ incomplete_complaints }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endcan_view %}
+
+    <!-- 制度及处罚卡片 -->
+    {% can_view "regulation" %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card" data-url="{% url 'regulation_list' %}">
+            <div class="card-body card-regulation">
+                <h5 class="card-title">制度及处罚</h5>
+                <div class="card-content">
+                    <div class="card-main">
+                        <div class="card-subtitle">总制度数</div>
+                        <div class="card-value">{{ total_regulations }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endcan_view %}
+
+    <!-- 核价卡片 -->
+    {% can_view "price_evaluation" %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card" data-url="{% url 'price_evaluation_list' %}">
+            <div class="card-body card-price">
+                <h5 class="card-title">核价</h5>
+                <div class="card-content">
+                    <div class="card-main">
+                        <div class="card-subtitle">总核价数</div>
+                        <div class="card-value">{{ total_price_evaluations }}</div>
+                    </div>
+                    <div class="card-stats">
+                        <div class="card-stat">
+                            <span class="card-stat-label">核减金额</span>
+                            <span class="card-stat-value">¥{{ total_price_reduction|floatformat:2 }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endcan_view %}
+
+    <!-- 装修卡片 -->
+    {% can_view "decoration" %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card" data-url="{% url 'decoration_list' %}">
+            <div class="card-body card-decoration">
+                <h5 class="card-title">装修</h5>
+                <div class="card-content">
+                    <div class="card-main">
+                        <div class="card-subtitle">总装修数</div>
+                        <div class="card-value">{{ total_decorations }}</div>
+                    </div>
+                    <div class="card-stats">
+                        <div class="card-stat">
+                            <span class="card-stat-label">核减金额</span>
+                            <span class="card-stat-value">¥{{ decoration_reduced_total|default:0|floatformat:2 }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endcan_view %}
+</div>
+
+<!-- 未完成工作记录列表 -->
+{% can_view "daily_record" %}
+<div class="daily-records-section">
+    <h2 class="section-title">未完成工作记录 <a href="{% url 'daily_record_list' %}" class="section-link">查看全部 →</a></h2>
+    <div class="table-container">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>序号</th>
+                    <th>日期及时间</th>
+                    <th>提出部门</th>
+                    <th>工作内容</th>
+                    <th>工作状态</th>
+                    <th>工作进度</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in incomplete_daily_records %}
+                <tr {% if forloop.counter > 5 %}class="record-row" style="display: none;"{% endif %}>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ record.record_date|date:"Y-m-d H:i" }}</td>
+                    <td>{{ record.department }}</td>
+                    <td>{{ record.work_content|truncatechars:50 }}</td>
+                    <td>
+                        <span class="badge-transparent">{{ record.status }}</span>
+                    </td>
+                    <td>
+                        <div class="progress">
+                            <div class="progress-bar" role="progressbar" aria-valuenow="{{ record.progress }}" aria-valuemin="0" aria-valuemax="100" data-progress="{{ record.progress }}">
+                                {{ record.progress }}%
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        {% can "daily_record" "update" %}
+                        <a href="{% url 'daily_record_edit' record.pk %}" class="btn-transparent" data-modal-edit data-modal-title="编辑每日记录">编辑</a>
+                        {% endcan %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center py-4">暂无未完成的工作记录</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if incomplete_daily_records|length > 5 %}
+    <div class="mt-4" style="text-align: center;">
+        <button id="toggleIncompleteRecords" class="btn-transparent">
+            查看更多未完成记录 ▼
+        </button>
+    </div>
+    {% endif %}
+</div>
+{% endcan_view %}
+
+<!-- 金属价格行情 -->
+{% can_view "metal_price" %}
+<div class="metal-prices-section">
+    <h2 class="section-title">
+        <a href="{% url 'metal_price_detail' metal_name=metal_prices.0.metal_name|default:'1#铜' %}" class="metal-title-link" data-modal-detail data-modal-title="金属价格行情">金属价格行情</a> <a href="{% url 'metal_price_detail' metal_name=metal_prices.0.metal_name|default:'1#铜' %}" class="section-link" data-modal-detail data-modal-title="金属价格行情">查看全部 →</a>
+    </h2>
+    <p class="price-source">数据来源：长江有色金属网 ({{ metal_prices.0.crawl_date|default:"今日" }})</p>
+
+    <!-- 第一行金属（始终显示） -->
+    <div class="metal-prices-grid">
+        {% for metal in metal_prices %}
+        {% if forloop.counter0 < 5 %}
+        <div class="metal-price-card">
+            <div class="metal-header">
+                <span class="metal-name">{{ metal.metal_name }}</span>
+                <span class="metal-date">{{ metal.crawl_date|date:"m-d" }}</span>
+            </div>
+            <div class="metal-price-info">
+                <div class="price-change {% if metal.price_change > 0 %}price-up{% elif metal.price_change < 0 %}price-down{% else %}price-flat{% endif %}">
+                    {% if metal.price_change > 0 %}
+                        ▲ {{ metal.price_change|floatformat:0 }}
+                    {% elif metal.price_change < 0 %}
+                        ▼ {{ metal.price_change|floatformat:0 }}
+                    {% else %}
+                        - 0
+                    {% endif %}
+                </div>
+                <div class="metal-price">{{ metal.price|floatformat:0 }}</div>
+                <div class="metal-unit">{{ metal.unit }}</div>
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+
+    <!-- 更多金属（默认折叠） -->
+    {% if metal_prices|length > 4 %}
+    <div class="mt-4" style="text-align: center;">
+        <button id="toggleMetalPrices" class="btn-transparent">
+            查看更多金属价格 ▼
+        </button>
+        <div id="moreMetalPrices" class="metal-prices-grid mt-3" style="display: none;">
+            {% for metal in metal_prices %}
+            {% if forloop.counter0 >= 5 %}
+            <div class="metal-price-card">
+                <div class="metal-header">
+                    <span class="metal-name">{{ metal.metal_name }}</span>
+                    <span class="metal-date">{{ metal.crawl_date|date:"m-d" }}</span>
+                </div>
+                <div class="metal-price-info">
+                    <div class="price-change {% if metal.price_change > 0 %}price-up{% elif metal.price_change < 0 %}price-down{% else %}price-flat{% endif %}">
+                        {% if metal.price_change > 0 %}
+                            ▲ {{ metal.price_change|floatformat:0 }}
+                        {% elif metal.price_change < 0 %}
+                            ▼ {{ metal.price_change|floatformat:0 }}
+                        {% else %}
+                            - 0
+                        {% endif %}
+                    </div>
+                    <div class="metal-price">{{ metal.price|floatformat:0 }}</div>
+                    <div class="metal-unit">{{ metal.unit }}</div>
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endcan_view %}
+
+<!-- 未到期保险台账 -->
+{% can_view "insurance" %}
+<div class="metal-prices-section">
+    <h2 class="section-title">
+        <a href="{% url 'insurance_list' %}" class="metal-title-link">未到期保险台账</a> <a href="{% url 'insurance_list' %}" class="section-link">查看全部 →</a>
+    </h2>
+    <div class="table-container">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>序号</th>
+                    <th>公司名称</th>
+                    <th>标题</th>
+                    <th>截止日期</th>
+                    <th>是否已经到期</th>
+                    <th>部门</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for insurance in expiring_insurances %}
+                <tr {% if forloop.counter0 >= 5 %}class="insurance-more" style="display: none;"{% endif %}>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ insurance.company_name }}</td>
+                    <td>{{ insurance.title }}</td>
+                    <td>{{ insurance.end_date|date:"Y-m-d" }}</td>
+                    <td>{{ insurance.expired_days }}</td>
+                    <td>{{ insurance.department }}</td>
+                    <td>
+                        {% can "insurance" "update" %}
+                        <a href="{% url 'insurance_edit' insurance.pk %}" class="btn-transparent" data-modal-edit data-modal-title="编辑保险">编辑</a>
+                        {% endcan %}
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if expiring_insurances|length == 0 %}
+                <tr>
+                    <td colspan="7" class="text-center py-4">暂无未到期的保险</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if expiring_insurances|length > 5 %}
+    <div class="mt-4" style="text-align: center;">
+        <button id="toggleInsurance" class="btn-transparent">
+            查看更多未到期保险 ▼
+        </button>
+    </div>
+    {% endif %}
+</div>
+{% endcan_view %}
+
+<!-- 进度未完结诉讼 -->
+{% can_view "complaint" %}
+<div class="metal-prices-section">
+    <h2 class="section-title">
+        <a href="{% url 'complaint_list' %}" class="metal-title-link">进度未完结诉讼</a> <a href="{% url 'complaint_list' %}" class="section-link">查看全部 →</a>
+    </h2>
+    <div class="table-container">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>序号</th>
+                    <th>纠纷类型</th>
+                    <th>被告</th>
+                    <th>案号</th>
+                    <th>涉案金额（元）</th>
+                    <th>受理法院</th>
+                    <th>代理律师</th>
+                    <th>进度</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for litigation in incomplete_litigations %}
+                <tr {% if forloop.counter0 >= 5 %}class="litigation-more" style="display: none;"{% endif %}>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ litigation.dispute_type }}</td>
+                    <td>{{ litigation.defendant }}</td>
+                    <td>{{ litigation.case_number }}</td>
+                    <td>¥{{ litigation.amount|floatformat:2 }}</td>
+                    <td>{{ litigation.court }}</td>
+                    <td>{{ litigation.lawyer }}</td>
+                    <td>{{ litigation.progress }}</td>
+                    <td>
+                        {% can "complaint" "update" %}
+                        <a href="{% url 'complaint_edit' litigation.pk %}" class="btn-transparent" data-modal-edit data-modal-title="编辑诉讼">编辑</a>
+                        {% endcan %}
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if incomplete_litigations|length == 0 %}
+                <tr>
+                    <td colspan="9" class="text-center py-4">暂无进度未完结的诉讼案件</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if incomplete_litigations|length > 5 %}
+    <div class="mt-4" style="text-align: center;">
+        <button id="toggleLitigation" class="btn-transparent">
+            查看更多未完结诉讼 ▼
+        </button>
+    </div>
+    {% endif %}
+</div>
+{% endcan_view %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 金属价格折叠功能
+        const toggleButton = document.getElementById('toggleMetalPrices');
+        const moreMetalPrices = document.getElementById('moreMetalPrices');
+        if (toggleButton && moreMetalPrices) {
+            toggleButton.addEventListener('click', function() {
+                if (moreMetalPrices.style.display === 'none') {
+                    moreMetalPrices.style.display = 'grid';
+                    toggleButton.textContent = '收起更多金属价格 ▲';
+                } else {
+                    moreMetalPrices.style.display = 'none';
+                    toggleButton.textContent = '查看更多金属价格 ▼';
+                }
+            });
+        }
+
+        // 未到期保险折叠功能
+        const toggleInsuranceButton = document.getElementById('toggleInsurance');
+        if (toggleInsuranceButton) {
+            toggleInsuranceButton.addEventListener('click', function() {
+                const moreRows = document.querySelectorAll('.insurance-more');
+                const isExpanded = moreRows.length > 0 && moreRows[0].style.display !== 'none';
+                moreRows.forEach(row => { row.style.display = isExpanded ? 'none' : ''; });
+                toggleInsuranceButton.textContent = isExpanded ? '查看更多未到期保险 ▼' : '收起更多未到期保险 ▲';
+            });
+        }
+
+        // 未完结诉讼折叠功能
+        const toggleLitigationButton = document.getElementById('toggleLitigation');
+        if (toggleLitigationButton) {
+            toggleLitigationButton.addEventListener('click', function() {
+                const moreRows = document.querySelectorAll('.litigation-more');
+                const isExpanded = moreRows.length > 0 && moreRows[0].style.display !== 'none';
+                moreRows.forEach(row => { row.style.display = isExpanded ? 'none' : ''; });
+                toggleLitigationButton.textContent = isExpanded ? '查看更多未完结诉讼 ▼' : '收起更多未完结诉讼 ▲';
+            });
+        }
+
+        // 未完成工作记录折叠功能
+        const toggleRecordsButton = document.getElementById('toggleIncompleteRecords');
+        const recordRows = document.querySelectorAll('.record-row');
+        if (toggleRecordsButton && recordRows.length > 0) {
+            let isExpanded = false;
+            toggleRecordsButton.addEventListener('click', function() {
+                const originalText = toggleRecordsButton.textContent;
+                toggleRecordsButton.textContent = '加载中...';
+                toggleRecordsButton.disabled = true;
+                setTimeout(() => {
+                    if (!isExpanded) {
+                        recordRows.forEach((row, index) => {
+                            setTimeout(() => {
+                                row.style.opacity = '0';
+                                row.style.display = 'table-row';
+                                setTimeout(() => {
+                                    row.style.transition = 'opacity 0.3s ease';
+                                    row.style.opacity = '1';
+                                }, 10);
+                            }, index * 50);
+                        });
+                        toggleRecordsButton.textContent = '收起未完成记录 ▲';
+                    } else {
+                        recordRows.forEach((row, index) => {
+                            setTimeout(() => {
+                                row.style.transition = 'opacity 0.3s ease';
+                                row.style.opacity = '0';
+                                setTimeout(() => { row.style.display = 'none'; }, 300);
+                            }, (recordRows.length - index - 1) * 50);
+                        });
+                        toggleRecordsButton.textContent = '查看更多未完成记录 ▼';
+                    }
+                    isExpanded = !isExpanded;
+                    toggleRecordsButton.disabled = false;
+                }, 300);
+            });
+        }
+    });
+
+    // 设置进度条宽度和卡片点击事件
+    window.addEventListener('load', function() {
+        const progressBars = document.querySelectorAll('.progress-bar');
+        progressBars.forEach(bar => {
+            const progress = bar.getAttribute('data-progress');
+            if (progress) { bar.style.width = progress + '%'; }
+        });
+        const cards = document.querySelectorAll('.card[data-url]');
+        cards.forEach(card => {
+            card.addEventListener('click', function() {
+                const url = this.getAttribute('data-url');
+                if (url) { window.location.href = url; }
+            });
+            card.style.cursor = 'pointer';
+        });
+    });
+</script>
+{% endblock %}

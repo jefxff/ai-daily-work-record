@@ -1,0 +1,9 @@
+{% extends "records/base.html" %}
+{% block page_title %}移动档案{% endblock %}
+{% block content %}
+<div class="container" style="max-width:600px">
+    <h1 class="page-title mb-4">移动档案 - {{ archive.code }}</h1>
+    <p class="text-muted">当前位置：{{ archive.location_path }}</p>
+    {% include "archive/_archive_form_modal.html" %}
+</div>
+{% endblock %}

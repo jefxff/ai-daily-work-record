@@ -1,0 +1,12 @@
+<div class="detail-card">
+    <div class="detail-row"><div class="detail-label">公司名称：</div><div class="detail-value">{{ insurance.company_name }}</div></div>
+    <div class="detail-row"><div class="detail-label">标题：</div><div class="detail-value">{{ insurance.title }}</div></div>
+    <div class="detail-row"><div class="detail-label">单号：</div><div class="detail-value">{{ insurance.order_number|default:"无" }}</div></div>
+    <div class="detail-row"><div class="detail-label">保费：</div><div class="detail-value">¥{{ insurance.premium }}</div></div>
+    <div class="detail-row"><div class="detail-label">签发日期：</div><div class="detail-value">{{ insurance.issue_date|date:'Y-m-d' }}</div></div>
+    <div class="detail-row"><div class="detail-label">截止日期：</div><div class="detail-value">{{ insurance.end_date|date:'Y-m-d' }}</div></div>
+    <div class="detail-row"><div class="detail-label">是否已经到期：</div><div class="detail-value">{{ insurance.expired_days }}</div></div>
+    <div class="detail-row"><div class="detail-label">部门：</div><div class="detail-value">{{ insurance.department }}</div></div>
+    <div class="detail-row"><div class="detail-label">备注：</div><div class="detail-value">{{ insurance.remarks|default:"无" }}</div></div>
+</div>
+<style>#formModal.form-modal { width: 720px; }</style>

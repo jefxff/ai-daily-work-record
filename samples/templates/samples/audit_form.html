@@ -1,0 +1,36 @@
+{% extends "records/base.html" %}
+
+{% block page_title %}{% if record %}编辑审厂记录{% else %}新增审厂记录{% endif %} - 试样管理{% endblock %}
+
+{% block extra_css %}
+<style>
+    .field-error { color: #f5222d; font-size: 0.8rem; margin-top: 0.25rem; }
+    .form-hint { color: #8c8c8c; font-size: 0.8rem; margin-top: 0.25rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <h1 class="form-title">{% if record %}编辑第 {{ record.round_no }} 轮审厂记录{% else %}新增第 {{ next_round }} 轮审厂记录{% endif %}</h1>
+    <p style="color:#8c8c8c; font-size:0.875rem; margin-top:-0.75rem; margin-bottom:1.25rem;">
+        供应商：<a href="{% url 'samples:partner_detail' partner.pk %}">{{ partner.name }}</a>（{{ partner.partner_code }}）
+    </p>
+    <form method="POST" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+        {% for field in form.visible_fields %}
+        <div class="form-group">
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}</label>
+            {{ field }}
+            {% if field.help_text %}<div class="form-hint">{{ field.help_text }}</div>{% endif %}
+            {% for error in field.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+        </div>
+        {% endfor %}
+        <div class="form-actions">
+            <a class="btn-secondary" href="{% url 'samples:partner_detail' partner.pk %}">返回供应商</a>
+            <button type="submit" class="btn-primary">保存</button>
+        </div>
+    </form>
+</div>
+
+{% include "samples/_toast.html" %}
+{% endblock %}

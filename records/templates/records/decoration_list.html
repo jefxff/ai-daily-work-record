@@ -1,0 +1,262 @@
+{% extends 'records/base.html' %}
+{% load static %}
+{% load accounts_tags %}
+
+{% block page_title %}装修列表 - 每日工作记录管理网站{% endblock %}
+
+{% block top_nav_actions %}
+    <form class="d-flex gap-2" method="GET" id="searchForm">
+        <input class="search-input" type="search" placeholder="搜索项目名称或施工方" name="search" value="{{ search_term }}">
+        <button class="btn-transparent" type="submit">搜索</button>
+    </form>
+    <div class="filter-container">
+        <button class="btn-transparent" id="filterBtn">
+            <span>筛选</span>
+        </button>
+        <div class="filter-dropdown" id="filterDropdown">
+            <h4>筛选条件</h4>
+            <form id="filterForm" method="GET">
+                <input type="hidden" name="search" value="{{ search_term }}">
+                <div class="filter-group">
+                    <label>施工方</label>
+                    <select id="constructorSelect" name="constructor">
+                        <option value="">全部施工方</option>
+                        {% for constructor in constructors %}
+                        <option value="{{ constructor }}" {% if constructor_filter == constructor %}selected{% endif %}>{{ constructor }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-actions">
+                    <button type="button" class="filter-reset" id="resetFilter">重置</button>
+                    <button type="submit" class="filter-apply">应用筛选</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% can "decoration" "create" %}
+    <a href="{% url 'decoration_add' %}" class="btn-transparent" data-modal-add data-modal-title="新增装修">新增装修</a>
+    {% endcan %}
+    <a href="{% url 'decoration_export' %}" class="btn-transparent">下载Excel</a>
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h2>装修记录<span class="total-hint">共 {{ decorations.paginator.count }} 条记录</span></h2>
+        <div class="filter-chips">
+            {% if search_term %}
+            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'search' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">搜索：{{ search_term }} ✕</a>
+            {% endif %}
+            {% if constructor_filter %}
+            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'constructor' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">施工方：{{ constructor_filter }} ✕</a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="table-container">
+        <div class="table-responsive">
+            <table class="table table-sticky">
+                <thead>
+                    <tr>
+                        <th class="col-optional">序号</th>
+                        <th>项目名称</th>
+                        <th>施工方</th>
+                        <th>项目地址</th>
+                        <th>开工日期</th>
+                        <th>原价</th>
+                        <th>核后价</th>
+                        <th>核减金额</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for decoration in decorations %}
+                    <tr>
+                        <td class="col-optional">{{ forloop.counter }}</td>
+                        <td>{{ decoration.project_name }}</td>
+                        <td>{{ decoration.constructor }}</td>
+                        <td title="{{ decoration.project_address|default:'' }}">{{ decoration.project_address|default:'' }}</td>
+                        <td>{{ decoration.start_date|date:'Y-m-d' }}</td>
+                        <td>¥{{ decoration.original_price|default:0|floatformat:2 }}</td>
+                        <td>¥{{ decoration.final_price|floatformat:2 }}</td>
+                        <td>{% if decoration.reduced_price and decoration.reduced_price > 0 %}<span class="reduced-amt">¥{{ decoration.reduced_price|floatformat:2 }}</span>{% else %}¥{{ decoration.reduced_price|default:0|floatformat:2 }}{% endif %}</td>
+                        <td>
+                            <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                                <a href="{% url 'decoration_detail' decoration.id %}" class="btn-transparent btn-sm" data-modal-detail data-modal-title="装修详情">详细</a>
+                                {% can "decoration" "update" %}
+                                <a href="{% url 'decoration_edit' decoration.id %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑装修">编辑</a>
+                                {% endcan %}
+                                {% can "decoration" "delete" %}
+                                <a href="{% url 'decoration_delete' decoration.id %}" class="btn-transparent btn-sm btn-delete" onclick="return confirm('确定要删除这条记录吗？');">删除</a>
+                                {% endcan %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="empty-cell">📭 暂无数据</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if decorations.has_other_pages %}
+        <div class="pagination-info">
+            <span>共 {{ decorations.paginator.count }} 条 · 第 {{ decorations.number }} / {{ decorations.paginator.num_pages }} 页</span>
+            <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                <form method="GET" style="display: flex; align-items: center; gap: 0.4rem;">
+                    {% for k, v in request.GET.items %}{% if k != 'per_page' and k != 'page' %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endif %}{% endfor %}
+                    <label style="font-size: 13px;">每页</label>
+                    <select class="per-page-select" name="per_page" onchange="this.form.submit()">
+                        <option value="10" {% if decorations.paginator.per_page == 10 %}selected{% endif %}>10</option>
+                        <option value="30" {% if decorations.paginator.per_page == 30 %}selected{% endif %}>30</option>
+                        <option value="50" {% if decorations.paginator.per_page == 50 %}selected{% endif %}>50</option>
+                    </select>
+                    <span style="font-size: 13px;">条</span>
+                </form>
+                <ul class="pagination">
+                    {% if decorations.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ decorations.previous_page_number }}">&laquo;</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled"><a class="page-link" href="#">&laquo;</a></li>
+                    {% endif %}
+                    {% for num in decorations.paginator.page_range %}
+                    {% if decorations.number == num %}
+                    <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+                    {% else %}
+                    <li class="page-item"><a class="page-link" href="?{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ num }}">{{ num }}</a></li>
+                    {% endif %}
+                    {% endfor %}
+                    {% if decorations.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ decorations.next_page_number }}">&raquo;</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled"><a class="page-link" href="#">&raquo;</a></li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 表格紧凑行高 + 单行省略 + 金额等宽数字 */
+    .table thead th, .table tbody td { padding: 10px 12px !important; font-size: 13px; }
+    .table tbody td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
+    .table tbody td:last-child { overflow: visible; }
+    .table td { font-variant-numeric: tabular-nums; }
+    .reduced-amt { color: #f5222d; font-weight: 600; }
+
+    /* 筛选下拉 */
+    .filter-container { position: relative; display: inline-block; }
+    .filter-dropdown {
+        position: absolute;
+        top: calc(100% + 0.5rem);
+        right: 0;
+        background: #ffffff !important;
+        border: 1px solid #f0f0f0 !important;
+        border-radius: 8px !important;
+        box-shadow: 0 6px 16px rgba(0,0,0,0.08) !important;
+        padding: 1rem;
+        min-width: 280px;
+        z-index: 1000;
+        display: none;
+    }
+    .filter-dropdown.show { display: block; }
+    .filter-dropdown h4 {
+        color: #1f2329 !important;
+        margin: 0 0 1rem 0;
+        font-size: 0.95rem;
+        font-weight: 600;
+        border-bottom: 1px solid #f0f0f0;
+        padding-bottom: 0.5rem;
+    }
+    .filter-group { margin-bottom: 1rem; }
+    .filter-group label {
+        display: block;
+        color: #595959 !important;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+    }
+    .filter-group select {
+        width: 100%;
+        padding: 0.375rem 0.75rem;
+        border: 1px solid #f0f0f0 !important;
+        border-radius: 4px !important;
+        background: #fff !important;
+        color: #1f2329 !important;
+        font-size: 0.85rem;
+        cursor: pointer;
+    }
+    .filter-group select:focus {
+        outline: none;
+        border-color: #1890ff !important;
+    }
+    .filter-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid #f0f0f0;
+    }
+    .filter-actions button {
+        flex: 1;
+        padding: 0.375rem;
+        border: none;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        font-weight: 400;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .filter-apply { background: #1890ff !important; color: #fff !important; }
+    .filter-apply:hover { background: #40a9ff !important; }
+    .filter-reset { background: #f5f5f5 !important; color: #595959 !important; }
+    .filter-reset:hover { background: #d9d9d9 !important; }
+
+    /* 删除按钮 */
+    .btn-delete {
+        background: #fff1f0 !important;
+        color: #f5222d !important;
+        border: 1px solid #ffccc7 !important;
+    }
+    .btn-delete:hover {
+        background: #f5222d !important;
+        color: #fff !important;
+        border-color: #f5222d !important;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const filterBtn = document.getElementById('filterBtn');
+        const filterDropdown = document.getElementById('filterDropdown');
+        if (filterBtn && filterDropdown) {
+            filterBtn.addEventListener('click', function(event) {
+                event.stopPropagation();
+                filterDropdown.classList.toggle('show');
+            });
+        }
+        const resetFilter = document.getElementById('resetFilter');
+        const filterForm = document.getElementById('filterForm');
+        if (resetFilter && filterForm) {
+            resetFilter.addEventListener('click', function() {
+                document.getElementById('constructorSelect').value = '';
+                filterForm.submit();
+            });
+        }
+        document.addEventListener('click', function(event) {
+            if (!event.target.closest('#filterBtn') && !event.target.closest('#filterDropdown')) {
+                if (filterDropdown) filterDropdown.classList.remove('show');
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,118 @@
+{% extends "records/base.html" %}
+{% load accounts_tags %}
+
+{% block page_title %}供应商档案 - 试样管理{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-bar { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 1rem 1.25rem; margin-bottom: 1.25rem; }
+    .filter-form { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>供应商档案<span class="total-hint">共 {{ page_obj.paginator.count }} 条</span></h2>
+    <div class="filter-chips">
+        {% can "samples" "create" %}
+        <a class="btn-primary" href="{% url 'samples:partner_create' %}" data-modal-add data-modal-title="新增供应商档案">＋ 新增供应商</a>
+        {% endcan %}
+    </div>
+</div>
+
+<div class="filter-bar">
+    <form method="GET" class="filter-form">
+        <input type="text" class="form-control search-input" style="width:240px;" name="keyword" value="{{ keyword }}" placeholder="名称 / 编号 / 联系人">
+        <select name="status" class="form-select" style="width:130px;">
+            <option value="">全部状态</option>
+            {% for key, label in status_choices %}
+            <option value="{{ key }}" {% if status == key %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="btn-primary">查询</button>
+        <a class="btn-secondary" href="{% url 'samples:partner_list' %}">重置</a>
+    </form>
+</div>
+
+<div class="table-container">
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>档案编号</th>
+                    <th>名称</th>
+                    <th>联系人</th>
+                    <th>联系方式</th>
+                    <th>合作状态</th>
+                    <th>创建时间</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for partner in page_obj %}
+                <tr>
+                    <td>{{ partner.partner_code }}</td>
+                    <td><a href="{% url 'samples:partner_detail' partner.pk %}" data-modal-detail data-modal-title="{{ partner.name }} 档案">{{ partner.name }}</a></td>
+                    <td>{{ partner.contact_person|default:'—' }}</td>
+                    <td>{{ partner.contact_info|default:'—' }}</td>
+                    <td><span class="status-badge {{ partner.status_badge }}">{{ partner.get_status_display }}</span></td>
+                    <td>{{ partner.created_at|date:'Y-m-d' }}</td>
+                    <td>
+                        <div style="display:flex; gap:0.25rem; align-items:center; flex-wrap:nowrap;">
+                            <a href="{% url 'samples:partner_detail' partner.pk %}" class="btn-transparent btn-sm" data-modal-detail data-modal-title="{{ partner.name }} 档案">详细</a>
+                            {% can "samples" "update" %}
+                            <a href="{% url 'samples:partner_edit' partner.pk %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑供应商档案">编辑</a>
+                            {% endcan %}
+                            {% can "samples" "delete" %}
+                            <a href="{% url 'samples:partner_delete' partner.pk %}" class="btn-transparent btn-sm btn-delete">删除</a>
+                            {% endcan %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="empty-cell">📭 暂无供应商档案</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if page_obj.has_other_pages %}
+    <div class="pagination-info">
+        <span>共 {{ page_obj.paginator.count }} 条 · 第 {{ page_obj.number }} / {{ page_obj.paginator.num_pages }} 页</span>
+        <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+            <form method="GET" style="display: flex; align-items: center; gap: 0.4rem;">
+                {% for k, v in request.GET.items %}{% if k != 'per_page' and k != 'page' %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endif %}{% endfor %}
+                <label style="font-size: 13px;">每页</label>
+                <select class="per-page-select" name="per_page" onchange="this.form.submit()">
+                    <option value="10" {% if page_obj.paginator.per_page == 10 %}selected{% endif %}>10</option>
+                    <option value="30" {% if page_obj.paginator.per_page == 30 %}selected{% endif %}>30</option>
+                    <option value="50" {% if page_obj.paginator.per_page == 50 %}selected{% endif %}>50</option>
+                </select>
+                <span style="font-size: 13px;">条</span>
+            </form>
+            <ul class="pagination">
+                {% if page_obj.has_previous %}
+                <li class="page-item"><a class="page-link" href="?{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}">&laquo;</a></li>
+                {% else %}
+                <li class="page-item disabled"><a class="page-link" href="#">&laquo;</a></li>
+                {% endif %}
+                {% for num in page_obj.paginator.page_range %}
+                {% if num == page_obj.number %}
+                <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+                {% elif num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+                <li class="page-item"><a class="page-link" href="?{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ num }}">{{ num }}</a></li>
+                {% endif %}
+                {% endfor %}
+                {% if page_obj.has_next %}
+                <li class="page-item"><a class="page-link" href="?{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ page_obj.next_page_number }}">&raquo;</a></li>
+                {% else %}
+                <li class="page-item disabled"><a class="page-link" href="#">&raquo;</a></li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% include "samples/_toast.html" %}
+{% endblock %}

@@ -1,0 +1,130 @@
+{% extends "records/base.html" %}
+
+{% block page_title %}操作留痕 - 试样管理{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-bar { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 1rem 1.25rem; margin-bottom: 1.25rem; }
+    .filter-form { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>操作留痕<span class="total-hint">共 {{ page_obj.paginator.count }} 条</span></h2>
+    <div class="filter-chips">
+        {% if keyword %}
+        <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'keyword' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">关键字：{{ keyword }} ✕</a>
+        {% endif %}
+        {% if action %}
+        <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'action' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">操作类型：{{ action }} ✕</a>
+        {% endif %}
+        {% if target_type %}
+        <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'target_type' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">对象：{{ target_type }} ✕</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="filter-bar">
+    <form method="GET" class="filter-form">
+        <input type="text" class="form-control search-input" style="width:240px;" name="keyword" value="{{ keyword }}" placeholder="对象标识 / 操作摘要">
+        <select name="action" class="form-select" style="width:140px;">
+            <option value="">全部类型</option>
+            {% for value, label in action_choices %}
+            <option value="{{ value }}" {% if action == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        <select name="target_type" class="form-select" style="width:150px;">
+            <option value="">全部对象</option>
+            <option value="样品主档" {% if target_type == '样品主档' %}selected{% endif %}>样品主档</option>
+            <option value="试样记录" {% if target_type == '试样记录' %}selected{% endif %}>试样记录</option>
+            <option value="小批量记录" {% if target_type == '小批量记录' %}selected{% endif %}>小批量记录</option>
+            <option value="供应商档案" {% if target_type == '供应商档案' %}selected{% endif %}>供应商档案</option>
+        </select>
+        <button type="submit" class="btn-primary">查询</button>
+        <a class="btn-secondary" href="{% url 'samples:log_list' %}">重置</a>
+    </form>
+</div>
+
+<div class="table-container">
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>操作时间</th>
+                    <th>操作人</th>
+                    <th>类型</th>
+                    <th>对象类型</th>
+                    <th>对象标识</th>
+                    <th>变更摘要</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in page_obj %}
+                <tr>
+                    <td style="white-space:nowrap;">{{ log.created_at|date:'Y-m-d H:i:s' }}</td>
+                    <td>{{ log.operator|default:'系统' }}</td>
+                    <td>
+                        {% if log.action == 'create' %}
+                        <span class="status-badge success">新增</span>
+                        {% elif log.action == 'update' %}
+                        <span class="status-badge info">编辑</span>
+                        {% elif log.action == 'delete' %}
+                        <span class="status-badge danger">删除</span>
+                        {% elif log.action == 'status' %}
+                        <span class="status-badge warning">状态变更</span>
+                        {% else %}
+                        <span class="status-badge default">{{ log.action }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ log.target_type }}</td>
+                    <td style="max-width:220px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="{{ log.target_repr }}">{{ log.target_repr }}</td>
+                    <td style="max-width:420px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="{{ log.summary }}">{{ log.summary|default:'—' }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="empty-cell">📭 暂无操作留痕记录</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if page_obj.has_other_pages %}
+    <div class="pagination-info">
+        <span>共 {{ page_obj.paginator.count }} 条 · 第 {{ page_obj.number }} / {{ page_obj.paginator.num_pages }} 页</span>
+        <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+            <form method="GET" style="display: flex; align-items: center; gap: 0.4rem;">
+                {% for k, v in request.GET.items %}{% if k != 'per_page' and k != 'page' %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endif %}{% endfor %}
+                <label style="font-size: 13px;">每页</label>
+                <select class="per-page-select" name="per_page" onchange="this.form.submit()">
+                    <option value="10" {% if page_obj.paginator.per_page == 10 %}selected{% endif %}>10</option>
+                    <option value="30" {% if page_obj.paginator.per_page == 30 %}selected{% endif %}>30</option>
+                    <option value="50" {% if page_obj.paginator.per_page == 50 %}selected{% endif %}>50</option>
+                </select>
+                <span style="font-size: 13px;">条</span>
+            </form>
+            <ul class="pagination">
+                {% if page_obj.has_previous %}
+                <li class="page-item"><a class="page-link" href="?{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}">&laquo;</a></li>
+                {% else %}
+                <li class="page-item disabled"><a class="page-link" href="#">&laquo;</a></li>
+                {% endif %}
+                {% for num in page_obj.paginator.page_range %}
+                {% if num == page_obj.number %}
+                <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+                {% elif num >= page_obj.number|add:'-2' and num <= page_obj.number|add:'2' %}
+                <li class="page-item"><a class="page-link" href="?{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ num }}">{{ num }}</a></li>
+                {% endif %}
+                {% endfor %}
+                {% if page_obj.has_next %}
+                <li class="page-item"><a class="page-link" href="?{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ page_obj.next_page_number }}">&raquo;</a></li>
+                {% else %}
+                <li class="page-item disabled"><a class="page-link" href="#">&raquo;</a></li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% include "samples/_toast.html" %}
+{% endblock %}

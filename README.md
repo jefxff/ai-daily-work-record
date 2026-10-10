@@ -1,0 +1,130 @@
+# AI Daily Work Record 项目
+
+## 项目概述
+这是一个基于Django的每日工作记录管理系统，包含装修管理、客户账期、客户客诉、制度及处罚、核价管理等功能。
+
+## 技术栈
+- **后端**: Django 4.2.10
+- **前端**: Bootstrap 5 + Chart.js
+- **数据库**: SQLite
+- **API**: Django REST Framework
+
+## 项目结构
+```
+项目根目录/
+├── scripts/           # 工具脚本目录
+│   └── windows/       # Windows专用启动脚本
+├── logs/              # 日志文件目录（.gitignore 忽略）
+├── work_record/       # Django项目配置
+├── accounts/          # 认证与RBAC权限模块
+├── records/           # 主应用模块（装修/客诉/核价等）
+├── knowledge_base/    # 知识库模块
+├── samples/           # 试样管理模块
+├── archive/           # 档案管理模块（柜/层/格定位、借阅、二维码）
+├── ai_api/            # AI API模块
+├── static/            # 静态资源
+└── media/             # 用户上传文件
+```
+
+## 快速开始
+
+### 环境要求
+- Python 3.8+
+- Django 4.2.10
+- 其他依赖见 requirements.txt
+
+### 安装依赖
+```bash
+pip install -r requirements.txt
+```
+
+### 启动项目
+- Windows 一键启动: `scripts/windows/start_windows.bat`
+- 直接启动（推荐）: `python manage.py runserver 0.0.0.0:8080`
+- 访问地址: http://127.0.0.1:8080/  （登录页 /accounts/login/）
+
+### RBAC 验收账号
+项目内置 4 个验收账号（密码均为 `X12345678`）：
+- `rbac_root` — 超级管理员（47 权限）
+- `rbac_admin` — 管理员（33 权限，无删除/系统）
+- `rbac_staff` — 普通员工（33 权限）
+- `rbac_viewer` — 只读用户（12 权限）
+
+注册账号默认 `is_active=False`，需管理员在 /accounts/users/ 审核激活。
+
+## 功能模块
+
+### 核心功能
+1. **装修管理** - 装修项目记录和管理
+2. **客户账期** - 客户信用评估和账期管理
+3. **客户客诉** - 客户投诉处理记录
+4. **制度及处罚** - 公司制度和处罚记录
+5. **核价管理** - 价格评估和供应商管理
+6. **金属价格** - 实时金属价格监控
+7. **档案管理** - 档案柜/层/格物理定位、电子档案、借阅归还、二维码、批量导入导出（验收前仅超级管理员可见）
+
+### 档案管理模块说明
+
+- **入口**：左侧「试样管理」→「档案管理」（仅超级管理员可见）
+- **核心功能**：
+  - 档案总览：仪表盘（柜数/档案数/空位数/占用率/逾期数）+ 按柜展示层×格网格，颜色区分已存放/空位/已借出，点击空位直接录入
+  - 档案详情：完整路径、基本信息、电子文件预览下载、位置二维码、借阅历史、操作历史
+  - 档案柜 CRUD：支持 2/4/6/8 层、每层格数自定义
+  - 档案 CRUD + 跨空位移动（自动检测目标格占用）
+  - 树形类别管理 + 标签检索
+  - 借阅登记/归还，逾期自动标记，状态筛选
+  - CSV 批量导入导出、操作日志全链路追溯
+- **权限**：验收前通过 `accounts/registry.py` 的 `SUPERUSER_ONLY_MODULES` 限制仅超管可见；验收后从该列表移除 `archive` 并执行 `python manage.py sync_rbac` 即可对普通角色开放
+- **数据模型**：Cabinet / Category / Archive / BorrowRecord（操作日志复用 records.OperationLog）
+
+### API接口
+项目提供REST API接口，详见 `ai_api/` 模块。
+
+## 开发说明
+
+### 代码规范
+- 遵循PEP 8编码规范
+- 使用类型提示
+- 添加适当的注释和文档
+
+### 测试
+运行测试：`python manage.py test`
+
+### 部署
+
+**本地启动**
+```bash
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver 0.0.0.0:8080
+```
+
+**Docker 一键启动**
+```bash
+docker-compose up --build
+# 访问 http://localhost:8080/
+```
+`docker-compose.yml` 包含 web + redis（Celery 异步任务预留）。
+
+**档案管理验收后开放普通角色权限**
+```bash
+# 1. 编辑 accounts/registry.py，从 SUPERUSER_ONLY_MODULES 移除 "archive"
+# 2. 同步权限到数据库
+python manage.py sync_rbac
+```
+
+## 维护说明
+
+### 数据备份
+定期备份数据库文件 `db.sqlite3`
+
+### 日志管理
+日志文件保存在 `logs/` 目录
+
+### 监控
+监控系统运行状态和性能指标
+
+---
+**项目版本**: 1.0.0  
+**最后更新**: 2026-04-29  
+**维护团队**: 开发团队

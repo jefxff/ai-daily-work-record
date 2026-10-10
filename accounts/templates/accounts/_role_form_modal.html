@@ -1,0 +1,122 @@
+<form method="post" data-modal-form action="{{ request.path }}">
+    {% csrf_token %}
+
+    {% if form.code.errors or form.non_field_errors %}
+    <div class="ac-modal-alert">{{ form.code.errors|join:'；' }}{{ form.non_field_errors|join:'；' }}</div>
+    {% endif %}
+
+    <div style="display:flex; gap:1rem; flex-wrap:wrap;">
+        <div class="ac-field" style="flex:1; min-width:200px;">
+            <label class="form-label">{{ form.code.label }}</label>
+            {% if mode == 'edit' %}
+            <input type="text" class="form-control" value="{{ role.code }}" disabled>
+            <input type="hidden" name="code" value="{{ role.code }}">
+            {% else %}
+            <input type="text" name="code" class="form-control" value="{{ form.code.value|default:'' }}" maxlength="50" required>
+            <div class="ac-help">{{ form.code.help_text }}</div>
+            {% endif %}
+        </div>
+        <div class="ac-field" style="flex:1; min-width:200px;">
+            <label class="form-label">{{ form.name.label }}</label>
+            {% if mode == 'edit' and role.is_builtin %}
+            <input type="text" class="form-control" value="{{ role.name }}" disabled>
+            <input type="hidden" name="name" value="{{ role.name }}">
+            {% else %}
+            <input type="text" name="name" class="form-control" value="{{ form.name.value|default:'' }}" maxlength="50" required>
+            {% endif %}
+        </div>
+    </div>
+    <div class="ac-field">
+        <label class="form-label">{{ form.description.label }}</label>
+        {% if mode == 'edit' and role.is_builtin %}
+        <textarea class="form-control" rows="2" disabled>{{ role.description }}</textarea>
+        <input type="hidden" name="description" value="{{ role.description }}">
+        {% else %}
+        <textarea name="description" class="form-control" rows="2">{{ form.description.value|default:'' }}</textarea>
+        {% endif %}
+    </div>
+    <div class="ac-field">
+        {% if mode == 'edit' and role.is_builtin %}
+        <label class="ac-check">
+            <input type="checkbox" class="form-check-input" {% if role.is_active %}checked{% endif %} disabled>
+            {{ form.is_active.label }}
+            <input type="hidden" name="is_active" value="{% if role.is_active %}on{% endif %}">
+            <span class="ac-desc">（内置角色基础信息不可修改）</span>
+        </label>
+        {% else %}
+        <label class="ac-check">
+            <input type="checkbox" name="is_active" class="form-check-input"
+                   {% if mode == 'create' or form.is_active.value %}checked{% endif %}>
+            {{ form.is_active.label }}
+        </label>
+        {% endif %}
+    </div>
+
+    <div style="border-top:1px solid #f0f0f0; margin:0.5rem 0 0.9rem; padding-top:0.9rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.75rem;">
+            <strong style="font-size:0.92rem;">权限矩阵</strong>
+            {% if mode == 'create' or not role.is_builtin %}
+            <div style="display:flex; gap:0.5rem;">
+                <button type="button" class="btn-transparent btn-sm" data-check-all=".perm-cb">全部勾选</button>
+                <button type="button" class="btn-transparent btn-sm" data-uncheck-all=".perm-cb">全部清除</button>
+            </div>
+            {% else %}
+            <span class="ac-desc">内置角色权限由系统统一定义，仅供查看</span>
+            {% endif %}
+        </div>
+        <div style="overflow-x:auto;">
+            <table class="table" style="min-width:520px; margin-bottom:0;">
+                <thead>
+                    <tr>
+                        <th style="min-width:180px;">模块</th>
+                        <th style="width:72px; text-align:center;">新增</th>
+                        <th style="width:72px; text-align:center;">读取</th>
+                        <th style="width:72px; text-align:center;">编辑</th>
+                        <th style="width:72px; text-align:center;">删除</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in matrix %}
+                    <tr {% if m.is_system %}data-module-group="system" style="background:#fafafa;"{% else %}data-module-group="business"{% endif %}>
+                        <td>
+                            <strong>{{ m.name }}</strong>
+                            <span style="color:#bfbfbf; font-size:0.75rem; margin-left:0.4rem;">{{ m.key }}</span>
+                        </td>
+                        {% for a in m.actions %}
+                        <td style="text-align:center;">
+                            {% if a %}
+                            <input type="checkbox" name="perms" value="{{ a.code }}" class="form-check-input perm-cb"
+                                   {% if a.checked %}checked{% endif %}
+                                   {% if mode == 'edit' and role.is_builtin %}disabled title="内置角色权限由系统统一定义"{% endif %}>
+                            {% else %}
+                            <span style="color:#d9d9d9;">—</span>
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <p class="ac-help" style="margin-bottom:0;">
+            说明：勾选"读取"后该模块才会出现在用户侧边栏；金属价格仅支持读取/编辑，数据展示仅支持读取（由系统统一规定，不可越权勾选）。
+        </p>
+    </div>
+
+    <div class="form-modal-actions">
+        <button type="button" class="btn-transparent" data-modal-close>取消</button>
+        {% if mode == 'create' or not role.is_builtin %}
+        <button type="submit" class="btn-transparent btn-delete" data-modal-save>{% if mode == 'create' %}创建角色{% else %}保存权限{% endif %}</button>
+        {% endif %}
+    </div>
+</form>
+
+<style>
+    #formModal.form-modal { width: 880px; }
+    #formModalBody .ac-field { margin-bottom: 0.9rem; }
+    #formModalBody .ac-field > .form-label { font-size: 0.875rem; color: #595959; font-weight: 500; }
+    #formModalBody .ac-check { display: flex; gap: 0.5rem; align-items: center; font-size: 0.88rem; font-weight: 400; }
+    #formModalBody .ac-desc { color: #bfbfbf; font-size: 0.78rem; font-weight: 400; }
+    #formModalBody .ac-help { color: #8c8c8c; font-size: 0.76rem; margin-top: 2px; }
+    #formModalBody .ac-modal-alert { background: #fff1f0; border: 1px solid #ffa39e; color: #cf1322; border-radius: 6px; padding: 0.6rem 0.85rem; margin-bottom: 1rem; font-size: 0.85rem; }
+</style>

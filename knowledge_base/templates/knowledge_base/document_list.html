@@ -1,0 +1,102 @@
+{% extends 'knowledge_base/base.html' %}
+{% load accounts_tags %}
+
+{% block knowledge_content %}
+<div class="kb-doc-card">
+    <div class="kb-doc-header">
+        <h4 class="kb-doc-title">文档列表</h4>
+        <div class="kb-doc-actions">
+            <form action="{% url 'knowledge_base:document_search' %}" method="get" class="kb-search-form">
+                <input type="text" name="keyword" class="kb-search-input" placeholder="搜索文档..." value="{{ request.GET.keyword }}">
+                <button type="submit" class="kb-search-btn">搜索</button>
+            </form>
+            {% can "knowledge" "create" %}
+            <a href="{% url 'knowledge_base:document_create' %}" class="kb-btn-primary" data-modal-add data-modal-title="新建文档"><i class="fas fa-plus"></i> 新建文档</a>
+            {% endcan %}
+        </div>
+    </div>
+    <div>
+        {% for document in documents %}
+        <a href="{% url 'knowledge_base:document_detail' document.pk %}" class="kb-doc-item" data-modal-detail data-modal-title="{{ document.title }}">
+            <div class="kb-doc-item-head">
+                <h5 class="kb-doc-item-title">{{ document.title }}</h5>
+                <span class="kb-doc-item-date">{{ document.updated_at|date:"Y-m-d H:i" }}</span>
+            </div>
+            <p class="kb-doc-item-summary">{{ document.summary|default:document.content|truncatechars:100 }}</p>
+            <div class="kb-doc-item-meta">
+                {% if document.category %}<span class="kb-chip kb-chip-cat">{{ document.category.name }}</span>{% endif %}
+                {% for tag in document.tag_list %}<span class="kb-chip">{{ tag }}</span>{% endfor %}
+                <span class="kb-doc-item-views"><i class="fas fa-eye"></i> {{ document.view_count }}</span>
+            </div>
+        </a>
+        {% empty %}
+        <div class="empty-state">
+            <div class="empty-icon">📄</div>
+            <p class="empty-text">暂无文档</p>
+            {% can "knowledge" "create" %}
+            <a href="{% url 'knowledge_base:document_create' %}" class="kb-btn-primary" data-modal-add data-modal-title="新建文档">创建第一篇文档</a>
+            {% endcan %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block right_sidebar %}
+<!-- 知识库统计 -->
+<div class="kb-side-section">
+    <div class="kb-side-title">知识库统计</div>
+    <div class="kb-stats-grid">
+        <div class="kb-stat"><div class="kb-stat-value">{{ total_documents }}</div><div class="kb-stat-label">文档</div></div>
+        <div class="kb-stat"><div class="kb-stat-value">{{ total_categories }}</div><div class="kb-stat-label">分类</div></div>
+        <div class="kb-stat"><div class="kb-stat-value">{{ total_views }}</div><div class="kb-stat-label">浏览</div></div>
+        <div class="kb-stat"><div class="kb-stat-value">{{ avg_views }}</div><div class="kb-stat-label">平均</div></div>
+    </div>
+</div>
+
+<!-- 分类管理 -->
+<div class="kb-side-section">
+    <div class="kb-side-title">分类管理</div>
+    <div class="kb-side-actions">
+        {% can "knowledge" "update" %}
+        <a href="{% url 'knowledge_base:category_list' %}" class="kb-side-btn"><i class="fas fa-list"></i> 管理分类</a>
+        {% endcan %}
+        {% can "knowledge" "create" %}
+        <a href="{% url 'knowledge_base:category_create' %}" class="kb-side-btn kb-side-btn-primary" data-modal-add data-modal-title="新建分类"><i class="fas fa-plus"></i> 新建分类</a>
+        {% endcan %}
+    </div>
+</div>
+
+<!-- 分类筛选 -->
+<div class="kb-side-section">
+    <div class="kb-side-title">分类筛选</div>
+    <div>
+        <a href="{% url 'knowledge_base:document_list' %}" class="kb-side-list-item {% if not selected_category %}active{% endif %}">
+            <span>全部文档</span><span class="kb-side-list-count">{{ total_documents }}</span>
+        </a>
+        {% for category in categories %}
+        <a href="{% url 'knowledge_base:document_list' %}?category={{ category.id }}" class="kb-side-list-item {% if selected_category == category.id|stringformat:'i' %}active{% endif %}">
+            <span>{{ category.name }}</span><span class="kb-side-list-count">{{ category.documents.count }}</span>
+        </a>
+        {% empty %}
+        <div class="kb-side-empty">暂无分类</div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- 标签云 -->
+<div class="kb-side-section">
+    <div class="kb-side-title">标签云</div>
+    {% if tag_list %}
+    <div class="tag-cloud">
+        {% for tag_item in tag_list %}
+        <a href="{% url 'knowledge_base:document_list' %}?tag={{ tag_item.name }}" class="tag-item{% if selected_tag == tag_item.name %} active{% endif %}">
+            <span class="tag-dot" data-color="{{ tag_item.color }}"></span>{{ tag_item.name }}
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="kb-side-empty">暂无标签</div>
+    {% endif %}
+</div>
+{% endblock %}

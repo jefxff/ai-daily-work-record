@@ -1,0 +1,15 @@
+<div class="detail-card">
+    <div class="detail-row"><div class="detail-label">项目分类：</div><div class="detail-value">{{ evaluation.project_category }}</div></div>
+    <div class="detail-row"><div class="detail-label">项目提出部门：</div><div class="detail-value">{{ evaluation.proposing_department }}</div></div>
+    <div class="detail-row"><div class="detail-label">提出人：</div><div class="detail-value">{{ evaluation.proposer }}</div></div>
+    <div class="detail-row"><div class="detail-label">核价内容：</div><div class="detail-value">{{ evaluation.evaluation_content|default:"无" }}</div></div>
+    <div class="detail-row"><div class="detail-label">供应商1名称：</div><div class="detail-value">{{ evaluation.supplier1_name|default:"无" }}</div></div>
+    <div class="detail-row"><div class="detail-label">供应商1报价：</div><div class="detail-value">¥{{ evaluation.supplier1_price|default:0 }}</div></div>
+    <div class="detail-row"><div class="detail-label">供应商2名称：</div><div class="detail-value">{{ evaluation.supplier2_name|default:"无" }}</div></div>
+    <div class="detail-row"><div class="detail-label">供应商2报价：</div><div class="detail-value">¥{{ evaluation.supplier2_price|default:0 }}</div></div>
+    <div class="detail-row"><div class="detail-label">供应商3名称：</div><div class="detail-value">{{ evaluation.supplier3_name|default:"无" }}</div></div>
+    <div class="detail-row"><div class="detail-label">供应商3报价：</div><div class="detail-value">¥{{ evaluation.supplier3_price|default:0 }}</div></div>
+    <div class="detail-row"><div class="detail-label">内控审核供应商：</div><div class="detail-value">{{ evaluation.internal_control_supplier|default:"无" }}</div></div>
+    <div class="detail-row"><div class="detail-label">内控审核价：</div><div class="detail-value">¥{{ evaluation.internal_control_price }}</div></div>
+</div>
+<style>#formModal.form-modal { width: 720px; }</style>

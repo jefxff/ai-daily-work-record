@@ -1,0 +1,128 @@
+{% extends 'records/base.html' %}
+{% load static %}
+
+{% block page_title %}{% if form.instance.pk %}编辑客户客诉{% else %}新增客户客诉{% endif %} - 每日工作记录管理网站{% endblock %}
+
+{% block top_nav_actions %}
+    <a href="{% url 'customer_complaint_list' %}" class="btn-transparent">返回列表</a>
+    <a href="{% url 'home' %}" class="btn-transparent">返回首页</a>
+{% endblock %}
+
+{% block content %}
+    <div class="form-container">
+        <h2 class="form-title">{% if form.instance.id %}编辑客户客诉{% else %}新增客户客诉{% endif %}</h2>
+
+        <form method="post">
+            {% csrf_token %}
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="id_customer_name" class="form-label">客户名称 *</label>
+                        {{ form.customer_name }}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="id_responsible_salesperson" class="form-label">责任业务员 *</label>
+                        {{ form.responsible_salesperson }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="id_complaint_date" class="form-label">客诉申请日期 *</label>
+                        {{ form.complaint_date }}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="id_terminal_customer" class="form-label">终端客户</label>
+                        {{ form.terminal_customer }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="id_product_model" class="form-label">产品型号</label>
+                        {{ form.product_model }}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="id_our_shipment" class="form-label">我司出货量</label>
+                        {{ form.our_shipment }}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="id_customer_shipment" class="form-label">客户出货量</label>
+                        {{ form.customer_shipment }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="id_complaint_description" class="form-label">客诉现象及客户诉求描述</label>
+                {{ form.complaint_description }}
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="id_compensation_amount" class="form-label">客户诉求（赔偿金额）</label>
+                        {{ form.compensation_amount }}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="id_complaint_status" class="form-label">客诉状态 *</label>
+                        {{ form.complaint_status }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">是否报保险</label>
+                <div class="form-check">
+                    {{ form.is_insured }}
+                    <label for="id_is_insured" class="form-check-label">是</label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="id_engineering_report" class="form-label">工程报告</label>
+                {{ form.engineering_report }}
+            </div>
+
+            <div class="form-group">
+                <label for="id_engineering_analysis" class="form-label">工程部分析原因报告</label>
+                {{ form.engineering_analysis }}
+            </div>
+
+            <div class="form-group">
+                <label for="id_missing_materials" class="form-label">欠缺材料</label>
+                {{ form.missing_materials }}
+            </div>
+
+            <div class="form-group">
+                <label for="id_follow_up_status" class="form-label">跟进情况</label>
+                {{ form.follow_up_status }}
+            </div>
+
+            <div class="form-group">
+                <label for="id_remarks" class="form-label">备注</label>
+                {{ form.remarks }}
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">{% if form.instance.id %}保存修改{% else %}保存记录{% endif %}</button>
+                <a href="{% url 'customer_complaint_list' %}" class="btn btn-outline-secondary">取消</a>
+            </div>
+        </form>
+    </div>
+{% endblock %}

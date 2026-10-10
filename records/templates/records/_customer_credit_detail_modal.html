@@ -1,0 +1,14 @@
+<div class="detail-card">
+    <div class="detail-row"><div class="detail-label">提出日期：</div><div class="detail-value">{{ credit.proposal_date|date:'Y-m-d'|default:"无" }}</div></div>
+    <div class="detail-row"><div class="detail-label">现场日期：</div><div class="detail-value">{{ credit.site_date|date:'Y-m-d'|default:"无" }}</div></div>
+    <div class="detail-row"><div class="detail-label">客户名称：</div><div class="detail-value">{{ credit.customer_name }}</div></div>
+    <div class="detail-row"><div class="detail-label">客户类型：</div><div class="detail-value">{{ credit.customer_type }}</div></div>
+    <div class="detail-row"><div class="detail-label">业务员：</div><div class="detail-value">{{ credit.salesperson }}</div></div>
+    <div class="detail-row"><div class="detail-label">工作内容：</div><div class="detail-value">{{ credit.work_content|default:"无" }}</div></div>
+    <div class="detail-row"><div class="detail-label">具体内容：</div><div class="detail-value">{{ credit.specific_content|default:"无" }}</div></div>
+    <div class="detail-row"><div class="detail-label">前期调查表：</div><div class="detail-value">{{ credit.pre_survey|default:"无" }}</div></div>
+    <div class="detail-row"><div class="detail-label">工作方式：</div><div class="detail-value">{{ credit.work_method|default:"无" }}</div></div>
+    <div class="detail-row"><div class="detail-label">结果：</div><div class="detail-value">{{ credit.result }}</div></div>
+    <div class="detail-row"><div class="detail-label">备注：</div><div class="detail-value">{{ credit.remarks|default:"无" }}</div></div>
+</div>
+<style>#formModal.form-modal { width: 720px; }</style>

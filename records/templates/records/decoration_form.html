@@ -1,0 +1,65 @@
+{% extends 'records/base.html' %}
+{% load static %}
+
+{% block page_title %}{% if form.instance.pk %}编辑装修{% else %}新增装修{% endif %} - 每日工作记录管理网站{% endblock %}
+
+{% block top_nav_actions %}
+    <a href="{% url 'decoration_list' %}" class="btn-transparent">返回列表</a>
+    <a href="{% url 'home' %}" class="btn-transparent">返回首页</a>
+{% endblock %}
+
+{% block content %}
+    <div class="form-container">
+        <h2 class="form-title">{% if form.instance.id %}编辑装修记录{% else %}新增装修记录{% endif %}</h2>
+
+        <form method="post">
+            {% csrf_token %}
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="id_project_name" class="form-label">项目名称 *</label>
+                        {{ form.project_name }}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="id_constructor" class="form-label">施工方 *</label>
+                        {{ form.constructor }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="id_project_address" class="form-label">项目地址</label>
+                {{ form.project_address }}
+            </div>
+
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="id_start_date" class="form-label">开工日期 *</label>
+                        {{ form.start_date }}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="id_original_price" class="form-label">原价</label>
+                        {{ form.original_price }}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="id_final_price" class="form-label">核后价 *</label>
+                        {{ form.final_price }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">{% if form.instance.id %}保存修改{% else %}保存记录{% endif %}</button>
+                <a href="{% url 'decoration_list' %}" class="btn btn-outline-secondary">取消</a>
+            </div>
+        </form>
+    </div>
+{% endblock %}

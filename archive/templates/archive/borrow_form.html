@@ -1,0 +1,19 @@
+{% extends "records/base.html" %}
+{% block page_title %}借阅登记{% endblock %}
+{% block content %}
+<div class="container" style="max-width:500px">
+    <h1 class="page-title mb-4">借阅登记 - {{ archive.code }}</h1>
+    <form method="POST" novalidate>
+        {% csrf_token %}
+        {% for field in form %}
+        <div class="mb-3">
+            <label class="form-label">{{ field.label }}{% if field.field.required %} *{% endif %}</label>
+            {{ field }}
+            {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+        </div>
+        {% endfor %}
+        <button type="submit" class="btn btn-primary">确认借阅</button>
+        <a href="{% url 'archive:archive_detail' archive.pk %}" class="btn btn-link">取消</a>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends "records/base.html" %}
+
+{% block page_title %}借阅记录 - 档案管理{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">借阅记录</h1>
+        <div class="d-flex gap-2">
+            <a href="{% url 'archive:borrow_list' %}" class="btn btn-sm {% if not status %}btn-primary{% else %}btn-outline-secondary{% endif %}">全部</a>
+            <a href="?status=borrowed" class="btn btn-sm {% if status == 'borrowed' %}btn-primary{% else %}btn-outline-secondary{% endif %}">借出中</a>
+            <a href="?status=overdue" class="btn btn-sm {% if status == 'overdue' %}btn-primary{% else %}btn-outline-secondary{% endif %}">已逾期</a>
+            <a href="?status=returned" class="btn btn-sm {% if status == 'returned' %}btn-primary{% else %}btn-outline-secondary{% endif %}">已归还</a>
+        </div>
+    </div>
+
+    <div class="card">
+        <table class="table">
+            <thead><tr><th>档案</th><th>借阅人</th><th>借阅时间</th><th>应还日期</th><th>实际归还</th><th>状态</th><th>操作</th></tr></thead>
+            <tbody>
+            {% for r in records %}
+            <tr>
+                <td><a href="{% url 'archive:archive_detail' r.archive.pk %}">{{ r.archive.code }} - {{ r.archive.name }}</a></td>
+                <td>{{ r.borrower }}</td>
+                <td>{{ r.borrow_time|date:"Y-m-d H:i" }}</td>
+                <td>{{ r.due_time|date:"Y-m-d" }}</td>
+                <td>{{ r.return_time|date:"Y-m-d H:i"|default:"—" }}</td>
+                <td><span class="badge {% if r.status == 'returned' %}bg-success{% elif r.status == 'overdue' %}bg-danger{% else %}bg-warning{% endif %}">{{ r.get_status_display }}</span></td>
+                <td>{% if r.status != 'returned' %}<a href="{% url 'archive:borrow_return' r.pk %}" class="btn btn-sm btn-outline-success">归还</a>{% endif %}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-center text-muted">暂无借阅记录</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

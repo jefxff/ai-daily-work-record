@@ -1,0 +1,52 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block auth_title %}登录 - 每日工作记录{% endblock %}</title>
+    <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        body { background: #f0f2f5; min-height: 100vh; margin: 0; display: flex; align-items: center; justify-content: center; padding: 1.5rem; }
+        .auth-shell { width: 100%; max-width: 420px; }
+        .auth-brand { text-align: center; margin-bottom: 1.5rem; }
+        .auth-brand .brand-logo { width: 48px; height: 48px; background: #1890ff; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 0.75rem; }
+        .auth-brand h1 { font-size: 1.25rem; font-weight: 600; color: #1f2329; margin: 0 0 4px; }
+        .auth-brand p { font-size: 0.85rem; color: #8c8c8c; margin: 0; }
+        .auth-card { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 2rem; }
+        .auth-card h2 { font-size: 1.15rem; font-weight: 600; color: #1f2329; margin: 0 0 1.25rem; }
+        .form-label { font-size: 0.875rem; color: #595959; font-weight: 500; }
+        .form-control { border-radius: 6px; border-color: #d9d9d9; font-size: 0.9rem; padding: 0.55rem 0.75rem; }
+        .form-control:focus { border-color: #1890ff; box-shadow: 0 0 0 2px rgba(24,144,255,0.15); }
+        .btn-primary { background: #1890ff; border-color: #1890ff; border-radius: 6px; padding: 0.6rem; font-weight: 500; width: 100%; }
+        .btn-primary:hover { background: #40a9ff; border-color: #40a9ff; }
+        .btn-secondary { background: #fff; border: 1px solid #d9d9d9; color: #595959; border-radius: 6px; padding: 0.5rem 1rem; font-weight: 500; text-decoration: none; }
+        .btn-secondary:hover { color: #1890ff; border-color: #91d5ff; background: #fff; }
+        .auth-alert { border-radius: 6px; font-size: 0.85rem; padding: 0.6rem 0.85rem; margin-bottom: 1rem; }
+        .auth-alert-error { background: #fff1f0; border: 1px solid #ffa39e; color: #cf1322; }
+        .auth-alert-success { background: #f6ffed; border: 1px solid #b7eb8f; color: #389e0d; }
+        .auth-footer { text-align: center; margin-top: 1.25rem; font-size: 0.85rem; color: #8c8c8c; }
+        .auth-footer a { color: #1890ff; text-decoration: none; }
+        .auth-footer a:hover { text-decoration: underline; }
+        .auth-foot-actions { display: flex; gap: 0.75rem; margin-top: 1rem; }
+        .auth-foot-actions > * { flex: 1; text-align: center; }
+        .forbidden-icon { font-size: 3rem; text-align: center; margin-bottom: 0.5rem; }
+    </style>
+</head>
+<body>
+    <div class="auth-shell">
+        <div class="auth-brand">
+            <div class="brand-logo">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            </div>
+            <h1>每日工作记录管理系统</h1>
+            <p>试样跟进 · 业务台账 · 知识管理</p>
+        </div>
+        <div class="auth-card">
+            {% block auth_content %}{% endblock %}
+        </div>
+        {% block auth_outside %}{% endblock %}
+    </div>
+</body>
+</html>

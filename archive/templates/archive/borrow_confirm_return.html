@@ -1,0 +1,18 @@
+{% extends "records/base.html" %}
+{% block page_title %}归还档案{% endblock %}
+{% block content %}
+<div class="container" style="max-width:500px">
+    <div class="card">
+        <div class="card-body">
+            <h4 class="mb-3">确认归还档案？</h4>
+            <p class="text-muted">档案：<strong>{{ record.archive.code }} - {{ record.archive.name }}</strong></p>
+            <p class="text-muted">借阅人：{{ record.borrower }}，应还日期：{{ record.due_time|date:"Y-m-d" }}</p>
+            <form method="POST">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-success">确认归还</button>
+                <a href="{% url 'archive:borrow_list' %}" class="btn btn-link">取消</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,47 @@
+<form method="post" data-modal-form action="{{ request.path }}">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <div class="kb-modal-alert">{{ form.non_field_errors|join:'；' }}</div>
+    {% endif %}
+
+    <div class="kb-row">
+        <div class="kb-field">
+            <label class="form-label">{{ form.name.label }} <span style="color:#f5222d;">*</span></label>
+            {{ form.name }}
+            {% if form.name.errors %}<div class="kb-error">{{ form.name.errors|join:'；' }}</div>{% endif %}
+        </div>
+        <div class="kb-field">
+            <label class="form-label">{{ form.sort_order.label }}</label>
+            {{ form.sort_order }}
+            {% if form.sort_order.errors %}<div class="kb-error">{{ form.sort_order.errors|join:'；' }}</div>{% endif %}
+        </div>
+    </div>
+
+    <div class="kb-field">
+        <label class="form-label">{{ form.parent.label }}</label>
+        {{ form.parent }}
+        {% if form.parent.errors %}<div class="kb-error">{{ form.parent.errors|join:'；' }}</div>{% endif %}
+    </div>
+
+    <div class="kb-field">
+        <label class="form-label">{{ form.description.label }}</label>
+        {{ form.description }}
+        {% if form.description.errors %}<div class="kb-error">{{ form.description.errors|join:'；' }}</div>{% endif %}
+    </div>
+
+    <div class="form-modal-actions">
+        <button type="button" class="btn-transparent" data-modal-close>取消</button>
+        <button type="submit" class="btn-transparent btn-delete" data-modal-save>保存</button>
+    </div>
+</form>
+
+<style>
+    #formModalBody .kb-field { margin-bottom: 0.85rem; }
+    #formModalBody .kb-field > .form-label { font-size: 0.875rem; color: #595959; font-weight: 500; display: block; margin-bottom: 0.25rem; }
+    #formModalBody .kb-field .form-control { width: 100%; }
+    #formModalBody .kb-row { display: flex; gap: 1rem; }
+    #formModalBody .kb-row .kb-field { flex: 1; }
+    #formModalBody .kb-error { color: #f5222d; font-size: 0.78rem; margin-top: 2px; }
+    #formModalBody .kb-modal-alert { background: #fff1f0; border: 1px solid #ffa39e; color: #cf1322; border-radius: 6px; padding: 0.6rem 0.85rem; margin-bottom: 1rem; font-size: 0.85rem; }
+</style>

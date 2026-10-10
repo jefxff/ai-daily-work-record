@@ -1,0 +1,191 @@
+{% extends 'records/base.html' %}
+{% load static %}
+{% load accounts_tags %}
+
+{% block page_title %}核价列表 - 每日工作记录管理网站{% endblock %}
+
+{% block top_nav_actions %}
+    <form class="d-flex gap-2" method="GET">
+        <input class="search-input" type="search" placeholder="搜索项目分类或提出人" name="search" value="{{ search_term }}">
+        <button class="btn-transparent" type="submit">搜索</button>
+    </form>
+    {% can "price_evaluation" "create" %}
+    <a href="{% url 'price_evaluation_add' %}" class="btn-transparent" data-modal-add data-modal-title="新增核价">新增核价</a>
+    {% endcan %}
+    <a href="{% url 'price_evaluation_export' %}" class="btn-transparent">下载Excel</a>
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h2>核价列表<span class="total-hint">共 {{ evaluations.paginator.count }} 条记录</span></h2>
+        <div class="filter-chips">
+            {% if search_term %}
+            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'search' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">搜索：{{ search_term }} ✕</a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="table-container">
+        <!-- 表格 -->
+        <div class="table-responsive">
+            <table class="table table-sticky">
+                <thead>
+                    <tr>
+                        <th class="col-optional">序号</th>
+                        <th>项目分类</th>
+                        <th>项目提出部门</th>
+                        <th>提出人</th>
+                        <th>核价内容</th>
+                        <th>供应商1报价</th>
+                        <th>供应商2报价</th>
+                        <th class="col-optional">供应商3报价</th>
+                        <th class="col-optional">内控审核供应商</th>
+                        <th>内控审核价</th>
+                        <th>核减金额</th>
+                        <th class="col-actions">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for evaluation in evaluations %}
+                    <tr>
+                        <td class="col-optional">{{ forloop.counter }}</td>
+                        <td>{{ evaluation.project_category }}</td>
+                        <td>{{ evaluation.proposing_department }}</td>
+                        <td>{{ evaluation.proposer }}</td>
+                        <td title="{{ evaluation.evaluation_content|default:'' }}">{{ evaluation.evaluation_content|default:''|truncatechars:30 }}</td>
+                        <td>
+                            <div class="supplier-cell">
+                                <span class="supplier-name" title="{{ evaluation.supplier1_name|default:'' }}">{{ evaluation.supplier1_name|default:'—' }}</span>
+                                <span class="supplier-price">{% if evaluation.supplier1_price %}¥{{ evaluation.supplier1_price|floatformat:2 }}{% else %}—{% endif %}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="supplier-cell">
+                                <span class="supplier-name" title="{{ evaluation.supplier2_name|default:'' }}">{{ evaluation.supplier2_name|default:'—' }}</span>
+                                <span class="supplier-price">{% if evaluation.supplier2_price %}¥{{ evaluation.supplier2_price|floatformat:2 }}{% else %}—{% endif %}</span>
+                            </div>
+                        </td>
+                        <td class="col-optional">
+                            <div class="supplier-cell">
+                                <span class="supplier-name" title="{{ evaluation.supplier3_name|default:'' }}">{{ evaluation.supplier3_name|default:'—' }}</span>
+                                <span class="supplier-price">{% if evaluation.supplier3_price %}¥{{ evaluation.supplier3_price|floatformat:2 }}{% else %}—{% endif %}</span>
+                            </div>
+                        </td>
+                        <td class="col-optional" title="{{ evaluation.internal_control_supplier|default:'' }}">{{ evaluation.internal_control_supplier|default:'—' }}</td>
+                        <td>¥{{ evaluation.internal_control_price|floatformat:2 }}</td>
+                        <td>¥{{ evaluation.get_reduction_amount|floatformat:2 }}</td>
+                        <td class="col-actions">
+                    <div style="display: flex; gap: 0.25rem; align-items: center; flex-wrap: nowrap;">
+                        <a href="{% url 'price_evaluation_detail' evaluation.id %}" class="btn-transparent btn-sm" data-modal-detail data-modal-title="核价详情">详细</a>
+                        {% can "price_evaluation" "update" %}
+                        <a href="{% url 'price_evaluation_edit' evaluation.id %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑核价">编辑</a>
+                        {% endcan %}
+                        {% can "price_evaluation" "delete" %}
+                        <a href="{% url 'price_evaluation_delete' evaluation.id %}" class="btn-transparent btn-sm btn-delete" onclick="return confirm('确定要删除这条记录吗？');">删除</a>
+                        {% endcan %}
+                    </div>
+                </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="12" class="empty-cell">📭 暂无数据</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 分页 -->
+            {% if evaluations.has_other_pages %}
+            <div class="pagination-info">
+                <span>共 {{ evaluations.paginator.count }} 条 · 第 {{ evaluations.number }} / {{ evaluations.paginator.num_pages }} 页</span>
+                <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                    <form method="GET" style="display: flex; align-items: center; gap: 0.4rem;">
+                        {% for k, v in request.GET.items %}{% if k != 'per_page' and k != 'page' %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endif %}{% endfor %}
+                        <label style="font-size: 13px;">每页</label>
+                        <select class="per-page-select" name="per_page" onchange="this.form.submit()">
+                            <option value="10" {% if evaluations.paginator.per_page == 10 %}selected{% endif %}>10</option>
+                            <option value="30" {% if evaluations.paginator.per_page == 30 %}selected{% endif %}>30</option>
+                            <option value="50" {% if evaluations.paginator.per_page == 50 %}selected{% endif %}>50</option>
+                        </select>
+                        <span style="font-size: 13px;">条</span>
+                    </form>
+                    <ul class="pagination">
+                        {% if evaluations.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ evaluations.previous_page_number }}" aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+                        {% endif %}
+
+                        {% for num in evaluations.paginator.page_range %}
+                        {% if evaluations.number == num %}
+                        <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+                        {% else %}
+                        <li class="page-item"><a class="page-link" href="?{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ num }}">{{ num }}</a></li>
+                        {% endif %}
+                        {% endfor %}
+
+                        {% if evaluations.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ evaluations.next_page_number }}" aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 模板特定样式：核价列表表格宽度与单元格最大宽度 */
+    .table { min-width: 1180px; }
+    .table thead th, .table tbody td { padding: 10px 12px !important; font-size: 13px; }
+    .table tbody td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
+    .table tbody td:last-child { overflow: visible !important; }
+
+    /* 操作列固定在右侧，横向滚动时始终可见 */
+    .table-responsive { overflow-x: auto !important; }
+
+    .table thead th.col-actions,
+    .table tbody td.col-actions {
+        position: sticky !important;
+        right: 0;
+        background: #fff !important;
+        z-index: 10;
+        box-shadow: -3px 0 5px rgba(0,0,0,0.08);
+        border-left: 1px solid #e8e8e8;
+    }
+    .table tbody tr:hover td.col-actions {
+        background: #fafafa !important;
+    }
+    .table thead th.col-actions {
+        z-index: 20;
+        background: #fafafa !important;
+    }
+    .table td { font-variant-numeric: tabular-nums; }
+    /* 供应商组：名称上、报价下（报价右对齐、等宽数字） */
+    .supplier-cell { display: flex; flex-direction: column; gap: 1px; min-width: 96px; }
+    .supplier-name { font-size: 12px; color: #595959; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .supplier-price { font-size: 13px; font-weight: 600; color: #1f2329; font-variant-numeric: tabular-nums; align-self: flex-end; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+{% endblock %}

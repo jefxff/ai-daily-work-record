@@ -1,0 +1,442 @@
+{% extends 'records/base.html' %}
+{% load static %}
+{% load accounts_tags %}
+
+{% block page_title %}金属价格行情 - 每日工作记录管理网站{% endblock %}
+
+{% block top_nav_actions %}
+    <a href="{% url 'home' %}" class="btn-transparent">返回首页</a>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 模板特定样式：金属价格详情页（Ant Design 风格） */
+
+    /* 金属选择标签 */
+    .metal-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 2rem;
+        justify-content: center;
+    }
+
+    .metal-tab {
+        background: #fff;
+        border: 1px solid #d9d9d9;
+        border-radius: 4px;
+        padding: 0.375rem 0.875rem;
+        color: #595959;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        font-weight: 500;
+        font-size: 0.85rem;
+    }
+
+    .metal-tab:hover {
+        color: #1890ff;
+        border-color: #1890ff;
+        text-decoration: none;
+    }
+
+    .metal-tab.active {
+        background: #1890ff;
+        border-color: #1890ff;
+        color: #fff;
+    }
+
+    /* 图表容器 */
+    .chart-container {
+        background: #ffffff;
+        border-radius: 8px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .chart-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #1f2329;
+        margin-bottom: 1.5rem;
+        text-align: left;
+    }
+
+    .chart-wrapper {
+        position: relative;
+        height: 400px;
+    }
+
+    /* 价格详情区块 */
+    .price-detail-section {
+        background: #ffffff;
+        border-radius: 8px;
+        padding: 2rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .section-subtitle {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #1f2329;
+        margin-bottom: 1.5rem;
+        padding-left: 0.75rem;
+        border-left: 3px solid #1890ff;
+    }
+
+    /* 刷新价格按钮 */
+    .btn-refresh {
+        background: #1890ff;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        padding: 0.375rem 0.875rem;
+        font-weight: 400;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .btn-refresh:hover {
+        background: #40a9ff;
+    }
+
+    .btn-refresh:active {
+        transform: translateY(0);
+    }
+
+    .btn-refresh.loading {
+        opacity: 0.7;
+        cursor: not-allowed;
+    }
+
+    .btn-refresh.loading .refresh-icon {
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+
+    .refresh-icon {
+        font-size: 1rem;
+    }
+
+    /* 提示消息 */
+    .alert {
+        padding: 0.625rem 1rem;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+        font-weight: 400;
+        font-size: 0.875rem;
+    }
+
+    .alert-success {
+        background: #f6ffed;
+        color: #52c41a;
+        border: 1px solid #b7eb8f;
+    }
+
+    .alert-error {
+        background: #fff2f0;
+        color: #f5222d;
+        border: 1px solid #ffccc7;
+    }
+
+    /* 响应式调整 */
+    @media (max-width: 768px) {
+        .chart-wrapper {
+            height: 300px;
+        }
+
+        .metal-tabs {
+            gap: 0.25rem;
+        }
+
+        .metal-tab {
+            padding: 0.25rem 0.625rem;
+            font-size: 0.8rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- 金属选择标签和刷新按钮 -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    {% csrf_token %}
+    {% can "metal_price" "update" %}
+    <button class="btn-refresh" id="refreshPriceBtn">
+        <span class="refresh-icon">🔄</span>
+        <span>刷新价格</span>
+    </button>
+    {% endcan %}
+    <div class="metal-tabs">
+        {% for metal in all_metals %}
+        <a href="{% url 'metal_price_detail' metal_name=metal %}"
+           class="metal-tab {% if metal == current_metal %}active{% endif %}">
+            {{ metal }}
+        </a>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- 价格走势图 -->
+<div class="chart-container">
+    <h3 class="chart-title">{{ current_metal }} - 价格走势（近30天）</h3>
+    <div class="chart-wrapper">
+        <canvas id="priceChart"></canvas>
+    </div>
+</div>
+
+<!-- 今日价格详情 -->
+<div class="price-detail-section">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="section-subtitle mb-0">今日{{ current_metal }}价格</h3>
+    </div>
+    <div id="refreshMessage" class="alert" style="display: none;"></div>
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>市场来源</th>
+                    <th>商品名</th>
+                    <th>更新日期</th>
+                    <th>价格</th>
+                    <th>涨跌</th>
+                    <th>单位</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if latest_price %}
+                <tr>
+                    <td>长江有色</td>
+                    <td>{{ latest_price.metal_name }}</td>
+                    <td>{{ latest_price.crawl_date|date:"Y-m-d" }}</td>
+                    <td style="font-weight: 700; font-size: 1.1rem;">{{ latest_price.price|floatformat:0 }}</td>
+                    <td class="{% if latest_price.price_change > 0 %}price-up{% elif latest_price.price_change < 0 %}price-down{% else %}price-flat{% endif %}">
+                        {% if latest_price.price_change > 0 %}
+                                    ▲ {{ latest_price.price_change|floatformat:0 }}
+                        {% elif latest_price.price_change < 0 %}
+                                    ▼ {{ latest_price.price_change|floatformat:0 }}
+                        {% else %}
+                                    - 0
+                        {% endif %}
+                    </td>
+                    <td>{{ latest_price.unit }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center py-4">暂无今日价格数据</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 历史价格记录 -->
+<div class="price-detail-section mt-4">
+    <h3 class="section-subtitle">历史价格记录</h3>
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>日期</th>
+                    <th>价格</th>
+                    <th>涨跌</th>
+                    <th>单位</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for price in price_history %}
+                <tr>
+                    <td>{{ price.crawl_date|date:"Y-m-d" }}</td>
+                    <td style="font-weight: 600;">{{ price.price|floatformat:0 }}</td>
+                    <td class="{% if price.price_change > 0 %}price-up{% elif price.price_change < 0 %}price-down{% else %}price-flat{% endif %}">
+                        {% if price.price_change > 0 %}
+                                    ▲ {{ price.price_change|floatformat:0 }}
+                        {% elif price.price_change < 0 %}
+                                    ▼ {{ price.price_change|floatformat:0 }}
+                        {% else %}
+                                    - 0
+                        {% endif %}
+                    </td>
+                    <td>{{ price.unit }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="text-center py-4">暂无历史价格数据</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js -->
+<script src="{% static 'js/chart.min.js' %}"></script>
+<script>
+    // 价格走势图
+    const ctx = document.getElementById('priceChart').getContext('2d');
+
+    // 从Django模板获取数据
+    const chartLabels = {{ chart_labels|safe }};
+    const chartData = {{ chart_data|safe }};
+
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: chartLabels,
+            datasets: [{
+                label: '{{ current_metal }}',
+                data: chartData,
+                borderColor: '#1890ff',
+                backgroundColor: 'rgba(24, 144, 255, 0.1)',
+                borderWidth: 3,
+                pointBackgroundColor: '#1890ff',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointRadius: 5,
+                pointHoverRadius: 7,
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    labels: {
+                        color: '#1f2329',
+                        font: {
+                            size: 14
+                        }
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                    titleColor: '#fff',
+                    bodyColor: '#fff',
+                    borderColor: '#1890ff',
+                    borderWidth: 1,
+                    callbacks: {
+                        label: function(context) {
+                            return '价格: ' + context.parsed.y.toLocaleString() + ' 元';
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        color: '#f0f0f0'
+                    },
+                    ticks: {
+                        color: '#8c8c8c'
+                    }
+                },
+                y: {
+                    grid: {
+                        color: '#f0f0f0'
+                    },
+                    ticks: {
+                        color: '#8c8c8c',
+                        callback: function(value) {
+                            return value.toLocaleString();
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // 刷新价格功能
+    const refreshPriceBtnEl = document.getElementById('refreshPriceBtn');
+    if (refreshPriceBtnEl) refreshPriceBtnEl.addEventListener('click', function() {
+        const btn = this;
+        const messageDiv = document.getElementById('refreshMessage');
+
+        // 添加加载状态
+        btn.classList.add('loading');
+        btn.disabled = true;
+
+        // 发送AJAX请求刷新价格
+        fetch('{% url "refresh_metal_prices" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            // 移除加载状态
+            btn.classList.remove('loading');
+            btn.disabled = false;
+
+            // 显示消息
+            messageDiv.style.display = 'block';
+            if (data.success) {
+                messageDiv.className = 'alert alert-success';
+                messageDiv.textContent = data.message;
+
+                // 3秒后刷新页面以显示最新数据
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                messageDiv.className = 'alert alert-error';
+                messageDiv.textContent = data.message;
+            }
+
+            // 5秒后隐藏消息
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 5000);
+        })
+        .catch(error => {
+            // 移除加载状态
+            btn.classList.remove('loading');
+            btn.disabled = false;
+
+            // 显示错误消息
+            messageDiv.style.display = 'block';
+            messageDiv.className = 'alert alert-error';
+            messageDiv.textContent = '刷新价格时出错，请稍后重试';
+
+            console.error('刷新价格错误:', error);
+
+            // 5秒后隐藏消息
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 5000);
+        });
+    });
+
+    // 获取CSRF Token的辅助函数
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+</script>
+{% endblock %}

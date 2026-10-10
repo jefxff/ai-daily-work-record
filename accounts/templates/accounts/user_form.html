@@ -1,0 +1,89 @@
+{% extends 'records/base.html' %}
+
+{% block page_title %}{% if mode == 'create' %}新建用户{% else %}编辑用户{% endif %} - 每日工作记录{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>{% if mode == 'create' %}新建用户{% else %}编辑用户：{{ target.username }}{% endif %}</h2>
+</div>
+<div style="max-width:640px; background:#fff; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.08); padding:1.75rem;">
+    {% if form.non_field_errors %}
+    <div style="background:#fff1f0; border:1px solid #ffa39e; color:#cf1322; border-radius:6px; padding:0.6rem 0.85rem; margin-bottom:1rem; font-size:0.85rem;">
+        {{ form.non_field_errors|join:'；' }}
+    </div>
+    {% endif %}
+    <form method="post" autocomplete="off">
+        {% csrf_token %}
+
+        {% if mode == 'create' %}
+        <div class="mb-3">
+            <label class="form-label" style="font-size:0.875rem; color:#595959; font-weight:500;">用户名 <span style="color:#f5222d;">*</span></label>
+            <input type="text" name="username" class="form-control" value="{{ form.username.value|default:'' }}" maxlength="150" required>
+            {% if form.username.errors %}<div style="color:#cf1322; font-size:0.78rem; margin-top:2px;">{{ form.username.errors|join:'；' }}</div>{% endif %}
+        </div>
+        <div class="mb-3">
+            <label class="form-label" style="font-size:0.875rem; color:#595959; font-weight:500;">初始密码 <span style="color:#f5222d;">*</span></label>
+            <input type="password" name="password" class="form-control" autocomplete="new-password" required>
+            {% if form.password.errors %}<div style="color:#cf1322; font-size:0.78rem; margin-top:2px;">{{ form.password.errors|join:'；' }}</div>{% endif %}
+        </div>
+        {% else %}
+        <div class="mb-3" style="font-size:0.85rem; color:#8c8c8c;">
+            用户名不可修改。如需重置登录密码，请使用「重置密码」功能。
+        </div>
+        {% endif %}
+
+        <div class="mb-3">
+            <label class="form-label" style="font-size:0.875rem; color:#595959; font-weight:500;">姓名</label>
+            <input type="text" name="real_name" class="form-control" value="{{ form.real_name.value|default:'' }}" maxlength="50">
+            {% if form.real_name.errors %}<div style="color:#cf1322; font-size:0.78rem; margin-top:2px;">{{ form.real_name.errors|join:'；' }}</div>{% endif %}
+        </div>
+        <div class="mb-3">
+            <label class="form-label" style="font-size:0.875rem; color:#595959; font-weight:500;">部门</label>
+            <input type="text" name="department" class="form-control" value="{{ form.department.value|default:'' }}" maxlength="100">
+            {% if form.department.errors %}<div style="color:#cf1322; font-size:0.78rem; margin-top:2px;">{{ form.department.errors|join:'；' }}</div>{% endif %}
+        </div>
+        <div class="mb-3">
+            <label class="form-label" style="font-size:0.875rem; color:#595959; font-weight:500;">岗位</label>
+            <input type="text" name="position" class="form-control" value="{{ form.position.value|default:'' }}" maxlength="100">
+            {% if form.position.errors %}<div style="color:#cf1322; font-size:0.78rem; margin-top:2px;">{{ form.position.errors|join:'；' }}</div>{% endif %}
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label" style="font-size:0.875rem; color:#595959; font-weight:600; display:block; margin-bottom:0.5rem;">分配角色（可多选，权限取并集）</label>
+            <div style="display:flex; flex-direction:column; gap:0.4rem;">
+                {% for r in roles %}
+                <label style="display:flex; gap:0.5rem; align-items:center; font-size:0.88rem; font-weight:400;">
+                    <input type="checkbox" name="roles" value="{{ r.id }}" class="form-check-input"
+                           {% if r.id in selected_role_ids %}checked{% endif %}>
+                    {{ r.name }}
+                    {% if r.is_builtin %}<span class="status-badge default">内置</span>{% endif %}
+                    <span style="color:#bfbfbf; font-size:0.78rem;">{{ r.description }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="mb-3" style="display:flex; flex-direction:column; gap:0.4rem;">
+            <label style="display:flex; gap:0.5rem; align-items:center; font-size:0.88rem; font-weight:400;">
+                {{ form.is_active }} {{ form.is_active.label }}
+            </label>
+            <label style="display:flex; gap:0.5rem; align-items:center; font-size:0.88rem; font-weight:400;
+                   {% if not request.user.is_superuser %}opacity:0.55;{% endif %}">
+                {% if request.user.is_superuser %}{{ form.is_staff }}{% else %}
+                <input type="checkbox" class="form-check-input" disabled {% if form.is_staff.value %}checked{% endif %}>
+                {% endif %}
+                {{ form.is_staff.label }}
+                {% if not request.user.is_superuser %}<span style="color:#bfbfbf; font-size:0.76rem;">（仅超级管理员可修改）</span>{% endif %}
+            </label>
+        </div>
+
+        <div style="display:flex; gap:0.75rem; margin-top:1.25rem;">
+            <button type="submit" class="btn-primary btn-sm" style="padding:0.5rem 1.5rem;">
+                {% if mode == 'create' %}创建用户{% else %}保存修改{% endif %}
+            </button>
+            <a href="{% url 'accounts:user_list' %}" class="btn-transparent btn-sm">返回列表</a>
+        </div>
+    </form>
+</div>
+{% include "accounts/_messages_toast.html" %}
+{% endblock %}

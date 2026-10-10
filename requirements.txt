@@ -1,0 +1,10 @@
+django==4.2.10
+openpyxl
+djangorestframework
+django-cors-headers
+requests
+beautifulsoup4
+# 档案管理模块依赖
+qrcode[pil]
+celery>=5.3
+redis>=5.0
