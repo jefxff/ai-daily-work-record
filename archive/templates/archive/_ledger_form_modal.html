@@ -1,0 +1,32 @@
+<form method="POST" data-modal-form action="{{ request.path }}" novalidate>
+    {% csrf_token %}
+    <div class="arc-form-grid">
+        {% for field in form.visible_fields %}
+        <div class="arc-field {% if field.name == 'description' %}arc-field-wide{% endif %}">
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span style="color:#f5222d">*</span>{% endif %}</label>
+            {{ field }}
+            {% if field.help_text %}<div class="arc-hint">{{ field.help_text }}</div>{% endif %}
+            {% for error in field.errors %}<div class="arc-error">{{ error }}</div>{% endfor %}
+        </div>
+        {% endfor %}
+    </div>
+    {% if form.non_field_errors %}
+    <div class="arc-error" style="margin-bottom:0.75rem;">
+        {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+    </div>
+    {% endif %}
+    <div class="form-modal-actions">
+        <button type="button" class="btn-transparent" data-modal-close>取消</button>
+        <button type="submit" class="btn-transparent btn-delete" data-modal-save>{% if mode == 'edit' %}保存{% else %}创建{% endif %}</button>
+    </div>
+</form>
+<style>
+    .arc-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem 1rem; }
+    .arc-field-wide { grid-column: 1 / -1; }
+    @media (max-width: 560px) { .arc-form-grid { grid-template-columns: 1fr; } }
+    .arc-field label { display:block; font-weight:600; color:#1f2329; font-size:0.85rem; margin-bottom:0.25rem; }
+    .arc-field .form-control, .arc-field .form-select { width:100%; padding:0.45rem 0.6rem; font-size:0.88rem; border:1px solid #d9d9d9; border-radius:4px; background:#fff; color:#1f2329; }
+    .arc-field .form-control:focus, .arc-field .form-select:focus { border-color:#1890ff; box-shadow:0 0 0 2px rgba(24,144,255,0.1); outline:none; }
+    .arc-error { color:#f5222d; font-size:0.8rem; margin-top:0.25rem; }
+    .arc-hint { color:#8c8c8c; font-size:0.78rem; margin-top:0.25rem; }
+</style>

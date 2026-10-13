@@ -1,28 +1,62 @@
 """档案管理模块表单。"""
 
+import os
+
 from django import forms
 from django.utils import timezone
 
-from .models import Archive, BorrowRecord, Cabinet, Category, License, LicenseBorrowRecord, AnnualReview
+from .models import (
+    ARCHIVE_FILE_ALLOWED_EXTS,
+    ARCHIVE_FILE_MAX_SIZE,
+    AnnualReview,
+    Archive,
+    BorrowRecord,
+    Cabinet,
+    Category,
+    Ledger,
+    License,
+    LicenseBorrowRecord,
+)
+
+
+def validate_archive_file(f) -> str:
+    """校验上传附件的类型与大小，通过返回空串，否则返回错误消息。"""
+    ext = os.path.splitext(f.name)[1].lstrip(".").upper()
+    if ext not in ARCHIVE_FILE_ALLOWED_EXTS:
+        return f"不支持的文件类型「{ext or '无扩展名'}」（允许：图片/PDF/Office/压缩包/文本）"
+    if f.size > ARCHIVE_FILE_MAX_SIZE:
+        return f"文件大小 {f.size / 1024 / 1024:.1f}MB 超过上限 50MB"
+    return ""
+
+
+class LedgerForm(forms.ModelForm):
+    """台账表单（新建/编辑共用）。"""
+
+    class Meta:
+        model = Ledger
+        fields = ["name", "description", "sort_order"]
+        widgets = {
+            "name": forms.TextInput(attrs={"class": "form-control", "placeholder": "如：专利、商标相关合同"}),
+            "description": forms.TextInput(attrs={"class": "form-control", "placeholder": "台账说明（可选）"}),
+            "sort_order": forms.NumberInput(attrs={"class": "form-control", "min": 0}),
+        }
 
 
 class CabinetForm(forms.ModelForm):
-    """档案柜表单。"""
+    """档案柜表单（各层格数由视图解析 layer_cell_N 并同步层记录）。"""
 
     class Meta:
         model = Cabinet
-        fields = ["code", "location", "layers", "cells_per_layer"]
+        fields = ["code", "location", "layers"]
         widgets = {
             "code": forms.TextInput(attrs={"class": "form-control", "placeholder": "如 A01"}),
             "location": forms.TextInput(attrs={"class": "form-control", "placeholder": "如 3楼档案室"}),
-            "layers": forms.Select(attrs={"class": "form-select"}),
-            "cells_per_layer": forms.NumberInput(attrs={"class": "form-control", "min": 1}),
+            "layers": forms.NumberInput(attrs={"class": "form-control", "min": 1, "max": 12, "value": 4}),
         }
         labels = {
             "code": "档案柜编号",
             "location": "所在位置",
             "layers": "层数",
-            "cells_per_layer": "每层格数",
         }
 
 
@@ -55,15 +89,16 @@ class ArchiveForm(forms.ModelForm):
     class Meta:
         model = Archive
         fields = [
-            "code", "name", "cabinet", "layer", "cell", "location_code",
+            "code", "name", "ledger", "cabinet", "layer", "cell", "location_code",
             "counterpart", "contract_no", "amount", "sign_date", "expire_date",
             "department", "security_level", "archive_label", "handler", "copies",
             "attachment_desc",
-            "file", "category", "tags", "description",
+            "category", "tags", "description",
         ]
         widgets = {
             "code": forms.TextInput(attrs={"class": "form-control"}),
             "name": forms.TextInput(attrs={"class": "form-control"}),
+            "ledger": forms.Select(attrs={"class": "form-select"}),
             "cabinet": forms.Select(attrs={"class": "form-select"}),
             "layer": forms.NumberInput(attrs={"class": "form-control", "min": 1}),
             "cell": forms.NumberInput(attrs={"class": "form-control", "min": 1}),
@@ -79,24 +114,20 @@ class ArchiveForm(forms.ModelForm):
             "handler": forms.TextInput(attrs={"class": "form-control"}),
             "copies": forms.NumberInput(attrs={"class": "form-control", "min": 1}),
             "attachment_desc": forms.TextInput(attrs={"class": "form-control"}),
-            "file": forms.ClearableFileInput(attrs={"class": "form-control"}),
             "category": forms.Select(attrs={"class": "form-select"}),
             "tags": forms.TextInput(attrs={"class": "form-control", "placeholder": "多个标签用逗号分隔"}),
             "description": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
         }
-        labels = {
-            "file": "电子档案",
-        }
 
     def __init__(self, *args, exclude_cell: bool = False, **kwargs):
         super().__init__(*args, **kwargs)
-        for f in ("category", "file", "cabinet", "layer", "cell", "location_code",
+        for f in ("category", "ledger", "cabinet", "layer", "cell", "location_code",
                   "counterpart", "contract_no", "amount", "sign_date", "expire_date",
                   "department", "security_level", "archive_label", "handler", "copies",
                   "attachment_desc"):
             self.fields[f].required = False
         if exclude_cell:
-            for f in ("code", "name", "file", "category", "tags", "description"):
+            for f in ("code", "name", "category", "tags", "description"):
                 self.fields[f].widget = forms.HiddenInput()
 
     def clean(self):
@@ -107,8 +138,10 @@ class ArchiveForm(forms.ModelForm):
         if cabinet and layer and cell:
             if layer > cabinet.layers:
                 self.add_error("layer", f"该档案柜只有 {cabinet.layers} 层")
-            if cell > cabinet.cells_per_layer:
-                self.add_error("cell", f"该层只有 {cabinet.cells_per_layer} 格")
+            else:
+                cells = cabinet.cells_of_layer(layer)
+                if cells is not None and cell > cells:
+                    self.add_error("cell", f"该柜第 {layer} 层只有 {cells} 格")
             qs = Archive.objects.filter(cabinet=cabinet, layer=layer, cell=cell)
             if self.instance and self.instance.pk:
                 qs = qs.exclude(pk=self.instance.pk)

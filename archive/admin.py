@@ -1,13 +1,19 @@
 from django.contrib import admin
 
-from .models import Archive, AnnualReview, BorrowRecord, Cabinet, Category, License, LicenseBorrowRecord
+from .models import Archive, AnnualReview, BorrowRecord, Cabinet, CabinetLayer, Category, License, LicenseBorrowRecord
+
+
+class CabinetLayerInline(admin.TabularInline):
+    model = CabinetLayer
+    extra = 0
 
 
 @admin.register(Cabinet)
 class CabinetAdmin(admin.ModelAdmin):
-    list_display = ("code", "location", "layers", "cells_per_layer", "created_at")
+    list_display = ("code", "location", "layers", "layer_cells_summary", "created_at")
     search_fields = ("code", "location")
     list_filter = ("layers",)
+    inlines = (CabinetLayerInline,)
 
 
 @admin.register(Category)

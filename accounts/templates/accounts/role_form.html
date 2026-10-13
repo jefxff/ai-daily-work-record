@@ -66,12 +66,8 @@
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:1rem;">
             <h3 style="font-size:1rem; font-weight:600; margin:0;">权限矩阵</h3>
             <div style="display:flex; gap:0.5rem;">
-                {% if mode == 'create' or not role.is_builtin %}
                 <button type="button" class="btn-transparent btn-sm" id="checkAll">全部勾选</button>
                 <button type="button" class="btn-transparent btn-sm" id="uncheckAll">全部清除</button>
-                {% else %}
-                <span style="color:#bfbfbf; font-size:0.8rem;">内置角色权限由系统统一定义，仅供查看</span>
-                {% endif %}
             </div>
         </div>
         <div style="overflow-x:auto;">
@@ -96,8 +92,7 @@
                         <td style="text-align:center;">
                             {% if a %}
                             <input type="checkbox" name="perms" value="{{ a.code }}" class="form-check-input perm-cb"
-                                   {% if a.checked %}checked{% endif %}
-                                   {% if mode == 'edit' and role.is_builtin %}disabled title="内置角色权限由系统统一定义"{% endif %}>
+                                   {% if a.checked %}checked{% endif %}>
                             {% else %}
                             <span style="color:#d9d9d9;">—</span>
                             {% endif %}
@@ -110,13 +105,12 @@
         </div>
         <p style="color:#8c8c8c; font-size:0.78rem; margin:0.5rem 0 0;">
             说明：勾选"读取"后该模块才会出现在用户侧边栏；金属价格仅支持读取/编辑，数据展示仅支持读取（由系统统一规定，不可越权勾选）。
+            {% if mode == 'edit' and role.is_builtin %}内置角色仅可调整权限矩阵，名称/说明/启停不可修改；执行 <code>python manage.py sync_rbac</code> 不会覆盖此处调整。{% endif %}
         </p>
         <div style="display:flex; gap:0.75rem; margin-top:1.25rem;">
-            {% if mode == 'create' or not role.is_builtin %}
             <button type="submit" class="btn-primary btn-sm" style="padding:0.5rem 1.5rem;">
                 {% if mode == 'create' %}创建角色{% else %}保存权限{% endif %}
             </button>
-            {% endif %}
             <a href="{% url 'accounts:role_list' %}" class="btn-transparent btn-sm">返回列表</a>
         </div>
     </div>

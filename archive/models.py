@@ -3,7 +3,9 @@
 模型说明：
 - Cabinet              档案柜（编号、位置、层数、每层格数）
 - Category             档案类别（树形多级结构）
-- Archive              档案（编号、名称、柜/层/格定位、电子文件、类别、标签）
+- Ledger               台账（对应一份 Excel 台账文件，档案的逻辑分组）
+- Archive              档案（编号、名称、柜/层/格定位、所属台账、类别、标签）
+- ArchiveFile          档案电子附件（一条档案可挂多个文件）
 - BorrowRecord         借阅记录（借阅人、借出/应还/实还时间、状态）
 - License              证照（编号、持证单位、发证机关、有效期、年审周期）
 - AnnualReview         年审记录（证照外键、年审日期、结果、新有效期）
@@ -43,14 +45,11 @@ class TimeStampedModel(models.Model):
 
 
 class Cabinet(TimeStampedModel):
-    """档案柜：定义物理存放位置的层级结构（柜 -> 层 -> 格）。"""
-
-    LAYER_CHOICES = [(2, "2 层"), (4, "4 层"), (6, "6 层"), (8, "8 层")]
+    """档案柜：定义物理存放位置的层级结构（柜 -> 层 -> 格），每层格数可独立设置。"""
 
     code = models.CharField("档案柜编号", max_length=50, unique=True)
     location = models.CharField("所在位置", max_length=200, blank=True)
-    layers = models.PositiveSmallIntegerField("层数", choices=LAYER_CHOICES, default=4)
-    cells_per_layer = models.PositiveSmallIntegerField("每层格数", default=10)
+    layers = models.PositiveSmallIntegerField("层数", default=4)
 
     class Meta:
         verbose_name = "档案柜"
@@ -60,10 +59,20 @@ class Cabinet(TimeStampedModel):
     def __str__(self):
         return f"{self.code}（{self.location}）"
 
+    def cells_of_layer(self, layer_no: int):
+        """指定层的格数；无层记录时返回 None（调用方自行决定是否校验）。"""
+        row = self.layer_configs.filter(layer_no=layer_no).first()
+        return row.cells if row else None
+
+    def layer_cells_summary(self) -> str:
+        """各层格数摘要，如 "10,10,8,8"；无层记录时返回 "—"。"""
+        rows = list(self.layer_configs.order_by("layer_no"))
+        return ",".join(str(r.cells) for r in rows) if rows else "—"
+
     @property
     def total_cells(self) -> int:
-        """档案柜总格子数。"""
-        return int(self.layers) * int(self.cells_per_layer)
+        """档案柜总格子数（各层格数之和）。"""
+        return sum(r.cells for r in self.layer_configs.all())
 
     @property
     def used_cells(self) -> int:
@@ -89,12 +98,69 @@ class Cabinet(TimeStampedModel):
         """返回二维矩阵：[层][格] -> Archive 或 None，用于总览页渲染。"""
         archives = {(a.layer, a.cell): a for a in self.archives.all()}
         matrix = []
-        for layer in range(1, self.layers + 1):
-            row = []
-            for cell in range(1, self.cells_per_layer + 1):
-                row.append(archives.get((layer, cell)))
-            matrix.append(row)
+        for lc in self.layer_configs.order_by("layer_no"):
+            matrix.append([archives.get((lc.layer_no, cell)) for cell in range(1, lc.cells + 1)])
         return matrix
+
+    def sync_layers(self, cells=None):
+        """把层记录同步为 layers 层，逐层格数取 cells 列表（1..layers）。
+
+        cells 为 None 时：保留现有层记录格数，缺失的层用默认 10 格补齐，
+        超出 layers 的多余层删除。缩层/缩格时若已有档案占用则抛 ValueError。
+        """
+        if cells is None:
+            existing = {r.layer_no: r.cells for r in self.layer_configs.all()}
+            cells = [existing.get(i, 10) for i in range(1, self.layers + 1)]
+        if len(cells) != self.layers:
+            raise ValueError(f"格数配置数量（{len(cells)}）与层数（{self.layers}）不一致")
+        cleaned = []
+        for no, c in enumerate(cells, start=1):
+            try:
+                c = int(c)
+            except (TypeError, ValueError):
+                raise ValueError(f"第 {no} 层格数需为数字，收到「{c}」")
+            if c < 1:
+                raise ValueError(f"第 {no} 层格数至少为 1")
+            cleaned.append(c)
+        # 缩层校验：被删除的层上不能有档案
+        if self.pk and self.layers < self.layer_configs.count():
+            occupied = self.archives.filter(layer__gt=self.layers).count()
+            if occupied:
+                raise ValueError(f"第 {self.layers + 1} 层及以上仍有 {occupied} 份档案，请先移出再减少层数")
+        # 缩格校验：每层已有档案的格号不能超过新格数
+        if self.pk:
+            for no, c in enumerate(cleaned, start=1):
+                over = self.archives.filter(layer=no, cell__gt=c).count()
+                if over:
+                    raise ValueError(f"第 {no} 层有 {over} 份档案的格号超过新格数 {c}，请先调整档案位置")
+        rows = {r.layer_no: r for r in self.layer_configs.all()}
+        for no, c in enumerate(cleaned, start=1):
+            row = rows.pop(no, None)
+            if row:
+                if row.cells != c:
+                    row.cells = c
+                    row.save(update_fields=["cells"])
+            else:
+                CabinetLayer.objects.create(cabinet=self, layer_no=no, cells=c)
+        for stale in rows.values():
+            stale.delete()
+
+
+class CabinetLayer(models.Model):
+    """档案柜层配置：每层可独立设置格数。"""
+
+    cabinet = models.ForeignKey(Cabinet, verbose_name="档案柜", related_name="layer_configs", on_delete=models.CASCADE)
+    layer_no = models.PositiveSmallIntegerField("层号")
+    cells = models.PositiveSmallIntegerField("本层格数", default=10)
+
+    class Meta:
+        verbose_name = "档案柜层"
+        verbose_name_plural = "档案柜层"
+        unique_together = [("cabinet", "layer_no")]
+        ordering = ["layer_no"]
+
+    def __str__(self):
+        return f"{self.cabinet.code}-第{self.layer_no}层（{self.cells}格）"
 
 
 class Category(models.Model):
@@ -130,16 +196,45 @@ class Category(models.Model):
         return "/".join(names)
 
 
+class Ledger(TimeStampedModel):
+    """台账：对应一份 Excel 台账文件，作为档案的逻辑分组单位。"""
+
+    name = models.CharField("台账名称", max_length=200, unique=True, help_text="默认取 Excel 文件名去扩展名")
+    description = models.CharField("说明", max_length=300, blank=True)
+    sort_order = models.IntegerField("排序", default=0)
+
+    class Meta:
+        verbose_name = "台账"
+        verbose_name_plural = "台账"
+        ordering = ["sort_order", "id"]
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def archive_count(self) -> int:
+        """台账内档案数量。"""
+        return self.archives.count()
+
+
+# 档案附件：类型白名单与大小上限（50MB）
+ARCHIVE_FILE_ALLOWED_EXTS = {
+    "PNG", "JPG", "JPEG", "GIF", "BMP", "WEBP",
+    "PDF", "DOC", "DOCX", "XLS", "XLSX", "PPT", "PPTX",
+    "ZIP", "RAR", "7Z", "TXT",
+}
+ARCHIVE_FILE_MAX_SIZE = 50 * 1024 * 1024
+
+
 def archive_file_upload_to(instance, filename):
-    """档案文件上传路径：media/archives/<柜编号>/<文件名>。"""
-    cabinet_code = instance.cabinet.code if instance.cabinet else "unknown"
+    """档案附件上传路径：media/archives/<档案编号>/<原文件名>，按档案隔离、文件名可读。"""
+    code = instance.archive.code if instance.archive_id else "unknown"
     # 仅保留文件名，避免路径注入
-    filename = os.path.basename(filename)
-    return os.path.join("archives", cabinet_code, filename)
+    return os.path.join("archives", code, os.path.basename(filename))
 
 
 class Archive(TimeStampedModel):
-    """档案：物理定位 + 电子文件 + 分类标签 + 业务台账字段。"""
+    """档案：物理定位 + 分类标签 + 业务台账字段（电子附件见 ArchiveFile）。"""
 
     code = models.CharField("档案编号", max_length=50, unique=True)
     name = models.CharField("档案名称", max_length=200)
@@ -150,12 +245,11 @@ class Archive(TimeStampedModel):
     layer = models.PositiveSmallIntegerField("层号", null=True, blank=True)
     cell = models.PositiveSmallIntegerField("格号", null=True, blank=True)
     location_code = models.CharField("位置编码", max_length=50, blank=True, help_text="文本位置编码，如 09-3-7-1")
-    file = models.FileField(
-        "电子档案",
-        upload_to=archive_file_upload_to,
-        null=True,
-        blank=True,
+    ledger = models.ForeignKey(
+        Ledger, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="archives", verbose_name="所属台账",
     )
+    source_sheet = models.CharField("来源 Sheet", max_length=100, blank=True, help_text="导入时来源 Excel sheet 名")
     category = models.ForeignKey(
         Category,
         on_delete=models.SET_NULL,
@@ -223,28 +317,46 @@ class Archive(TimeStampedModel):
         """标签列表。"""
         return [t.strip() for t in self.tags.split(",") if t.strip()]
 
+
+class ArchiveFile(TimeStampedModel):
+    """档案电子附件：一条档案可挂多个文件，按需单文件加载，不影响列表页。"""
+
+    archive = models.ForeignKey(
+        Archive, on_delete=models.CASCADE,
+        related_name="files", verbose_name="所属档案",
+    )
+    file = models.FileField("附件文件", upload_to=archive_file_upload_to)
+
+    class Meta:
+        verbose_name = "档案附件"
+        verbose_name_plural = "档案附件"
+        ordering = ["id"]
+
+    def __str__(self):
+        return f"{self.archive.code} - {self.file_basename}"
+
     @property
     def file_ext(self) -> str:
-        """电子文件扩展名（大写），无文件时返回空串。"""
+        """附件扩展名（大写），无文件时返回空串。"""
         if not self.file:
             return ""
         return os.path.splitext(self.file.name)[1].lstrip(".").upper()
 
     @property
     def file_basename(self) -> str:
-        """电子文件纯文件名（不含 media 路径）。"""
+        """附件纯文件名（不含 media 路径）。"""
         if not self.file:
             return ""
         return os.path.basename(self.file.name)
 
     @property
     def is_image(self) -> bool:
-        """电子文件是否为图片（可内嵌预览）。"""
+        """是否为图片（可生成缩略图内嵌预览）。"""
         return self.file_ext in {"PNG", "JPG", "JPEG", "GIF", "BMP", "WEBP"}
 
     @property
     def is_pdf(self) -> bool:
-        """电子文件是否为 PDF（可内嵌预览）。"""
+        """是否为 PDF。"""
         return self.file_ext == "PDF"
 
 

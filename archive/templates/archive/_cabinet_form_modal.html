@@ -1,5 +1,6 @@
 <form method="POST" data-modal-form action="{{ request.path }}" novalidate>
     {% csrf_token %}
+    <input type="hidden" id="initialLayerCells" value="{{ layer_cells_json|default:'[]' }}">
     <div class="arc-form-grid">
         {% for field in form.visible_fields %}
         <div class="arc-field">
@@ -9,6 +10,11 @@
             {% for error in field.errors %}<div class="arc-error">{{ error }}</div>{% endfor %}
         </div>
         {% endfor %}
+    </div>
+    <div class="arc-field" style="margin-top:0.75rem;">
+        <label style="display:block;font-weight:600;color:#1f2329;font-size:0.85rem;margin-bottom:0.25rem;">各层格数（每层可不同）</label>
+        <div id="layerCellsRow" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+        <div class="arc-hint">从第 1 层开始逐层填写格数；某层留空按 10 格处理。修改层数后自动增减输入框。</div>
     </div>
     {% if form.non_field_errors %}
     <div class="arc-error" style="margin-bottom:0.75rem;">
@@ -20,6 +26,35 @@
         <button type="submit" class="btn-transparent btn-delete" data-modal-save>{% if mode == 'edit' %}保存{% else %}创建{% endif %}</button>
     </div>
 </form>
+
+<script>
+    (function () {
+        var layersInput = document.getElementById('id_layers');
+        var row = document.getElementById('layerCellsRow');
+        var initial = [];
+        try { initial = JSON.parse(document.getElementById('initialLayerCells').value || '[]'); } catch (e) { initial = []; }
+
+        function renderCells() {
+            if (!layersInput || !row) return;
+            var n = parseInt(layersInput.value, 10);
+            if (!n || n < 1 || n > 12) { row.innerHTML = '<span class="arc-hint">请先填写 1-12 的层数</span>'; return; }
+            var html = '';
+            for (var i = 1; i <= n; i++) {
+                var v = initial[i - 1] !== undefined ? initial[i - 1] : '';
+                html += '<div style="text-align:center">'
+                    + '<div style="font-size:0.72rem;color:#8c8c8c;margin-bottom:2px;">第 ' + i + ' 层</div>'
+                    + '<input class="form-control" style="width:74px;padding:0.35rem 0.5rem;font-size:0.85rem;" type="number" min="1" max="99" '
+                    + 'name="layer_cell_' + i + '" value="' + v + '" placeholder="10">'
+                    + '</div>';
+            }
+            row.innerHTML = html;
+        }
+        if (layersInput) {
+            layersInput.addEventListener('input', renderCells);
+            renderCells();
+        }
+    })();
+</script>
 
 <style>
     .arc-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem 1rem; }

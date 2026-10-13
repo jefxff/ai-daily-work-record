@@ -5,58 +5,46 @@
 
 {% block extra_css %}
 <style>
-    .arc-dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
-    .arc-stat-card { background: rgba(255,255,255,0.95); border-radius: 12px; padding: 1.25rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-    .arc-stat-value { font-size: 1.8rem; font-weight: 700; color: #1f2329; }
-    .arc-stat-label { font-size: 0.8rem; color: #8c8c8c; margin-top: 0.25rem; }
-    .arc-stat-card.occupied .arc-stat-value { color: #fa8c16; }
-    .arc-stat-card.free .arc-stat-value { color: #52c41a; }
-    .arc-stat-card.overdue .arc-stat-value { color: #f5222d; }
+    .lg-dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .lg-stat-card { background: rgba(255,255,255,0.95); border-radius: 12px; padding: 1.25rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .lg-stat-value { font-size: 1.8rem; font-weight: 700; color: #1f2329; }
+    .lg-stat-label { font-size: 0.8rem; color: #8c8c8c; margin-top: 0.25rem; }
+    .lg-stat-card.borrowed .lg-stat-value { color: #f5222d; }
+    .lg-stat-card.expiring .lg-stat-value { color: #fa8c16; }
 
-    .arc-toolbar { display: flex; flex-wrap: nowrap; gap: 0.75rem; align-items: center; margin-bottom: 1.25rem; overflow-x: auto; }
-    .arc-toolbar .form-control, .arc-toolbar .form-select { width: auto; min-width: 140px; }
-    .arc-toolbar form { flex-wrap: nowrap !important; }
-    .arc-toolbar .arc-actions { display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0; }
+    .lg-toolbar { display: flex; flex-wrap: nowrap; gap: 0.75rem; align-items: center; margin-bottom: 1.25rem; overflow-x: auto; }
+    .lg-toolbar .form-control, .lg-toolbar .form-select { width: auto; min-width: 140px; }
+    .lg-toolbar form { flex-wrap: nowrap !important; }
+    .lg-toolbar .lg-actions { display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0; }
 
-    .arc-cabinet-card { background: rgba(255,255,255,0.95); border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-    .arc-cabinet-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; }
-    .arc-cabinet-title { font-size: 1.1rem; font-weight: 600; color: #1f2329; }
-    .arc-cabinet-meta { font-size: 0.8rem; color: #8c8c8c; }
-    .arc-progress { height: 6px; background: #f0f0f0; border-radius: 3px; overflow: hidden; margin-top: 0.4rem; }
-    .arc-progress-bar { height: 100%; background: linear-gradient(90deg, #1890ff, #13c2c2); }
+    .lg-search-banner { padding: 0.65rem 1rem; border-radius: 8px; font-size: 0.88rem; margin-bottom: 1rem; }
+    .lg-search-banner.has-hit { background: #fff7e6; border: 1px solid #ffd591; color: #d46b08; }
+    .lg-search-banner.no-hit { background: #fff1f0; border: 1px solid #ffa39e; color: #cf1322; }
 
-    .arc-grid { display: grid; gap: 6px; }
-    .arc-cell { aspect-ratio: 1.6; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; cursor: pointer; transition: all 0.2s; border: 1px solid transparent; text-align: center; padding: 2px; overflow: hidden; }
-    .arc-cell.free { background: #f6ffed; border-color: #b7eb8f; color: #52c41a; }
-    .arc-cell.free:hover { background: #f6ffed; border-color: #52c41a; box-shadow: 0 0 0 2px rgba(82,196,26,0.2); }
-    .arc-cell.occupied { background: #e6f7ff; border-color: #91d5ff; color: #096dd9; }
-    .arc-cell.occupied:hover { background: #bae7ff; border-color: #1890ff; }
-    .arc-cell .cell-code { font-weight: 600; line-height: 1.1; word-break: break-all; }
-    .arc-cell .cell-name { font-size: 0.6rem; opacity: 0.8; margin-top: 2px; }
-    .arc-cell.borrowed { background: #fff1f0; border-color: #ffa39e; }
-    .arc-cell.borrowed .cell-code { color: #cf1322; }
-    /* 即将到期档案格（30天内到期） */
-    .arc-cell.expiring { background: #fff7e6; border-color: #ffd591; }
-    .arc-cell.expiring .cell-code { color: #d46b08; }
-    .arc-cell.expiring .cell-name { color: #ad6800; }
+    /* 台账卡片：对应一份 Excel 台账 */
+    .lg-card { background: rgba(255,255,255,0.95); border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .lg-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.9rem; flex-wrap: wrap; gap: 0.5rem; }
+    .lg-card-title { font-size: 1.1rem; font-weight: 600; color: #1f2329; }
+    .lg-card-meta { font-size: 0.8rem; color: #8c8c8c; margin-top: 0.15rem; }
+    .lg-badge { display: inline-block; font-size: 0.72rem; padding: 1px 8px; border-radius: 10px; margin-left: 6px; vertical-align: 1px; }
+    .lg-badge.expiring { background: #fff7e6; color: #d46b08; border: 1px solid #ffd591; }
+    .lg-badge.borrowed { background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e; }
 
-    /* 搜索命中高亮 */
-    a.arc-cell { text-decoration: none; }
-    .arc-cell-hit { background: #fff7e6 !important; border-color: #fa8c16 !important; box-shadow: 0 0 0 3px rgba(250,140,22,0.45); position: relative; z-index: 2; animation: arcHitPulse 1.2s ease-in-out 2; }
-    .arc-cell-hit .cell-code { color: #d46b08; }
-    @keyframes arcHitPulse { 0%,100% { box-shadow: 0 0 0 3px rgba(250,140,22,0.45); } 50% { box-shadow: 0 0 0 6px rgba(250,140,22,0.25); } }
+    /* 宽表：横向滚动 + 截断 + 紧凑字号，操作按钮横排 */
+    .lg-table-wrap { overflow-x: auto; }
+    .lg-table { min-width: 1080px; border-collapse: collapse; width: 100%; font-size: 13px; }
+    .lg-table th { background: #fafafa; color: #595959; font-weight: 600; padding: 9px 12px; text-align: left; white-space: nowrap; border-bottom: 1px solid #f0f0f0; }
+    .lg-table td { padding: 9px 12px; color: #1f2329; border-bottom: 1px solid #f5f5f5; white-space: nowrap; }
+    .lg-table td.lg-ellipsis { max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+    .lg-table tbody tr:hover { background: #f5faff; }
+    .lg-row-actions { display: flex; gap: 6px; flex-wrap: nowrap; }
+    .lg-empty { text-align: center; color: #8c8c8c; padding: 1.6rem 0; }
+    .lg-more { display: inline-block; margin-top: 0.7rem; font-size: 0.85rem; }
 
-    /* 搜索结果提示条 */
-    .arc-search-banner { padding: 0.65rem 1rem; border-radius: 8px; font-size: 0.88rem; margin-bottom: 1rem; }
-    .arc-search-banner.has-hit { background: #fff7e6; border: 1px solid #ffd591; color: #d46b08; }
-    .arc-search-banner.no-hit { background: #fff1f0; border: 1px solid #ffa39e; color: #cf1322; }
-
-    .arc-layer-label { font-size: 0.75rem; color: #8c8c8c; font-weight: 600; align-self: center; }
-    .arc-row { display: grid; grid-template-columns: 40px 1fr; gap: 6px; align-items: stretch; }
-
-    .arc-legend { display: flex; gap: 1rem; font-size: 0.78rem; color: #595959; margin-bottom: 1rem; flex-wrap: wrap; }
-    .arc-legend span { display: inline-flex; align-items: center; gap: 0.3rem; }
-    .arc-legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+    /* 搜索命中行高亮（橙色） */
+    tr.lg-row-hit td { background: #fff7e6 !important; }
+    tr.lg-row-hit td:first-child { box-shadow: inset 3px 0 0 #fa8c16; }
+    tr.lg-row-hit td { color: #d46b08; }
 </style>
 {% endblock %}
 
@@ -65,44 +53,36 @@
     <h1 class="page-title mb-4">档案管理 · 总览</h1>
 
     <!-- 仪表盘 -->
-    <div class="arc-dashboard">
-        <div class="arc-stat-card">
-            <div class="arc-stat-value">{{ total_cabinets }}</div>
-            <div class="arc-stat-label">档案柜总数</div>
+    <div class="lg-dashboard">
+        <div class="lg-stat-card">
+            <div class="lg-stat-value">{{ total_ledgers }}</div>
+            <div class="lg-stat-label">台账总数</div>
         </div>
-        <div class="arc-stat-card occupied">
-            <div class="arc-stat-value">{{ total_archives }}</div>
-            <div class="arc-stat-label">档案总数</div>
+        <div class="lg-stat-card">
+            <div class="lg-stat-value">{{ total_archives }}</div>
+            <div class="lg-stat-label">档案总数</div>
         </div>
-        <div class="arc-stat-card free">
-            <div class="arc-stat-value">{{ free_cells }}</div>
-            <div class="arc-stat-label">剩余空位</div>
-        </div>
-        <div class="arc-stat-card">
-            <div class="arc-stat-value">{{ occupancy }}%</div>
-            <div class="arc-stat-label">总占用率</div>
-            <div class="arc-progress"><div class="arc-progress-bar" data-w="{{ occupancy }}"></div></div>
+        <div class="lg-stat-card borrowed">
+            <div class="lg-stat-value">{{ borrowed_count }}</div>
+            <div class="lg-stat-label">已借出</div>
         </div>
         {% if overdue_count %}
-        <div class="arc-stat-card overdue">
-            <div class="arc-stat-value">{{ overdue_count }}</div>
-            <div class="arc-stat-label">逾期未还</div>
+        <div class="lg-stat-card borrowed">
+            <div class="lg-stat-value">{{ overdue_count }}</div>
+            <div class="lg-stat-label">逾期未还</div>
         </div>
         {% endif %}
-        {% if expiring_count %}
-        <div class="arc-stat-card" style="background: rgba(255,247,230,0.95);">
-            <div class="arc-stat-value" style="color: #fa8c16;">{{ expiring_count }}</div>
-            <div class="arc-stat-label">即将到期（30天内）</div>
+        <div class="lg-stat-card expiring">
+            <div class="lg-stat-value">{{ expiring_count }}</div>
+            <div class="lg-stat-label">即将到期（30天内）</div>
         </div>
-        {% endif %}
     </div>
 
     <!-- 工具栏 -->
-    <div class="arc-toolbar">
+    <div class="lg-toolbar">
         <form method="get" class="d-flex flex-wrap gap-2">
-            <input type="text" name="aq" value="{{ aq }}" class="form-control" placeholder="搜索档案：名称 / 编号 / 相对方 / 合同号 / 部门 / 标签 / 经办人 / 描述" style="min-width:280px">
-            <button class="btn btn-primary btn-sm" type="submit" title="搜索档案并在网格中定位">搜索档案</button>
-            <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="柜号 / 位置">
+            <input type="text" name="aq" value="{{ aq }}" class="form-control" placeholder="搜索档案：名称 / 编号 / 相对方 / 合同号 / 部门 / 位置编码 / 标签 / 经办人 / 描述" style="min-width:280px">
+            <button class="btn btn-primary btn-sm" type="submit">搜索档案</button>
             <select name="category" class="form-select">
                 <option value="">全部类别</option>
                 {% for c in categories %}
@@ -111,129 +91,228 @@
             </select>
             <select name="status" class="form-select">
                 <option value="">全部状态</option>
-                <option value="occupied" {% if status == "occupied" %}selected{% endif %}>已存放</option>
-                <option value="free" {% if status == "free" %}selected{% endif %}>空位</option>
                 <option value="expiring" {% if status == "expiring" %}selected{% endif %}>即将到期</option>
-            </select>
-            <select name="sort" class="form-select">
-                <option value="code" {% if sort == "code" %}selected{% endif %}>按柜号</option>
-                <option value="location" {% if sort == "location" %}selected{% endif %}>按位置</option>
-                <option value="used" {% if sort == "used" %}selected{% endif %}>按占用率</option>
+                <option value="borrowed" {% if status == "borrowed" %}selected{% endif %}>借出中</option>
             </select>
             <button class="btn btn-primary btn-sm" type="submit">筛选</button>
         </form>
-        <div class="ms-auto arc-actions">
+        <div class="ms-auto lg-actions">
             {% can "archive" "create" %}
-            <a href="{% url 'archive:cabinet_create' %}" class="btn btn-primary btn-sm" data-modal-add data-modal-title="新建档案柜">＋ 新建档案柜</a>
+            <a href="{% url 'archive:ledger_create' %}" class="btn btn-primary btn-sm" data-modal-add data-modal-title="新建台账">＋ 新建台账</a>
             {% endcan %}
             {% can "archive" "create" %}
             <a href="{% url 'archive:archive_create' %}" class="btn btn-success btn-sm" data-modal-add data-modal-title="录入档案">＋ 录入档案</a>
             {% endcan %}
             {% can "archive" "read" %}
-            <a href="{% url 'archive:export' %}" class="btn btn-outline-primary btn-sm">导出 CSV</a>
+            <button type="button" class="btn btn-outline-primary btn-sm" id="btnBatchExport" title="勾选台账后批量导出（每个台账一个工作表）；未勾选时请先勾选">导出所选</button>
+            {% endcan %}
+            {% can "archive" "update" %}
+            <a href="{% url 'archive:ledger_batch_import' %}" class="btn btn-outline-primary btn-sm" title="上传多工作表 Excel，按工作表名匹配台账批量导入更新">批量导入更新</a>
             {% endcan %}
         </div>
     </div>
 
-    <div class="arc-legend">
-        <span><i style="background:#e6f7ff;border:1px solid #91d5ff"></i>已存放档案</span>
-        <span><i style="background:#f6ffed;border:1px solid #b7eb8f"></i>空位（点击可录入）</span>
-        <span><i style="background:#fff1f0;border:1px solid #ffa39e"></i>已借出</span>
-        <span><i style="background:#fff7e6;border:1px solid #ffd591"></i>即将到期</span>
-        <span><i style="background:#fff7e6;border:1px solid #fa8c16"></i>搜索命中</span>
-    </div>
+    <form id="batchExportForm" method="post" action="{% url 'archive:ledger_batch_export' %}" class="d-none">{% csrf_token %}</form>
 
     {% if aq %}
-    <div class="arc-search-banner {% if match_count %}has-hit{% else %}no-hit{% endif %}">
+    <div class="lg-search-banner {% if match_count %}has-hit{% else %}no-hit{% endif %}">
         {% if match_count %}
-            搜索「{{ aq }}」：命中 <strong>{{ match_count }}</strong> 份档案，已在网格中高亮，页面已自动定位到第一处
+            搜索「{{ aq }}」：命中 <strong>{{ match_count }}</strong> 份档案，已在对应台账中列出并橙色高亮
         {% else %}
             搜索「{{ aq }}」：未找到匹配的档案（可按名称、编号、相对方、合同号、部门、位置编码、标签、经办人或描述关键字搜索）
         {% endif %}
     </div>
     {% endif %}
 
-    <!-- 档案柜网格 -->
-    {% for item in cabinet_data %}
-    <div class="arc-cabinet-card">
-        <div class="arc-cabinet-header">
+    <!-- 台账卡片列表 -->
+    {% for item in ledger_data %}
+    <div class="lg-card">
+        <div class="lg-card-header">
             <div>
-                <div class="arc-cabinet-title">{{ item.cabinet.code }} <small class="text-muted">{{ item.cabinet.location }}</small></div>
-                <div class="arc-cabinet-meta">{{ item.cabinet.layers }} 层 × {{ item.cabinet.cells_per_layer }} 格 · 已用 {{ item.cabinet.used_cells }} / {{ item.cabinet.total_cells }} · 占用率 {{ item.cabinet.occupancy_rate }}%</div>
-                <div class="arc-progress" style="width:200px"><div class="arc-progress-bar" data-w="{{ item.cabinet.occupancy_rate }}"></div></div>
+                <div class="lg-card-title">
+                    {% can "archive" "read" %}
+                    <input type="checkbox" class="lg-check form-check-input" value="{{ item.ledger.pk }}" title="勾选后可批量导出" style="margin-right: 6px; vertical-align: middle;">
+                    {% endcan %}
+                    {{ item.ledger.name }}
+                    <span class="text-muted small">共 {{ item.total }} 条</span>
+                    {% if item.expiring_count %}<span class="lg-badge expiring">⚠️ 即将到期 {{ item.expiring_count }}</span>{% endif %}
+                    {% if item.borrowed_count %}<span class="lg-badge borrowed">借出中 {{ item.borrowed_count }}</span>{% endif %}
+                </div>
+                {% if item.ledger.description %}<div class="lg-card-meta">{{ item.ledger.description }}</div>{% endif %}
             </div>
             <div class="d-flex gap-1">
+                <a href="{% url 'archive:ledger_detail' item.ledger.pk %}" class="btn btn-sm btn-primary">查看全部 {{ item.total }} 条</a>
+                {% can "archive" "read" %}
+                <a href="{% url 'archive:ledger_export' item.ledger.pk %}" class="btn btn-sm btn-outline-primary" title="导出本台账全部档案">导出</a>
+                {% endcan %}
                 {% can "archive" "update" %}
-                <a href="{% url 'archive:cabinet_edit' item.cabinet.pk %}" class="btn btn-sm btn-outline-secondary" data-modal-edit data-modal-title="编辑档案柜">编辑</a>
+                <a href="{% url 'archive:ledger_import' item.ledger.pk %}" class="btn btn-sm btn-outline-primary" title="上传 Excel 更新本台账档案">导入</a>
+                {% endcan %}
+                {% can "archive" "update" %}
+                <a href="{% url 'archive:ledger_edit' item.ledger.pk %}" class="btn btn-sm btn-outline-secondary" data-modal-edit data-modal-title="编辑台账">编辑</a>
                 {% endcan %}
                 {% can "archive" "delete" %}
-                <a href="{% url 'archive:cabinet_delete' item.cabinet.pk %}" class="btn btn-sm btn-outline-danger">删除</a>
+                <form method="POST" action="{% url 'archive:ledger_delete' item.ledger.pk %}" class="d-inline" data-confirm="确认删除台账「{{ item.ledger.name }}」？删除后不可恢复。">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline-danger">删除</button>
+                </form>
                 {% endcan %}
             </div>
         </div>
-        {% for row in item.matrix %}
-        <div class="arc-row mb-1">
-            <div class="arc-layer-label">第 {{ forloop.counter }} 层</div>
-            <div class="arc-grid" data-cols="{{ item.cabinet.cells_per_layer }}">
-                {% for cell in row %}
-                    {% if cell %}
-                        <a class="arc-cell {% if cell.is_borrowed %}borrowed{% elif cell.id in expiring_ids %}expiring{% else %}occupied{% endif %} {% if cell.id in matched_ids %}arc-cell-hit{% endif %}" href="{% url 'archive:archive_detail' cell.pk %}" title="{{ cell.name }}｜{{ cell.location_path }}{% if cell.is_borrowed %}（借出中）{% endif %}{% if cell.id in expiring_ids %}（即将到期：{{ cell.expire_date }}）{% endif %}">
-                            <div><div class="cell-code">{{ cell.code }}</div><div class="cell-name">{{ cell.name }}</div></div>
-                        </a>
-                    {% else %}
-                        {% if request.user|can_do:'archive.create' %}
-                        <a class="arc-cell free" href="{% url 'archive:archive_create' %}?cabinet={{ item.cabinet.pk }}&layer={{ forloop.parentloop.counter }}&cell={{ forloop.counter }}" data-modal-add data-modal-title="录入档案">
-                            <div class="cell-code">空位</div>
-                        </a>
-                        {% else %}
-                        <div class="arc-cell free"><div class="cell-code">空位</div></div>
-                        {% endif %}
-                    {% endif %}
-                {% endfor %}
-            </div>
+        <div class="lg-table-wrap">
+            <table class="lg-table">
+                <thead>
+                    <tr>
+                        <th>编号</th>
+                        <th>名称</th>
+                        <th>相对方/公司名称</th>
+                        <th>合同编号</th>
+                        <th>金额</th>
+                        <th>签订日期</th>
+                        <th>到期日期</th>
+                        <th>部门</th>
+                        <th>位置编码</th>
+                        <th>经办人</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in item.rows %}
+                    <tr class="{% if a.id in matched_ids %}lg-row-hit{% endif %}">
+                        <td>{{ a.code }}</td>
+                        <td class="lg-ellipsis" title="{{ a.name }}">{{ a.name }}</td>
+                        <td class="lg-ellipsis" title="{{ a.counterpart }}">{{ a.counterpart|default:"—" }}</td>
+                        <td>{{ a.contract_no|default:"—" }}</td>
+                        <td>{{ a.amount|default:"—" }}</td>
+                        <td>{{ a.sign_date|default:"—" }}</td>
+                        <td>{{ a.expire_date|default:"—" }}</td>
+                        <td>{{ a.department|default:"—" }}</td>
+                        <td>{{ a.location_code|default:"—" }}</td>
+                        <td>{{ a.handler|default:"—" }}</td>
+                        <td>
+                            {% if a.is_borrowed %}<span class="status-badge danger">借出中</span>
+                            {% elif a.is_expiring %}<span class="status-badge warning">即将到期</span>
+                            {% else %}<span class="status-badge success">正常</span>{% endif %}
+                        </td>
+                        <td>
+                            <div class="lg-row-actions">
+                                <a class="btn btn-sm btn-outline-primary" href="{% url 'archive:archive_detail' a.pk %}">详情</a>
+                                {% can "archive" "update" %}
+                                <a class="btn btn-sm btn-outline-secondary" href="{% url 'archive:archive_edit' a.pk %}" data-modal-edit data-modal-title="编辑档案">编辑</a>
+                                {% endcan %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="12" class="lg-empty">该台账暂无档案，可通过「录入档案」或台账页「导入更新」添加</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
-        {% endfor %}
+        {% if item.total > item.rows|length %}
+        <a class="lg-more" href="{% url 'archive:ledger_detail' item.ledger.pk %}">查看全部 {{ item.total }} 条 →</a>
+        {% endif %}
     </div>
     {% empty %}
-    <div class="arc-cabinet-card text-center text-muted py-5">
-        暂无档案柜。{% can "archive" "create" %}<a href="{% url 'archive:cabinet_create' %}" data-modal-add data-modal-title="新建档案柜">立即新建</a>{% endcan %}
+    <div class="lg-card text-center text-muted py-5">
+        暂无台账。{% can "archive" "create" %}<a href="{% url 'archive:ledger_create' %}" data-modal-add data-modal-title="新建台账">立即新建</a>
+        或 <a href="{% url 'archive:ledger_batch_import' %}">批量导入</a>（Excel 工作表名 = 台账名，自动建台账）{% endcan %}
     </div>
     {% endfor %}
 
-    <!-- 批量导入 -->
-    {% can "archive" "create" %}
-    <div class="arc-cabinet-card">
-        <h5 class="mb-3">批量导入档案</h5>
-        <p class="text-muted small mb-3">上传 Excel 台账文件，系统自动解析多 sheet 并智能匹配列头，你可以在下一步手动调整字段映射后执行导入。</p>
-        <a href="{% url 'archive:import_archives' %}" class="btn btn-primary btn-sm">
-            <i class="bi bi-upload"></i> 上传 Excel 台账
-        </a>
-        <a href="{% url 'archive:import_template' %}" class="btn btn-outline-success btn-sm">下载空白模板</a>
+    <!-- 未分配台账的档案 -->
+    {% if unassigned_total %}
+    <div class="lg-card">
+        <div class="lg-card-header">
+            <div class="lg-card-title">未分配台账 <span class="text-muted small">共 {{ unassigned_total }} 条</span></div>
+        </div>
+        <div class="lg-table-wrap">
+            <table class="lg-table">
+                <thead>
+                    <tr>
+                        <th>编号</th>
+                        <th>名称</th>
+                        <th>相对方/公司名称</th>
+                        <th>合同编号</th>
+                        <th>金额</th>
+                        <th>签订日期</th>
+                        <th>到期日期</th>
+                        <th>部门</th>
+                        <th>位置编码</th>
+                        <th>经办人</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in unassigned_rows %}
+                    <tr class="{% if a.id in matched_ids %}lg-row-hit{% endif %}">
+                        <td>{{ a.code }}</td>
+                        <td class="lg-ellipsis" title="{{ a.name }}">{{ a.name }}</td>
+                        <td class="lg-ellipsis" title="{{ a.counterpart }}">{{ a.counterpart|default:"—" }}</td>
+                        <td>{{ a.contract_no|default:"—" }}</td>
+                        <td>{{ a.amount|default:"—" }}</td>
+                        <td>{{ a.sign_date|default:"—" }}</td>
+                        <td>{{ a.expire_date|default:"—" }}</td>
+                        <td>{{ a.department|default:"—" }}</td>
+                        <td>{{ a.location_code|default:"—" }}</td>
+                        <td>{{ a.handler|default:"—" }}</td>
+                        <td>
+                            {% if a.is_borrowed %}<span class="status-badge danger">借出中</span>
+                            {% elif a.is_expiring %}<span class="status-badge warning">即将到期</span>
+                            {% else %}<span class="status-badge success">正常</span>{% endif %}
+                        </td>
+                        <td>
+                            <div class="lg-row-actions">
+                                <a class="btn btn-sm btn-outline-primary" href="{% url 'archive:archive_detail' a.pk %}">详情</a>
+                                {% can "archive" "update" %}
+                                <a class="btn btn-sm btn-outline-secondary" href="{% url 'archive:archive_edit' a.pk %}" data-modal-edit data-modal-title="编辑档案">编辑</a>
+                                {% endcan %}
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
-    </div>
-    {% endcan %}
+    {% endif %}
 </div>
-
-<script>
-/* 动态样式值通过 data-* 属性由 JS 应用（避免模板变量写入 style 属性） */
-(function () {
-    document.querySelectorAll('.arc-progress-bar[data-w]').forEach(function (el) {
-        el.style.width = el.getAttribute('data-w') + '%';
-    });
-    document.querySelectorAll('.arc-grid[data-cols]').forEach(function (el) {
-        el.style.gridTemplateColumns = 'repeat(' + el.getAttribute('data-cols') + ', 1fr)';
-    });
-})();
-</script>
 
 {% if aq and match_count %}
 <script>
 (function () {
     setTimeout(function () {
-        var hit = document.querySelector('.arc-cell-hit');
+        var hit = document.querySelector('.lg-row-hit');
         if (hit) hit.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 300);
 })();
 </script>
 {% endif %}
+<script>
+/* 「导出所选」：收集勾选的台账 pk 动态填入隐藏表单提交（卡片内已有删除 POST 表单，不能嵌套包裹） */
+(function () {
+    var btn = document.getElementById('btnBatchExport');
+    var form = document.getElementById('batchExportForm');
+    if (!btn || !form) return;
+    btn.addEventListener('click', function () {
+        var checked = Array.prototype.slice.call(document.querySelectorAll('.lg-check:checked'));
+        if (!checked.length) {
+            if (window.showToast) window.showToast('请先勾选要导出的台账', 'error');
+            else alert('请先勾选要导出的台账');
+            return;
+        }
+        form.querySelectorAll('input[name="ledgers"]').forEach(function (i) { i.remove(); });
+        checked.forEach(function (c) {
+            var inp = document.createElement('input');
+            inp.type = 'hidden';
+            inp.name = 'ledgers';
+            inp.value = c.value;
+            form.appendChild(inp);
+        });
+        form.submit();
+    });
+})();
+</script>
 {% endblock %}

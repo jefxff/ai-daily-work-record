@@ -365,26 +365,21 @@ def role_edit_view(request, role_id):
     if request.method == "POST":
         form = RoleForm(request.POST)
         if form.is_valid():
-            # code 永不修改（内置/自定义均如此）；
-            # 内置角色的名称/说明/启停/权限均由 sync_rbac 按 registry 强制对齐，界面只读
-            if not role.is_builtin:
-                role.name = form.cleaned_data["name"]
-                role.description = form.cleaned_data.get("description", "")
-                role.is_active = form.cleaned_data.get("is_active", False)
-                err = _save_role_permissions(role, request.POST.getlist("perms"))
-                if err:
-                    illegal_err = err
-                    messages.error(request, err)
-                else:
-                    role.save()
-                    messages.success(request, f"角色「{role.name}」权限已更新。")
-                    if is_ajax:
-                        return JsonResponse({"ok": True, "message": f"角色「{role.name}」权限已更新"})
-                    return redirect("accounts:role_list")
+            # code 永不修改（内置/自定义均如此）；内置角色仅开放权限矩阵，
+            # 名称/说明/启停保持锁定；sync_rbac 默认不再重置内置角色权限
+            err = _save_role_permissions(role, request.POST.getlist("perms"))
+            if err:
+                illegal_err = err
+                messages.error(request, err)
             else:
-                messages.info(request, "内置角色由系统统一定义，不可在界面修改。")
+                if not role.is_builtin:
+                    role.name = form.cleaned_data["name"]
+                    role.description = form.cleaned_data.get("description", "")
+                    role.is_active = form.cleaned_data.get("is_active", False)
+                role.save()
+                messages.success(request, f"角色「{role.name}」权限已更新。")
                 if is_ajax:
-                    return _modal_message("内置角色由系统统一定义，不可在界面修改")
+                    return JsonResponse({"ok": True, "message": f"角色「{role.name}」权限已更新"})
                 return redirect("accounts:role_list")
         if is_ajax:
             if illegal_err:

@@ -1,0 +1,171 @@
+{% extends "records/base.html" %}
+{% load accounts_tags %}
+{% load pager_tags %}
+
+{% block page_title %}{{ ledger.name }} - 台账详情{% endblock %}
+
+{% block extra_css %}
+<style>
+    .lgd-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.25rem; }
+    .lgd-title { font-size: 1.25rem; font-weight: 700; color: #1f2329; }
+    .lgd-meta { font-size: 0.82rem; color: #8c8c8c; margin-top: 0.2rem; }
+    .lgd-card { background: rgba(255,255,255,0.95); border-radius: 12px; padding: 1.1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .lgd-toolbar { display: flex; flex-wrap: nowrap; gap: 0.6rem; align-items: center; margin-bottom: 1rem; overflow-x: auto; }
+    .lgd-toolbar .form-control { min-width: 240px; }
+    .lgd-toolbar form { flex-wrap: nowrap !important; }
+    .lgd-toolbar .lgd-actions { display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0; margin-left: auto; }
+    /* 宽表：横向滚动 + 截断，操作按钮保持横排 */
+    .lgd-table-wrap { overflow-x: auto; }
+    .lgd-table { min-width: 1080px; border-collapse: collapse; width: 100%; font-size: 13px; }
+    .lgd-table th { background: #fafafa; color: #595959; font-weight: 600; padding: 9px 12px; text-align: left; white-space: nowrap; border-bottom: 1px solid #f0f0f0; }
+    .lgd-table td { padding: 9px 12px; color: #1f2329; border-bottom: 1px solid #f5f5f5; white-space: nowrap; }
+    .lgd-table td.lgd-ellipsis { max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+    .lgd-table tbody tr:hover { background: #f5faff; }
+    .lgd-actions-cell { display: flex; gap: 6px; flex-wrap: nowrap; }
+    .lgd-empty { text-align: center; color: #8c8c8c; padding: 2.5rem 0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="lgd-header">
+        <div>
+            <div class="lgd-title">{{ ledger.name }}</div>
+            <div class="lgd-meta">
+                共 <strong>{{ page_obj.paginator.count }}</strong> 条档案
+                {% if expiring_count %}· ⚠️ 即将到期 {{ expiring_count }} 条{% endif %}
+                {% if borrowed_count %}· 借出中 {{ borrowed_count }} 条{% endif %}
+            </div>
+        </div>
+        <a href="{% url 'archive:overview' %}" class="btn btn-outline-secondary btn-sm">← 返回总览</a>
+    </div>
+
+    <div class="lgd-card">
+        <div class="lgd-toolbar">
+            <form method="get" class="d-flex gap-2">
+                <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm" placeholder="搜索：名称 / 编号 / 相对方 / 合同号 / 部门 / 标签 / 经办人">
+                <button class="btn btn-primary btn-sm" type="submit">搜索</button>
+            </form>
+            <div class="lgd-actions">
+                {% can "archive" "read" %}
+                <a href="{% url 'archive:ledger_export' ledger.pk %}" class="btn btn-outline-primary btn-sm" title="导出本台账全部档案为 Excel">导出本台账</a>
+                {% endcan %}
+                {% can "archive" "update" %}
+                <a href="{% url 'archive:ledger_import' ledger.pk %}" class="btn btn-outline-primary btn-sm" title="上传 Excel 更新本台账档案（按编号匹配）">导入更新</a>
+                {% endcan %}
+                {% can "archive" "create" %}
+                <a href="{% url 'archive:archive_create' %}?ledger={{ ledger.pk }}" class="btn btn-success btn-sm" data-modal-add data-modal-title="录入档案">＋ 录入档案</a>
+                {% endcan %}
+            </div>
+        </div>
+
+        <div class="lgd-table-wrap">
+            <table class="lgd-table">
+                <thead>
+                    <tr>
+                        <th>编号</th>
+                        <th>名称</th>
+                        <th>相对方/公司名称</th>
+                        <th>合同编号</th>
+                        <th>金额</th>
+                        <th>签订日期</th>
+                        <th>到期日期</th>
+                        <th>部门</th>
+                        <th>位置编码</th>
+                        <th>经办人</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in page_obj %}
+                    <tr>
+                        <td>{{ a.code }}</td>
+                        <td class="lgd-ellipsis" title="{{ a.name }}">{{ a.name }}</td>
+                        <td class="lgd-ellipsis" title="{{ a.counterpart }}">{{ a.counterpart|default:"—" }}</td>
+                        <td>{{ a.contract_no|default:"—" }}</td>
+                        <td>{{ a.amount|default:"—" }}</td>
+                        <td>{{ a.sign_date|default:"—" }}</td>
+                        <td>{{ a.expire_date|default:"—" }}</td>
+                        <td>{{ a.department|default:"—" }}</td>
+                        <td>{{ a.location_code|default:"—" }}</td>
+                        <td>{{ a.handler|default:"—" }}</td>
+                        <td>
+                            {% if a.is_borrowed %}<span class="status-badge danger">借出中</span>
+                            {% elif a.is_expiring %}<span class="status-badge warning">即将到期</span>
+                            {% else %}<span class="status-badge success">正常</span>{% endif %}
+                        </td>
+                        <td>
+                            <div class="lgd-actions-cell">
+                                <a class="btn btn-sm btn-outline-primary" href="{% url 'archive:archive_detail' a.pk %}">详情</a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="12" class="lgd-empty">{% if q %}未找到匹配「{{ q }}」的档案{% else %}该台账暂无档案，可通过「录入档案」或批量导入添加{% endif %}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if page_obj.paginator.num_pages > 1 %}
+        <div class="pagination-info">
+            <span>共 {{ page_obj.paginator.count }} 条 · 第 {{ page_obj.number }} / {{ page_obj.paginator.num_pages }} 页</span>
+            <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                <form method="GET" style="display: flex; align-items: center; gap: 0.4rem;">
+                    {% for k, v in request.GET.items %}{% if k != 'per_page' and k != 'page' %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endif %}{% endfor %}
+                    <label style="font-size: 13px;">每页</label>
+                    <select class="per-page-select" name="per_page" onchange="this.form.submit()">
+                        <option value="10" {% if page_obj.paginator.per_page == 10 %}selected{% endif %}>10</option>
+                        <option value="30" {% if page_obj.paginator.per_page == 30 %}selected{% endif %}>30</option>
+                        <option value="50" {% if page_obj.paginator.per_page == 50 %}selected{% endif %}>50</option>
+                    </select>
+                    <span style="font-size: 13px;">条</span>
+                </form>
+                <ul class="pagination">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}" aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <a class="page-link" href="#" aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    {% for p in page_obj|page_window %}
+                    {% if p %}
+                        {% if page_obj.number == p %}
+                        <li class="page-item active"><a class="page-link" href="#">{{ p }}</a></li>
+                        {% else %}
+                        <li class="page-item"><a class="page-link" href="?{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ p }}">{{ p }}</a></li>
+                        {% endif %}
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
+                    {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ page_obj.next_page_number }}" aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <a class="page-link" href="#" aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

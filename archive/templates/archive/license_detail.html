@@ -101,7 +101,17 @@
 
     <!-- 年审历史 -->
     <div class="card mb-4">
-        <div class="card-header"><h5 class="mb-0">年审历史</h5></div>
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">年审历史</h5>
+            <div class="d-flex gap-2">
+                {% can "archive" "read" %}
+                <a href="{% url 'archive:table_export' 'reviews' %}" class="btn btn-sm btn-outline-primary">导出 Excel</a>
+                {% endcan %}
+                {% can "archive" "update" %}
+                <a href="{% url 'archive:table_import' 'reviews' %}" class="btn btn-sm btn-outline-secondary">导入/更新</a>
+                {% endcan %}
+            </div>
+        </div>
         <div class="card-body">
             <table class="table table-sm">
                 <thead><tr><th>年审日期</th><th>结果</th><th>经办人</th><th>新有效期至</th><th>备注</th></tr></thead>

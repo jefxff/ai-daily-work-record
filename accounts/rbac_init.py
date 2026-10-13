@@ -21,25 +21,32 @@ def sync_permissions(Permission):
     return created, Permission.objects.count()
 
 
-def ensure_builtin_roles(Role, Permission):
-    """幂等创建/校准三个内置角色的权限集合（权限码集合强制对齐 registry）。
+def ensure_builtin_roles(Role, Permission, reset=False):
+    """幂等创建/校准三个内置角色。
+
+    reset=False（默认）：仅创建缺失的内置角色（按 registry 默认授权），
+    已有角色的权限集合保持不动（界面手工调整不被覆盖）。
+    reset=True：强制将已有内置角色权限码集合对齐 registry 默认定义。
 
     返回 {role_code: 权限数}。
     """
     result = {}
     for code, (name, desc, _modules, _actions) in BUILTIN_ROLES.items():
-        role, _created = Role.objects.get_or_create(
+        role, created = Role.objects.get_or_create(
             code=code,
             defaults={"name": name, "description": desc, "is_builtin": True, "is_active": True},
         )
+        if created or reset:
+            codes = builtin_role_codes(code)
+            perms = list(Permission.objects.filter(code__in=codes))
+            role.permissions.set(perms)
+        else:
+            perms = list(role.permissions.all())
         # 内置角色名称/说明跟随注册表更新，但不覆盖管理员手工调整的启用状态
         if not role.is_builtin:
             role.is_builtin = True
         role.name = name
         role.description = desc
         role.save()
-        codes = builtin_role_codes(code)
-        perms = list(Permission.objects.filter(code__in=codes))
-        role.permissions.set(perms)
         result[code] = len(perms)
     return result

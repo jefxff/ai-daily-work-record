@@ -55,14 +55,10 @@
     <div style="border-top:1px solid #f0f0f0; margin:0.5rem 0 0.9rem; padding-top:0.9rem;">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.75rem;">
             <strong style="font-size:0.92rem;">权限矩阵</strong>
-            {% if mode == 'create' or not role.is_builtin %}
             <div style="display:flex; gap:0.5rem;">
                 <button type="button" class="btn-transparent btn-sm" data-check-all=".perm-cb">全部勾选</button>
                 <button type="button" class="btn-transparent btn-sm" data-uncheck-all=".perm-cb">全部清除</button>
             </div>
-            {% else %}
-            <span class="ac-desc">内置角色权限由系统统一定义，仅供查看</span>
-            {% endif %}
         </div>
         <div style="overflow-x:auto;">
             <table class="table" style="min-width:520px; margin-bottom:0;">
@@ -86,8 +82,7 @@
                         <td style="text-align:center;">
                             {% if a %}
                             <input type="checkbox" name="perms" value="{{ a.code }}" class="form-check-input perm-cb"
-                                   {% if a.checked %}checked{% endif %}
-                                   {% if mode == 'edit' and role.is_builtin %}disabled title="内置角色权限由系统统一定义"{% endif %}>
+                                   {% if a.checked %}checked{% endif %}>
                             {% else %}
                             <span style="color:#d9d9d9;">—</span>
                             {% endif %}
@@ -100,14 +95,13 @@
         </div>
         <p class="ac-help" style="margin-bottom:0;">
             说明：勾选"读取"后该模块才会出现在用户侧边栏；金属价格仅支持读取/编辑，数据展示仅支持读取（由系统统一规定，不可越权勾选）。
+            {% if mode == 'edit' and role.is_builtin %}内置角色仅可调整权限矩阵，名称/说明/启停不可修改。{% endif %}
         </p>
     </div>
 
     <div class="form-modal-actions">
         <button type="button" class="btn-transparent" data-modal-close>取消</button>
-        {% if mode == 'create' or not role.is_builtin %}
         <button type="submit" class="btn-transparent btn-delete" data-modal-save>{% if mode == 'create' %}创建角色{% else %}保存权限{% endif %}</button>
-        {% endif %}
     </div>
 </form>
 

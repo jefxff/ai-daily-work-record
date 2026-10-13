@@ -1,0 +1,48 @@
+{% extends "records/base.html" %}
+
+{% block page_title %}导入{{ spec.label }} - 档案管理{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 860px;">
+    <div class="page-header d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title">导入{{ spec.label }}</h1>
+        <a href="{% url 'archive:table_template' table %}" class="btn btn-outline-primary btn-sm">下载导入模板</a>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header"><h5 class="mb-0">填写说明</h5></div>
+        <div class="card-body" style="font-size: 14px; color: #595959; line-height: 1.9;">
+            <p class="mb-2">1. 推荐先「导出」现有记录，在导出文件中直接修改后再上传导入。</p>
+            <p class="mb-2">2. <strong>「{{ match_header }}」为匹配键</strong>：系统中已存在同值记录时<strong>更新</strong>该条（仅更新非空单元格，空白格保留原值）；不存在时<strong>新增</strong>。</p>
+            <p class="mb-2">3. 支持格式：.xlsx / .xls / .csv，读取第一个工作表，表头须在第 1 行且与下方列名一致。</p>
+            <p class="mb-0">4. 状态列（借出中/已归还等）由系统自动计算，导入时忽略。</p>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header"><h5 class="mb-0">列清单（共 {{ columns|length }} 列）</h5></div>
+        <div class="card-body">
+            <div class="d-flex flex-wrap gap-2">
+                {% for col in columns %}
+                <span class="badge {% if col == match_header %}bg-danger{% else %}bg-secondary{% endif %}" style="font-weight: 400;">{{ col }}{% if col == match_header %} *{% endif %}</span>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><h5 class="mb-0">上传文件</h5></div>
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" name="step" value="upload">
+                <div class="mb-3">
+                    <input type="file" name="file" class="form-control" accept=".xlsx,.xls,.csv" required>
+                </div>
+                <button type="submit" class="btn btn-primary">上传并预览</button>
+                <a href="{% url spec.redirect %}" class="btn btn-outline-secondary ms-2">取消</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

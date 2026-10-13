@@ -37,13 +37,14 @@ MODULES = [
     {"key": "data_view", "name": "数据展示/下载", "actions": READ_ONLY},
     {"key": "knowledge", "name": "知识库", "actions": CRUD},
     {"key": "samples", "name": "试样管理", "actions": CRUD},
-    # 档案管理：验收前仅超管可见，故排除在 staff/viewer 授权范围外；
-    # 验收通过后将其从 SUPERUSER_ONLY_MODULES 移除即可对普通角色开放。
+    # 档案管理：默认授权范围不含此模块（staff/viewer 创建时与 --reset-builtins 重置时
+    # 均不授予）；内置角色可在界面「角色管理」中按需勾选开放，sync_rbac 默认不覆盖界面调整
     {"key": "archive", "name": "档案管理", "actions": CRUD},
     {"key": "system", "name": "系统管理", "actions": CRUD},
 ]
 
-# 验收前仅超管可见的模块（不授予 staff/viewer，也暂不执行 sync_rbac 写入 admin 角色）
+# 默认授权范围排除的模块（仅影响内置角色创建时与 --reset-builtins 重置时的默认授权；
+# 不影响界面手工勾选，也不影响 sync_permissions 创建权限码）
 SUPERUSER_ONLY_MODULES = ["archive"]
 
 # 业务模块（内置角色 staff/viewer 授权范围，不含 system 及超管独占模块）

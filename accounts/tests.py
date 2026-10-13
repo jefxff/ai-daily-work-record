@@ -284,6 +284,43 @@ class RbacAuthTests(TestCase):
         r = ac.post(reverse("accounts:role_delete", args=[self.role_viewer.pk]))
         self.assertTrue(Role.objects.filter(pk=self.role_viewer.pk).exists())
 
+    # ---------- 内置角色权限放开 ----------
+    def test_builtin_role_perm_edit_and_sync_kept(self):
+        """内置角色可在界面调整权限矩阵；sync_rbac 默认不重置，--reset-builtins 才强制对齐。"""
+        from .rbac_init import builtin_role_codes
+
+        ac = self.login(self.admin)
+        perms = [permission_code("archive", a) for a in ("create", "read", "update")]
+        r = ac.post(reverse("accounts:role_edit", args=[self.role_staff.pk]), {
+            "code": "staff", "name": "普通员工", "description": "试图改名", "perms": perms,
+        })
+        self.assertEqual(r.status_code, 302)
+        self.role_staff.refresh_from_db()
+        self.assertEqual(set(self.role_staff.permissions.values_list("code", flat=True)), set(perms))
+        # 内置角色基础信息仍锁定：名称/说明不受界面提交影响
+        self.assertEqual(self.role_staff.name, "普通员工")
+        self.assertEqual(
+            self.role_staff.description,
+            "全部业务模块的读取、新增与编辑权限（无删除、无系统管理）",
+        )
+
+        # staff 获得档案读取后可见档案侧边栏入口
+        cs = self.login(self.staff)
+        self.assertEqual(cs.get("/archive/").status_code, 200)
+
+        # sync_rbac 默认不覆盖界面调整
+        call_command("sync_rbac", verbosity=0)
+        self.role_staff.refresh_from_db()
+        self.assertEqual(set(self.role_staff.permissions.values_list("code", flat=True)), set(perms))
+
+        # --reset-builtins 强制对齐 registry 默认定义
+        call_command("sync_rbac", "--reset-builtins", verbosity=0)
+        self.role_staff.refresh_from_db()
+        self.assertEqual(
+            set(self.role_staff.permissions.values_list("code", flat=True)),
+            set(builtin_role_codes("staff")),
+        )
+
     # ---------- AC-9 ----------
     def test_ac09_user_admin_and_reset(self):
         """AC-9: 管理员建号/重置密码/停用全闭环；非管理员 403；非超管不能动超管账号。"""

@@ -1,4 +1,5 @@
 {% extends "records/base.html" %}
+{% load accounts_tags %}
 
 {% block page_title %}借阅记录 - 档案管理{% endblock %}
 
@@ -11,6 +12,12 @@
             <a href="?status=borrowed" class="btn btn-sm {% if status == 'borrowed' %}btn-primary{% else %}btn-outline-secondary{% endif %}">借出中</a>
             <a href="?status=overdue" class="btn btn-sm {% if status == 'overdue' %}btn-primary{% else %}btn-outline-secondary{% endif %}">已逾期</a>
             <a href="?status=returned" class="btn btn-sm {% if status == 'returned' %}btn-primary{% else %}btn-outline-secondary{% endif %}">已归还</a>
+            {% can "archive" "read" %}
+            <a href="{% url 'archive:table_export' 'borrows' %}" class="btn btn-sm btn-outline-primary">导出 Excel</a>
+            {% endcan %}
+            {% can "archive" "update" %}
+            <a href="{% url 'archive:table_import' 'borrows' %}" class="btn btn-sm btn-outline-secondary">导入/更新</a>
+            {% endcan %}
         </div>
     </div>
 
