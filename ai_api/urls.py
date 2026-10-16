@@ -13,6 +13,24 @@ router.register(r'daily-record', views.DailyRecordViewSet)
 router.register(r'metal-price', views.MetalPriceViewSet)
 router.register(r'insurance', views.InsuranceViewSet)
 router.register(r'complaint', views.ComplaintViewSet)
+# 试样管理
+router.register(r'samples/partner', views.PartnerViewSet)
+router.register(r'samples/sample', views.SampleViewSet)
+router.register(r'samples/test-record', views.TestRecordViewSet)
+router.register(r'samples/batch-record', views.BatchRecordViewSet)
+router.register(r'samples/audit-record', views.AuditRecordViewSet)
+# 档案管理
+router.register(r'archive/cabinet', views.CabinetViewSet)
+router.register(r'archive/category', views.ArchiveCategoryViewSet)
+router.register(r'archive/ledger', views.LedgerViewSet)
+router.register(r'archive/archive', views.ArchiveViewSet)
+router.register(r'archive/borrow', views.BorrowRecordViewSet)
+router.register(r'archive/license', views.LicenseViewSet)
+router.register(r'archive/annual-review', views.AnnualReviewViewSet)
+router.register(r'archive/license-borrow', views.LicenseBorrowRecordViewSet)
+# 知识库
+router.register(r'knowledge/category', views.KnowledgeCategoryViewSet)
+router.register(r'knowledge/document', views.KnowledgeDocumentViewSet)
 
 urlpatterns = [
     # REST API 路由

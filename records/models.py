@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 
@@ -116,16 +117,29 @@ class PriceEvaluation(models.Model):
 
 class DailyRecord(models.Model):
     """每日记录模型"""
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='daily_records',
+        verbose_name='归属用户',
+        null=False,
+        blank=False,
+        help_text='记录归属用户，查询/操作均按此字段隔离',
+    )
     record_date = models.DateTimeField(verbose_name='日期及时间', null=False, blank=False, auto_now_add=True)
     department = models.CharField(max_length=50, verbose_name='提出部门', null=False, blank=False)
     work_content = models.TextField(verbose_name='工作内容', null=False, blank=False)
+    due_date = models.DateField(verbose_name='截至日期', null=True, blank=True)
     status = models.CharField(max_length=10, verbose_name='工作状态', null=False, blank=False, choices=[('完成', '完成'), ('未完成', '未完成')])
     progress = models.IntegerField(verbose_name='工作进度', null=False, blank=False, default=0, help_text='0-100')
-    
+
     class Meta:
         verbose_name = '每日记录'
         verbose_name_plural = '每日记录'
         ordering = ['-record_date']
+        indexes = [
+            models.Index(fields=['user', '-record_date'], name='idx_dailyrec_user_date'),
+        ]
 
 
 class MetalPrice(models.Model):

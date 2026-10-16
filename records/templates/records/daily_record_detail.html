@@ -35,6 +35,11 @@
         </div>
 
         <div class="detail-row">
+            <div class="detail-label">截至日期：</div>
+            <div class="detail-value">{% if record.due_date %}{{ record.due_date|date:'Y-m-d' }}{% else %}—{% endif %}</div>
+        </div>
+
+        <div class="detail-row">
             <div class="detail-label">工作状态：</div>
             <div class="detail-value">{{ record.status }}</div>
         </div>

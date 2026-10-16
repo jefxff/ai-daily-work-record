@@ -45,6 +45,11 @@
     tr.lg-row-hit td { background: #fff7e6 !important; }
     tr.lg-row-hit td:first-child { box-shadow: inset 3px 0 0 #fa8c16; }
     tr.lg-row-hit td { color: #d46b08; }
+
+    /* 台账排序弹窗行 */
+    .ls-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0.25rem; border-bottom: 1px solid #f5f5f5; }
+    .ls-row:last-child { border-bottom: none; }
+    .ls-row .ls-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #1f2329; }
 </style>
 {% endblock %}
 
@@ -109,6 +114,9 @@
             {% can "archive" "update" %}
             <a href="{% url 'archive:ledger_batch_import' %}" class="btn btn-outline-primary btn-sm" title="上传多工作表 Excel，按工作表名匹配台账批量导入更新">批量导入更新</a>
             {% endcan %}
+            {% can "archive" "update" %}
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnLedgerSort" title="调整台账在总览页的显示顺序">台账排序</button>
+            {% endcan %}
         </div>
     </div>
 
@@ -126,7 +134,7 @@
 
     <!-- 台账卡片列表 -->
     {% for item in ledger_data %}
-    <div class="lg-card">
+    <div class="lg-card" data-ledger-id="{{ item.ledger.pk }}">
         <div class="lg-card-header">
             <div>
                 <div class="lg-card-title">
@@ -142,21 +150,6 @@
             </div>
             <div class="d-flex gap-1">
                 <a href="{% url 'archive:ledger_detail' item.ledger.pk %}" class="btn btn-sm btn-primary">查看全部 {{ item.total }} 条</a>
-                {% can "archive" "read" %}
-                <a href="{% url 'archive:ledger_export' item.ledger.pk %}" class="btn btn-sm btn-outline-primary" title="导出本台账全部档案">导出</a>
-                {% endcan %}
-                {% can "archive" "update" %}
-                <a href="{% url 'archive:ledger_import' item.ledger.pk %}" class="btn btn-sm btn-outline-primary" title="上传 Excel 更新本台账档案">导入</a>
-                {% endcan %}
-                {% can "archive" "update" %}
-                <a href="{% url 'archive:ledger_edit' item.ledger.pk %}" class="btn btn-sm btn-outline-secondary" data-modal-edit data-modal-title="编辑台账">编辑</a>
-                {% endcan %}
-                {% can "archive" "delete" %}
-                <form method="POST" action="{% url 'archive:ledger_delete' item.ledger.pk %}" class="d-inline" data-confirm="确认删除台账「{{ item.ledger.name }}」？删除后不可恢复。">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-sm btn-outline-danger">删除</button>
-                </form>
-                {% endcan %}
             </div>
         </div>
         <div class="lg-table-wrap">
@@ -192,6 +185,7 @@
                         <td>{{ a.handler|default:"—" }}</td>
                         <td>
                             {% if a.is_borrowed %}<span class="status-badge danger">借出中</span>
+                            {% elif a.is_expired %}<span class="status-badge danger">已过期</span>
                             {% elif a.is_expiring %}<span class="status-badge warning">即将到期</span>
                             {% else %}<span class="status-badge success">正常</span>{% endif %}
                         </td>
@@ -260,6 +254,7 @@
                         <td>{{ a.handler|default:"—" }}</td>
                         <td>
                             {% if a.is_borrowed %}<span class="status-badge danger">借出中</span>
+                            {% elif a.is_expired %}<span class="status-badge danger">已过期</span>
                             {% elif a.is_expiring %}<span class="status-badge warning">即将到期</span>
                             {% else %}<span class="status-badge success">正常</span>{% endif %}
                         </td>
@@ -279,6 +274,36 @@
     </div>
     {% endif %}
 </div>
+
+<!-- 台账排序弹窗（集中调整台账显示顺序，成功后同步移动总览页卡片） -->
+{% can "archive" "update" %}
+<div class="form-modal-backdrop" id="ledgerSortBackdrop">
+    <div class="form-modal" style="width: 480px;">
+        <div class="form-modal-header">
+            <h3 class="form-modal-title">台账排序</h3>
+            <button type="button" class="form-modal-close" id="ledgerSortClose" aria-label="关闭">&times;</button>
+        </div>
+        <div class="form-modal-body" style="padding: 0.75rem 1.25rem;">
+            <div class="text-muted small mb-2">调整台账在总览页的显示顺序，置顶 / 上移 / 下移即时生效</div>
+            <div id="ledgerSortList">
+                {% for l in sort_ledgers %}
+                <div class="ls-row" data-ledger-id="{{ l.pk }}" data-move-url="{% url 'archive:ledger_move' l.pk %}">
+                    <span class="ls-name" title="{{ l.name }}">{{ l.name }}</span>
+                    <span class="text-muted small">{{ l.archive_count }} 条</span>
+                    <span class="btn-group btn-group-sm" role="group">
+                        <button type="button" class="btn btn-outline-secondary" data-ledger-move="top" title="移到最前">置顶</button>
+                        <button type="button" class="btn btn-outline-secondary" data-ledger-move="up" title="上移一位">↑</button>
+                        <button type="button" class="btn btn-outline-secondary" data-ledger-move="down" title="下移一位">↓</button>
+                    </span>
+                </div>
+                {% empty %}
+                <div class="text-muted text-center py-3">暂无台账</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endcan %}
 
 {% if aq and match_count %}
 <script>
@@ -312,6 +337,82 @@
             form.appendChild(inp);
         });
         form.submit();
+    });
+})();
+</script>
+<script>
+/* 台账排序弹窗：置顶/上移/下移，成功后同步移动弹窗行与总览页卡片 */
+(function () {
+    var backdrop = document.getElementById('ledgerSortBackdrop');
+    var openBtn = document.getElementById('btnLedgerSort');
+    if (!backdrop || !openBtn) return;
+
+    function getCookie(name) {
+        var v = null;
+        document.cookie.split(';').forEach(function (c) {
+            var p = c.trim().split('=');
+            if (p[0] === name) v = decodeURIComponent(p[1]);
+        });
+        return v;
+    }
+    function moveEl(el, direction, selector) {
+        var parent = el.parentNode;
+        if (direction === 'top') {
+            var first = parent.querySelector(selector);
+            if (first && first !== el) parent.insertBefore(el, first);
+            else return false;
+        } else if (direction === 'up') {
+            var prev = el.previousElementSibling;
+            while (prev && !prev.matches(selector)) prev = prev.previousElementSibling;
+            if (prev) parent.insertBefore(el, prev);
+            else return false;
+        } else {
+            var next = el.nextElementSibling;
+            while (next && !next.matches(selector)) next = next.nextElementSibling;
+            if (next) parent.insertBefore(next, el);
+            else return false;
+        }
+        return true;
+    }
+    function toast(msg, type) {
+        if (window.showToast) window.showToast(msg, type);
+        else alert(msg);
+    }
+
+    openBtn.addEventListener('click', function () { backdrop.classList.add('show'); });
+    document.getElementById('ledgerSortClose').addEventListener('click', function () { backdrop.classList.remove('show'); });
+    backdrop.addEventListener('click', function (e) {
+        if (e.target === backdrop) backdrop.classList.remove('show');
+    });
+
+    backdrop.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-ledger-move]');
+        if (!btn) return;
+        var row = btn.closest('.ls-row');
+        var direction = btn.getAttribute('data-ledger-move');
+        if (!row || !row.dataset.ledgerId) return;
+        var ledgerId = row.dataset.ledgerId;
+        btn.disabled = true;
+        fetch(row.getAttribute('data-move-url'), {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: 'direction=' + direction
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (!data.ok) throw new Error(data.message || '排序失败');
+            var movedRow = moveEl(row, direction, '.ls-row[data-ledger-id]');
+            var card = document.querySelector('.lg-card[data-ledger-id="' + ledgerId + '"]');
+            var movedCard = card ? moveEl(card, direction, '.lg-card[data-ledger-id]') : true;
+            if (!movedRow && !movedCard) toast(direction === 'down' ? '已是最后' : '已在最前', 'info');
+            else toast('排序已更新', 'success');
+        })
+        .catch(function (err) { toast(err.message || '排序失败，请重试', 'error'); })
+        .finally(function () { btn.disabled = false; });
     });
 })();
 </script>

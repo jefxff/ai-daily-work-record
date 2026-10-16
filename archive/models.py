@@ -305,9 +305,17 @@ class Archive(TimeStampedModel):
         return self.borrow_records.filter(return_time__isnull=True).exists()
 
     @property
-    def is_expiring(self) -> bool:
-        """是否即将到期（30天内）。"""
+    def is_expired(self) -> bool:
+        """是否已过期（到期日期早于今天）。"""
         if not self.expire_date:
+            return False
+        from datetime import date
+        return self.expire_date < date.today()
+
+    @property
+    def is_expiring(self) -> bool:
+        """是否即将到期（30天内到期，不含已过期）。"""
+        if not self.expire_date or self.is_expired:
             return False
         from datetime import date, timedelta
         return self.expire_date <= date.today() + timedelta(days=30)

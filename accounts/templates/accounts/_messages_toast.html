@@ -1,13 +1,20 @@
 {% if messages %}
+<div id="djangoMessages" hidden data-items='[{% for message in messages %}{"text":"{{ message|escapejs }}","level":"{% if message.tags == "error" %}error{% elif message.tags == "warning" %}info{% else %}success{% endif %}"}{% if not forloop.last %},{% endif %}{% endfor %}]'></div>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    var t;
-    {% for message in messages %}
-    t = '{{ message|escapejs }}';
-    if (window.showToast) {
-        window.showToast(t, '{% if message.tags == "error" %}error{% elif message.tags == "warning" %}info{% else %}success{% endif %}');
+    var el = document.getElementById('djangoMessages');
+    if (!el) return;
+    var items;
+    try {
+        items = JSON.parse(el.getAttribute('data-items') || '[]');
+    } catch (e) {
+        items = [];
     }
-    {% endfor %}
+    items.forEach(function (item) {
+        if (window.showToast) {
+            window.showToast(item.text, item.level);
+        }
+    });
 });
 </script>
 {% endif %}

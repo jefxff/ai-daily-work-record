@@ -27,6 +27,7 @@ urlpatterns = [
     path('knowledge/', include('knowledge_base.urls')),
     path('samples/', include('samples.urls')),
     path('archive/', include('archive.urls')),
+    path('notifications/', include('notifications.urls')),
 ]
 
 # DEBUG 模式下由开发服务器提供媒体文件（证明材料/审厂附件）

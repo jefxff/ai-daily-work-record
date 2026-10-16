@@ -106,7 +106,7 @@
                         <div class="arc-info-item">
                             <span class="arc-info-label">到期日期</span>
                             {% if archive.expire_date %}
-                            <span class="arc-info-value">{{ archive.expire_date }}{% if archive.is_expiring %} <span class="arc-status-badge out">即将到期</span>{% endif %}</span>
+                            <span class="arc-info-value">{{ archive.expire_date }}{% if archive.is_expired %} <span class="arc-status-badge out">已过期</span>{% elif archive.is_expiring %} <span class="arc-status-badge out">即将到期</span>{% endif %}</span>
                             {% else %}<span class="arc-info-value empty">—</span>{% endif %}
                         </div>
                         <div class="arc-info-item">

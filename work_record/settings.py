@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'samples',
     'accounts',
     'archive',
+    'notifications',
 ]
 
 MIDDLEWARE = [
@@ -214,3 +215,23 @@ LOGGING = {
 # Create logs directory if it doesn't exist
 if not os.path.exists(os.path.join(BASE_DIR, 'logs')):
     os.makedirs(os.path.join(BASE_DIR, 'logs'))
+
+# === 消息通知模块 ===
+# 邮件渠道：DEBUG 下走 console 后端（无需 SMTP，输出到控制台）；
+# 生产配置示例：
+#   EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+#   EMAIL_HOST=smtp.example.com  EMAIL_PORT=465  EMAIL_USE_SSL=True
+#   EMAIL_HOST_USER=...  EMAIL_HOST_PASSWORD=...  DEFAULT_FROM_EMAIL=...
+import os as _os
+
+if DEBUG:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+else:
+    EMAIL_BACKEND = _os.environ.get(
+        'EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+    EMAIL_HOST = _os.environ.get('EMAIL_HOST', '')
+    EMAIL_PORT = int(_os.environ.get('EMAIL_PORT', '465'))
+    EMAIL_USE_SSL = _os.environ.get('EMAIL_USE_SSL', 'True') == 'True'
+    EMAIL_HOST_USER = _os.environ.get('EMAIL_HOST_USER', '')
+    EMAIL_HOST_PASSWORD = _os.environ.get('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = _os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@localhost')

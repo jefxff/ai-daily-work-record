@@ -1,0 +1,60 @@
+{% extends "records/base.html" %}
+
+{% block page_title %}推送系统公告 - 每日工作记录管理网站{% endblock %}
+
+{% block content %}
+<h1 class="form-title">推送系统公告</h1>
+
+<div class="form-container">
+    <p class="text-muted" style="margin-bottom: 1.5rem;">
+        公告将推送给<strong>全部启用用户</strong>的站内收件箱，发送状态由通知队列异步处理。
+    </p>
+    <form method="post">
+        {% csrf_token %}
+        {% if errors %}
+        <div style="background:#fff1f0;border:1px solid #ffccc7;border-radius:6px;padding:0.75rem 1rem;margin-bottom:1.25rem;color:#f5222d;font-size:0.875rem;">
+            {% for field, msg in errors.items %}{{ msg }}{% if not forloop.last %}；{% endif %}{% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="form-group">
+            <label class="form-label" for="title">公告标题 <span class="text-danger">*</span></label>
+            <input type="text" id="title" name="title" class="form-control" maxlength="200"
+                   value="{{ form_data.title|default:'' }}" placeholder="如：系统将于今晚 22:00 维护">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="content">公告内容 <span class="text-danger">*</span></label>
+            <textarea id="content" name="content" class="form-control" rows="6"
+                      placeholder="请输入公告正文">{{ form_data.content|default:'' }}</textarea>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="link">跳转链接（可选）</label>
+            <input type="text" id="link" name="link" class="form-control" maxlength="500"
+                   value="{{ form_data.link|default:'' }}" placeholder="如 /daily_record/，点击通知可直达">
+        </div>
+
+        <div style="display:flex;gap:1.5rem;flex-wrap:wrap;">
+            <div class="form-group">
+                <label class="form-label" for="priority">优先级</label>
+                <select id="priority" name="priority" class="form-select" style="min-width: 160px;">
+                    <option value="normal" {% if form_data.priority == 'normal' %}selected{% endif %}>普通</option>
+                    <option value="high" {% if form_data.priority == 'high' %}selected{% endif %}>高（穿透免打扰）</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="expires_days">过期天数（可选）</label>
+                <input type="number" min="0" id="expires_days" name="expires_days" class="form-control"
+                       style="max-width: 180px;" value="{{ form_data.expires_days|default:'' }}"
+                       placeholder="如 7，7 天后未读自动过期">
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <a href="{% url 'notifications:list' %}" class="btn-secondary">取消</a>
+            <button type="submit" class="btn-primary">推送公告</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

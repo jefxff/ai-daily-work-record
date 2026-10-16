@@ -20,6 +20,12 @@
     </div>
 
     <div class="form-group mb-3">
+        <label for="due_date" class="form-label">截至日期</label>
+        <input type="date" class="form-control" id="due_date" name="due_date" value="{% if record %}{% if record.due_date %}{{ record.due_date|date:'Y-m-d' }}{% endif %}{% else %}{{ form_data.due_date }}{% endif %}">
+        {% if errors.due_date %}<div class="form-text" style="color:#f5222d">{{ errors.due_date }}</div>{% endif %}
+    </div>
+
+    <div class="form-group mb-3">
         <label for="status" class="form-label">工作状态 <span style="color:#f5222d">*</span></label>
         <select class="form-select" id="status" name="status" required>
             <option value="完成" {% if record and record.status == '完成' %}selected{% elif not record and form_data.status == '完成' %}selected{% endif %}>完成</option>

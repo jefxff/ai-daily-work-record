@@ -31,6 +31,11 @@
             </div>
 
             <div class="form-group">
+                <label for="due_date" class="form-label">截至日期</label>
+                <input type="date" class="form-control" id="due_date" name="due_date" value="{% if record and record.due_date %}{{ record.due_date|date:'Y-m-d' }}{% endif %}">
+            </div>
+
+            <div class="form-group">
                 <label for="status" class="form-label">工作状态</label>
                 <select class="form-select" id="status" name="status" required>
                     <option value="完成" {% if record and record.status == '完成' %}selected{% endif %}>完成</option>

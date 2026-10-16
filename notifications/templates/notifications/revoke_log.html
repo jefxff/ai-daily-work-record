@@ -1,0 +1,124 @@
+{% extends "records/base.html" %}
+
+{% block page_title %}撤回记录 - 每日工作记录管理网站{% endblock %}
+
+{% block extra_css %}
+<style>
+    .revoke-card { background: #fff; border: 1px solid #ebeef5; border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 1rem; transition: box-shadow .2s ease; }
+    .revoke-card:hover { box-shadow: 0 4px 16px rgba(0, 0, 0, .08); }
+    .revoke-head { display: flex; align-items: flex-start; gap: .875rem; }
+    .revoke-icon { width: 40px; height: 40px; border-radius: 10px; background: #fef2f2; color: #ef4444; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .revoke-headmain { flex: 1; min-width: 0; }
+    .revoke-title-row { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+    .revoke-title { font-size: 1rem; font-weight: 600; color: #1f2329; }
+    .revoke-scope { background: #fff1f0; color: #f5222d; border-radius: 999px; padding: .125rem .625rem; font-size: .72rem; font-weight: 500; white-space: nowrap; }
+    .revoke-info { display: flex; gap: 1.25rem; flex-wrap: wrap; color: #8c8c8c; font-size: .78rem; margin-top: .375rem; }
+    .revoke-info b { color: #595959; font-weight: 500; }
+    .revoke-quote { border-left: 3px solid #ffd6d6; background: #fafafa; border-radius: 0 8px 8px 0; padding: .625rem .875rem; margin: .875rem 0 0; color: #595959; font-size: .875rem; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+    .revoke-stats { display: flex; gap: .75rem; margin-top: .875rem; flex-wrap: wrap; }
+    .stat-box { flex: 1; min-width: 110px; border-radius: 10px; padding: .625rem .875rem; text-align: center; }
+    .stat-box .num { font-size: 1.25rem; font-weight: 700; line-height: 1.2; }
+    .stat-box .lbl { font-size: .72rem; color: #8c8c8c; margin-top: .125rem; }
+    .stat-box.total { background: #f8fafc; } .stat-box.total .num { color: #1f2329; }
+    .stat-box.read { background: #f6ffed; } .stat-box.read .num { color: #52c41a; }
+    .stat-box.unread { background: #fff7e6; } .stat-box.unread .num { color: #fa8c16; }
+    .read-progress { height: 6px; border-radius: 3px; background: #ffe7ba; overflow: hidden; margin-top: .75rem; }
+    .read-progress > div { height: 100%; background: #52c41a; border-radius: 3px; }
+    .progress-hint { font-size: .72rem; color: #8c8c8c; margin-top: .375rem; }
+    details.member-panel { margin-top: .875rem; }
+    details.member-panel summary { cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: .375rem; font-size: .8rem; font-weight: 500; color: #1890ff; background: #e6f7ff; padding: .375rem .875rem; border-radius: 6px; user-select: none; transition: background .15s ease; }
+    details.member-panel summary:hover { background: #bae7ff; }
+    details.member-panel summary::-webkit-details-marker { display: none; }
+    details.member-panel summary .arrow { transition: transform .2s ease; }
+    details.member-panel[open] summary .arrow { transform: rotate(90deg); }
+    .member-table-wrap { margin-top: .625rem; border: 1px solid #ebeef5; border-radius: 10px; overflow: hidden; }
+    .member-table-wrap table { margin: 0; }
+    .member-table-wrap th { background: #fafafa !important; }
+    .member-table-wrap th, .member-table-wrap td { padding: .5rem .875rem !important; font-size: .8rem; }
+    .pill { border-radius: 999px; padding: .125rem .625rem; font-size: .72rem; font-weight: 500; display: inline-block; }
+    .pill.read { background: #f6ffed; color: #52c41a; }
+    .pill.unread { background: #fff7e6; color: #fa8c16; }
+    .empty-state { text-align: center; padding: 3.5rem 0; color: #8c8c8c; }
+    .empty-state svg { opacity: .35; margin-bottom: .75rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>撤回记录<span class="total-hint">共 {{ items|length }} 条</span></h2>
+    <div class="filter-chips">
+        <a href="{% url 'notifications:list' %}" class="btn-secondary">返回通知列表</a>
+    </div>
+</div>
+
+{% for item in items %}
+<div class="revoke-card">
+    <div class="revoke-head">
+        <div class="revoke-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+        </div>
+        <div class="revoke-headmain">
+            <div class="revoke-title-row">
+                <span class="revoke-title">{{ item.title }}</span>
+                <span class="status-badge default">已撤回</span>
+                <span class="revoke-scope">{% if item.total > 1 %}批量推送 · {{ item.total }} 人{% else %}单条推送{% endif %}</span>
+            </div>
+            <div class="revoke-info">
+                <span>发送时间 <b>{{ item.sent_at|date:"Y-m-d H:i:s" }}</b></span>
+                <span>撤回时间 <b>{{ item.revoked_at|date:"Y-m-d H:i:s" }}</b></span>
+                <span>触发人 <b>{{ item.created_by|default:"—" }}</b></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="revoke-quote">{{ item.content }}</div>
+
+    <div class="revoke-stats">
+        <div class="stat-box total"><div class="num">{{ item.total }}</div><div class="lbl">接收人数</div></div>
+        <div class="stat-box read"><div class="num">{{ item.read_count }}</div><div class="lbl">已读</div></div>
+        <div class="stat-box unread"><div class="num">{{ item.unread_count }}</div><div class="lbl">未读</div></div>
+    </div>
+    <div class="read-progress"><div data-w="{% widthratio item.read_count item.total 100 %}"></div></div>
+    <div class="progress-hint">阅读进度 {{ item.read_count }}/{{ item.total }}（撤回前已读 {{ item.read_count }} 人，未读 {{ item.unread_count }} 人）</div>
+
+    <details class="member-panel">
+        <summary>
+            <svg class="arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            查看接收明细（{{ item.total }} 人）
+        </summary>
+        <div class="member-table-wrap">
+            <table>
+                <thead>
+                    <tr><th style="width:35%;">接收人</th><th style="width:30%;">阅读状态</th><th>阅读时间</th></tr>
+                </thead>
+                <tbody>
+                    {% for m in item.members %}
+                    <tr>
+                        <td>{{ m.recipient }}</td>
+                        <td>{% if m.is_read %}<span class="pill read">已读</span>{% else %}<span class="pill unread">未读</span>{% endif %}</td>
+                        <td>{{ m.read_at|date:"Y-m-d H:i:s"|default:"—" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </details>
+</div>
+{% empty %}
+<div class="table-container">
+    <div class="empty-state">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+        <p>暂无撤回记录</p>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 阅读进度条宽度（data 属性传入，避免 style 内嵌模板标签）
+    document.querySelectorAll(".read-progress > div[data-w]").forEach(function (bar) {
+        bar.style.width = (parseInt(bar.dataset.w, 10) || 0) + "%";
+    });
+</script>
+{% endblock %}

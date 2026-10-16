@@ -40,6 +40,9 @@ MODULES = [
     # 档案管理：默认授权范围不含此模块（staff/viewer 创建时与 --reset-builtins 重置时
     # 均不授予）；内置角色可在界面「角色管理」中按需勾选开放，sync_rbac 默认不覆盖界面调整
     {"key": "archive", "name": "档案管理", "actions": CRUD},
+    # 消息通知：read=通知中心/未读接口/偏好（人人可用）；
+    # 公告推送走 system.create、撤回走 system.update（管理员专属，避免 staff 默认可推送公告）
+    {"key": "notifications", "name": "消息通知", "actions": READ_ONLY},
     {"key": "system", "name": "系统管理", "actions": CRUD},
 ]
 

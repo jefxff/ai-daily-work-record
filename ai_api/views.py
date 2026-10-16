@@ -1,12 +1,17 @@
-from rest_framework import viewsets, filters
+from rest_framework import viewsets, filters, mixins
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Q
 from datetime import datetime, timedelta
 
 from accounts.services import has_perm
+from samples.services import (
+    create_partner, create_sample, create_test_record, create_batch_record,
+    BusinessError,
+)
 
 
 def _can(user, module, action):
@@ -28,20 +33,20 @@ class EnhancedModelViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     # RBAC 模块 key（accounts.registry）；子类必须按业务模块覆盖
     perm_module = None
-    
+
     def get_queryset(self):
         """重写查询集以支持过滤"""
         queryset = super().get_queryset()
-        
+
         # 支持日期范围过滤
         start_date = self.request.query_params.get('start_date', None)
         end_date = self.request.query_params.get('end_date', None)
-        
+
         if start_date and end_date:
             try:
                 start = datetime.strptime(start_date, '%Y-%m-%d')
                 end = datetime.strptime(end_date, '%Y-%m-%d')
-                
+
                 # 根据模型字段进行过滤
                 if hasattr(queryset.model, 'record_date'):
                     queryset = queryset.filter(record_date__range=[start, end])
@@ -53,7 +58,10 @@ class EnhancedModelViewSet(viewsets.ModelViewSet):
                     queryset = queryset.filter(proposal_date__range=[start, end])
                 elif hasattr(queryset.model, 'complaint_date'):
                     queryset = queryset.filter(complaint_date__range=[start, end])
-                    
+                elif hasattr(queryset.model, 'created_at'):
+                    # samples/archive/knowledge 等以创建时间兜底
+                    queryset = queryset.filter(created_at__range=[start, end])
+
             except ValueError:
                 # 日期格式错误，忽略过滤
                 pass
@@ -70,14 +78,44 @@ class EnhancedModelViewSet(viewsets.ModelViewSet):
         
         return queryset
 
+
+class ReadOnlyEnhancedViewSet(
+    mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet
+):
+    """只读增强基类：分页/搜索与 EnhancedModelViewSet 一致，仅暴露 list/retrieve。
+
+    用于借阅记录、年审记录等流程类数据（写入走页面业务流程）。
+    """
+
+    pagination_class = CustomPagination
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    perm_module = None
+
+    def get_queryset(self):
+        # 只读视图无需日期/状态过滤，保持与列表页一致的排序
+        return super().get_queryset()
+
+
 from records.models import (
     Decoration, CustomerCredit, CustomerComplaint, Regulation,
     PriceEvaluation, DailyRecord, MetalPrice, Insurance, Complaint
 )
+from samples.models import Partner, Sample, TestRecord, BatchRecord, AuditRecord
+from archive.models import (
+    Cabinet, Category as ArchiveCategory, Ledger, Archive,
+    BorrowRecord, License, AnnualReview, LicenseBorrowRecord,
+)
+from knowledge_base.models import KnowledgeCategory, KnowledgeDocument
 from .serializers import (
     DecorationSerializer, CustomerCreditSerializer, CustomerComplaintSerializer,
     RegulationSerializer, PriceEvaluationSerializer, DailyRecordSerializer,
-    MetalPriceSerializer, InsuranceSerializer, ComplaintSerializer
+    MetalPriceSerializer, InsuranceSerializer, ComplaintSerializer,
+    PartnerSerializer, SampleSerializer, TestRecordSerializer,
+    BatchRecordSerializer, AuditRecordSerializer,
+    CabinetSerializer, ArchiveCategorySerializer, LedgerSerializer,
+    ArchiveSerializer, BorrowRecordSerializer, LicenseSerializer,
+    AnnualReviewSerializer, LicenseBorrowRecordSerializer,
+    KnowledgeCategorySerializer, KnowledgeDocumentSerializer,
 )
 
 
@@ -127,12 +165,20 @@ class PriceEvaluationViewSet(EnhancedModelViewSet):
 
 
 class DailyRecordViewSet(EnhancedModelViewSet):
-    """每日记录 API"""
+    """每日记录 API（数据隔离：仅返回/操作当前用户的记录）"""
     perm_module = 'daily_record'
     queryset = DailyRecord.objects.all()
     serializer_class = DailyRecordSerializer
     search_fields = ['department', 'work_content']
     ordering_fields = ['record_date', 'progress']
+
+    def get_queryset(self):
+        # 在父类（日期范围过滤等）基础上叠加用户归属过滤
+        return super().get_queryset().filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        # 归属绑定当前用户，服务端强制，忽略前端提交的归属字段
+        serializer.save(user=self.request.user)
 
 
 class MetalPriceViewSet(EnhancedModelViewSet):
@@ -162,6 +208,150 @@ class ComplaintViewSet(EnhancedModelViewSet):
     ordering_fields = ['amount', 'progress']
 
 
+# ==================== 试样管理 ====================
+
+class PartnerViewSet(EnhancedModelViewSet):
+    """供应商档案 API"""
+    perm_module = 'samples'
+    queryset = Partner.objects.all()
+    serializer_class = PartnerSerializer
+    search_fields = ['partner_code', 'name', 'contact_person', 'contact_info']
+    ordering_fields = ['created_at', 'name']
+
+
+class SampleViewSet(EnhancedModelViewSet):
+    """样品主档 API（不含已软删除样品；删除请走页面软删除流程）"""
+    perm_module = 'samples'
+    queryset = Sample.objects.filter(is_deleted=False)
+    serializer_class = SampleSerializer
+    search_fields = ['sample_no', 'material_name', 'model', 'spec', 'registrar']
+    ordering_fields = ['sample_date', 'status']
+
+
+class TestRecordViewSet(EnhancedModelViewSet):
+    """试样记录 API"""
+    perm_module = 'samples'
+    queryset = TestRecord.objects.all()
+    serializer_class = TestRecordSerializer
+    search_fields = ['test_no', 'test_result', 'report_code', 'operator', 'package_type']
+    ordering_fields = ['test_date', 'round_no']
+
+
+class BatchRecordViewSet(EnhancedModelViewSet):
+    """小批量记录 API"""
+    perm_module = 'samples'
+    queryset = BatchRecord.objects.all()
+    serializer_class = BatchRecordSerializer
+    search_fields = ['batch_no', 'alternative_model', 'operator', 'remark']
+    ordering_fields = ['round_no']
+
+
+class AuditRecordViewSet(EnhancedModelViewSet):
+    """审厂记录 API（附件上传走页面）"""
+    perm_module = 'samples'
+    queryset = AuditRecord.objects.all()
+    serializer_class = AuditRecordSerializer
+    search_fields = ['audit_no', 'audit_remark', 'auditor']
+    ordering_fields = ['audit_date', 'round_no']
+
+
+# ==================== 档案管理 ====================
+
+class CabinetViewSet(EnhancedModelViewSet):
+    """档案柜 API（层格配置请走页面，AI 创建后需补充层配置）"""
+    perm_module = 'archive'
+    queryset = Cabinet.objects.all()
+    serializer_class = CabinetSerializer
+    search_fields = ['code', 'location']
+    ordering_fields = ['code']
+
+
+class ArchiveCategoryViewSet(EnhancedModelViewSet):
+    """档案类别 API"""
+    perm_module = 'archive'
+    queryset = ArchiveCategory.objects.all()
+    serializer_class = ArchiveCategorySerializer
+    search_fields = ['name']
+    ordering_fields = ['sort_order']
+
+
+class LedgerViewSet(EnhancedModelViewSet):
+    """台账 API"""
+    perm_module = 'archive'
+    queryset = Ledger.objects.all()
+    serializer_class = LedgerSerializer
+    search_fields = ['name', 'description']
+    ordering_fields = ['sort_order']
+
+
+class ArchiveViewSet(EnhancedModelViewSet):
+    """档案 API"""
+    perm_module = 'archive'
+    queryset = Archive.objects.all()
+    serializer_class = ArchiveSerializer
+    search_fields = [
+        'code', 'name', 'tags', 'description', 'counterpart', 'contract_no',
+        'department', 'archive_label', 'handler', 'location_code',
+    ]
+    ordering_fields = ['created_at', 'sign_date', 'expire_date']
+
+
+class BorrowRecordViewSet(ReadOnlyEnhancedViewSet):
+    """档案借阅记录 API（借阅/归还操作走页面业务流程）"""
+    perm_module = 'archive'
+    queryset = BorrowRecord.objects.all()
+    serializer_class = BorrowRecordSerializer
+    search_fields = ['borrower', 'remark', 'archive__code', 'archive__name']
+    ordering_fields = ['borrow_time', 'due_time']
+
+
+class LicenseViewSet(EnhancedModelViewSet):
+    """证照 API"""
+    perm_module = 'archive'
+    queryset = License.objects.all()
+    serializer_class = LicenseSerializer
+    search_fields = ['name', 'code', 'holder', 'issuer', 'remark']
+    ordering_fields = ['expire_date', 'next_review_date']
+
+
+class AnnualReviewViewSet(ReadOnlyEnhancedViewSet):
+    """年审记录 API（年审操作走页面业务流程）"""
+    perm_module = 'archive'
+    queryset = AnnualReview.objects.all()
+    serializer_class = AnnualReviewSerializer
+    search_fields = ['reviewer', 'remark', 'license__code', 'license__name']
+    ordering_fields = ['review_date']
+
+
+class LicenseBorrowRecordViewSet(ReadOnlyEnhancedViewSet):
+    """证照借阅记录 API（借阅/归还操作走页面业务流程）"""
+    perm_module = 'archive'
+    queryset = LicenseBorrowRecord.objects.all()
+    serializer_class = LicenseBorrowRecordSerializer
+    search_fields = ['borrower', 'remark', 'license__code', 'license__name']
+    ordering_fields = ['borrow_time', 'due_time']
+
+
+# ==================== 知识库 ====================
+
+class KnowledgeCategoryViewSet(EnhancedModelViewSet):
+    """知识分类 API"""
+    perm_module = 'knowledge'
+    queryset = KnowledgeCategory.objects.all()
+    serializer_class = KnowledgeCategorySerializer
+    search_fields = ['name', 'description']
+    ordering_fields = ['sort_order']
+
+
+class KnowledgeDocumentViewSet(EnhancedModelViewSet):
+    """知识文档 API"""
+    perm_module = 'knowledge'
+    queryset = KnowledgeDocument.objects.all()
+    serializer_class = KnowledgeDocumentSerializer
+    search_fields = ['title', 'content', 'summary', 'tags']
+    ordering_fields = ['updated_at', 'view_count']
+
+
 # ========== AI 友好接口 ==========
 
 @api_view(['GET'])
@@ -188,13 +378,24 @@ def ai_summary(request):
     if _can(request.user, 'price_evaluation', 'read'):
         totals['核价'] = PriceEvaluation.objects.count()
     if _can(request.user, 'daily_record', 'read'):
-        totals['每日记录'] = DailyRecord.objects.count()
+        totals['每日记录'] = DailyRecord.objects.filter(user=request.user).count()
     if _can(request.user, 'metal_price', 'read'):
         totals['金属价格'] = MetalPrice.objects.count()
     if _can(request.user, 'insurance', 'read'):
         totals['保险'] = Insurance.objects.count()
     if _can(request.user, 'complaint', 'read'):
         totals['客诉'] = Complaint.objects.count()
+    if _can(request.user, 'samples', 'read'):
+        totals['供应商档案'] = Partner.objects.count()
+        totals['样品主档'] = Sample.objects.filter(is_deleted=False).count()
+        totals['试样记录'] = TestRecord.objects.count()
+        totals['小批量记录'] = BatchRecord.objects.count()
+        totals['审厂记录'] = AuditRecord.objects.count()
+    if _can(request.user, 'archive', 'read'):
+        totals['档案'] = Archive.objects.count()
+        totals['证照'] = License.objects.count()
+    if _can(request.user, 'knowledge', 'read'):
+        totals['知识文档'] = KnowledgeDocument.objects.count()
     summary['总数据统计'] = totals
 
     # 今日数据
@@ -202,11 +403,20 @@ def ai_summary(request):
     today_data = {}
     if _can(request.user, 'daily_record', 'read'):
         today_data['今日新增记录'] = DailyRecord.objects.filter(
+            user=request.user,
             record_date__date=today
         ).count()
     if _can(request.user, 'metal_price', 'read'):
         today_data['今日金属价格'] = MetalPrice.objects.filter(
             crawl_date=today
+        ).count()
+    if _can(request.user, 'samples', 'read'):
+        today_data['今日送样'] = Sample.objects.filter(
+            sample_date=today, is_deleted=False
+        ).count()
+    if _can(request.user, 'archive', 'read'):
+        today_data['今日档案借出'] = BorrowRecord.objects.filter(
+            borrow_time__date=today
         ).count()
     summary['今日数据'] = today_data
 
@@ -216,10 +426,18 @@ def ai_summary(request):
             end_date__lte=today + timedelta(days=30),
             end_date__gte=today
         )
-        summary['即将到期'] = {
-            '保险(30天内)': upcoming_insurance.count(),
-            '保险列表': InsuranceSerializer(upcoming_insurance[:5], many=True).data
-        }
+        summary['即将到期']['保险(30天内)'] = upcoming_insurance.count()
+        summary['即将到期']['保险列表'] = InsuranceSerializer(upcoming_insurance[:5], many=True).data
+
+    # 即将到期（证照/档案合同）
+    if _can(request.user, 'archive', 'read'):
+        summary['即将到期']['证照(30天内)'] = License.objects.filter(
+            Q(expire_date__gte=today, expire_date__lte=today + timedelta(days=30))
+            | Q(next_review_date__gte=today, next_review_date__lte=today + timedelta(days=30))
+        ).count()
+        summary['即将到期']['档案合同(30天内)'] = Archive.objects.filter(
+            expire_date__gte=today, expire_date__lte=today + timedelta(days=30)
+        ).count()
 
     # 待处理（未完成的客诉和账期）
     pending = {}
@@ -234,6 +452,16 @@ def ai_summary(request):
         pending['未完成客诉'] = Complaint.objects.filter(
             progress__in=['立案', '审理中']
         ).count()
+    if _can(request.user, 'samples', 'read'):
+        pending['待送样样品'] = Sample.objects.filter(
+            status=Sample.Status.PENDING, is_deleted=False
+        ).count()
+        pending['试样中样品'] = Sample.objects.filter(
+            status=Sample.Status.TESTING, is_deleted=False
+        ).count()
+    if _can(request.user, 'archive', 'read'):
+        pending['借出中档案'] = BorrowRecord.objects.filter(return_time__isnull=True).count()
+        pending['借出中证照'] = LicenseBorrowRecord.objects.filter(return_time__isnull=True).count()
     summary['待处理'] = pending
 
     return Response(summary)
@@ -252,6 +480,7 @@ def ai_search(request):
     results = {}
 
     # 根据 model 参数搜索指定模型，或搜索所有模型
+    # 值为 (model, serializer[, base_queryset])；base_queryset 缺省为全表
     models_to_search = {
         'decoration': (Decoration, DecorationSerializer),
         'customer_credit': (CustomerCredit, CustomerCreditSerializer),
@@ -261,35 +490,46 @@ def ai_search(request):
         'daily_record': (DailyRecord, DailyRecordSerializer),
         'insurance': (Insurance, InsuranceSerializer),
         'complaint': (Complaint, ComplaintSerializer),
+        'partner': (Partner, PartnerSerializer),
+        'sample': (Sample, SampleSerializer, Sample.objects.filter(is_deleted=False)),
+        'test_record': (TestRecord, TestRecordSerializer),
+        'batch_record': (BatchRecord, BatchRecordSerializer),
+        'audit_record': (AuditRecord, AuditRecordSerializer),
+        'archive': (Archive, ArchiveSerializer),
+        'license': (License, LicenseSerializer),
+        'knowledge_document': (KnowledgeDocument, KnowledgeDocumentSerializer),
     }
 
-    if model and model in models_to_search:
-        # 指定模块但无 read 权限：403（不得借搜索通道越权读取）
-        if not _can(request.user, model, 'read'):
-            return Response({'detail': f'无权访问模块 {model}'}, status=403)
-        model_class, serializer_class = models_to_search[model]
-        # 用 Q 对象合并为单次查询，避免多次 SQL
+    def _text_search(model_class, serializer_class, base_queryset, limit):
+        """对模型全部文本字段做 OR 模糊匹配，返回序列化结果。"""
         text_fields = [f.name for f in model_class._meta.get_fields()
                        if hasattr(f, 'name') and f.name != 'id'
                        and getattr(f, 'get_internal_type', lambda: '')() in ('CharField', 'TextField')]
         q_filter = Q()
         for field in text_fields:
             q_filter |= Q(**{f'{field}__icontains': query})
-        results[model] = serializer_class(model_class.objects.filter(q_filter).distinct()[:20], many=True).data
+        return serializer_class(
+            base_queryset.filter(q_filter).distinct()[:limit], many=True
+        ).data
+
+    if model and model in models_to_search:
+        # 指定模块但无 read 权限：403（不得借搜索通道越权读取）
+        if not _can(request.user, model, 'read'):
+            return Response({'detail': f'无权访问模块 {model}'}, status=403)
+        entry = models_to_search[model]
+        model_class, serializer_class = entry[0], entry[1]
+        base_queryset = entry[2] if len(entry) > 2 else model_class.objects.all()
+        results[model] = _text_search(model_class, serializer_class, base_queryset, 20)
     else:
         # 搜索所有有权限的模型
-        for name, (model_class, serializer_class) in models_to_search.items():
+        for name, entry in models_to_search.items():
             if not _can(request.user, name, 'read'):
                 continue
-            text_fields = [f.name for f in model_class._meta.get_fields()
-                           if hasattr(f, 'name') and f.name != 'id'
-                           and getattr(f, 'get_internal_type', lambda: '')() in ('CharField', 'TextField')]
-            q_filter = Q()
-            for field in text_fields:
-                q_filter |= Q(**{f'{field}__icontains': query})
-            queryset = model_class.objects.filter(q_filter).distinct()[:10]
-            if queryset.exists():
-                results[name] = serializer_class(queryset, many=True).data
+            model_class, serializer_class = entry[0], entry[1]
+            base_queryset = entry[2] if len(entry) > 2 else model_class.objects.all()
+            data = _text_search(model_class, serializer_class, base_queryset, 10)
+            if data:
+                results[name] = data
 
     return Response(results)
 
@@ -316,6 +556,11 @@ def ai_query(request):
         '核价': {'model': 'price_evaluation', 'keywords': ['核价', '供应商', '报价', '内控']},
         '金属': {'model': 'metal_price', 'keywords': ['金属', '铜价', '锡价', '铝价', '金价', '银价', '价格', '涨跌']},
         '制度': {'model': 'regulation', 'keywords': ['制度', '处罚', '发文']},
+        '试样': {'model': 'sample', 'keywords': ['试样', '送样', '样品', '试产', '小批量']},
+        '供应商': {'model': 'partner', 'keywords': ['供应商档案', '审厂', '合作厂商']},
+        '档案': {'model': 'archive', 'keywords': ['档案', '台账', '归档', '借阅']},
+        '证照': {'model': 'license', 'keywords': ['证照', '证书', '资质', '营业执照', '年审']},
+        '知识': {'model': 'knowledge_document', 'keywords': ['知识库', '知识文档', '文档', '知识']},
     }
 
     # 扩展词匹配：支持"铜价"、"金价"等变体
@@ -393,9 +638,11 @@ def ai_query(request):
             response['答案'] = f'共{CustomerCredit.objects.count()}条账期记录'
 
         elif model_name == 'daily_record':
-            recent = DailyRecord.objects.all()[:20]
+            # 数据隔离：AI 问答仅引用当前用户的记录
+            my_records = DailyRecord.objects.filter(user=request.user)
+            recent = my_records[:20]
             response['数据'] = DailyRecordSerializer(recent, many=True).data
-            response['答案'] = f'共{DailyRecord.objects.count()}条工作记录'
+            response['答案'] = f'共{my_records.count()}条工作记录'
 
         elif model_name == 'decoration':
             response['数据'] = DecorationSerializer(Decoration.objects.all()[:10], many=True).data
@@ -413,8 +660,60 @@ def ai_query(request):
         elif model_name == 'regulation':
             response['数据'] = RegulationSerializer(Regulation.objects.all()[:10], many=True).data
             response['答案'] = f'共{Regulation.objects.count()}条制度记录'
+
+        elif model_name == 'sample':
+            active = Sample.objects.filter(is_deleted=False)
+            status_counts = {
+                s: active.filter(status=s).count()
+                for s, _label in Sample.Status.choices
+            }
+            response['数据'] = SampleSerializer(active[:10], many=True).data
+            response['答案'] = (
+                f'共{active.count()}个样品：待送样{status_counts["pending"]}、'
+                f'试样中{status_counts["testing"]}、小批量中{status_counts["small_batch"]}、'
+                f'已导入{status_counts["imported"]}、已终止{status_counts["terminated"]}；'
+                f'另有试样记录{TestRecord.objects.count()}条、小批量记录{BatchRecord.objects.count()}条'
+            )
+
+        elif model_name == 'partner':
+            response['数据'] = PartnerSerializer(Partner.objects.all()[:10], many=True).data
+            response['答案'] = (
+                f'共{Partner.objects.count()}家供应商档案，'
+                f'合作中{Partner.objects.filter(status=Partner.CooperationStatus.ACTIVE).count()}家'
+            )
+
+        elif model_name == 'archive':
+            response['数据'] = ArchiveSerializer(Archive.objects.all()[:10], many=True).data
+            response['答案'] = (
+                f'共{Archive.objects.count()}份档案，'
+                f'借出中{BorrowRecord.objects.filter(return_time__isnull=True).count()}份'
+            )
+
+        elif model_name == 'license':
+            today = datetime.now().date()
+            if any(kw in question for kw in ['到期', '过期', '年审']):
+                expired = License.objects.filter(
+                    Q(expire_date__lt=today) | Q(next_review_date__lt=today)
+                ).count()
+                upcoming = License.objects.filter(
+                    Q(expire_date__gte=today, expire_date__lte=today + timedelta(days=30))
+                    | Q(next_review_date__gte=today, next_review_date__lte=today + timedelta(days=30))
+                ).count()
+                response['答案'] = f'已过期{expired}个，30天内到期/年审{upcoming}个'
+            else:
+                response['答案'] = f'共{License.objects.count()}份证照'
+            response['数据'] = LicenseSerializer(License.objects.all()[:10], many=True).data
+
+        elif model_name == 'knowledge_document':
+            response['数据'] = KnowledgeDocumentSerializer(
+                KnowledgeDocument.objects.all()[:10], many=True
+            ).data
+            response['答案'] = f'共{KnowledgeDocument.objects.count()}篇知识文档'
     else:
-        response['答案'] = '请明确搜索内容，支持：保险、客诉、诉讼、账期、记录、装修、核价、金属、制度'
+        response['答案'] = (
+            '请明确搜索内容，支持：保险、客诉、诉讼、账期、记录、装修、核价、金属、'
+            '制度、试样、供应商、档案、证照、知识'
+        )
 
     return Response(response)
 
@@ -451,7 +750,7 @@ def model_list(request):
         },
         'daily_record': {
             'name': '每日记录',
-            'count': DailyRecord.objects.count(),
+            'count': DailyRecord.objects.filter(user=request.user).count(),
             'fields': [f.name for f in DailyRecord._meta.get_fields() if hasattr(f, 'name')]
         },
         'metal_price': {
@@ -469,6 +768,46 @@ def model_list(request):
             'count': Complaint.objects.count(),
             'fields': [f.name for f in Complaint._meta.get_fields() if hasattr(f, 'name')]
         },
+        'partner': {
+            'name': '供应商档案',
+            'count': Partner.objects.count(),
+            'fields': [f.name for f in Partner._meta.get_fields() if hasattr(f, 'name')]
+        },
+        'sample': {
+            'name': '样品主档',
+            'count': Sample.objects.filter(is_deleted=False).count(),
+            'fields': [f.name for f in Sample._meta.get_fields() if hasattr(f, 'name')]
+        },
+        'test_record': {
+            'name': '试样记录',
+            'count': TestRecord.objects.count(),
+            'fields': [f.name for f in TestRecord._meta.get_fields() if hasattr(f, 'name')]
+        },
+        'batch_record': {
+            'name': '小批量记录',
+            'count': BatchRecord.objects.count(),
+            'fields': [f.name for f in BatchRecord._meta.get_fields() if hasattr(f, 'name')]
+        },
+        'audit_record': {
+            'name': '审厂记录',
+            'count': AuditRecord.objects.count(),
+            'fields': [f.name for f in AuditRecord._meta.get_fields() if hasattr(f, 'name')]
+        },
+        'archive': {
+            'name': '档案',
+            'count': Archive.objects.count(),
+            'fields': [f.name for f in Archive._meta.get_fields() if hasattr(f, 'name')]
+        },
+        'license': {
+            'name': '证照',
+            'count': License.objects.count(),
+            'fields': [f.name for f in License._meta.get_fields() if hasattr(f, 'name')]
+        },
+        'knowledge_document': {
+            'name': '知识文档',
+            'count': KnowledgeDocument.objects.count(),
+            'fields': [f.name for f in KnowledgeDocument._meta.get_fields() if hasattr(f, 'name')]
+        },
     }
     # 仅返回当前用户有 read 权限的模块
     return Response({k: v for k, v in models.items() if _can(request.user, k, 'read')})
@@ -477,10 +816,16 @@ def model_list(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def ai_create(request):
-    """AI 创建数据接口"""
+    """AI 创建数据接口
+
+    models_map 值为 (model, serializer[, service])：
+    - 带 service 时复用 samples.services 的创建服务（自动生成单据编号、
+      派生样品状态并写操作日志）；service 内 full_clean 失败返回 400。
+    - audit_record / 借阅 / 年审等涉及文件上传或页面流程的模型不开放 AI 创建。
+    """
     data = request.data
     model_type = data.get('model')
-    
+
     models_map = {
         'decoration': (Decoration, DecorationSerializer),
         'customer_credit': (CustomerCredit, CustomerCreditSerializer),
@@ -490,8 +835,19 @@ def ai_create(request):
         'daily_record': (DailyRecord, DailyRecordSerializer),
         'insurance': (Insurance, InsuranceSerializer),
         'complaint': (Complaint, ComplaintSerializer),
+        'partner': (Partner, PartnerSerializer, create_partner),
+        'sample': (Sample, SampleSerializer, create_sample),
+        'test_record': (TestRecord, TestRecordSerializer, create_test_record),
+        'batch_record': (BatchRecord, BatchRecordSerializer, create_batch_record),
+        'cabinet': (Cabinet, CabinetSerializer),
+        'archive_category': (ArchiveCategory, ArchiveCategorySerializer),
+        'ledger': (Ledger, LedgerSerializer),
+        'archive': (Archive, ArchiveSerializer),
+        'license': (License, LicenseSerializer),
+        'knowledge_category': (KnowledgeCategory, KnowledgeCategorySerializer),
+        'knowledge_document': (KnowledgeDocument, KnowledgeDocumentSerializer),
     }
-    
+
     if model_type not in models_map:
         return Response({'error': '无效的模型类型'}, status=400)
 
@@ -499,13 +855,25 @@ def ai_create(request):
     if not _can(request.user, model_type, 'create'):
         return Response({'detail': f'无权在模块 {model_type} 新增数据'}, status=403)
 
-    model_class, serializer_class = models_map[model_type]
+    entry = models_map[model_type]
+    model_class, serializer_class = entry[0], entry[1]
+    service = entry[2] if len(entry) > 2 else None
     serializer = serializer_class(data=data.get('data', {}))
-    
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data, status=201)
-    return Response(serializer.errors, status=400)
+
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=400)
+
+    if service:
+        obj = model_class(**serializer.validated_data)
+        try:
+            obj = service(obj, operator=request.user.username)
+        except (DjangoValidationError, BusinessError) as exc:
+            message = getattr(exc, 'message_dict', None) or {'detail': [str(exc)]}
+            return Response(message, status=400)
+        return Response(serializer_class(obj).data, status=201)
+
+    serializer.save()
+    return Response(serializer.data, status=201)
 
 
 @api_view(['GET'])

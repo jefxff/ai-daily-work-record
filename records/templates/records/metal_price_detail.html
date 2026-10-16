@@ -282,13 +282,15 @@
 {% block extra_js %}
 <!-- Chart.js -->
 <script src="{% static 'js/chart.min.js' %}"></script>
+{{ chart_labels|json_script:"mpChartLabels" }}
+{{ chart_data|json_script:"mpChartData" }}
 <script>
     // 价格走势图
     const ctx = document.getElementById('priceChart').getContext('2d');
 
-    // 从Django模板获取数据
-    const chartLabels = {{ chart_labels|safe }};
-    const chartData = {{ chart_data|safe }};
+    // 从 json_script 数据节点获取数据
+    const chartLabels = JSON.parse(document.getElementById('mpChartLabels').textContent);
+    const chartData = JSON.parse(document.getElementById('mpChartData').textContent);
 
     new Chart(ctx, {
         type: 'line',

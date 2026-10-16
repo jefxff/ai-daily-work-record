@@ -2,6 +2,7 @@
     <div class="detail-row"><div class="detail-label">日期及时间：</div><div class="detail-value">{{ record.record_date|date:'Y-m-d H:i:s' }}</div></div>
     <div class="detail-row"><div class="detail-label">提出部门：</div><div class="detail-value">{{ record.department }}</div></div>
     <div class="detail-row"><div class="detail-label">工作内容：</div><div class="detail-value">{{ record.work_content }}</div></div>
+    <div class="detail-row"><div class="detail-label">截至日期：</div><div class="detail-value">{% if record.due_date %}{{ record.due_date|date:'Y-m-d' }}{% else %}—{% endif %}</div></div>
     <div class="detail-row"><div class="detail-label">工作状态：</div><div class="detail-value">{{ record.status }}</div></div>
     <div class="detail-row"><div class="detail-label">工作进度：</div><div class="detail-value">{{ record.progress }}%</div></div>
 </div>

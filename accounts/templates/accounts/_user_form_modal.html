@@ -56,7 +56,7 @@
             {{ form.is_active }} {{ form.is_active.label }}
         </label>
         {% if mode == 'edit' %}
-        <label class="ac-check" style="{% if not request.user.is_superuser %}opacity:0.55;{% endif %}">
+        <label class="ac-check {% if not request.user.is_superuser %}disabled{% endif %}">
             {% if request.user.is_superuser %}{{ form.is_staff }}{% else %}
             <input type="checkbox" class="form-check-input" disabled {% if form.is_staff.value %}checked{% endif %}>
             {% endif %}
@@ -78,6 +78,7 @@
     #formModalBody .ac-field .form-control { width: 100%; }
     #formModalBody .ac-roles { display: flex; flex-direction: column; gap: 0.4rem; }
     #formModalBody .ac-check { display: flex; gap: 0.5rem; align-items: center; font-size: 0.88rem; font-weight: 400; }
+    #formModalBody .ac-check.disabled { opacity: 0.55; }
     #formModalBody .ac-desc { color: #bfbfbf; font-size: 0.78rem; font-weight: 400; }
     #formModalBody .ac-error { color: #cf1322; font-size: 0.78rem; margin-top: 2px; }
     #formModalBody .ac-hint-block { font-size: 0.85rem; color: #8c8c8c; background: #fafafa; border-radius: 4px; padding: 0.5rem 0.75rem; margin-bottom: 0.9rem; }

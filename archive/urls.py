@@ -16,6 +16,7 @@ urlpatterns = [
     path("ledgers/import/", views.ledger_batch_import, name="ledger_batch_import"),
     path("ledgers/<int:pk>/", views.ledger_detail, name="ledger_detail"),
     path("ledgers/<int:pk>/edit/", views.ledger_edit, name="ledger_edit"),
+    path("ledgers/<int:pk>/move/", views.ledger_move, name="ledger_move"),
     path("ledgers/<int:pk>/delete/", views.ledger_delete, name="ledger_delete"),
     path("ledgers/<int:pk>/export/", views.ledger_export, name="ledger_export"),
     path("ledgers/<int:pk>/import/", views.ledger_import, name="ledger_import"),

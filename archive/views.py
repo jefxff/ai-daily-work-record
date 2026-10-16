@@ -164,9 +164,12 @@ def overview(request):
     ).count()
 
     categories = Category.objects.all()
+    # 台账排序弹窗：完整台账列表（不受筛选影响），按当前显示顺序
+    sort_ledgers = Ledger.objects.all()
 
     context = {
         "ledger_data": ledger_data,
+        "sort_ledgers": sort_ledgers,
         "unassigned_rows": unassigned_rows,
         "unassigned_total": unassigned_total,
         "categories": categories,
@@ -255,6 +258,39 @@ def ledger_edit(request, pk):
     if _is_ajax(request):
         html = render(request, "archive/_ledger_form_modal.html", {"form": form, "mode": "edit", "ledger": lg}).content.decode()
         return JsonResponse({"ok": True, "html": html})
+    return redirect("archive:overview")
+
+
+@login_required
+@perm_required("archive", "update")
+def ledger_move(request, pk):
+    """台账排序：置顶 / 上移 / 下移（direction=top/up/down）。
+
+    历史数据 sort_order 可能全部为 0（仅按 id 排），单纯交换两行字段值会无效，
+    因此每次调整后按新顺序整体重排 sort_order（0..N-1）。
+    """
+    ledger = get_object_or_404(Ledger, pk=pk)
+    direction = request.POST.get("direction", "up")
+    if request.method == "POST" and direction in ("top", "up", "down"):
+        ledgers = list(Ledger.objects.order_by("sort_order", "id"))
+        idx = next((i for i, l in enumerate(ledgers) if l.pk == ledger.pk), None)
+        if idx is not None:
+            if direction == "top":
+                j = 0
+            elif direction == "up":
+                j = max(idx - 1, 0)
+            else:
+                j = min(idx + 1, len(ledgers) - 1)
+            if j != idx:
+                item = ledgers.pop(idx)
+                ledgers.insert(j, item)
+                for i, l in enumerate(ledgers):
+                    if l.sort_order != i:
+                        l.sort_order = i
+                        l.save(update_fields=["sort_order"])
+                _log(request, "编辑", f"台账#{ledger.id}", f"调整台账排序: {ledger.name}（{direction}）")
+    if _is_ajax(request):
+        return JsonResponse({"ok": True})
     return redirect("archive:overview")
 
 
@@ -1469,7 +1505,6 @@ def table_import(request, table):
             messages.error(request, "未读取到有效数据（可能文件为空或表头不在第 1 行）")
             return redirect("archive:table_import", table=table)
         headers = list(rows[0].keys())
-        missing = [h for h in columns if h not in headers and h != spec["match_header"]]
         if spec["match_header"] not in headers:
             messages.error(request, f"缺少必需的匹配键列「{spec['match_header']}」，请使用导出文件或下载模板填写")
             return redirect("archive:table_import", table=table)

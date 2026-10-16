@@ -27,6 +27,16 @@ def _is_ajax(request):
     return request.headers.get('x-requested-with') == 'XMLHttpRequest'
 
 
+def _my_daily_records(user):
+    """每日记录数据隔离唯一起点：任何查询必须基于本函数，禁止裸 objects.all()。"""
+    return DailyRecord.objects.filter(user=user)
+
+
+def _get_my_record(request, pk):
+    """行级归属校验：非本人记录一律 404（不返回 403，避免泄露记录存在性）。"""
+    return get_object_or_404(DailyRecord, pk=pk, user=request.user)
+
+
 def _modal_detail(request, template_name, context):
     """详情 AJAX 弹窗：返回局部模板 HTML"""
     html = render_to_string(template_name, context, request=request)
@@ -59,15 +69,16 @@ def home(request):
     total_price_evaluations = price_evaluations.count()
     total_price_reduction = sum(eval.get_reduction_amount() for eval in price_evaluations)
     
-# 每日记录：未完成工作（用annotate合并查询，避免重复count）
+# 每日记录：未完成工作（用annotate合并查询，避免重复count）；仅统计当前用户的记录
     from django.db.models import Count
-    daily_stats = DailyRecord.objects.aggregate(
+    my_daily = _my_daily_records(request.user)
+    daily_stats = my_daily.aggregate(
         total=Count('id'),
         incomplete=Count('id', filter=Q(status='未完成'))
     )
     total_daily_records = daily_stats['total']
     incomplete_daily_records_count = daily_stats['incomplete']
-    incomplete_daily_records = DailyRecord.objects.filter(status='未完成').order_by('-record_date')
+    incomplete_daily_records = my_daily.filter(status='未完成').order_by('-record_date')
 
     # 获取金属价格数据
     # 检查今天是否已经有数据
@@ -113,7 +124,7 @@ def home(request):
     weekly_trend = []
     for i in range(6, -1, -1):
         d = trend_today - timedelta(days=i)
-        c = DailyRecord.objects.filter(record_date__date=d).count()
+        c = _my_daily_records(request.user).filter(record_date__date=d).count()
         weekly_trend.append({'date': d.strftime('%m-%d'), 'c': c})
 
     context = {
@@ -187,8 +198,8 @@ def search(request):
         Q(evaluation_content__icontains=search_term)
     )
     
-    # 搜索每日记录
-    daily_record_results = DailyRecord.objects.filter(
+    # 搜索每日记录（仅当前用户的记录）
+    daily_record_results = _my_daily_records(request.user).filter(
         Q(department__icontains=search_term) |
         Q(work_content__icontains=search_term) |
         Q(status__icontains=search_term)
@@ -971,6 +982,7 @@ def daily_record_add(request):
         work_content = (request.POST.get('work_content') or '').strip()
         status = request.POST.get('status') or '未完成'
         progress_raw = request.POST.get('progress', '0') or '0'
+        due_date_raw = (request.POST.get('due_date') or '').strip()
 
         # 校验
         errors = {}
@@ -987,6 +999,13 @@ def daily_record_add(request):
             progress = 0
         if status not in ('完成', '未完成'):
             errors['status'] = '工作状态非法'
+        # 截至日期：选填，格式 YYYY-MM-DD
+        due_date = None
+        if due_date_raw:
+            try:
+                due_date = datetime.strptime(due_date_raw, '%Y-%m-%d').date()
+            except ValueError:
+                errors['due_date'] = '截至日期格式不正确'
 
         if errors:
             if is_ajax:
@@ -995,19 +1014,32 @@ def daily_record_add(request):
                     'record': None,
                     'now': timezone.now(),
                     'errors': errors,
-                    'form_data': {'department': department, 'work_content': work_content, 'status': status, 'progress': progress_raw},
+                    'form_data': {'department': department, 'work_content': work_content, 'status': status, 'progress': progress_raw, 'due_date': due_date_raw},
                 }, request=request)
                 return JsonResponse({'ok': False, 'html': html}, status=422)
             return render(request, 'records/daily_record_form.html', {'errors': errors})
 
-        # 创建并保存记录
+        # 创建并保存记录（归属绑定当前用户，服务端强制，忽略前端提交的归属字段）
         DailyRecord.objects.create(
+            user=request.user,
             department=department,
             work_content=work_content,
+            due_date=due_date,
             status=status,
             progress=progress
         )
         log_operation(request, '每日记录', '新增', '[每日记录]下的新记录', f'新增每日记录: {work_content}')
+        # 通知触发：保存为「未完成」时提醒本人（同记录幂等，编辑改回未完成不会重复提醒）
+        if status == '未完成':
+            try:
+                from notifications.services import emit
+                emit('daily_record_incomplete', recipient=request.user,
+                     context={'record_date': timezone.now(), 'today': timezone.localdate(),
+                              'progress': progress, 'work_content': work_content[:50]},
+                     dedup_context=f'incomplete-new:{request.user.pk}:{timezone.localdate()}',
+                     link='/daily_record/')
+            except Exception:
+                pass  # 通知失败不影响业务主流程
         if is_ajax:
             return JsonResponse({'ok': True, 'message': '新增成功'})
         return redirect('home')
@@ -1029,7 +1061,7 @@ def daily_record_list(request):
     department_filter = request.GET.get('department', '')
     status_filter = request.GET.get('status', '')
     
-    records = DailyRecord.objects.all().order_by('-record_date')
+    records = _my_daily_records(request.user).order_by('-record_date')
     
     # 搜索功能
     if search_term:
@@ -1046,8 +1078,8 @@ def daily_record_list(request):
     if status_filter:
         records = records.filter(status=status_filter)
     
-    # 获取所有部门列表（去重并排序）
-    departments = DailyRecord.objects.values_list('department', flat=True)
+    # 获取所有部门列表（基于当前用户的全部记录，不受本次筛选影响；去重并排序）
+    departments = _my_daily_records(request.user).values_list('department', flat=True)
     # 去除空白和空字符串，并进行规范化处理，使用set确保去重
     departments = sorted(list(set([dept.strip() for dept in departments if dept and dept.strip()])))
     
@@ -1069,13 +1101,14 @@ def daily_record_list(request):
 def daily_record_edit(request, pk):
     """编辑每日记录视图"""
     from django.http import JsonResponse
-    record = get_object_or_404(DailyRecord, pk=pk)
+    record = _get_my_record(request, pk)
     is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
     if request.method == 'POST':
         department = (request.POST.get('department') or '').strip()
         work_content = (request.POST.get('work_content') or '').strip()
         status = request.POST.get('status') or '未完成'
         progress_raw = request.POST.get('progress', '0') or '0'
+        due_date_raw = (request.POST.get('due_date') or '').strip()
 
         errors = {}
         if not department:
@@ -1091,6 +1124,13 @@ def daily_record_edit(request, pk):
             progress = record.progress
         if status not in ('完成', '未完成'):
             errors['status'] = '工作状态非法'
+        # 截至日期：选填，格式 YYYY-MM-DD（留空表示清除）
+        due_date = None
+        if due_date_raw:
+            try:
+                due_date = datetime.strptime(due_date_raw, '%Y-%m-%d').date()
+            except ValueError:
+                errors['due_date'] = '截至日期格式不正确'
 
         if errors:
             if is_ajax:
@@ -1098,6 +1138,8 @@ def daily_record_edit(request, pk):
                 record.department = department
                 record.work_content = work_content
                 record.status = status
+                if 'due_date' not in errors:
+                    record.due_date = due_date
                 from django.template.loader import render_to_string
                 html = render_to_string('records/daily_record_form_modal.html', {
                     'record': record,
@@ -1111,6 +1153,7 @@ def daily_record_edit(request, pk):
         record.work_content = work_content
         record.status = status
         record.progress = progress
+        record.due_date = due_date
         record.save()
         log_operation(request, '每日记录', '更新', f'[每日记录]下的记录#{record.id}', f'编辑每日记录: {record.work_content}')
         if is_ajax:
@@ -1128,15 +1171,15 @@ def daily_record_edit(request, pk):
 @perm_required("daily_record", "read")
 def daily_record_detail(request, pk):
     """每日记录详情视图"""
-    record = get_object_or_404(DailyRecord, pk=pk)
+    record = _get_my_record(request, pk)
     if _is_ajax(request):
         return _modal_detail(request, 'records/_daily_record_detail_modal.html', {'record': record})
     return render(request, 'records/daily_record_detail.html', {'record': record})
 
 @perm_required("daily_record", "read")
 def daily_record_export(request):
-    """导出每日记录到Excel"""
-    records = DailyRecord.objects.all()
+    """导出每日记录到Excel（仅当前用户的记录）"""
+    records = _my_daily_records(request.user).order_by('-record_date')
     
     if not records.exists():
         return HttpResponse('当前无每日记录，无法导出Excel')
@@ -1215,7 +1258,7 @@ def price_evaluation_delete(request, pk):
 @perm_required("daily_record", "delete")
 def daily_record_delete(request, pk):
     """删除每日记录"""
-    record = get_object_or_404(DailyRecord, pk=pk)
+    record = _get_my_record(request, pk)
     log_operation(request, '每日记录', '删除', f'[每日记录]下的记录#{record.id}', f'删除每日记录: {record.work_content}')
     record.delete()
     return redirect('daily_record_list')

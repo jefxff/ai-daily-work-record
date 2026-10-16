@@ -1,0 +1,142 @@
+{% extends "records/base.html" %}
+{% load accounts_tags %}
+
+{% block page_title %}消息通知 - 每日工作记录管理网站{% endblock %}
+
+{% block extra_css %}
+<style>
+    .notif-item { display: flex; align-items: flex-start; gap: 0.75rem; padding: 14px 24px; border-bottom: 1px solid #f0f0f0; transition: background 0.15s ease; }
+    .notif-item:last-child { border-bottom: none; }
+    .notif-item:hover { background: #fafafa; }
+    .notif-item.unread { background: #e6f7ff; }
+    .notif-item.unread:hover { background: #bae7ff; }
+    .notif-dot { width: 8px; height: 8px; border-radius: 50%; background: #1890ff; margin-top: 8px; flex-shrink: 0; }
+    .notif-dot.read { background: transparent; border: 1px solid #d9d9d9; }
+    .notif-main { flex: 1; min-width: 0; }
+    .notif-title-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    .notif-title { font-weight: 500; color: #1f2329; font-size: 0.925rem; }
+    .notif-item.unread .notif-title { font-weight: 600; }
+    .notif-content { color: #595959; font-size: 0.85rem; margin-top: 0.25rem; white-space: pre-wrap; word-break: break-word; }
+    .notif-meta { color: #8c8c8c; font-size: 0.75rem; margin-top: 0.375rem; display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+    .notif-actions { display: flex; gap: 0.5rem; flex-shrink: 0; align-items: center; }
+    .notif-agg-badge { background: #fff7e6; color: #fa8c16; border-radius: 4px; padding: 0 6px; font-size: 12px; font-weight: 500; }
+    .filter-chip.active { color: #1890ff; border-color: #91d5ff; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>消息通知<span class="total-hint">共 {{ total }} 条 · 未读 {{ unread_count }} 条</span></h2>
+    <div class="filter-chips">
+        {% can_view "system" %}
+        <a href="{% url 'notifications:announce' %}" class="btn-transparent">推送系统公告</a>
+        <a href="{% url 'notifications:revoke_log' %}" class="btn-transparent">撤回记录</a>
+        {% endcan_view %}
+        <a href="{% url 'notifications:preferences' %}" class="btn-secondary">通知偏好</a>
+        <form method="post" action="{% url 'notifications:read_all' %}" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn-transparent" {% if unread_count == 0 %}disabled style="opacity:.5;"{% endif %}>全部已读</button>
+        </form>
+    </div>
+</div>
+
+<div class="filter-chips" style="margin-bottom: 1rem;">
+    <a class="filter-chip {% if not status_filter and not unread_only %}active{% endif %}"
+       href="?{% if category_filter %}category={{ category_filter }}&{% endif %}">全部</a>
+    <a class="filter-chip {% if unread_only %}active{% endif %}"
+       href="?unread=1{% if category_filter %}&category={{ category_filter }}{% endif %}">未读</a>
+    <a class="filter-chip {% if status_filter == 'pending' %}active{% endif %}"
+       href="?status=pending{% if category_filter %}&category={{ category_filter }}{% endif %}">待发送</a>
+    <a class="filter-chip {% if status_filter == 'failed' %}active{% endif %}"
+       href="?status=failed{% if category_filter %}&category={{ category_filter }}{% endif %}">发送失败</a>
+    <span style="width:1px;background:#f0f0f0;margin:0 0.25rem;"></span>
+    {% for cat in categories %}
+    <a class="filter-chip {% if category_filter == cat.0 %}active{% endif %}"
+       href="?category={{ cat.0 }}{% if unread_only %}&unread=1{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">{{ cat.1 }}</a>
+    {% endfor %}
+</div>
+
+<div class="table-container">
+    {% for notification in page_obj %}
+    <div class="notif-item {% if not notification.is_read %}unread{% endif %}">
+        <span class="notif-dot {% if notification.is_read %}read{% endif %}"></span>
+        <div class="notif-main">
+            <div class="notif-title-row">
+                <span class="notif-title">{{ notification.title }}</span>
+                {% if notification.agg_count > 1 %}<span class="notif-agg-badge">合并 {{ notification.agg_count }} 条</span>{% endif %}
+                <span class="status-badge {{ notification.status_badge_class }}">{{ notification.get_status_display }}</span>
+            </div>
+            <div class="notif-content">{{ notification.content }}</div>
+            <div class="notif-meta">
+                <span>{{ notification.created_at|date:"Y-m-d H:i" }}</span>
+                <span>{{ notification.get_category_display }}</span>
+                <span>{{ notification.get_priority_display }}</span>
+            </div>
+        </div>
+        <div class="notif-actions">
+            {% if notification.link %}
+            <a href="{{ notification.link }}" class="btn-transparent btn-sm"
+               data-mark-read="{% url 'notifications:read' notification.pk %}"
+               onclick="markReadAndGo(event, this)">查看</a>
+            {% endif %}
+            {% if not notification.is_read %}
+            <form method="post" action="{% url 'notifications:read' notification.pk %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn-secondary btn-sm">标为已读</button>
+            </form>
+            {% endif %}
+            {% can_view "system" %}
+            {% if notification.can_revoke %}
+            <form method="post" action="{% url 'notifications:revoke' notification.pk %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn-transparent btn-sm btn-delete" data-confirm="确定撤回该通知吗？撤回后接收者将不再可见。">撤回</button>
+            </form>
+            {% endif %}
+            {% endcan_view %}
+        </div>
+    </div>
+    {% empty %}
+    <div class="empty-state">
+        <div class="empty-icon">🔔</div>
+        <div class="empty-text">暂无通知</div>
+    </div>
+    {% endfor %}
+</div>
+
+{% if page_obj.paginator.num_pages > 1 %}
+<div class="pagination-info">
+    <div></div>
+    <ul class="pagination">
+        {% if page_obj.has_previous %}
+        <li class="page-item"><a class="page-link" href="?{{ query_string }}&page={{ page_obj.previous_page_number }}">‹</a></li>
+        {% endif %}
+        <li class="page-item active"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+        {% if page_obj.has_next %}
+        <li class="page-item"><a class="page-link" href="?{{ query_string }}&page={{ page_obj.next_page_number }}">›</a></li>
+        {% endif %}
+    </ul>
+    <span>共 {{ total }} 条</span>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 「查看」：fire-and-forget 标已读后跳转业务链接
+    function markReadAndGo(event, el) {
+        event.preventDefault();
+        var url = el.getAttribute('data-mark-read');
+        var target = el.getAttribute('href');
+        var csrf = '{{ csrf_token }}';
+        try {
+            fetch(url, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrf, 'X-Requested-With': 'XMLHttpRequest' },
+                body: new URLSearchParams({})
+            }).then(function (r) { return r.text(); }).catch(function () {}).finally(function () {
+                window.location.href = target;
+            });
+        } catch (e) { window.location.href = target; }
+    }
+</script>
+{% endblock %}

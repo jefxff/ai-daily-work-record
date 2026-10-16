@@ -1,0 +1,56 @@
+{% extends "records/base.html" %}
+
+{% block page_title %}通知偏好 - 每日工作记录管理网站{% endblock %}
+
+{% block content %}
+<h1 class="form-title">通知偏好</h1>
+
+<div class="form-container">
+    <p class="text-muted" style="margin-bottom: 1.5rem;">
+        站内通知为系统基础能力，始终开启；此处可按类别开关<strong>邮件提醒</strong>，并配置聚合降噪与免打扰时段。
+    </p>
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="form-group">
+            <label class="form-label">按类别接收邮件</label>
+            <div class="table-container" style="margin-bottom: 0.5rem;">
+                {% for cat in categories %}
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 20px;border-bottom:1px solid #f0f0f0;">
+                    <span style="color:#1f2329;font-size:0.9rem;">{{ cat.1 }}<span class="text-muted" style="margin-left:0.5rem;font-size:0.75rem;">邮件</span></span>
+                    <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;margin:0;">
+                        <input type="checkbox" name="email_{{ cat.0 }}"
+                           {% if cat.2 %}checked{% endif %}>
+                        <span style="font-size:0.85rem;color:#595959;">开启</span>
+                    </label>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="agg_window_minutes">聚合降噪窗口（分钟）</label>
+            <input type="number" min="0" max="120" id="agg_window_minutes" name="agg_window_minutes"
+                   class="form-control" value="{{ prefs.agg_window_minutes }}" style="max-width: 220px;">
+            <span class="form-text">同一业务事项在该窗口内重复触发时合并为一条并计数；0 表示不聚合。</span>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">免打扰时段（仅影响邮件，高优先级通知不受限）</label>
+            <div style="display:flex;align-items:center;gap:0.5rem;">
+                <input type="time" name="quiet_start" class="form-control" style="max-width: 160px;"
+                       value="{{ prefs.quiet_start|time:'H:i'|default_if_none:'' }}">
+                <span class="text-muted">至</span>
+                <input type="time" name="quiet_end" class="form-control" style="max-width: 160px;"
+                       value="{{ prefs.quiet_end|time:'H:i'|default_if_none:'' }}">
+            </div>
+            <span class="form-text">留空表示不启用免打扰。</span>
+        </div>
+
+        <div class="form-actions">
+            <a href="{% url 'notifications:list' %}" class="btn-secondary">返回</a>
+            <button type="submit" class="btn-primary">保存偏好</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

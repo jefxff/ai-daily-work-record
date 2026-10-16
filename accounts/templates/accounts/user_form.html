@@ -2,6 +2,10 @@
 
 {% block page_title %}{% if mode == 'create' %}新建用户{% else %}编辑用户{% endif %} - 每日工作记录{% endblock %}
 
+{% block extra_css %}
+<style>.role-disabled { opacity: 0.55; }</style>
+{% endblock %}
+
 {% block content %}
 <div class="page-header">
     <h2>{% if mode == 'create' %}新建用户{% else %}编辑用户：{{ target.username }}{% endif %}</h2>
@@ -67,8 +71,8 @@
             <label style="display:flex; gap:0.5rem; align-items:center; font-size:0.88rem; font-weight:400;">
                 {{ form.is_active }} {{ form.is_active.label }}
             </label>
-            <label style="display:flex; gap:0.5rem; align-items:center; font-size:0.88rem; font-weight:400;
-                   {% if not request.user.is_superuser %}opacity:0.55;{% endif %}">
+            <label class="role-row {% if not request.user.is_superuser %}role-disabled{% endif %}"
+                   style="display:flex; gap:0.5rem; align-items:center; font-size:0.88rem; font-weight:400;">
                 {% if request.user.is_superuser %}{{ form.is_staff }}{% else %}
                 <input type="checkbox" class="form-check-input" disabled {% if form.is_staff.value %}checked{% endif %}>
                 {% endif %}

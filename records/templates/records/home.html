@@ -159,6 +159,7 @@
                     <th>日期及时间</th>
                     <th>提出部门</th>
                     <th>工作内容</th>
+                    <th>截至日期</th>
                     <th>工作状态</th>
                     <th>工作进度</th>
                     <th>操作</th>
@@ -171,6 +172,7 @@
                     <td>{{ record.record_date|date:"Y-m-d H:i" }}</td>
                     <td>{{ record.department }}</td>
                     <td>{{ record.work_content|truncatechars:50 }}</td>
+                    <td>{% if record.due_date %}{{ record.due_date|date:"Y-m-d" }}{% else %}—{% endif %}</td>
                     <td>
                         <span class="badge-transparent">{{ record.status }}</span>
                     </td>
@@ -189,7 +191,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="7" class="text-center py-4">暂无未完成的工作记录</td>
+                    <td colspan="8" class="text-center py-4">暂无未完成的工作记录</td>
                 </tr>
                 {% endfor %}
             </tbody>

@@ -969,6 +969,24 @@ def audit_create(request, pk):
                 operator=auditor,
                 ip=services.client_ip(request),
             )
+            # 通知触发：审厂结果登记后通知有试样读取权限的用户（业务提醒，同轮次幂等）
+            try:
+                from notifications.services import emit, users_with_perm
+                for notify_user in users_with_perm("samples", "read"):
+                    emit(
+                        "sample_audit_result",
+                        recipient=notify_user,
+                        context={
+                            "partner_name": partner.name,
+                            "round_no": next_round,
+                            "audit_result": record.get_audit_result_display(),
+                            "audit_no": record.audit_no,
+                        },
+                        dedup_context=f"audit:{record.pk}:{notify_user.pk}",
+                        link=f"/samples/partners/{partner.pk}/",
+                    )
+            except Exception:
+                pass  # 通知失败不影响业务主流程
             messages.success(request, f"第{next_round}轮审厂记录已保存。")
             if is_ajax:
                 return JsonResponse({"ok": True, "message": f"第{next_round}轮审厂记录已保存"})

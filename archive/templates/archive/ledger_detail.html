@@ -37,7 +37,18 @@
                 {% if borrowed_count %}· 借出中 {{ borrowed_count }} 条{% endif %}
             </div>
         </div>
-        <a href="{% url 'archive:overview' %}" class="btn btn-outline-secondary btn-sm">← 返回总览</a>
+        <div class="d-flex gap-1">
+            {% can "archive" "update" %}
+            <a href="{% url 'archive:ledger_edit' ledger.pk %}" class="btn btn-outline-secondary btn-sm" data-modal-edit data-modal-title="编辑台账">编辑台账</a>
+            {% endcan %}
+            {% can "archive" "delete" %}
+            <form method="POST" action="{% url 'archive:ledger_delete' ledger.pk %}" class="d-inline" data-confirm="确认删除台账「{{ ledger.name }}」？删除后不可恢复。">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline-danger">删除台账</button>
+            </form>
+            {% endcan %}
+            <a href="{% url 'archive:overview' %}" class="btn btn-outline-secondary btn-sm">← 返回总览</a>
+        </div>
     </div>
 
     <div class="lgd-card">
@@ -92,6 +103,7 @@
                         <td>{{ a.handler|default:"—" }}</td>
                         <td>
                             {% if a.is_borrowed %}<span class="status-badge danger">借出中</span>
+                            {% elif a.is_expired %}<span class="status-badge danger">已过期</span>
                             {% elif a.is_expiring %}<span class="status-badge warning">即将到期</span>
                             {% else %}<span class="status-badge success">正常</span>{% endif %}
                         </td>
