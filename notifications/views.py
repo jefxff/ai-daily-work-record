@@ -21,7 +21,7 @@ def _is_ajax(request):
     return request.headers.get("x-requested-with") == "XMLHttpRequest"
 
 
-def _per_page(request, default=15):
+def _per_page(request, default=10):
     try:
         per = int(request.GET.get("per_page", default))
     except (TypeError, ValueError):
@@ -49,8 +49,6 @@ def notification_list(request):
 
     paginator = Paginator(qs, _per_page(request))
     page_obj = paginator.get_page(request.GET.get("page"))
-    params = request.GET.copy()
-    params.pop("page", None)
 
     return render(request, "notifications/notification_list.html", {
         "page_obj": page_obj,
@@ -60,7 +58,6 @@ def notification_list(request):
         "category_filter": category_filter,
         "unread_only": unread_only,
         "categories": TEMPLATE_CATEGORIES,
-        "query_string": params.urlencode(),
         "now": timezone.now(),
     })
 

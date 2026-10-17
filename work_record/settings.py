@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'accounts',
     'archive',
     'notifications',
+    'sysbackup',
 ]
 
 MIDDLEWARE = [

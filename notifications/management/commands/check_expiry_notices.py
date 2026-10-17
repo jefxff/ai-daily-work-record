@@ -59,7 +59,7 @@ class Command(BaseCommand):
                         "days_left": (item.end_date - today).days,
                     },
                     dedup_context=f"insurance:{item.pk}:{today}",
-                    link="/insurance/",
+                    link=f"/insurance/detail/{item.pk}/",
                 ):
                     created += 1
         return "保险到期", created
@@ -86,7 +86,7 @@ class Command(BaseCommand):
                             "days_left": (item.expire_date - today).days,
                         },
                         dedup_context=f"license:{item.pk}:{today}",
-                        link="/archive/licenses/",
+                        link=f"/archive/licenses/{item.pk}/",
                     ):
                         created += 1
                 if item.next_review_date and today <= item.next_review_date <= deadline:
@@ -100,7 +100,7 @@ class Command(BaseCommand):
                             "days_left": (item.next_review_date - today).days,
                         },
                         dedup_context=f"license_review:{item.pk}:{today}",
-                        link="/archive/licenses/",
+                        link=f"/archive/licenses/{item.pk}/",
                     ):
                         created += 1
         return "证照到期/年审", created
@@ -124,7 +124,7 @@ class Command(BaseCommand):
                         "days_left": (item.expire_date - today).days,
                     },
                     dedup_context=f"archive:{item.pk}:{today}",
-                    link="/archive/",
+                    link=f"/archive/archives/{item.pk}/",
                 ):
                     created += 1
         return "档案合同到期", created

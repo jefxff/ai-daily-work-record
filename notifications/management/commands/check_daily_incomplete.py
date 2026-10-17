@@ -38,7 +38,7 @@ class Command(BaseCommand):
                 recipient=user,
                 context={"date": today},
                 dedup_context=f"missing:{today}",
-                link="/daily_record/",
+                link="/daily_record/add/",
             ):
                 created += 1
         self.stdout.write(f"当日未填提醒：{created} 条（{today}）")
@@ -61,7 +61,7 @@ class Command(BaseCommand):
                     "work_content": (record.work_content or "")[:50],
                 },
                 dedup_context=f"incomplete:{record.pk}:{today}",
-                link="/daily_record/",
+                link=f"/daily_record/edit/{record.pk}/",
             ):
                 history_created += 1
         self.stdout.write(

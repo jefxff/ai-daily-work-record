@@ -6,7 +6,10 @@
         <div class="card-body">
             <h4 class="mb-3">确认删除台账？</h4>
             <p class="text-muted">台账：<strong>{{ ledger.name }}</strong></p>
-            <p class="text-danger">此操作不可撤销（台账下无档案时才可删除）。</p>
+            {% if archive_count %}
+            <p class="text-danger">⚠️ 该台账下共有 <strong>{{ archive_count }}</strong> 份档案，删除台账时这些档案（含电子附件、借出记录）将<b>一并删除</b>。</p>
+            {% endif %}
+            <p class="text-danger">此操作不可撤销。</p>
             <form method="POST">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-danger">确认删除</button>

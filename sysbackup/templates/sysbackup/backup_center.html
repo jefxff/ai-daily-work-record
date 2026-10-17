@@ -1,0 +1,388 @@
+{% extends "records/base.html" %}
+{% block page_title %}数据备份 · 系统管理{% endblock %}
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h4 class="mb-0" style="font-weight:700;">数据备份与恢复</h4>
+        <div class="text-muted" style="font-size:.82rem;">
+            备份内容：全部业务数据库表（结构 + 数据）· 全部附件文件 · SQL 导出 · 元信息
+        </div>
+    </div>
+
+    <!-- 创建备份 -->
+    <div class="card mb-3 shadow-sm" style="border:none;border-radius:12px;">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                <div style="min-width:280px;flex:1;">
+                    <h6 class="mb-2" style="font-weight:600;">创建全量备份</h6>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="destOption" id="destDefault" value="default" checked>
+                        <label class="form-check-label" for="destDefault" style="font-size:.88rem;">
+                            默认存储路径 <code class="text-muted" id="defaultDirText" style="font-size:.78rem;">{{ default_dir }}</code>
+                        </label>
+                    </div>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="destOption" id="destCustom" value="custom">
+                        <label class="form-check-label" for="destCustom" style="font-size:.88rem;">自定义存储路径</label>
+                        <input type="text" class="form-control form-control-sm mt-1" id="customDirInput"
+                               placeholder="例如 D:\backup 或 /data/backup（绝对路径，不存在将自动创建）" disabled>
+                    </div>
+                    <div class="text-muted" style="font-size:.76rem;">备份在后台异步执行，可关闭提示后继续使用其他页面（恢复操作期间除外）。</div>
+                </div>
+                <div class="d-flex flex-column align-items-stretch justify-content-center gap-1">
+                    <button class="btn btn-primary" id="btnStartBackup" style="min-width:150px;">
+                        一键备份
+                    </button>
+                    {% if running %}<div class="text-warning" style="font-size:.78rem;">⚠️ 有任务正在运行</div>{% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 备份包列表 -->
+    <div class="card shadow-sm" style="border:none;border-radius:12px;">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                <h6 class="mb-0" style="font-weight:600;">备份包列表</h6>
+                <form class="d-flex gap-2" id="scanForm" style="max-width:520px;flex:1;">
+                    <input type="text" class="form-control form-control-sm" id="scanDirInput"
+                           value="{{ scanned_dir }}" placeholder="扫描目录（绝对路径）">
+                    <button class="btn btn-outline-primary btn-sm text-nowrap" type="submit">扫描</button>
+                </form>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0" style="font-size:.85rem;">
+                    <thead>
+                        <tr>
+                            <th style="min-width:220px;">备份包</th>
+                            <th>备份时间</th>
+                            <th>操作人</th>
+                            <th>大小</th>
+                            <th>数据库</th>
+                            <th>附件</th>
+                            <th style="min-width:190px;">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="backupTbody">
+                        {% for b in backups %}
+                        <tr data-path="{{ b.path|escapejs }}" data-name="{{ b.name|escapejs }}">
+                            <td class="text-break">
+                                <span style="font-weight:600;">{{ b.name }}</span>
+                                {% if b.schema_version != 1 %}<span class="badge bg-secondary">版本未知</span>{% endif %}
+                            </td>
+                            <td>{{ b.created_at|default:b.mtime }}</td>
+                            <td>{{ b.created_by|default:"—" }}</td>
+                            <td>{{ b.size_text }}</td>
+                            <td>{{ b.db_tables }} 表 / {{ b.db_rows }} 条</td>
+                            <td>{{ b.media_files }} 个</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-danger btn-restore">恢复</button>
+                                <a class="btn btn-sm btn-outline-secondary btn-download"
+                                   href="{% url 'sysbackup:download' %}?path={{ b.path|urlencode }}">下载</a>
+                                <button class="btn btn-sm btn-outline-secondary btn-delete-bk">删除</button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr id="emptyRow"><td colspan="7" class="text-center text-muted py-4">当前目录暂无备份包</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="text-muted mt-2" style="font-size:.76rem;">
+                当前扫描目录：<code id="scannedDirText">{{ scanned_dir }}</code>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 恢复/删除确认弹窗（本页专属：确认后走 AJAX） -->
+<div id="riskBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:12px;max-width:520px;width:92%;padding:1.5rem;">
+        <h6 class="mb-3" style="font-weight:700;" id="riskTitle">操作确认</h6>
+        <div id="riskBody" style="font-size:.86rem;"></div>
+        <div id="riskAckRow" class="form-check mt-3">
+            <input class="form-check-input" type="checkbox" id="riskAck">
+            <label class="form-check-label" for="riskAck" style="font-size:.84rem;color:#cf1322;">我已知晓上述风险，确认继续</label>
+        </div>
+        <div class="d-flex justify-content-end gap-2 mt-3">
+            <button class="btn btn-sm btn-outline-secondary" id="riskCancel">取消</button>
+            <button class="btn btn-sm btn-danger" id="riskOk" disabled>确认执行</button>
+        </div>
+    </div>
+</div>
+
+<!-- 任务进度弹窗 -->
+<div id="taskBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:12px;max-width:640px;width:94%;padding:1.5rem;">
+        <h6 class="mb-3" style="font-weight:700;" id="taskTitle">任务进行中</h6>
+        <div class="d-flex align-items-center gap-2 mb-2">
+            <div class="progress flex-grow-1" style="height:10px;">
+                <div class="progress-bar bg-primary" id="taskBar" role="progressbar" style="width:0%;"></div>
+            </div>
+            <span style="font-weight:700;min-width:48px;text-align:right;" id="taskPercent">0%</span>
+        </div>
+        <div class="text-muted mb-2" style="font-size:.85rem;" id="taskStage">准备中…</div>
+        <div id="taskResult" style="display:none;border-radius:8px;padding:.75rem;font-size:.84rem;margin-bottom:.75rem;"></div>
+        <pre id="taskLog" style="display:none;max-height:220px;overflow:auto;background:#f6f8fa;border-radius:8px;padding:.75rem;font-size:.72rem;margin-bottom:.75rem;white-space:pre-wrap;word-break:break-all;"></pre>
+        <div class="d-flex justify-content-end gap-2">
+            <button class="btn btn-sm btn-outline-secondary d-none" id="taskLogToggle">查看日志</button>
+            <button class="btn btn-sm btn-primary" id="taskClose">后台运行</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.table th { background:#fafafa; color:#595959; font-weight:600; white-space:nowrap; }
+.btn-restore { --bs-btn-color:#cf1322; --bs-btn-border-color:#ffa39e; }
+.btn-restore:hover { --bs-btn-color:#fff; --bs-btn-bg:#cf1322; --bs-btn-border-color:#cf1322; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    var csrftoken = null;
+    document.cookie.split(';').forEach(function (c) {
+        var p = c.trim().split('=');
+        if (p[0] === 'csrftoken') csrftoken = decodeURIComponent(p[1] || '');
+    });
+
+    var $ = function (id) { return document.getElementById(id); };
+
+    /* ---------- 通用 AJAX（完整消费响应体后再做后续动作） ---------- */
+    function _parseJsonResp(r) {
+        return r.text().then(function (txt) {
+            try {
+                return JSON.parse(txt);
+            } catch (e) {
+                throw new Error('服务响应异常（HTTP ' + r.status + '），请稍后重试');
+            }
+        });
+    }
+    function api(url, payload) {
+        return fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify(payload || {})
+        }).then(_parseJsonResp);
+    }
+    function apiGet(url) {
+        return fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(_parseJsonResp);
+    }
+    function toast(msg, type) {
+        if (window.showToast) window.showToast(msg, type || 'info');
+        else alert(msg);
+    }
+
+    /* ---------- 风险确认弹窗 ---------- */
+    var riskCtx = null;
+    function openRisk(opts) {
+        riskCtx = opts;
+        $('riskTitle').textContent = opts.title;
+        $('riskBody').innerHTML = opts.body;
+        $('riskAckRow').style.display = opts.needAck ? '' : 'none';
+        $('riskAck').checked = false;
+        $('riskOk').disabled = !!opts.needAck;
+        $('riskOk').className = 'btn btn-sm ' + (opts.danger ? 'btn-danger' : 'btn-primary');
+        $('riskOk').textContent = opts.okText || '确认执行';
+        $('riskBackdrop').style.display = 'flex';
+    }
+    $('riskAck').addEventListener('change', function () { $('riskOk').disabled = !this.checked; });
+    $('riskCancel').addEventListener('click', function () { $('riskBackdrop').style.display = 'none'; riskCtx = null; });
+    $('riskOk').addEventListener('click', function () {
+        $('riskBackdrop').style.display = 'none';
+        if (riskCtx && riskCtx.onOk) riskCtx.onOk();
+        riskCtx = null;
+    });
+
+    /* ---------- 任务进度弹窗与轮询 ---------- */
+    var pollTimer = null;
+    function openTask(title) {
+        $('taskTitle').textContent = title;
+        $('taskBar').style.width = '0%';
+        $('taskPercent').textContent = '0%';
+        $('taskStage').textContent = '准备中…';
+        $('taskResult').style.display = 'none';
+        $('taskLog').style.display = 'none';
+        $('taskLog').textContent = '';
+        $('taskLogToggle').classList.add('d-none');
+        $('taskClose').textContent = '后台运行';
+        $('taskBackdrop').style.display = 'flex';
+    }
+    function showResult(ok, text) {
+        var el = $('taskResult');
+        el.style.display = 'block';
+        el.style.background = ok ? '#f6ffed' : '#fff1f0';
+        el.style.border = ok ? '1px solid #b7eb8f' : '1px solid #ffa39e';
+        el.style.color = ok ? '#389e0d' : '#cf1322';
+        el.textContent = text;
+    }
+    function poll(taskId) {
+        if (pollTimer) clearTimeout(pollTimer);
+        apiGet('/system/backup/status/?task=' + taskId).then(function (d) {
+            if (!d.ok) { showResult(false, d.message || '任务状态查询失败'); return; }
+            var t = d.task;
+            $('taskBar').style.width = t.percent + '%';
+            $('taskPercent').textContent = t.percent + '%';
+            $('taskStage').textContent = t.stage || '';
+            if (t.log && t.log.length) {
+                $('taskLog').textContent = t.log.join('\n');
+                $('taskLogToggle').classList.remove('d-none');
+            }
+            if (t.status === 'running') {
+                pollTimer = setTimeout(function () { poll(taskId); }, 1500);
+            } else if (t.status === 'success') {
+                showResult(true, t.message);
+                $('taskClose').textContent = '关 闭';
+                refreshList($('scanDirInput').value);
+            } else {
+                showResult(false, t.message);
+                $('taskLogToggle').classList.remove('d-none');
+                $('taskLog').style.display = '';
+                $('taskClose').textContent = '关 闭';
+            }
+        }).catch(function (e) { showResult(false, '网络错误：' + e); });
+    }
+    $('taskClose').addEventListener('click', function () {
+        if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+        $('taskBackdrop').style.display = 'none';
+    });
+    $('taskLogToggle').addEventListener('click', function () {
+        var el = $('taskLog');
+        el.style.display = el.style.display === 'none' ? '' : 'none';
+    });
+
+    /* ---------- 创建备份 ---------- */
+    var radios = document.querySelectorAll('input[name="destOption"]');
+    radios.forEach(function (r) {
+        r.addEventListener('change', function () {
+            $('customDirInput').disabled = !$('destCustom').checked;
+        });
+    });
+    $('btnStartBackup').addEventListener('click', function () {
+        var dest = '';
+        if ($('destCustom').checked) {
+            dest = $('customDirInput').value.trim();
+            if (!dest) { alert('请填写自定义备份路径'); return; }
+        }
+        openTask('全量备份');
+        api('/system/backup/start/', { dest_dir: dest }).then(function (d) {
+            if (d.ok) { poll(d.task_id); }
+            else { showResult(false, d.message || '发起备份失败'); }
+        }).catch(function (e) { showResult(false, '网络错误：' + e); });
+    });
+
+    /* ---------- 恢复 ---------- */
+    function bindRowButtons() {
+        document.querySelectorAll('.btn-restore').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var tr = btn.closest('tr');
+                var path = tr.getAttribute('data-path');
+                var name = tr.getAttribute('data-name');
+                openRisk({
+                    title: '确认恢复数据？',
+                    body:
+                        '<div class="alert alert-danger py-2 px-3 mb-2" style="font-size:.82rem;">' +
+                        '⚠️ 即将使用备份包 <strong>' + name + '</strong> <strong>全量覆盖</strong>当前系统：</div>' +
+                        '<ul class="mb-2 pl-3" style="padding-left:1.1rem;">' +
+                        '<li>全部数据库表数据将回退到备份时点，备份之后新增/修改的记录将<b>永久丢失</b>；</li>' +
+                        '<li>全部附件文件将被覆盖，备份之后上传的附件将被<b>清除</b>；</li>' +
+                        '<li>恢复期间请勿在系统内进行任何操作；</li>' +
+                        '<li>恢复前系统会自动保存当前数据的安全快照（backups/safety_snapshots/）。</li></ul>',
+                    needAck: true, danger: true, okText: '开始恢复',
+                    onOk: function () {
+                        openTask('全量恢复');
+                        api('/system/backup/restore/', { path: path }).then(function (d) {
+                            if (d.ok) { poll(d.task_id); }
+                            else { showResult(false, d.message || '发起恢复失败'); }
+                        }).catch(function (e) { showResult(false, '网络错误：' + e); });
+                    }
+                });
+            });
+        });
+        document.querySelectorAll('.btn-delete-bk').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var tr = btn.closest('tr');
+                var path = tr.getAttribute('data-path');
+                var name = tr.getAttribute('data-name');
+                openRisk({
+                    title: '删除备份包',
+                    body: '确定删除备份包 <strong>' + name + '</strong> 吗？删除后不可恢复。',
+                    needAck: false, danger: true, okText: '删除',
+                    onOk: function () {
+                        api('/system/backup/delete/', { path: path }).then(function (d) {
+                            if (d.ok) { tr.remove(); checkEmpty(); toast(d.message || '已删除', 'success'); }
+                            else { toast(d.message || '删除失败', 'error'); }
+                        }).catch(function (e) {
+                            toast('删除请求失败：' + (e && e.message ? e.message : e), 'error');
+                        });
+                    }
+                });
+            });
+        });
+    }
+
+    /* ---------- 列表扫描 ---------- */
+    function checkEmpty() {
+        var tb = $('backupTbody');
+        if (!tb.querySelector('tr[data-path]') && !tb.querySelector('#emptyRow')) {
+            tb.insertAdjacentHTML('beforeend',
+                '<tr id="emptyRow"><td colspan="7" class="text-center text-muted py-4">当前目录暂无备份包</td></tr>');
+        }
+    }
+    function refreshList(dir) {
+        var scanBtn = $('scanForm').querySelector('button[type="submit"]');
+        var btnText = scanBtn ? scanBtn.textContent : '';
+        if (scanBtn) { scanBtn.disabled = true; scanBtn.textContent = '扫描中…'; }
+        var restoreBtn = function () {
+            if (scanBtn) { scanBtn.disabled = false; scanBtn.textContent = btnText; }
+        };
+        apiGet('/system/backup/scan/?dir=' + encodeURIComponent(dir || '')).then(function (d) {
+            restoreBtn();
+            if (!d.ok) { toast(d.message || '扫描失败', 'error'); return; }
+            $('scannedDirText').textContent = d.dir;
+            var tb = $('backupTbody');
+            tb.innerHTML = '';
+            d.backups.forEach(function (b) {
+                var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+                tb.insertAdjacentHTML('beforeend',
+                    '<tr data-path="' + esc(b.path) + '" data-name="' + esc(b.name) + '">' +
+                    '<td class="text-break" style="font-weight:600;">' + esc(b.name) +
+                    (b.schema_version !== 1 ? ' <span class="badge bg-secondary">版本未知</span>' : '') + '</td>' +
+                    '<td>' + esc(b.created_at || b.mtime) + '</td>' +
+                    '<td>' + esc(b.created_by || '—') + '</td>' +
+                    '<td>' + esc(b.size_text) + '</td>' +
+                    '<td>' + esc(b.db_tables) + ' 表 / ' + esc(b.db_rows) + ' 条</td>' +
+                    '<td>' + esc(b.media_files) + ' 个</td>' +
+                    '<td><button class="btn btn-sm btn-outline-danger btn-restore">恢复</button> ' +
+                    '<a class="btn btn-sm btn-outline-secondary btn-download" href="/system/backup/download/?path=' + encodeURIComponent(b.path) + '">下载</a> ' +
+                    '<button class="btn btn-sm btn-outline-secondary btn-delete-bk">删除</button></td></tr>');
+            });
+            if (!d.backups.length) {
+                tb.insertAdjacentHTML('beforeend',
+                    '<tr id="emptyRow"><td colspan="7" class="text-center text-muted py-4">当前目录暂无备份包</td></tr>');
+            }
+            bindRowButtons();
+            toast(d.backups.length
+                ? '扫描完成：发现 ' + d.backups.length + ' 个备份包'
+                : '扫描完成：当前目录暂无备份包', d.backups.length ? 'success' : 'info');
+        }).catch(function (e) {
+            restoreBtn();
+            toast('扫描失败：' + (e && e.message ? e.message : e), 'error');
+        });
+    }
+    $('scanForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        refreshList($('scanDirInput').value.trim());
+    });
+
+    bindRowButtons();
+})();
+</script>
+{% endblock %}

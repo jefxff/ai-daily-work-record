@@ -21,6 +21,21 @@
     .notif-actions { display: flex; gap: 0.5rem; flex-shrink: 0; align-items: center; }
     .notif-agg-badge { background: #fff7e6; color: #fa8c16; border-radius: 4px; padding: 0 6px; font-size: 12px; font-weight: 500; }
     .filter-chip.active { color: #1890ff; border-color: #91d5ff; }
+
+    /* 通知详情弹窗 */
+    .notif-detail-backdrop { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.45); z-index: 10002; display: none; align-items: flex-start; justify-content: center; padding: 8vh 1rem 2rem; overflow-y: auto; }
+    .notif-detail-backdrop.show { display: flex; }
+    .notif-detail-modal { background: #fff; border-radius: 8px; width: 560px; max-width: 96vw; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18); display: flex; flex-direction: column; max-height: 80vh; }
+    .notif-detail-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; padding: 0.875rem 1.25rem; border-bottom: 1px solid #f0f0f0; flex-shrink: 0; }
+    .notif-detail-title { font-size: 1rem; font-weight: 600; color: #1f2329; word-break: break-word; margin: 0; }
+    .notif-detail-close { background: none; border: none; cursor: pointer; color: #8c8c8c; padding: 0.25rem; border-radius: 4px; line-height: 1; font-size: 1.5rem; flex-shrink: 0; }
+    .notif-detail-close:hover { color: #595959; background: #f5f5f5; }
+    .notif-detail-body { padding: 1rem 1.25rem; overflow-y: auto; flex: 1; }
+    .notif-detail-meta { display: flex; flex-wrap: wrap; gap: 0.5rem 0.5rem; align-items: center; margin-bottom: 0.875rem; font-size: 0.78rem; color: #8c8c8c; }
+    .notif-detail-meta .meta-chip { background: #f5f5f5; border-radius: 4px; padding: 1px 8px; color: #595959; }
+    .notif-detail-meta .meta-chip.high { background: #fff1f0; color: #f5222d; }
+    .notif-detail-content { color: #1f2329; font-size: 0.9rem; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+    .notif-detail-actions { padding: 0.875rem 1.25rem; border-top: 1px solid #f0f0f0; display: flex; gap: 0.75rem; justify-content: flex-end; background: #fafafa; border-radius: 0 0 8px 8px; flex-shrink: 0; }
 </style>
 {% endblock %}
 
@@ -74,13 +89,21 @@
             </div>
         </div>
         <div class="notif-actions">
-            {% if notification.link %}
-            <a href="{{ notification.link }}" class="btn-transparent btn-sm"
-               data-mark-read="{% url 'notifications:read' notification.pk %}"
-               onclick="markReadAndGo(event, this)">查看</a>
-            {% endif %}
+            <button type="button" class="btn-transparent btn-sm"
+               data-id="{{ notification.pk }}"
+               data-title="{{ notification.title }}"
+               data-content="{{ notification.content }}"
+               data-category="{{ notification.get_category_display }}"
+               data-priority="{{ notification.get_priority_display }}"
+               data-status="{{ notification.get_status_display }}"
+               data-status-badge="{{ notification.status_badge_class }}"
+               data-created="{{ notification.created_at|date:'Y-m-d H:i' }}"
+               data-agg="{{ notification.agg_count }}"
+               data-link="{{ notification.link }}"
+               data-read-url="{% url 'notifications:read' notification.pk %}"
+               onclick="openNotifDetail(event, this)">查看</button>
             {% if not notification.is_read %}
-            <form method="post" action="{% url 'notifications:read' notification.pk %}" style="display:inline;">
+            <form method="post" action="{% url 'notifications:read' notification.pk %}" class="notif-read-form" style="display:inline;">
                 {% csrf_token %}
                 <button type="submit" class="btn-secondary btn-sm">标为已读</button>
             </form>
@@ -103,40 +126,138 @@
     {% endfor %}
 </div>
 
-{% if page_obj.paginator.num_pages > 1 %}
+{% if page_obj.has_other_pages %}
 <div class="pagination-info">
-    <div></div>
-    <ul class="pagination">
-        {% if page_obj.has_previous %}
-        <li class="page-item"><a class="page-link" href="?{{ query_string }}&page={{ page_obj.previous_page_number }}">‹</a></li>
-        {% endif %}
-        <li class="page-item active"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
-        {% if page_obj.has_next %}
-        <li class="page-item"><a class="page-link" href="?{{ query_string }}&page={{ page_obj.next_page_number }}">›</a></li>
-        {% endif %}
-    </ul>
-    <span>共 {{ total }} 条</span>
+    <span>共 {{ total }} 条 · 第 {{ page_obj.number }} / {{ page_obj.paginator.num_pages }} 页</span>
+    <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+        <form method="GET" style="display: flex; align-items: center; gap: 0.4rem;">
+            {% for k, v in request.GET.items %}{% if k != 'per_page' and k != 'page' %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endif %}{% endfor %}
+            <label style="font-size: 13px;">每页</label>
+            <select class="per-page-select" name="per_page" onchange="this.form.submit()">
+                <option value="10" {% if page_obj.paginator.per_page == 10 %}selected{% endif %}>10</option>
+                <option value="30" {% if page_obj.paginator.per_page == 30 %}selected{% endif %}>30</option>
+                <option value="50" {% if page_obj.paginator.per_page == 50 %}selected{% endif %}>50</option>
+            </select>
+            <span style="font-size: 13px;">条</span>
+        </form>
+        <ul class="pagination">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}">&laquo;</a>
+            </li>
+            {% else %}
+            <li class="page-item disabled"><a class="page-link" href="#">&laquo;</a></li>
+            {% endif %}
+            {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+            <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+            {% else %}
+            <li class="page-item"><a class="page-link" href="?{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ num }}">{{ num }}</a></li>
+            {% endif %}
+            {% endfor %}
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ page_obj.next_page_number }}">&raquo;</a>
+            </li>
+            {% else %}
+            <li class="page-item disabled"><a class="page-link" href="#">&raquo;</a></li>
+            {% endif %}
+        </ul>
+    </div>
 </div>
 {% endif %}
+
+<!-- 通知详情弹窗 -->
+<div class="notif-detail-backdrop" id="notifDetailBackdrop">
+    <div class="notif-detail-modal" role="dialog" aria-modal="true">
+        <div class="notif-detail-header">
+            <h3 class="notif-detail-title" id="notifDetailTitle"></h3>
+            <button type="button" class="notif-detail-close" id="notifDetailClose" aria-label="关闭">×</button>
+        </div>
+        <div class="notif-detail-body">
+            <div class="notif-detail-meta" id="notifDetailMeta"></div>
+            <div class="notif-detail-content" id="notifDetailContent"></div>
+        </div>
+        <div class="notif-detail-actions">
+            <button type="button" class="btn-transparent" id="notifDetailCloseBtn">关闭</button>
+            <a class="btn-primary" id="notifDetailGo" href="#" hidden>前往处理</a>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    // 「查看」：fire-and-forget 标已读后跳转业务链接
-    function markReadAndGo(event, el) {
-        event.preventDefault();
-        var url = el.getAttribute('data-mark-read');
-        var target = el.getAttribute('href');
+    (function () {
+        var backdrop = document.getElementById('notifDetailBackdrop');
+        if (!backdrop) return;
+        var titleEl = document.getElementById('notifDetailTitle');
+        var metaEl = document.getElementById('notifDetailMeta');
+        var contentEl = document.getElementById('notifDetailContent');
+        var goBtn = document.getElementById('notifDetailGo');
         var csrf = '{{ csrf_token }}';
-        try {
-            fetch(url, {
-                method: 'POST',
-                headers: { 'X-CSRFToken': csrf, 'X-Requested-With': 'XMLHttpRequest' },
-                body: new URLSearchParams({})
-            }).then(function (r) { return r.text(); }).catch(function () {}).finally(function () {
-                window.location.href = target;
-            });
-        } catch (e) { window.location.href = target; }
-    }
+        var unreadCount = parseInt('{{ unread_count }}', 10) || 0;
+        var hintEl = document.querySelector('.total-hint');
+
+        function setText(el, text) { el.textContent = text == null ? '' : String(text); }
+
+        function addChip(text, cls) {
+            var chip = document.createElement('span');
+            chip.className = 'meta-chip' + (cls ? ' ' + cls : '');
+            setText(chip, text);
+            metaEl.appendChild(chip);
+        }
+
+        function updateHint() {
+            if (hintEl) hintEl.textContent = '共 {{ total }} 条 · 未读 ' + unreadCount + ' 条';
+        }
+
+        function closeModal() { backdrop.classList.remove('show'); }
+
+        // 「查看」：打开详情弹窗，未读则标记已读（完整消费响应体，避免 ERR_ABORTED）
+        window.openNotifDetail = function (event, el) {
+            event.preventDefault();
+            var row = el.closest('.notif-item');
+            setText(titleEl, el.getAttribute('data-title'));
+            setText(contentEl, el.getAttribute('data-content'));
+            metaEl.innerHTML = '';
+            if (parseInt(el.getAttribute('data-agg'), 10) > 1) {
+                addChip('合并 ' + el.getAttribute('data-agg') + ' 条');
+            }
+            addChip(el.getAttribute('data-category'));
+            addChip(el.getAttribute('data-priority'), el.getAttribute('data-priority') === '高' ? 'high' : '');
+            var statusChip = document.createElement('span');
+            statusChip.className = 'status-badge ' + (el.getAttribute('data-status-badge') || 'default');
+            setText(statusChip, el.getAttribute('data-status'));
+            metaEl.appendChild(statusChip);
+            addChip(el.getAttribute('data-created'));
+            var link = el.getAttribute('data-link');
+            if (link) { goBtn.setAttribute('href', link); goBtn.hidden = false; }
+            else { goBtn.hidden = true; }
+            backdrop.classList.add('show');
+
+            if (row && row.classList.contains('unread')) {
+                fetch(el.getAttribute('data-read-url'), {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrf, 'X-Requested-With': 'XMLHttpRequest' },
+                    body: new URLSearchParams({})
+                }).then(function (r) { return r.text(); }).catch(function () {}).then(function () {
+                    row.classList.remove('unread');
+                    var dot = row.querySelector('.notif-dot');
+                    if (dot) dot.classList.add('read');
+                    var form = row.querySelector('.notif-read-form');
+                    if (form) form.remove();
+                    unreadCount = Math.max(0, unreadCount - 1);
+                    updateHint();
+                });
+            }
+        };
+
+        document.getElementById('notifDetailClose').addEventListener('click', closeModal);
+        document.getElementById('notifDetailCloseBtn').addEventListener('click', closeModal);
+        backdrop.addEventListener('click', function (e) { if (e.target === backdrop) closeModal(); });
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
+        updateHint();
+    })();
 </script>
 {% endblock %}

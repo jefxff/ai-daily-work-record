@@ -219,6 +219,7 @@ def ledger_detail(request, pk):
     return render(request, "archive/ledger_detail.html", {
         "ledger": ledger, "page_obj": page_obj, "q": q, "per_page": per_page,
         "expiring_count": expiring_count, "borrowed_count": borrowed_count,
+        "archive_count": ledger.archives.count(),
     })
 
 
@@ -298,21 +299,19 @@ def ledger_move(request, pk):
 @perm_required("archive", "delete")
 def ledger_delete(request, pk):
     lg = get_object_or_404(Ledger, pk=pk)
-    if lg.archives.exists():
-        msg = f"台账 {lg.name} 下还有 {lg.archives.count()} 份档案，无法删除"
-        if _is_ajax(request):
-            return JsonResponse({"ok": False, "message": msg}, status=422)
-        messages.error(request, msg)
-        return redirect("archive:overview")
     if request.method == "POST":
-        _log(request, "删除", f"台账#{lg.id}", f"删除台账: {lg.name}")
+        cnt = lg.archives.count()
         name = lg.name
+        _log(request, "删除", f"台账#{lg.id}", f"删除台账: {name}（级联删除档案 {cnt} 份）")
+        lg.archives.all().delete()  # 级联删除台账下全部档案（附件、借出记录随之删除）
         lg.delete()
         if _is_ajax(request):
-            return JsonResponse({"ok": True, "message": "台账已删除"})
-        messages.success(request, f"台账 {name} 已删除")
+            return JsonResponse({"ok": True, "message": f"台账已删除（含档案 {cnt} 份）"})
+        messages.success(request, f"台账 {name} 已删除（含档案 {cnt} 份）")
         return redirect("archive:overview")
-    return render(request, "archive/ledger_confirm_delete.html", {"ledger": lg})
+    return render(request, "archive/ledger_confirm_delete.html", {
+        "ledger": lg, "archive_count": lg.archives.count(),
+    })
 
 
 # ---------- 档案柜 CRUD ----------
