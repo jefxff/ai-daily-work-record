@@ -13,7 +13,6 @@ from django import forms
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
-from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
@@ -21,6 +20,7 @@ from django.urls import reverse
 
 from accounts.decorators import perm_required
 from accounts.services import get_display_name
+from records.crud import make_list_view
 
 from . import services, stats
 from .exporters import export_samples_xlsx
@@ -1142,27 +1142,18 @@ def proof_delete(request, pk, attachment_pk):
 # 供应商档案
 # ---------------------------------------------------------------------------
 
-@perm_required("samples", "read")
-def partner_list(request):
-    qs = Partner.objects.all()
-    keyword = request.GET.get("keyword", "").strip()
-    status = request.GET.get("status", "").strip()
-    if keyword:
-        qs = qs.filter(
-            Q(name__icontains=keyword)
-            | Q(partner_code__icontains=keyword)
-            | Q(contact_person__icontains=keyword)
-        )
-    if status in dict(Partner.CooperationStatus.choices):
-        qs = qs.filter(status=status)
-    page_obj = Paginator(qs, _per_page(request)).get_page(request.GET.get("page") or 1)
-    context = {
-        "page_obj": page_obj,
-        "keyword": keyword,
-        "status": status,
-        "status_choices": Partner.CooperationStatus.choices,
-    }
-    return render(request, "samples/partner_list.html", context)
+# 供应商档案列表（keyword 搜索去首尾空白；非法状态值忽略不筛选）
+partner_list = make_list_view(
+    perm_module="samples", template_name="samples/partner_list.html",
+    page_var="page_obj", model=Partner,
+    search_param="keyword", search_fields=["name", "partner_code", "contact_person"],
+    filters=[
+        ("status",
+         lambda qs, v: qs.filter(status=v) if v in dict(Partner.CooperationStatus.choices) else qs,
+         "strip", "status"),
+    ],
+    extra_context={"status_choices": Partner.CooperationStatus.choices},
+)
 
 
 @perm_required("samples", "create")
@@ -1267,27 +1258,19 @@ def partner_delete(request, pk):
 # 操作日志
 # ---------------------------------------------------------------------------
 
-@perm_required("samples", "read")
-def log_list(request):
-    qs = OperationLog.objects.all()
-    action = request.GET.get("action", "").strip()
-    target_type = request.GET.get("target_type", "").strip()
-    keyword = request.GET.get("keyword", "").strip()
-    if action in dict(OperationLog.Action.choices):
-        qs = qs.filter(action=action)
-    if target_type:
-        qs = qs.filter(target_type=target_type)
-    if keyword:
-        qs = qs.filter(Q(target_repr__icontains=keyword) | Q(summary__icontains=keyword))
-    page_obj = Paginator(qs, _per_page(request)).get_page(request.GET.get("page") or 1)
-    context = {
-        "page_obj": page_obj,
-        "action": action,
-        "target_type": target_type,
-        "keyword": keyword,
-        "action_choices": OperationLog.Action.choices,
-    }
-    return render(request, "samples/log_list.html", context)
+# 操作留痕列表（keyword 搜索去首尾空白；非法动作值忽略不筛选）
+log_list = make_list_view(
+    perm_module="samples", template_name="samples/log_list.html",
+    page_var="page_obj", model=OperationLog,
+    search_param="keyword", search_fields=["target_repr", "summary"],
+    filters=[
+        ("action",
+         lambda qs, v: qs.filter(action=v) if v in dict(OperationLog.Action.choices) else qs,
+         "strip", "action"),
+        ("target_type", "target_type", "strip", "target_type"),
+    ],
+    extra_context={"action_choices": OperationLog.Action.choices},
+)
 
 
 # ---------------------------------------------------------------------------

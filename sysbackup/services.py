@@ -12,6 +12,7 @@
 """
 
 import json
+import logging
 import os
 import sqlite3
 import threading
@@ -27,6 +28,8 @@ from django.conf import settings
 from django.core.files.storage import default_storage
 from django.utils import timezone
 
+logger = logging.getLogger(__name__)
+
 SCHEMA_VERSION = 1  # 备份包结构版本：恢复时强校验
 DB_ENTRY = "db.sqlite3"
 SQL_ENTRY = "data.sql"
@@ -37,6 +40,26 @@ MEDIA_PREFIX = "media/"
 MEDIA_EXCLUDE_DIRS = set()
 
 DEFAULT_BACKUP_DIR = Path(settings.BASE_DIR) / "backups"
+
+
+# ---------- 路径白名单 ----------
+
+def ensure_path_allowed(p):
+    """路径白名单校验：路径必须位于 settings.BACKUP_ALLOWED_ROOTS 之一之内。
+
+    防止 download/delete/restore/scan/backup 目标目录被指定为服务器任意路径。
+    不在白名单内时抛 ValueError（视图层统一转 400）。
+    """
+    rp = Path(p).resolve()
+    for root in getattr(settings, "BACKUP_ALLOWED_ROOTS", [str(Path(settings.BASE_DIR))]):
+        try:
+            rp.relative_to(Path(root).resolve())
+            return
+        except ValueError:
+            continue
+    raise ValueError(
+        "路径不在允许的备份目录白名单内（如需使用项目外目录，请设置环境变量 BACKUP_ALLOWED_ROOTS）"
+    )
 
 # ---------- 任务状态（进程内） ----------
 
@@ -125,6 +148,7 @@ def _validate_dest_dir(dest_dir):
     p = Path(dest_dir).expanduser()
     if not p.is_absolute():
         raise ValueError("备份路径必须为绝对路径")
+    ensure_path_allowed(p)
     try:
         p.mkdir(parents=True, exist_ok=True)
     except OSError as e:
@@ -247,6 +271,7 @@ def _release_slot():
 
 def _run_backup(task_id, dest: Path, operator):
     tmp_dir = Path(settings.BASE_DIR) / "backups" / f".tmp_{task_id[:8]}"
+    backup_name = ""
     try:
         tmp_dir.mkdir(parents=True, exist_ok=True)
         backup_name = f"backup_{timezone.localtime().strftime('%Y%m%d_%H%M%S')}.zip"
@@ -331,6 +356,15 @@ def _run_backup(task_id, dest: Path, operator):
         os.replace(str(tmp_zip), str(final_path))
         _log(task_id, f"备份包已生成：{final_path}（{_human_size(final_path.stat().st_size)}）")
 
+        # 6) 操作留痕（先写记录，再标记任务完成，保证轮询到任务结束时记录已存在）
+        _write_oplog(operator, "备份", backup_name,
+                     f"全量备份至 {final_path}：{db_tables} 张表 / {len(media_files)} 个附件")
+        _log_operation(
+            "backup", operator, backup_name, str(final_path), True,
+            f"全量备份至 {final_path}（{_human_size(final_path.stat().st_size)}）："
+            f"数据库 {db_tables} 张表，附件 {len(media_files)} 个",
+        )
+
         _update(
             task_id,
             status="success",
@@ -346,11 +380,12 @@ def _run_backup(task_id, dest: Path, operator):
                 "media_files": len(media_files),
             },
         )
-        _write_oplog(operator, "备份", backup_name,
-                     f"全量备份至 {final_path}：{db_tables} 张表 / {len(media_files)} 个附件")
     except Exception as e:
         _log(task_id, "备份失败：" + str(e))
-        _update(task_id, status="failed", stage="备份失败", error=traceback.format_exc(),
+        _log_operation("backup", operator, backup_name, "", False, f"备份失败：{e}")
+        # error 字段只回传简短信息给前端，完整 traceback 仅写入日志，避免内部细节泄露
+        logger.exception("备份任务 %s 失败", task_id)
+        _update(task_id, status="failed", stage="备份失败", error=str(e),
                 message=f"备份失败：{e}")
     finally:
         _release_slot()
@@ -383,6 +418,105 @@ def _write_oplog(operator, op_type, target, summary):
         pass
 
 
+# ---------- 备份/恢复操作记录（独立留痕，含失败记录） ----------
+
+_OPLOG_LOCK = threading.Lock()
+OPLOG_FILE = Path(settings.BASE_DIR) / "backups" / "operation_logs.jsonl"
+
+
+def _ensure_log_table():
+    """确保操作记录表存在（恢复旧版本备份包后该表可能随库回滚而消失）。"""
+    from django.db import connection
+
+    from .models import BackupOperationLog
+
+    table = BackupOperationLog._meta.db_table
+    if table not in connection.introspection.table_names(connection.cursor()):
+        with connection.schema_editor() as editor:
+            editor.create_model(BackupOperationLog)
+
+
+def _log_operation(op_type, operator, file_name="", file_path="",
+                   success=True, detail=""):
+    """写入备份/恢复操作记录：数据库表 + JSONL 文件双写。
+
+    恢复操作会将数据库整体回退，表内记录可能丢失；
+    JSONL 文件不受恢复影响，恢复完成后由 sync_logs_from_file() 回填。
+    任何写入失败均不影响备份/恢复主流程。
+    """
+    entry = {
+        "id": uuid.uuid4().hex,
+        "op_type": op_type,
+        "operator": operator or "-",
+        "file_name": file_name or "",
+        "file_path": str(file_path or ""),
+        "success": bool(success),
+        "detail": detail or "",
+        "created_at": timezone.localtime().isoformat(),
+    }
+    try:
+        _ensure_log_table()
+        from .models import BackupOperationLog
+
+        BackupOperationLog.objects.create(
+            id=entry["id"], op_type=op_type, operator=entry["operator"],
+            file_name=entry["file_name"], file_path=entry["file_path"],
+            success=entry["success"], detail=entry["detail"],
+            created_at=datetime.fromisoformat(entry["created_at"]),
+        )
+    except Exception:
+        pass
+    try:
+        OPLOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with _OPLOG_LOCK:
+            with open(OPLOG_FILE, "a", encoding="utf-8") as fh:
+                fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except OSError:
+        pass
+
+
+def sync_logs_from_file():
+    """恢复数据库后，将 JSONL 文件中的操作记录回填表内（补回被回滚的记录）。
+
+    幂等：按记录 id 去重，重复调用无副作用。返回回填条数。
+    """
+    from .models import BackupOperationLog
+
+    if not OPLOG_FILE.is_file():
+        return 0
+    try:
+        _ensure_log_table()
+    except Exception:
+        return 0
+    try:
+        with _OPLOG_LOCK:
+            lines = OPLOG_FILE.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return 0
+    restored = 0
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            e = json.loads(line)
+            if BackupOperationLog.objects.filter(id=e.get("id", "")).exists():
+                continue
+            created = datetime.fromisoformat(e.get("created_at"))
+            if timezone.is_naive(created):
+                created = timezone.make_aware(created, timezone.get_current_timezone())
+            BackupOperationLog.objects.create(
+                id=e["id"], op_type=e.get("op_type", "backup"),
+                operator=e.get("operator", "-"), file_name=e.get("file_name", ""),
+                file_path=e.get("file_path", ""), success=bool(e.get("success", True)),
+                detail=e.get("detail", ""), created_at=created,
+            )
+            restored += 1
+        except Exception:
+            continue
+    return restored
+
+
 # ---------- 恢复 ----------
 
 def start_restore(zip_path, operator=""):
@@ -390,6 +524,7 @@ def start_restore(zip_path, operator=""):
     p = Path(zip_path)
     if not p.is_absolute() or not p.is_file() or p.suffix.lower() != ".zip":
         raise ValueError("备份包路径无效")
+    ensure_path_allowed(p)
     if not _acquire_slot():
         raise RuntimeError("已有备份/恢复任务正在运行，请稍后再试")
     task_id = _new_task("restore", detail=f"备份包：{p}")
@@ -490,10 +625,18 @@ def _run_restore(task_id, zip_path: Path, operator):
                 removed += 1
         _log(task_id, f"附件恢复完成：写入 {len(media_entries)} 个，清理备份后新增文件 {removed} 个")
 
-        # 4) 操作留痕
+        # 4) 操作留痕（先回填被数据库回退丢失的操作记录，再写入本次恢复记录）
         _progress(task_id, 95, "写入操作留痕")
+        synced = sync_logs_from_file()
+        if synced:
+            _log(task_id, f"已从留痕文件回填操作记录 {synced} 条")
         _write_oplog(operator, "恢复", zip_path.name,
                      f"全量恢复自 {zip_path}（备份于 {meta_created}），附件 {len(media_entries)} 个，清理新增 {removed} 个")
+        _log_operation(
+            "restore", operator, zip_path.name, str(zip_path), True,
+            f"全量恢复自 {zip_path}（备份于 {meta_created}）：数据库 {meta['database']['tables']} 张表，"
+            f"附件 {len(media_entries)} 个，清理新增 {removed} 个，安全快照 {safety_db.name}",
+        )
 
         _update(
             task_id,
@@ -506,7 +649,12 @@ def _run_restore(task_id, zip_path: Path, operator):
         )
     except Exception as e:
         _log(task_id, "恢复失败：" + str(e))
-        _update(task_id, status="failed", stage="恢复失败", error=traceback.format_exc(),
+        logger.exception("恢复任务 %s 失败", task_id)
+        # 先回填被数据库回退丢失的操作记录并写入失败留痕，再标记任务完成
+        sync_logs_from_file()
+        _log_operation("restore", operator, zip_path.name, str(zip_path), False,
+                       f"恢复失败：{e}")
+        _update(task_id, status="failed", stage="恢复失败", error=str(e),
                 message=f"恢复失败：{e}")
     finally:
         _release_slot()
@@ -533,8 +681,9 @@ def _write_storage_file(rel, src_fh):
 # ---------- 备份包管理 ----------
 
 def scan_backups(dir_path=None):
-    """扫描目录下的备份包列表（按备份时间倒序）。"""
+    """扫描目录下的备份包列表（按备份时间倒序）。目录必须在白名单内。"""
     base = Path(dir_path) if dir_path else Path(default_dir())
+    ensure_path_allowed(base)
     if not base.is_dir():
         return [], str(base)
     items = []
@@ -575,6 +724,7 @@ def delete_backup(zip_path):
     p = Path(zip_path)
     if not p.is_absolute() or p.suffix.lower() != ".zip" or not p.is_file():
         raise ValueError("备份包路径无效")
+    ensure_path_allowed(p)
     p.unlink()
     return p.name
 

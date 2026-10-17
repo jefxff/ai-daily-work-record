@@ -14,13 +14,14 @@ from django.urls import resolve
 
 class LoginRequiredMiddleware:
     # 精确路径前缀，全部以 / 结尾防越权（如 /accounts/loginxxx 不匹配）
+    # 注意：/media/ 不在白名单 —— 用户上传文件（证照扫描件/证明材料）必须登录后访问，
+    # 由 work_record.urls 的 protected_media 视图提供（URL 路径保持 /media/... 不变）
     EXEMPT_PREFIXES = (
         "/accounts/login/",
         "/accounts/logout/",
         "/accounts/register/",
         "/admin/",
         "/static/",
-        "/media/",
         "/favicon.ico",
     )
 

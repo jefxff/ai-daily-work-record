@@ -1,26 +1,16 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from django.core.paginator import Paginator
 from django.http import HttpResponse, JsonResponse
 from django.template.loader import render_to_string
 from django.db.models import Count, Q
-from openpyxl import Workbook
-from openpyxl.utils import get_column_letter
-from datetime import datetime, timedelta
-from .models import Decoration, CustomerCredit, CustomerComplaint, Regulation, PriceEvaluation, DailyRecord, MetalPrice, Insurance, Complaint
+from django.db.models.functions import TruncDate
+from datetime import date, datetime, timedelta
+from .models import Decoration, CustomerCredit, CustomerComplaint, Regulation, PriceEvaluation, DailyRecord, MetalPrice, Insurance, Complaint, OperationLog
 from .forms import DecorationForm, CustomerCreditForm, CustomerComplaintForm, RegulationForm, PriceEvaluationForm, InsuranceForm, ComplaintForm
 from .audit import log_operation
+from .crud import make_delete_view, make_export_view, make_form_view, make_list_view
 from django.utils import timezone
 from accounts.decorators import perm_required
 from accounts.services import visible_modules
-
-
-def _per_page(request):
-    """列表页每页条数：仅允许 10/30/50，默认 10"""
-    try:
-        v = int(request.GET.get('per_page', 10))
-    except (TypeError, ValueError):
-        v = 10
-    return v if v in (10, 30, 50) else 10
 
 
 def _is_ajax(request):
@@ -41,6 +31,29 @@ def _modal_detail(request, template_name, context):
     """详情 AJAX 弹窗：返回局部模板 HTML"""
     html = render_to_string(template_name, context, request=request)
     return JsonResponse({'ok': True, 'html': html})
+
+
+def _weekly_trend(user):
+    """近 7 天每日记录数趋势（含今天，升序，缺数的天补 0，共 7 项）。
+
+    单次按天聚合查询代替逐日 __date COUNT（原实现每页 7 条 SQL 的 N+1）。
+    TruncDate 与 __date 查找一致按当前时区取日，结果等价。
+    """
+    today = timezone.localdate()
+    start = today - timedelta(days=6)
+    rows = (
+        _my_daily_records(user)
+        .filter(record_date__date__gte=start, record_date__date__lte=today)
+        .annotate(day=TruncDate('record_date'))
+        .values('day')
+        .annotate(c=Count('id'))
+    )
+    day_counts = {r['day']: r['c'] for r in rows}
+    return [
+        {'date': (today - timedelta(days=i)).strftime('%m-%d'),
+         'c': day_counts.get(today - timedelta(days=i), 0)}
+        for i in range(6, -1, -1)
+    ]
 
 
 def home(request):
@@ -109,7 +122,7 @@ def home(request):
     all_prices.sort(key=custom_sort)
     
     # 保险到期台账数据 - 获取所有未到期的保险，按未到期天数从小到大排序
-    from datetime import date, timedelta
+    from datetime import date
     today = date.today()
     
     # 获取所有未到期的保险（截止日期大于今天）
@@ -118,14 +131,8 @@ def home(request):
     # 获取进度未完结的诉讼案件（排除已结案的案件）
     incomplete_litigations = Complaint.objects.exclude(progress='结案').order_by('-id')
 
-    # 近 7 天每日记录数（含今天，升序，缺数的天补 0，共 7 项）
-    # record_date 为 DateTimeField，使用 __date 按天过滤
-    trend_today = timezone.localdate()
-    weekly_trend = []
-    for i in range(6, -1, -1):
-        d = trend_today - timedelta(days=i)
-        c = _my_daily_records(request.user).filter(record_date__date=d).count()
-        weekly_trend.append({'date': d.strftime('%m-%d'), 'c': c})
+    # 近 7 天每日记录数趋势（含今天，升序，缺数的天补 0，共 7 项）
+    weekly_trend = _weekly_trend(request.user)
 
     context = {
         'total_decorations': total_decorations,
@@ -251,467 +258,117 @@ def search(request):
 
 
 # 装修记录视图
-@perm_required("decoration", "read")
-def decoration_list(request):
-    """装修记录列表视图"""
-    search_term = request.GET.get('search', '')
-    constructor_filter = request.GET.get('constructor', '')
-    decorations = Decoration.objects.all()
-    
-    # 搜索功能 - 全文搜索
-    if search_term:
-        decorations = decorations.filter(
-            Q(project_name__icontains=search_term) |
-            Q(constructor__icontains=search_term) |
-            Q(project_address__icontains=search_term)
-        )
-    
-    # 施工方筛选
-    if constructor_filter:
-        decorations = decorations.filter(constructor=constructor_filter)
-    
-    # 获取所有施工方列表（去重并排序）
-    constructors = sorted(list(set([c.strip() for c in 
-        Decoration.objects.values_list('constructor', flat=True) 
-        if c and c.strip()])))
-    
-    # 分页
-    paginator = Paginator(decorations, _per_page(request))
-    page = request.GET.get('page', 1)
-    decorations = paginator.get_page(page)
-    
-    return render(request, 'records/decoration_list.html', {
-        'decorations': decorations, 
-        'search_term': search_term,
-        'constructor_filter': constructor_filter,
-        'constructors': constructors
-    })
+decoration_list = make_list_view(
+    perm_module='decoration', template_name='records/decoration_list.html',
+    page_var='decorations', model=Decoration,
+    search_fields=['project_name', 'constructor', 'project_address'],
+    filters=[('constructor', 'constructor')],
+    filter_options={'constructors': 'constructor'},
+)
 
-@perm_required("decoration", "create")
-def decoration_add(request):
-    """新增装修记录视图"""
-    from django.http import JsonResponse
-    is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
-    if request.method == 'POST':
-        form = DecorationForm(request.POST)
-        if form.is_valid():
-            obj = form.save()
-            log_operation(request, '装修', '新增', f'[装修]下的记录#{obj.id}', f'新增装修记录: {obj.project_name}')
-            if is_ajax:
-                return JsonResponse({'ok': True, 'message': '新增成功'})
-            return redirect('decoration_list')
-        if is_ajax:
-            from django.template.loader import render_to_string
-            html = render_to_string('records/_form_modal.html', {'form': form, 'save_label': '保存记录'}, request=request)
-            return JsonResponse({'ok': False, 'html': html}, status=422)
-    else:
-        form = DecorationForm()
-    if is_ajax:
-        from django.template.loader import render_to_string
-        html = render_to_string('records/_form_modal.html', {'form': form, 'save_label': '保存记录'}, request=request)
-        return JsonResponse({'ok': True, 'html': html})
-    return render(request, 'records/decoration_form.html', {'form': form, 'title': '新增装修记录'})
+# 新增/编辑视图（工厂统一实现：权限校验 + AJAX 弹窗双模式 + 操作留痕）
+decoration_add, decoration_edit = make_form_view(
+    model=Decoration, form_class=DecorationForm, perm_module='decoration',
+    log_label='装修', summary_label='装修记录', display_field='project_name',
+    redirect_name='decoration_list', template_name='records/decoration_form.html',
+    title_add='新增装修记录', title_edit='编辑装修记录',
+)
 
-@perm_required("decoration", "update")
-def decoration_edit(request, pk):
-    """编辑装修记录视图"""
-    from django.http import JsonResponse
-    decoration = get_object_or_404(Decoration, pk=pk)
-    is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
-    if request.method == 'POST':
-        form = DecorationForm(request.POST, instance=decoration)
-        if form.is_valid():
-            form.save()
-            log_operation(request, '装修', '更新', f'[装修]下的记录#{decoration.id}', f'编辑装修记录: {decoration.project_name}')
-            if is_ajax:
-                return JsonResponse({'ok': True, 'message': '保存成功'})
-            return redirect('decoration_list')
-        if is_ajax:
-            from django.template.loader import render_to_string
-            html = render_to_string('records/_form_modal.html', {'form': form, 'save_label': '保存修改'}, request=request)
-            return JsonResponse({'ok': False, 'html': html}, status=422)
-    else:
-        form = DecorationForm(instance=decoration)
-    if is_ajax:
-        from django.template.loader import render_to_string
-        html = render_to_string('records/_form_modal.html', {'form': form, 'save_label': '保存修改'}, request=request)
-        return JsonResponse({'ok': True, 'html': html})
-    return render(request, 'records/decoration_form.html', {'form': form, 'title': '编辑装修记录'})
-
-@perm_required("decoration", "read")
-def decoration_export(request):
-    """导出装修记录到Excel"""
-    decorations = Decoration.objects.all()
-    
-    if not decorations.exists():
-        return HttpResponse('当前无装修记录，无法导出Excel')
-    
-    wb = Workbook()
-    ws = wb.active
-    ws.title = '装修记录'
-    
-    # 表头（包含所有字段）
-    headers = ['项目名称', '施工方', '项目地址', '开工日期', '原价', '核后价', '核减金额']
-    for col, header in enumerate(headers, 1):
-        ws[get_column_letter(col) + '1'] = header
-    
-    # 数据行
-    for row, decoration in enumerate(decorations, 2):
-        ws[f'A{row}'] = decoration.project_name
-        ws[f'B{row}'] = decoration.constructor
-        ws[f'C{row}'] = decoration.project_address or ''
-        ws[f'D{row}'] = decoration.start_date.strftime('%Y-%m-%d') if decoration.start_date else ''
-        ws[f'E{row}'] = decoration.original_price or 0
-        ws[f'F{row}'] = decoration.final_price or 0
-        ws[f'G{row}'] = decoration.reduced_price or 0
-    
-    # 设置列宽
-    for col in range(1, len(headers) + 1):
-        ws.column_dimensions[get_column_letter(col)].width = 20
-    
-    # 生成文件名（数据库名-YYYYMMDD.xlsx）
-    filename = f'装修记录-{datetime.now().strftime("%Y%m%d")}.xlsx'
-    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    wb.save(response)
-    return response
+decoration_export = make_export_view(
+    model=Decoration, perm_module='decoration', sheet_title='装修记录',
+    filename_base='装修记录', empty_text='当前无装修记录，无法导出Excel',
+    headers=['项目名称', '施工方', '项目地址', '开工日期', '原价', '核后价', '核减金额'],
+    row_values=lambda obj, serial: [
+        obj.project_name, obj.constructor, obj.project_address or '',
+        obj.start_date.strftime('%Y-%m-%d') if obj.start_date else '',
+        obj.original_price or 0, obj.final_price or 0, obj.reduced_price or 0,
+    ],
+)
 
 
 # 客户账期视图
-@perm_required("customer_credit", "read")
-def customer_credit_list(request):
-    """客户账期列表视图"""
-    search_term = request.GET.get('search', '')
-    customer_name_filter = request.GET.get('customer_name', '')
-    customer_type_filter = request.GET.get('customer_type', '')
-    salesperson_filter = request.GET.get('salesperson', '')
-    specific_content_filter = request.GET.get('specific_content', '')
-    work_method_filter = request.GET.get('work_method', '')
-    
-    credits = CustomerCredit.objects.all()
-    
-    # 搜索功能 - 全文搜索
-    if search_term:
-        credits = credits.filter(
-            Q(customer_name__icontains=search_term) |
-            Q(salesperson__icontains=search_term) |
-            Q(work_content__icontains=search_term)
-        )
-    
-    # 多条件筛选
-    if customer_name_filter:
-        credits = credits.filter(customer_name__icontains=customer_name_filter)
-    
-    if customer_type_filter:
-        credits = credits.filter(customer_type=customer_type_filter)
-    
-    if salesperson_filter:
-        credits = credits.filter(salesperson=salesperson_filter)
-    
-    if specific_content_filter:
-        credits = credits.filter(specific_content=specific_content_filter)
-    
-    if work_method_filter:
-        credits = credits.filter(work_method=work_method_filter)
-    
-    # 获取所有业务员列表（去重并排序）
-    salespersons = sorted(list(set([s.strip() for s in 
-        CustomerCredit.objects.values_list('salesperson', flat=True) 
-        if s and s.strip()])))
-    
-    # 获取所有具体内容选项
-    specific_content_choices = [('老客户重审', '老客户重审'), ('提升账期或额度', '提升账期或额度'), ('新客户账期', '新客户账期')]
-    
-    # 获取所有工作方式选项
-    work_method_choices = [('刘总特批', '刘总特批'), ('现场审核', '现场审核'), ('内部流程', '内部流程')]
-    
-    # 获取所有客户类型选项
-    customer_type_choices = [('普通客户', '普通客户'), ('代加工客户', '代加工客户')]
-    
-    # 分页
-    paginator = Paginator(credits, _per_page(request))
-    page = request.GET.get('page', 1)
-    credits = paginator.get_page(page)
-    
-    return render(request, 'records/customer_credit_list.html', {
-        'credits': credits, 
-        'search_term': search_term,
-        'customer_name_filter': customer_name_filter,
-        'customer_type_filter': customer_type_filter,
-        'salesperson_filter': salesperson_filter,
-        'specific_content_filter': specific_content_filter,
-        'work_method_filter': work_method_filter,
-        'salespersons': salespersons,
-        'specific_content_choices': specific_content_choices,
-        'work_method_choices': work_method_choices,
-        'customer_type_choices': customer_type_choices
-    })
+customer_credit_list = make_list_view(
+    perm_module='customer_credit', template_name='records/customer_credit_list.html',
+    page_var='credits', model=CustomerCredit,
+    search_fields=['customer_name', 'salesperson', 'work_content'],
+    filters=[
+        ('customer_name', 'customer_name__icontains'),
+        ('customer_type', 'customer_type'),
+        ('salesperson', 'salesperson'),
+        ('specific_content', 'specific_content'),
+        ('work_method', 'work_method'),
+    ],
+    filter_options={'salespersons': 'salesperson'},
+    extra_context={
+        'specific_content_choices': [('老客户重审', '老客户重审'), ('提升账期或额度', '提升账期或额度'), ('新客户账期', '新客户账期')],
+        'work_method_choices': [('刘总特批', '刘总特批'), ('现场审核', '现场审核'), ('内部流程', '内部流程')],
+        'customer_type_choices': [('普通客户', '普通客户'), ('代加工客户', '代加工客户')],
+    },
+)
 
-@perm_required("customer_credit", "create")
-def customer_credit_add(request):
-    """新增客户账期视图"""
-    from django.http import JsonResponse
-    is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
-    if request.method == 'POST':
-        form = CustomerCreditForm(request.POST)
-        if form.is_valid():
-            obj = form.save()
-            log_operation(request, '客户账期', '新增', f'[客户账期]下的记录#{obj.id}', f'新增客户账期: {obj.customer_name}')
-            if is_ajax:
-                return JsonResponse({'ok': True, 'message': '新增成功'})
-            return redirect('customer_credit_list')
-        if is_ajax:
-            from django.template.loader import render_to_string
-            html = render_to_string('records/_form_modal.html', {'form': form, 'save_label': '保存记录'}, request=request)
-            return JsonResponse({'ok': False, 'html': html}, status=422)
-    else:
-        form = CustomerCreditForm()
-    if is_ajax:
-        from django.template.loader import render_to_string
-        html = render_to_string('records/_form_modal.html', {'form': form, 'save_label': '保存记录'}, request=request)
-        return JsonResponse({'ok': True, 'html': html})
-    return render(request, 'records/customer_credit_form.html', {'form': form, 'title': '新增客户账期'})
+customer_credit_add, customer_credit_edit = make_form_view(
+    model=CustomerCredit, form_class=CustomerCreditForm, perm_module='customer_credit',
+    log_label='客户账期', display_field='customer_name',
+    redirect_name='customer_credit_list', template_name='records/customer_credit_form.html',
+    title_add='新增客户账期', title_edit='编辑客户账期',
+)
 
-@perm_required("customer_credit", "update")
-def customer_credit_edit(request, pk):
-    """编辑客户账期视图"""
-    from django.http import JsonResponse
-    credit = get_object_or_404(CustomerCredit, pk=pk)
-    is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
-    if request.method == 'POST':
-        form = CustomerCreditForm(request.POST, instance=credit)
-        if form.is_valid():
-            form.save()
-            log_operation(request, '客户账期', '更新', f'[客户账期]下的记录#{credit.id}', f'编辑客户账期: {credit.customer_name}')
-            if is_ajax:
-                return JsonResponse({'ok': True, 'message': '保存成功'})
-            return redirect('customer_credit_list')
-        if is_ajax:
-            from django.template.loader import render_to_string
-            html = render_to_string('records/_form_modal.html', {'form': form, 'save_label': '保存修改'}, request=request)
-            return JsonResponse({'ok': False, 'html': html}, status=422)
-    else:
-        form = CustomerCreditForm(instance=credit)
-    if is_ajax:
-        from django.template.loader import render_to_string
-        html = render_to_string('records/_form_modal.html', {'form': form, 'save_label': '保存修改'}, request=request)
-        return JsonResponse({'ok': True, 'html': html})
-    return render(request, 'records/customer_credit_form.html', {'form': form, 'title': '编辑客户账期'})
-
-@perm_required("customer_credit", "read")
-def customer_credit_export(request):
-    """导出客户账期到Excel"""
-    credits = CustomerCredit.objects.all()
-    
-    if not credits.exists():
-        return HttpResponse('当前无客户账期记录，无法导出Excel')
-    
-    wb = Workbook()
-    ws = wb.active
-    ws.title = '客户账期'
-    
-    # 表头（包含所有字段）
-    headers = ['提出日期', '现场日期', '客户名称', '客户类型', '业务员', '工作内容', '具体内容', '前期调查表', '工作方式', '结果', '备注', '是否有业绩考核期', '考核期开始日期', '考核期结束日期', '考核内容']
-    for col, header in enumerate(headers, 1):
-        ws[get_column_letter(col) + '1'] = header
-
-    # 数据行
-    for row, credit in enumerate(credits, 2):
-        ws[f'A{row}'] = credit.proposal_date.strftime('%Y-%m-%d') if credit.proposal_date else ''
-        ws[f'B{row}'] = credit.site_date.strftime('%Y-%m-%d') if credit.site_date else ''
-        ws[f'C{row}'] = credit.customer_name
-        ws[f'D{row}'] = credit.customer_type
-        ws[f'E{row}'] = credit.salesperson
-        ws[f'F{row}'] = credit.work_content or ''
-        ws[f'G{row}'] = credit.specific_content or ''
-        ws[f'H{row}'] = credit.pre_survey or ''
-        ws[f'I{row}'] = credit.work_method or ''
-        ws[f'J{row}'] = credit.result
-        ws[f'K{row}'] = credit.remarks or ''
-        ws[f'L{row}'] = '是' if credit.has_assessment_period else '否'
-        ws[f'M{row}'] = credit.assessment_start_date.strftime('%Y-%m-%d') if credit.assessment_start_date else ''
-        ws[f'N{row}'] = credit.assessment_end_date.strftime('%Y-%m-%d') if credit.assessment_end_date else ''
-        ws[f'O{row}'] = credit.assessment_content or ''
-    
-    # 设置列宽
-    for col in range(1, len(headers) + 1):
-        ws.column_dimensions[get_column_letter(col)].width = 20
-    
-    # 生成文件名（数据库名-YYYYMMDD.xlsx）
-    filename = f'客户账期-{datetime.now().strftime("%Y%m%d")}.xlsx'
-    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    wb.save(response)
-    return response
+customer_credit_export = make_export_view(
+    model=CustomerCredit, perm_module='customer_credit', sheet_title='客户账期',
+    filename_base='客户账期', empty_text='当前无客户账期记录，无法导出Excel',
+    headers=['提出日期', '现场日期', '客户名称', '客户类型', '业务员', '工作内容', '具体内容', '前期调查表', '工作方式', '结果', '备注', '是否有业绩考核期', '考核期开始日期', '考核期结束日期', '考核内容'],
+    row_values=lambda obj, serial: [
+        obj.proposal_date.strftime('%Y-%m-%d') if obj.proposal_date else '',
+        obj.site_date.strftime('%Y-%m-%d') if obj.site_date else '',
+        obj.customer_name, obj.customer_type, obj.salesperson,
+        obj.work_content or '', obj.specific_content or '', obj.pre_survey or '',
+        obj.work_method or '', obj.result, obj.remarks or '',
+        '是' if obj.has_assessment_period else '否',
+        obj.assessment_start_date.strftime('%Y-%m-%d') if obj.assessment_start_date else '',
+        obj.assessment_end_date.strftime('%Y-%m-%d') if obj.assessment_end_date else '',
+        obj.assessment_content or '',
+    ],
+)
 
 
 # 客户客诉视图
-@perm_required("customer_complaint", "read")
-def customer_complaint_list(request):
-    """客户客诉列表视图"""
-    search_term = request.GET.get('search', '')
-    customer_name_filter = request.GET.get('customer_name', '')
-    responsible_salesperson_filter = request.GET.get('responsible_salesperson', '')
-    product_model_filter = request.GET.get('product_model', '')
-    is_insured_filter = request.GET.get('is_insured', '')
-    complaint_status_filter = request.GET.get('complaint_status', '')
-    
-    complaints = CustomerComplaint.objects.all()
-    
-    # 搜索功能 - 全文搜索
-    if search_term:
-        complaints = complaints.filter(
-            Q(customer_name__icontains=search_term) |
-            Q(responsible_salesperson__icontains=search_term) |
-            Q(product_model__icontains=search_term) |
-            Q(complaint_description__icontains=search_term)
-        )
-    
-    # 多条件筛选
-    if customer_name_filter:
-        complaints = complaints.filter(customer_name__icontains=customer_name_filter)
-    
-    if responsible_salesperson_filter:
-        complaints = complaints.filter(responsible_salesperson=responsible_salesperson_filter)
-    
-    if product_model_filter:
-        complaints = complaints.filter(product_model=product_model_filter)
-    
-    if is_insured_filter:
-        is_insured_bool = is_insured_filter == 'true'
-        complaints = complaints.filter(is_insured=is_insured_bool)
-    
-    if complaint_status_filter:
-        complaints = complaints.filter(complaint_status=complaint_status_filter)
-    
-    # 获取所有责任业务员列表（去重并排序）
-    responsible_salespersons = sorted(list(set([s.strip() for s in 
-        CustomerComplaint.objects.values_list('responsible_salesperson', flat=True) 
-        if s and s.strip()])))
-    
-    # 获取所有产品型号列表（去重并排序）
-    product_models = sorted(list(set([p.strip() for p in 
-        CustomerComplaint.objects.values_list('product_model', flat=True) 
-        if p and p.strip()])))
-    
-    # 获取所有客诉状态选项
-    complaint_status_choices = [('未完成', '未完成'), ('处理中', '处理中'), ('已完成', '已完成')]
-    
-    # 分页
-    paginator = Paginator(complaints, _per_page(request))
-    page = request.GET.get('page', 1)
-    complaints = paginator.get_page(page)
-    
-    return render(request, 'records/customer_complaint_list.html', {
-        'complaints': complaints, 
-        'search_term': search_term,
-        'customer_name_filter': customer_name_filter,
-        'responsible_salesperson_filter': responsible_salesperson_filter,
-        'product_model_filter': product_model_filter,
-        'is_insured_filter': is_insured_filter,
-        'complaint_status_filter': complaint_status_filter,
-        'responsible_salespersons': responsible_salespersons,
-        'product_models': product_models,
-        'complaint_status_choices': complaint_status_choices
-    })
+customer_complaint_list = make_list_view(
+    perm_module='customer_complaint', template_name='records/customer_complaint_list.html',
+    page_var='complaints', model=CustomerComplaint,
+    search_fields=['customer_name', 'responsible_salesperson', 'product_model', 'complaint_description'],
+    filters=[
+        ('customer_name', 'customer_name__icontains'),
+        ('responsible_salesperson', 'responsible_salesperson'),
+        ('product_model', 'product_model'),
+        ('is_insured', 'is_insured', lambda v: v == 'true'),
+        ('complaint_status', 'complaint_status'),
+    ],
+    filter_options={'responsible_salespersons': 'responsible_salesperson', 'product_models': 'product_model'},
+    extra_context={'complaint_status_choices': [('未完成', '未完成'), ('处理中', '处理中'), ('已完成', '已完成')]},
+)
 
-@perm_required("customer_complaint", "create")
-def customer_complaint_add(request):
-    """新增客户客诉视图"""
-    from django.http import JsonResponse
-    is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
-    if request.method == 'POST':
-        form = CustomerComplaintForm(request.POST)
-        if form.is_valid():
-            obj = form.save()
-            log_operation(request, '客户客诉', '新增', f'[客户客诉]下的记录#{obj.id}', f'新增客户客诉: {obj.customer_name}')
-            if is_ajax:
-                return JsonResponse({'ok': True, 'message': '新增成功'})
-            return redirect('customer_complaint_list')
-        if is_ajax:
-            from django.template.loader import render_to_string
-            html = render_to_string('records/_form_modal.html', {'form': form, 'save_label': '保存记录'}, request=request)
-            return JsonResponse({'ok': False, 'html': html}, status=422)
-    else:
-        form = CustomerComplaintForm()
-    if is_ajax:
-        from django.template.loader import render_to_string
-        html = render_to_string('records/_form_modal.html', {'form': form, 'save_label': '保存记录'}, request=request)
-        return JsonResponse({'ok': True, 'html': html})
-    return render(request, 'records/customer_complaint_form.html', {'form': form, 'title': '新增客户客诉'})
+customer_complaint_add, customer_complaint_edit = make_form_view(
+    model=CustomerComplaint, form_class=CustomerComplaintForm, perm_module='customer_complaint',
+    log_label='客户客诉', display_field='customer_name',
+    redirect_name='customer_complaint_list', template_name='records/customer_complaint_form.html',
+    title_add='新增客户客诉', title_edit='编辑客户客诉',
+)
 
-@perm_required("customer_complaint", "update")
-def customer_complaint_edit(request, pk):
-    """编辑客户客诉视图"""
-    from django.http import JsonResponse
-    complaint = get_object_or_404(CustomerComplaint, pk=pk)
-    is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
-    if request.method == 'POST':
-        form = CustomerComplaintForm(request.POST, instance=complaint)
-        if form.is_valid():
-            form.save()
-            log_operation(request, '客户客诉', '更新', f'[客户客诉]下的记录#{complaint.id}', f'编辑客户客诉: {complaint.customer_name}')
-            if is_ajax:
-                return JsonResponse({'ok': True, 'message': '保存成功'})
-            return redirect('customer_complaint_list')
-        if is_ajax:
-            from django.template.loader import render_to_string
-            html = render_to_string('records/_form_modal.html', {'form': form, 'save_label': '保存修改'}, request=request)
-            return JsonResponse({'ok': False, 'html': html}, status=422)
-    else:
-        form = CustomerComplaintForm(instance=complaint)
-    if is_ajax:
-        from django.template.loader import render_to_string
-        html = render_to_string('records/_form_modal.html', {'form': form, 'save_label': '保存修改'}, request=request)
-        return JsonResponse({'ok': True, 'html': html})
-    return render(request, 'records/customer_complaint_form.html', {'form': form, 'title': '编辑客户客诉'})
-
-@perm_required("customer_complaint", "read")
-def customer_complaint_export(request):
-    """导出客户客诉到Excel"""
-    complaints = CustomerComplaint.objects.all()
-    
-    if not complaints.exists():
-        return HttpResponse('当前无客户客诉记录，无法导出Excel')
-    
-    wb = Workbook()
-    ws = wb.active
-    ws.title = '客户客诉'
-    
-    # 表头（包含所有字段）
-    headers = ['客户名称', '责任业务员', '客诉申请日期', '终端客户', '产品型号', '我司出货量', '客户出货量', '客诉现象及客户诉求描述', '客户诉求（赔偿金额）', '是否报保险', '工程报告', '工程部分析原因报告', '欠缺材料', '客诉状态', '跟进情况', '备注']
-    for col, header in enumerate(headers, 1):
-        ws[get_column_letter(col) + '1'] = header
-    
-    # 数据行
-    for row, complaint in enumerate(complaints, 2):
-        ws[f'A{row}'] = complaint.customer_name
-        ws[f'B{row}'] = complaint.responsible_salesperson
-        ws[f'C{row}'] = complaint.complaint_date.strftime('%Y-%m-%d') if complaint.complaint_date else ''
-        ws[f'D{row}'] = complaint.terminal_customer or ''
-        ws[f'E{row}'] = complaint.product_model or ''
-        ws[f'F{row}'] = complaint.our_shipment or 0
-        ws[f'G{row}'] = complaint.customer_shipment or 0
-        ws[f'H{row}'] = complaint.complaint_description or ''
-        ws[f'I{row}'] = complaint.compensation_amount or 0
-        ws[f'J{row}'] = '是' if complaint.is_insured else '否'
-        ws[f'K{row}'] = complaint.engineering_report or ''
-        ws[f'L{row}'] = complaint.engineering_analysis or ''
-        ws[f'M{row}'] = complaint.missing_materials or ''
-        ws[f'N{row}'] = complaint.complaint_status
-        ws[f'O{row}'] = complaint.follow_up_status or ''
-        ws[f'P{row}'] = complaint.remarks or ''
-    
-    # 设置列宽
-    for col in range(1, len(headers) + 1):
-        ws.column_dimensions[get_column_letter(col)].width = 20
-    
-    # 生成文件名（数据库名-YYYYMMDD.xlsx）
-    filename = f'客户客诉-{datetime.now().strftime("%Y%m%d")}.xlsx'
-    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    wb.save(response)
-    return response
+customer_complaint_export = make_export_view(
+    model=CustomerComplaint, perm_module='customer_complaint', sheet_title='客户客诉',
+    filename_base='客户客诉', empty_text='当前无客户客诉记录，无法导出Excel',
+    headers=['客户名称', '责任业务员', '客诉申请日期', '终端客户', '产品型号', '我司出货量', '客户出货量', '客诉现象及客户诉求描述', '客户诉求（赔偿金额）', '是否报保险', '工程报告', '工程部分析原因报告', '欠缺材料', '客诉状态', '跟进情况', '备注'],
+    row_values=lambda obj, serial: [
+        obj.customer_name, obj.responsible_salesperson,
+        obj.complaint_date.strftime('%Y-%m-%d') if obj.complaint_date else '',
+        obj.terminal_customer or '', obj.product_model or '',
+        obj.our_shipment or 0, obj.customer_shipment or 0,
+        obj.complaint_description or '', obj.compensation_amount or 0,
+        '是' if obj.is_insured else '否', obj.engineering_report or '',
+        obj.engineering_analysis or '', obj.missing_materials or '',
+        obj.complaint_status, obj.follow_up_status or '', obj.remarks or '',
+    ],
+)
 
 
 @perm_required("customer_complaint", "read")
@@ -733,112 +390,28 @@ def customer_detail(request, pk):
 
 
 # 制度及处罚视图
-@perm_required("regulation", "read")
-def regulation_list(request):
-    """制度及处罚列表视图"""
-    search_term = request.GET.get('search', '')
-    regulations = Regulation.objects.all()
-    
-    # 搜索功能 - 全文搜索
-    if search_term:
-        regulations = regulations.filter(
-            Q(title__icontains=search_term) |
-            Q(content__icontains=search_term) |
-            Q(doc_no__icontains=search_term)
-        )
-    
-    # 分页
-    paginator = Paginator(regulations, _per_page(request))
-    page = request.GET.get('page', 1)
-    regulations = paginator.get_page(page)
-    
-    return render(request, 'records/regulation_list.html', {'regulations': regulations, 'search_term': search_term})
+regulation_list = make_list_view(
+    perm_module='regulation', template_name='records/regulation_list.html',
+    page_var='regulations', model=Regulation,
+    search_fields=['title', 'content', 'doc_no'],
+)
 
-@perm_required("regulation", "create")
-def regulation_add(request):
-    """新增制度及处罚视图"""
-    from django.http import JsonResponse
-    is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
-    if request.method == 'POST':
-        form = RegulationForm(request.POST)
-        if form.is_valid():
-            obj = form.save()
-            log_operation(request, '制度及处罚', '新增', f'[制度及处罚]下的记录#{obj.id}', f'新增制度及处罚: {obj.title}')
-            if is_ajax:
-                return JsonResponse({'ok': True, 'message': '新增成功'})
-            return redirect('regulation_list')
-        if is_ajax:
-            from django.template.loader import render_to_string
-            html = render_to_string('records/_form_modal.html', {'form': form, 'save_label': '保存记录'}, request=request)
-            return JsonResponse({'ok': False, 'html': html}, status=422)
-    else:
-        form = RegulationForm()
-    if is_ajax:
-        from django.template.loader import render_to_string
-        html = render_to_string('records/_form_modal.html', {'form': form, 'save_label': '保存记录'}, request=request)
-        return JsonResponse({'ok': True, 'html': html})
-    return render(request, 'records/regulation_form.html', {'form': form, 'title': '新增制度及处罚'})
+regulation_add, regulation_edit = make_form_view(
+    model=Regulation, form_class=RegulationForm, perm_module='regulation',
+    log_label='制度及处罚', display_field='title',
+    redirect_name='regulation_list', template_name='records/regulation_form.html',
+    title_add='新增制度及处罚', title_edit='编辑制度及处罚',
+)
 
-@perm_required("regulation", "update")
-def regulation_edit(request, pk):
-    """编辑制度及处罚视图"""
-    from django.http import JsonResponse
-    regulation = get_object_or_404(Regulation, pk=pk)
-    is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
-    if request.method == 'POST':
-        form = RegulationForm(request.POST, instance=regulation)
-        if form.is_valid():
-            form.save()
-            log_operation(request, '制度及处罚', '更新', f'[制度及处罚]下的记录#{regulation.id}', f'编辑制度及处罚: {regulation.title}')
-            if is_ajax:
-                return JsonResponse({'ok': True, 'message': '保存成功'})
-            return redirect('regulation_list')
-        if is_ajax:
-            from django.template.loader import render_to_string
-            html = render_to_string('records/_form_modal.html', {'form': form, 'save_label': '保存修改'}, request=request)
-            return JsonResponse({'ok': False, 'html': html}, status=422)
-    else:
-        form = RegulationForm(instance=regulation)
-    if is_ajax:
-        from django.template.loader import render_to_string
-        html = render_to_string('records/_form_modal.html', {'form': form, 'save_label': '保存修改'}, request=request)
-        return JsonResponse({'ok': True, 'html': html})
-    return render(request, 'records/regulation_form.html', {'form': form, 'title': '编辑制度及处罚'})
-
-@perm_required("regulation", "read")
-def regulation_export(request):
-    """导出制度及处罚到Excel"""
-    regulations = Regulation.objects.all()
-    
-    if not regulations.exists():
-        return HttpResponse('当前无制度及处罚记录，无法导出Excel')
-    
-    wb = Workbook()
-    ws = wb.active
-    ws.title = '制度及处罚'
-    
-    # 表头
-    headers = ['出文日期', '标题', '主要内容', '文件编号']
-    for col, header in enumerate(headers, 1):
-        ws[get_column_letter(col) + '1'] = header
-    
-    # 数据行
-    for row, regulation in enumerate(regulations, 2):
-        ws[f'A{row}'] = regulation.issue_date.strftime('%Y-%m-%d') if regulation.issue_date else ''
-        ws[f'B{row}'] = regulation.title
-        ws[f'C{row}'] = regulation.content or ''
-        ws[f'D{row}'] = regulation.doc_no
-    
-    # 设置列宽
-    for col in range(1, len(headers) + 1):
-        ws.column_dimensions[get_column_letter(col)].width = 30
-    
-    # 生成文件名（数据库名-YYYYMMDD.xlsx）
-    filename = f'制度及处罚-{datetime.now().strftime("%Y%m%d")}.xlsx'
-    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    wb.save(response)
-    return response
+regulation_export = make_export_view(
+    model=Regulation, perm_module='regulation', sheet_title='制度及处罚',
+    filename_base='制度及处罚', empty_text='当前无制度及处罚记录，无法导出Excel', column_width=30,
+    headers=['出文日期', '标题', '主要内容', '文件编号'],
+    row_values=lambda obj, serial: [
+        obj.issue_date.strftime('%Y-%m-%d') if obj.issue_date else '',
+        obj.title, obj.content or '', obj.doc_no,
+    ],
+)
 
 
 @perm_required("regulation", "read")
@@ -853,121 +426,32 @@ def regulation_detail(request, pk):
 
 
 # 核价视图
-@perm_required("price_evaluation", "read")
-def price_evaluation_list(request):
-    """核价列表视图"""
-    search_term = request.GET.get('search', '')
-    evaluations = PriceEvaluation.objects.all()
-    
-    # 搜索功能 - 全文搜索
-    if search_term:
-        evaluations = evaluations.filter(
-            Q(project_category__icontains=search_term) |
-            Q(proposing_department__icontains=search_term) |
-            Q(proposer__icontains=search_term) |
-            Q(evaluation_content__icontains=search_term)
-        )
-    
-    # 分页
-    paginator = Paginator(evaluations, _per_page(request))
-    page = request.GET.get('page', 1)
-    evaluations = paginator.get_page(page)
-    
-    return render(request, 'records/price_evaluation_list.html', {'evaluations': evaluations, 'search_term': search_term})
+price_evaluation_list = make_list_view(
+    perm_module='price_evaluation', template_name='records/price_evaluation_list.html',
+    page_var='evaluations', model=PriceEvaluation,
+    search_fields=['project_category', 'proposing_department', 'proposer', 'evaluation_content'],
+)
 
-@perm_required("price_evaluation", "create")
-def price_evaluation_add(request):
-    """新增核价视图"""
-    from django.http import JsonResponse
-    is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
-    if request.method == 'POST':
-        form = PriceEvaluationForm(request.POST)
-        if form.is_valid():
-            obj = form.save()
-            log_operation(request, '核价', '新增', f'[核价]下的记录#{obj.id}', f'新增核价: {obj.project_name}')
-            if is_ajax:
-                return JsonResponse({'ok': True, 'message': '新增成功'})
-            return redirect('price_evaluation_list')
-        if is_ajax:
-            from django.template.loader import render_to_string
-            html = render_to_string('records/_form_modal.html', {'form': form, 'save_label': '保存记录'}, request=request)
-            return JsonResponse({'ok': False, 'html': html}, status=422)
-    else:
-        form = PriceEvaluationForm()
-    if is_ajax:
-        from django.template.loader import render_to_string
-        html = render_to_string('records/_form_modal.html', {'form': form, 'save_label': '保存记录'}, request=request)
-        return JsonResponse({'ok': True, 'html': html})
-    return render(request, 'records/price_evaluation_form.html', {'form': form, 'title': '新增核价'})
+# 核价留痕摘要展示 project_category（原实现误引不存在的 project_name，提交后 500，已顺手修正）
+price_evaluation_add, price_evaluation_edit = make_form_view(
+    model=PriceEvaluation, form_class=PriceEvaluationForm, perm_module='price_evaluation',
+    log_label='核价', display_field='project_category',
+    redirect_name='price_evaluation_list', template_name='records/price_evaluation_form.html',
+    title_add='新增核价', title_edit='编辑核价',
+)
 
-@perm_required("price_evaluation", "update")
-def price_evaluation_edit(request, pk):
-    """编辑核价视图"""
-    from django.http import JsonResponse
-    evaluation = get_object_or_404(PriceEvaluation, pk=pk)
-    is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
-    if request.method == 'POST':
-        form = PriceEvaluationForm(request.POST, instance=evaluation)
-        if form.is_valid():
-            form.save()
-            log_operation(request, '核价', '更新', f'[核价]下的记录#{evaluation.id}', f'编辑核价: {evaluation.project_name}')
-            if is_ajax:
-                return JsonResponse({'ok': True, 'message': '保存成功'})
-            return redirect('price_evaluation_list')
-        if is_ajax:
-            from django.template.loader import render_to_string
-            html = render_to_string('records/_form_modal.html', {'form': form, 'save_label': '保存修改'}, request=request)
-            return JsonResponse({'ok': False, 'html': html}, status=422)
-    else:
-        form = PriceEvaluationForm(instance=evaluation)
-    if is_ajax:
-        from django.template.loader import render_to_string
-        html = render_to_string('records/_form_modal.html', {'form': form, 'save_label': '保存修改'}, request=request)
-        return JsonResponse({'ok': True, 'html': html})
-    return render(request, 'records/price_evaluation_form.html', {'form': form, 'title': '编辑核价'})
-
-@perm_required("price_evaluation", "read")
-def price_evaluation_export(request):
-    """导出核价到Excel"""
-    evaluations = PriceEvaluation.objects.all()
-    
-    if not evaluations.exists():
-        return HttpResponse('当前无核价记录，无法导出Excel')
-    
-    wb = Workbook()
-    ws = wb.active
-    ws.title = '核价'
-    
-    # 表头（包含所有字段）
-    headers = ['项目分类', '项目提出部门', '提出人', '核价内容', '供应商1名称', '供应商1报价', '供应商2名称', '供应商2报价', '供应商3名称', '供应商3报价', '内控审核供应商', '内控审核价']
-    for col, header in enumerate(headers, 1):
-        ws[get_column_letter(col) + '1'] = header
-    
-    # 数据行
-    for row, evaluation in enumerate(evaluations, 2):
-        ws[f'A{row}'] = evaluation.project_category
-        ws[f'B{row}'] = evaluation.proposing_department
-        ws[f'C{row}'] = evaluation.proposer
-        ws[f'D{row}'] = evaluation.evaluation_content or ''
-        ws[f'E{row}'] = evaluation.supplier1_name or ''
-        ws[f'F{row}'] = evaluation.supplier1_price or 0
-        ws[f'G{row}'] = evaluation.supplier2_name or ''
-        ws[f'H{row}'] = evaluation.supplier2_price or 0
-        ws[f'I{row}'] = evaluation.supplier3_name or ''
-        ws[f'J{row}'] = evaluation.supplier3_price or 0
-        ws[f'K{row}'] = evaluation.internal_control_supplier or ''
-        ws[f'L{row}'] = evaluation.internal_control_price
-    
-    # 设置列宽
-    for col in range(1, len(headers) + 1):
-        ws.column_dimensions[get_column_letter(col)].width = 20
-    
-    # 生成文件名（数据库名-YYYYMMDD.xlsx）
-    filename = f'核价-{datetime.now().strftime("%Y%m%d")}.xlsx'
-    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    wb.save(response)
-    return response
+price_evaluation_export = make_export_view(
+    model=PriceEvaluation, perm_module='price_evaluation', sheet_title='核价',
+    filename_base='核价', empty_text='当前无核价记录，无法导出Excel',
+    headers=['项目分类', '项目提出部门', '提出人', '核价内容', '供应商1名称', '供应商1报价', '供应商2名称', '供应商2报价', '供应商3名称', '供应商3报价', '内控审核供应商', '内控审核价'],
+    row_values=lambda obj, serial: [
+        obj.project_category, obj.proposing_department, obj.proposer,
+        obj.evaluation_content or '', obj.supplier1_name or '', obj.supplier1_price or 0,
+        obj.supplier2_name or '', obj.supplier2_price or 0,
+        obj.supplier3_name or '', obj.supplier3_price or 0,
+        obj.internal_control_supplier or '', obj.internal_control_price,
+    ],
+)
 
 
 # 每日记录视图
@@ -1054,48 +538,15 @@ def daily_record_add(request):
         return JsonResponse({'ok': True, 'html': html})
     return render(request, 'records/daily_record_form.html')
 
-@perm_required("daily_record", "read")
-def daily_record_list(request):
-    """每日记录列表视图"""
-    search_term = request.GET.get('search', '')
-    department_filter = request.GET.get('department', '')
-    status_filter = request.GET.get('status', '')
-    
-    records = _my_daily_records(request.user).order_by('-record_date')
-    
-    # 搜索功能
-    if search_term:
-        records = records.filter(
-            Q(work_content__icontains=search_term) | 
-            Q(department__icontains=search_term)
-        )
-    
-    # 部门筛选
-    if department_filter:
-        records = records.filter(department=department_filter)
-    
-    # 状态筛选
-    if status_filter:
-        records = records.filter(status=status_filter)
-    
-    # 获取所有部门列表（基于当前用户的全部记录，不受本次筛选影响；去重并排序）
-    departments = _my_daily_records(request.user).values_list('department', flat=True)
-    # 去除空白和空字符串，并进行规范化处理，使用set确保去重
-    departments = sorted(list(set([dept.strip() for dept in departments if dept and dept.strip()])))
-    
-    # 分页
-    paginator = Paginator(records, _per_page(request))
-    page = request.GET.get('page', 1)
-    records = paginator.get_page(page)
-    
-    return render(request, 'records/daily_record_list.html', {
-        'records': records, 
-        'search_term': search_term,
-        'department_filter': department_filter,
-        'status_filter': status_filter,
-        'departments': departments,
-        'status_choices': [('完成', '完成'), ('未完成', '未完成')]
-    })
+daily_record_list = make_list_view(
+    perm_module='daily_record', template_name='records/daily_record_list.html',
+    page_var='records',
+    queryset=lambda request: _my_daily_records(request.user).order_by('-record_date'),
+    search_fields=['work_content', 'department'],
+    filters=[('department', 'department'), ('status', 'status')],
+    option_queries={'departments': ('department', lambda request: _my_daily_records(request.user))},
+    extra_context={'status_choices': [('完成', '完成'), ('未完成', '未完成')]},
+)
 
 @perm_required("daily_record", "update")
 def daily_record_edit(request, pk):
@@ -1176,263 +627,99 @@ def daily_record_detail(request, pk):
         return _modal_detail(request, 'records/_daily_record_detail_modal.html', {'record': record})
     return render(request, 'records/daily_record_detail.html', {'record': record})
 
-@perm_required("daily_record", "read")
-def daily_record_export(request):
-    """导出每日记录到Excel（仅当前用户的记录）"""
-    records = _my_daily_records(request.user).order_by('-record_date')
-    
-    if not records.exists():
-        return HttpResponse('当前无每日记录，无法导出Excel')
-    
-    wb = Workbook()
-    ws = wb.active
-    ws.title = '每日记录'
-    
-    # 表头
-    headers = ['序号', '日期及时间', '提出部门', '工作内容', '工作状态', '工作进度']
-    for col, header in enumerate(headers, 1):
-        ws[get_column_letter(col) + '1'] = header
-    
-    # 数据行
-    for row, record in enumerate(records, 2):
-        ws[f'A{row}'] = row - 1  # 自增序号
-        ws[f'B{row}'] = record.record_date.strftime('%Y-%m-%d %H:%M:%S')
-        ws[f'C{row}'] = record.department
-        ws[f'D{row}'] = record.work_content
-        ws[f'E{row}'] = record.status
-        ws[f'F{row}'] = f'{record.progress}%'
-    
-    # 设置列宽
-    for col in range(1, len(headers) + 1):
-        ws.column_dimensions[get_column_letter(col)].width = 20
-    
-    # 生成文件名（数据库名-YYYYMMDD.xlsx）
-    filename = f'每日记录-{datetime.now().strftime("%Y%m%d")}.xlsx'
-    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    wb.save(response)
-    return response
+daily_record_export = make_export_view(
+    perm_module='daily_record', sheet_title='每日记录',
+    filename_base='每日记录', empty_text='当前无每日记录，无法导出Excel',
+    queryset=lambda request: _my_daily_records(request.user).order_by('-record_date'),
+    headers=['序号', '日期及时间', '提出部门', '工作内容', '工作状态', '工作进度'],
+    row_values=lambda obj, serial: [
+        serial, obj.record_date.strftime('%Y-%m-%d %H:%M:%S'),
+        obj.department, obj.work_content, obj.status, f'{obj.progress}%',
+    ],
+)
 
 
-# 删除功能视图
-@perm_required("decoration", "delete")
-def decoration_delete(request, pk):
-    """删除装修记录"""
-    decoration = get_object_or_404(Decoration, pk=pk)
-    log_operation(request, '装修', '删除', f'[装修]下的记录#{decoration.id}', f'删除装修记录: {decoration.project_name}')
-    decoration.delete()
-    return redirect('decoration_list')
+# 删除功能视图（工厂统一实现：仅 POST + 权限校验 + 操作留痕）
+decoration_delete = make_delete_view(
+    model=Decoration, perm_module='decoration', label='装修',
+    display_field='project_name', redirect_name='decoration_list',
+)
 
-@perm_required("customer_credit", "delete")
-def customer_credit_delete(request, pk):
-    """删除客户账期记录"""
-    credit = get_object_or_404(CustomerCredit, pk=pk)
-    log_operation(request, '客户账期', '删除', f'[客户账期]下的记录#{credit.id}', f'删除客户账期: {credit.customer_name}')
-    credit.delete()
-    return redirect('customer_credit_list')
+customer_credit_delete = make_delete_view(
+    model=CustomerCredit, perm_module='customer_credit', label='客户账期',
+    display_field='customer_name', redirect_name='customer_credit_list',
+)
 
-@perm_required("customer_complaint", "delete")
-def customer_complaint_delete(request, pk):
-    """删除客户客诉记录"""
-    complaint = get_object_or_404(CustomerComplaint, pk=pk)
-    log_operation(request, '客户客诉', '删除', f'[客户客诉]下的记录#{complaint.id}', f'删除客户客诉: {complaint.customer_name}')
-    complaint.delete()
-    return redirect('customer_complaint_list')
+customer_complaint_delete = make_delete_view(
+    model=CustomerComplaint, perm_module='customer_complaint', label='客户客诉',
+    display_field='customer_name', redirect_name='customer_complaint_list',
+)
 
-@perm_required("regulation", "delete")
-def regulation_delete(request, pk):
-    """删除制度及处罚记录"""
-    regulation = get_object_or_404(Regulation, pk=pk)
-    log_operation(request, '制度及处罚', '删除', f'[制度及处罚]下的记录#{regulation.id}', f'删除制度及处罚: {regulation.title}')
-    regulation.delete()
-    return redirect('regulation_list')
+regulation_delete = make_delete_view(
+    model=Regulation, perm_module='regulation', label='制度及处罚',
+    display_field='title', redirect_name='regulation_list',
+)
 
-@perm_required("price_evaluation", "delete")
-def price_evaluation_delete(request, pk):
-    """删除核价记录"""
-    evaluation = get_object_or_404(PriceEvaluation, pk=pk)
-    log_operation(request, '核价', '删除', f'[核价]下的记录#{evaluation.id}', f'删除核价: {evaluation.project_name}')
-    evaluation.delete()
-    return redirect('price_evaluation_list')
+price_evaluation_delete = make_delete_view(
+    model=PriceEvaluation, perm_module='price_evaluation', label='核价',
+    display_field='project_category', redirect_name='price_evaluation_list',
+)
 
-@perm_required("daily_record", "delete")
-def daily_record_delete(request, pk):
-    """删除每日记录"""
-    record = _get_my_record(request, pk)
-    log_operation(request, '每日记录', '删除', f'[每日记录]下的记录#{record.id}', f'删除每日记录: {record.work_content}')
-    record.delete()
-    return redirect('daily_record_list')
+daily_record_delete = make_delete_view(
+    perm_module='daily_record', label='每日记录',
+    display_field='work_content', redirect_name='daily_record_list',
+    getter=_get_my_record,
+)
 
 
 # 保险视图
-@perm_required("insurance", "read")
-def insurance_list(request):
-    """保险列表视图"""
-    search_term = request.GET.get('search', '')
-    company_name_filter = request.GET.get('company_name', '')
-    title_filter = request.GET.get('title', '')
-    department_filter = request.GET.get('department', '')
-    is_expired_filter = request.GET.get('is_expired', '')
-    date_start = request.GET.get('date_start', '')
-    date_end = request.GET.get('date_end', '')
-    
-    insurances = Insurance.objects.all()
-    
-    # 搜索功能 - 全文搜索
-    if search_term:
-        insurances = insurances.filter(
-            Q(company_name__icontains=search_term) |
-            Q(title__icontains=search_term) |
-            Q(order_number__icontains=search_term) |
-            Q(department__icontains=search_term) |
-            Q(remarks__icontains=search_term)
-        )
-    
-    # 多条件筛选
-    if company_name_filter:
-        insurances = insurances.filter(company_name__icontains=company_name_filter)
-    
-    if title_filter:
-        insurances = insurances.filter(title__icontains=title_filter)
-    
-    if department_filter:
-        insurances = insurances.filter(department=department_filter)
-    
-    if is_expired_filter:
-        from datetime import date
-        today = date.today()
-        if is_expired_filter == 'expired':
-            insurances = insurances.filter(end_date__lt=today)
-        elif is_expired_filter == 'not_expired':
-            insurances = insurances.filter(end_date__gte=today)
-    
-    # 日期范围筛选
-    if date_start:
-        insurances = insurances.filter(end_date__gte=date_start)
-    if date_end:
-        insurances = insurances.filter(end_date__lte=date_end)
-    
-    # 获取所有部门列表（去重并排序）
-    departments = sorted(list(set([d.strip() for d in 
-        Insurance.objects.values_list('department', flat=True) 
-        if d and d.strip()])))
-    
-    # 分页
-    paginator = Paginator(insurances, _per_page(request))
-    page = request.GET.get('page', 1)
-    insurances = paginator.get_page(page)
-    
-    return render(request, 'records/insurance_list.html', {
-        'insurances': insurances, 
-        'search_term': search_term,
-        'company_name_filter': company_name_filter,
-        'title_filter': title_filter,
-        'department_filter': department_filter,
-        'is_expired_filter': is_expired_filter,
-        'date_start': date_start,
-        'date_end': date_end,
-        'departments': departments
-    })
+def _filter_insurance_expired(qs, value):
+    """保险到期状态筛选：expired=已到期，not_expired=未到期（与原实现一致）。"""
+    today = date.today()
+    if value == 'expired':
+        return qs.filter(end_date__lt=today)
+    if value == 'not_expired':
+        return qs.filter(end_date__gte=today)
+    return qs
 
-@perm_required("insurance", "create")
-def insurance_add(request):
-    """新增保险视图"""
-    from django.http import JsonResponse
-    is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
-    if request.method == 'POST':
-        form = InsuranceForm(request.POST)
-        if form.is_valid():
-            obj = form.save()
-            log_operation(request, '保险', '新增', f'[保险]下的记录#{obj.id}', f'新增保险: {obj.company_name}')
-            if is_ajax:
-                return JsonResponse({'ok': True, 'message': '新增成功'})
-            return redirect('insurance_list')
-        if is_ajax:
-            from django.template.loader import render_to_string
-            html = render_to_string('records/_form_modal.html', {'form': form, 'save_label': '保存记录'}, request=request)
-            return JsonResponse({'ok': False, 'html': html}, status=422)
-    else:
-        form = InsuranceForm()
-    if is_ajax:
-        from django.template.loader import render_to_string
-        html = render_to_string('records/_form_modal.html', {'form': form, 'save_label': '保存记录'}, request=request)
-        return JsonResponse({'ok': True, 'html': html})
-    return render(request, 'records/insurance_form.html', {'form': form, 'title': '新增保险'})
 
-@perm_required("insurance", "update")
-def insurance_edit(request, pk):
-    """编辑保险视图"""
-    from django.http import JsonResponse
-    insurance = get_object_or_404(Insurance, pk=pk)
-    is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
-    if request.method == 'POST':
-        form = InsuranceForm(request.POST, instance=insurance)
-        if form.is_valid():
-            form.save()
-            log_operation(request, '保险', '更新', f'[保险]下的记录#{insurance.id}', f'编辑保险: {insurance.company_name}')
-            if is_ajax:
-                return JsonResponse({'ok': True, 'message': '保存成功'})
-            return redirect('insurance_list')
-        if is_ajax:
-            from django.template.loader import render_to_string
-            html = render_to_string('records/_form_modal.html', {'form': form, 'save_label': '保存修改'}, request=request)
-            return JsonResponse({'ok': False, 'html': html}, status=422)
-    else:
-        form = InsuranceForm(instance=insurance)
-    if is_ajax:
-        from django.template.loader import render_to_string
-        html = render_to_string('records/_form_modal.html', {'form': form, 'save_label': '保存修改'}, request=request)
-        return JsonResponse({'ok': True, 'html': html})
-    return render(request, 'records/insurance_form.html', {'form': form, 'title': '编辑保险'})
+insurance_list = make_list_view(
+    perm_module='insurance', template_name='records/insurance_list.html',
+    page_var='insurances', model=Insurance,
+    search_fields=['company_name', 'title', 'order_number', 'department', 'remarks'],
+    filters=[
+        ('company_name', 'company_name__icontains'),
+        ('title', 'title__icontains'),
+        ('department', 'department'),
+        ('is_expired', _filter_insurance_expired),
+        ('date_start', 'end_date__gte', None, 'date_start'),
+        ('date_end', 'end_date__lte', None, 'date_end'),
+    ],
+    filter_options={'departments': 'department'},
+)
 
-@perm_required("insurance", "delete")
-def insurance_delete(request, pk):
-    """删除保险视图"""
-    insurance = get_object_or_404(Insurance, pk=pk)
-    log_operation(request, '保险', '删除', f'[保险]下的记录#{insurance.id}', f'删除保险: {insurance.company_name}')
-    insurance.delete()
-    return redirect('insurance_list')
+insurance_add, insurance_edit = make_form_view(
+    model=Insurance, form_class=InsuranceForm, perm_module='insurance',
+    log_label='保险', display_field='company_name',
+    redirect_name='insurance_list', template_name='records/insurance_form.html',
+    title_add='新增保险', title_edit='编辑保险',
+)
 
-@perm_required("insurance", "read")
-def insurance_export(request):
-    """导出保险到Excel"""
-    insurances = Insurance.objects.all()
-    
-    if not insurances.exists():
-        return HttpResponse('当前无保险记录，无法导出Excel')
-    
-    wb = Workbook()
-    ws = wb.active
-    ws.title = '保险记录'
-    
-    # 表头
-    headers = ['序号', '公司名称', '标题', '单号', '保费', '签发日期', '截止日期', '是否已经到期', '部门', '备注']
-    for col, header in enumerate(headers, 1):
-        ws[get_column_letter(col) + '1'] = header
-    
-    # 数据行
-    for row, insurance in enumerate(insurances, 2):
-        ws[f'A{row}'] = row - 1  # 自增序号
-        ws[f'B{row}'] = insurance.company_name
-        ws[f'C{row}'] = insurance.title
-        ws[f'D{row}'] = insurance.order_number or ''
-        ws[f'E{row}'] = insurance.premium
-        ws[f'F{row}'] = insurance.issue_date.strftime('%Y-%m-%d')
-        ws[f'G{row}'] = insurance.end_date.strftime('%Y-%m-%d')
-        ws[f'H{row}'] = insurance.expired_days
-        ws[f'I{row}'] = insurance.department
-        ws[f'J{row}'] = insurance.remarks or ''
-    
-    # 设置列宽
-    for col in range(1, len(headers) + 1):
-        ws.column_dimensions[get_column_letter(col)].width = 20
-    
-    # 生成文件名（数据库名-YYYYMMDD.xlsx）
-    filename = f'保险记录-{datetime.now().strftime("%Y%m%d")}.xlsx'
-    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    wb.save(response)
-    return response
+insurance_delete = make_delete_view(
+    model=Insurance, perm_module='insurance', label='保险',
+    display_field='company_name', redirect_name='insurance_list',
+)
+
+insurance_export = make_export_view(
+    model=Insurance, perm_module='insurance', sheet_title='保险记录',
+    filename_base='保险记录', empty_text='当前无保险记录，无法导出Excel',
+    headers=['序号', '公司名称', '标题', '单号', '保费', '签发日期', '截止日期', '是否已经到期', '部门', '备注'],
+    row_values=lambda obj, serial: [
+        serial, obj.company_name, obj.title, obj.order_number or '',
+        obj.premium, obj.issue_date.strftime('%Y-%m-%d'), obj.end_date.strftime('%Y-%m-%d'),
+        obj.expired_days, obj.department, obj.remarks or '',
+    ],
+)
 
 
 # 金属价格详情视图
@@ -1507,11 +794,6 @@ def refresh_metal_prices(request):
         })
 
 
-def test_view(request):
-    """测试视图"""
-    return HttpResponse('Hello, World! This is a test view.')
-
-
 @perm_required("data_view", "read")
 def dashboard(request):
     """数据展示看板视图"""
@@ -1525,7 +807,7 @@ def dashboard(request):
     regulations = Regulation.objects.all()
     price_evaluations = PriceEvaluation.objects.all()
     insurances = Insurance.objects.all()
-    daily_records = DailyRecord.objects.all()
+    daily_records = _my_daily_records(request.user)
     
     # 计算统计数据（同一模型的多次 count 合并为一次 aggregate，数值与原逻辑完全一致）
     total_decorations = decorations.count()
@@ -1657,14 +939,8 @@ def dashboard(request):
     # 按时间排序（最近的在前）
     pending_items.sort(key=lambda x: x['created_at'], reverse=True)
     
-    # 近 7 天每日记录数（含今天，升序，缺数的天补 0，共 7 项）
-    # record_date 为 DateTimeField，使用 __date 按天过滤
-    trend_today = timezone.localdate()
-    weekly_trend = []
-    for i in range(6, -1, -1):
-        d = trend_today - timedelta(days=i)
-        c = DailyRecord.objects.filter(record_date__date=d).count()
-        weekly_trend.append({'date': d.strftime('%m-%d'), 'c': c})
+    # 近 7 天每日记录数趋势（含今天，升序，缺数的天补 0，共 7 项）
+    weekly_trend = _weekly_trend(request.user)
 
     context = {
         'total_records': total_records,
@@ -1724,7 +1000,7 @@ def data_download(request):
     regulation_count = Regulation.objects.count()
     price_evaluation_count = PriceEvaluation.objects.count()
     insurance_count = Insurance.objects.count()
-    daily_record_count = DailyRecord.objects.count()
+    daily_record_count = _my_daily_records(request.user).count()
     
     context = {
         'decoration_count': decoration_count,
@@ -1741,188 +1017,44 @@ def data_download(request):
 
 
 # 客诉视图
-@perm_required("complaint", "read")
-def complaint_list(request):
-    """客诉列表视图"""
-    search_term = request.GET.get('search', '')
-    dispute_type_filter = request.GET.get('dispute_type', '')
-    defendant_filter = request.GET.get('defendant', '')
-    case_number_filter = request.GET.get('case_number', '')
-    court_filter = request.GET.get('court', '')
-    lawyer_filter = request.GET.get('lawyer', '')
-    progress_filter = request.GET.get('progress', '')
-    
-    complaints = Complaint.objects.all()
-    
-    # 搜索功能 - 全文搜索
-    if search_term:
-        complaints = complaints.filter(
-            Q(dispute_type__icontains=search_term) |
-            Q(defendant__icontains=search_term) |
-            Q(case_number__icontains=search_term) |
-            Q(court__icontains=search_term) |
-            Q(lawyer__icontains=search_term) |
-            Q(progress__icontains=search_term) |
-            Q(detailed_progress__icontains=search_term) |
-            Q(remarks__icontains=search_term)
-        )
-    
-    # 多条件筛选
-    if dispute_type_filter:
-        complaints = complaints.filter(dispute_type=dispute_type_filter)
-    
-    if defendant_filter:
-        complaints = complaints.filter(defendant__icontains=defendant_filter)
-    
-    if case_number_filter:
-        complaints = complaints.filter(case_number=case_number_filter)
-    
-    if court_filter:
-        complaints = complaints.filter(court=court_filter)
-    
-    if lawyer_filter:
-        complaints = complaints.filter(lawyer=lawyer_filter)
-    
-    if progress_filter:
-        complaints = complaints.filter(progress=progress_filter)
-    
-    # 获取所有纠纷类型列表（去重并排序）
-    dispute_types = sorted(list(set([d.strip() for d in 
-        Complaint.objects.values_list('dispute_type', flat=True) 
-        if d and d.strip()])))
-    
-    # 获取所有受理法院列表（去重并排序）
-    courts = sorted(list(set([c.strip() for c in 
-        Complaint.objects.values_list('court', flat=True) 
-        if c and c.strip()])))
-    
-    # 获取所有代理律师列表（去重并排序）
-    lawyers = sorted(list(set([l.strip() for l in 
-        Complaint.objects.values_list('lawyer', flat=True) 
-        if l and l.strip()])))
-    
-    # 获取所有进度选项
-    progress_choices = [('立案', '立案'), ('审理中', '审理中'), ('判决', '判决'), ('执行', '执行'), ('结案', '结案')]
-    
-    # 分页
-    paginator = Paginator(complaints, _per_page(request))
-    page = request.GET.get('page', 1)
-    complaints = paginator.get_page(page)
-    
-    return render(request, 'records/complaint_list.html', {
-        'complaints': complaints, 
-        'search_term': search_term,
-        'dispute_type_filter': dispute_type_filter,
-        'defendant_filter': defendant_filter,
-        'case_number_filter': case_number_filter,
-        'court_filter': court_filter,
-        'lawyer_filter': lawyer_filter,
-        'progress_filter': progress_filter,
-        'dispute_types': dispute_types,
-        'courts': courts,
-        'lawyers': lawyers,
-        'progress_choices': progress_choices
-    })
+complaint_list = make_list_view(
+    perm_module='complaint', template_name='records/complaint_list.html',
+    page_var='complaints', model=Complaint,
+    search_fields=['dispute_type', 'defendant', 'case_number', 'court', 'lawyer', 'progress', 'detailed_progress', 'remarks'],
+    filters=[
+        ('dispute_type', 'dispute_type'),
+        ('defendant', 'defendant__icontains'),
+        ('case_number', 'case_number'),
+        ('court', 'court'),
+        ('lawyer', 'lawyer'),
+        ('progress', 'progress'),
+    ],
+    filter_options={'dispute_types': 'dispute_type', 'courts': 'court', 'lawyers': 'lawyer'},
+    extra_context={'progress_choices': [('立案', '立案'), ('审理中', '审理中'), ('判决', '判决'), ('执行', '执行'), ('结案', '结案')]},
+)
 
-@perm_required("complaint", "create")
-def complaint_add(request):
-    """新增客诉视图"""
-    from django.http import JsonResponse
-    is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
-    if request.method == 'POST':
-        form = ComplaintForm(request.POST)
-        if form.is_valid():
-            obj = form.save()
-            log_operation(request, '诉讼', '新增', f'[诉讼]下的记录#{obj.id}', f'新增诉讼: {obj.case_number}')
-            if is_ajax:
-                return JsonResponse({'ok': True, 'message': '新增成功'})
-            return redirect('complaint_list')
-        if is_ajax:
-            from django.template.loader import render_to_string
-            html = render_to_string('records/_form_modal.html', {'form': form, 'save_label': '保存记录'}, request=request)
-            return JsonResponse({'ok': False, 'html': html}, status=422)
-    else:
-        form = ComplaintForm()
-    if is_ajax:
-        from django.template.loader import render_to_string
-        html = render_to_string('records/_form_modal.html', {'form': form, 'save_label': '保存记录'}, request=request)
-        return JsonResponse({'ok': True, 'html': html})
-    return render(request, 'records/complaint_form.html', {'form': form, 'title': '新增客诉'})
+# 诉讼留痕模块名为「诉讼」，页面标题为「客诉」（与原实现一致）
+complaint_add, complaint_edit = make_form_view(
+    model=Complaint, form_class=ComplaintForm, perm_module='complaint',
+    log_label='诉讼', display_field='case_number',
+    redirect_name='complaint_list', template_name='records/complaint_form.html',
+    title_add='新增客诉', title_edit='编辑客诉',
+)
 
-@perm_required("complaint", "update")
-def complaint_edit(request, pk):
-    """编辑客诉视图"""
-    from django.http import JsonResponse
-    complaint = get_object_or_404(Complaint, pk=pk)
-    is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
-    if request.method == 'POST':
-        form = ComplaintForm(request.POST, instance=complaint)
-        if form.is_valid():
-            form.save()
-            log_operation(request, '诉讼', '更新', f'[诉讼]下的记录#{complaint.id}', f'编辑诉讼: {complaint.case_number}')
-            if is_ajax:
-                return JsonResponse({'ok': True, 'message': '保存成功'})
-            return redirect('complaint_list')
-        if is_ajax:
-            from django.template.loader import render_to_string
-            html = render_to_string('records/_form_modal.html', {'form': form, 'save_label': '保存修改'}, request=request)
-            return JsonResponse({'ok': False, 'html': html}, status=422)
-    else:
-        form = ComplaintForm(instance=complaint)
-    if is_ajax:
-        from django.template.loader import render_to_string
-        html = render_to_string('records/_form_modal.html', {'form': form, 'save_label': '保存修改'}, request=request)
-        return JsonResponse({'ok': True, 'html': html})
-    return render(request, 'records/complaint_form.html', {'form': form, 'title': '编辑客诉'})
+complaint_delete = make_delete_view(
+    model=Complaint, perm_module='complaint', label='客诉',
+    display_field='case_number', redirect_name='complaint_list',
+)
 
-@perm_required("complaint", "delete")
-def complaint_delete(request, pk):
-    """删除客诉视图"""
-    complaint = get_object_or_404(Complaint, pk=pk)
-    log_operation(request, '诉讼', '删除', f'[诉讼]下的记录#{complaint.id}', f'删除诉讼: {complaint.case_number}')
-    complaint.delete()
-    return redirect('complaint_list')
-
-@perm_required("complaint", "read")
-def complaint_export(request):
-    """导出客诉到Excel"""
-    complaints = Complaint.objects.all()
-    
-    if not complaints.exists():
-        return HttpResponse('当前无客诉记录，无法导出Excel')
-    
-    wb = Workbook()
-    ws = wb.active
-    ws.title = '客诉记录'
-    
-    # 表头
-    headers = ['序号', '纠纷类型', '被告', '案号', '涉案金额（元）', '受理法院', '代理律师', '进度', '详细进度', '备注']
-    for col, header in enumerate(headers, 1):
-        ws[get_column_letter(col) + '1'] = header
-    
-    # 数据行
-    for row, complaint in enumerate(complaints, 2):
-        ws[f'A{row}'] = row - 1  # 自增序号
-        ws[f'B{row}'] = complaint.dispute_type
-        ws[f'C{row}'] = complaint.defendant
-        ws[f'D{row}'] = complaint.case_number
-        ws[f'E{row}'] = complaint.amount
-        ws[f'F{row}'] = complaint.court
-        ws[f'G{row}'] = complaint.lawyer
-        ws[f'H{row}'] = complaint.progress
-        ws[f'I{row}'] = complaint.detailed_progress or ''
-        ws[f'J{row}'] = complaint.remarks or ''
-    
-    # 设置列宽
-    for col in range(1, len(headers) + 1):
-        ws.column_dimensions[get_column_letter(col)].width = 20
-    
-    # 生成文件名（数据库名-YYYYMMDD.xlsx）
-    filename = f'客诉记录-{datetime.now().strftime("%Y%m%d")}.xlsx'
-    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    wb.save(response)
-    return response
+complaint_export = make_export_view(
+    model=Complaint, perm_module='complaint', sheet_title='客诉记录',
+    filename_base='客诉记录', empty_text='当前无客诉记录，无法导出Excel',
+    headers=['序号', '纠纷类型', '被告', '案号', '涉案金额（元）', '受理法院', '代理律师', '进度', '详细进度', '备注'],
+    row_values=lambda obj, serial: [
+        serial, obj.dispute_type, obj.defendant, obj.case_number, obj.amount,
+        obj.court, obj.lawyer, obj.progress, obj.detailed_progress or '', obj.remarks or '',
+    ],
+)
 
 
 @perm_required("decoration", "read")
@@ -1952,44 +1084,21 @@ def complaint_detail(request, pk):
     return render(request, 'records/complaint_detail.html', {'complaint': complaint})
 
 
-@perm_required("system", "read")
-def operation_log_list(request):
-    """操作留痕列表视图"""
-    from .models import OperationLog
-    search_term = request.GET.get('search', '')
-    module_filter = request.GET.get('module_type', '')
-    operation_filter = request.GET.get('operation_type', '')
-
-    logs = OperationLog.objects.all()
-
-    if search_term:
-        logs = logs.filter(
-            Q(operator__icontains=search_term) |
-            Q(object_identifier__icontains=search_term) |
-            Q(change_summary__icontains=search_term)
-        )
-
-    if module_filter:
-        logs = logs.filter(module_type=module_filter)
-
-    if operation_filter:
-        logs = logs.filter(operation_type=operation_filter)
-
-    module_choices = ['每日记录', '装修', '客户账期', '客户客诉', '诉讼', '制度及处罚', '核价', '保险', '金属价格', '数据展示', '数据下载', '知识库']
-    operation_choices = ['新增', '更新', '删除', '编辑']
-
-    paginator = Paginator(logs, 20)
-    page = request.GET.get('page', 1)
-    logs = paginator.get_page(page)
-
-    return render(request, 'records/operation_log_list.html', {
-        'logs': logs,
-        'search_term': search_term,
-        'module_filter': module_filter,
-        'operation_filter': operation_filter,
-        'module_choices': module_choices,
-        'operation_choices': operation_choices,
-    })
+# 操作留痕视图（固定每页 20 条；搜索不剥离空白，筛选值原样过滤）
+operation_log_list = make_list_view(
+    perm_module='system', template_name='records/operation_log_list.html',
+    page_var='logs', model=OperationLog, per_page=20,
+    search_fields=['operator', 'object_identifier', 'change_summary'],
+    filters=[
+        ('module_type', 'module_type', None, 'module_filter'),
+        ('operation_type', 'operation_type', None, 'operation_filter'),
+    ],
+    extra_context={
+        'module_choices': ['每日记录', '装修', '客户账期', '客户客诉', '诉讼',
+                           '制度及处罚', '核价', '保险', '金属价格', '数据展示', '数据下载', '知识库'],
+        'operation_choices': ['新增', '更新', '删除', '编辑'],
+    },
+)
 
 
 @perm_required("price_evaluation", "read")

@@ -10,7 +10,7 @@
     <a href="{% url 'complaint_edit' complaint.id %}" class="btn-transparent" data-modal-edit data-modal-title="编辑诉讼">编辑记录</a>
     {% endcan %}
     {% can "complaint" "delete" %}
-    <a href="{% url 'complaint_delete' complaint.id %}" class="btn-transparent btn-delete" data-confirm="确定要删除这条记录吗？">删除记录</a>
+    <form method="post" action="{% url 'complaint_delete' complaint.id %}" style="display:inline" onsubmit="return confirm('确定要删除这条记录吗？');">{% csrf_token %}<button type="submit" class="btn-transparent btn-delete">删除记录</button></form>
     {% endcan %}
 {% endblock %}
 

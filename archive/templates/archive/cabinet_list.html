@@ -24,21 +24,21 @@
         <table class="table">
             <thead><tr><th>档案柜编号</th><th>所在位置</th><th>层数</th><th>各层格数</th><th>总格子</th><th>已用 / 空位</th><th>存放档案数</th><th>操作</th></tr></thead>
             <tbody>
-            {% for cab in cabinets %}
+            {% for row in rows %}
             <tr>
-                <td><strong>{{ cab.code }}</strong></td>
-                <td>{{ cab.location|default:"—" }}</td>
-                <td>{{ cab.layers }}</td>
-                <td><code>{{ cab.layer_cells_summary }}</code></td>
-                <td>{{ cab.total_cells }}</td>
-                <td>{{ cab.used_cells }} / {{ cab.free_cells }}</td>
-                <td>{{ cab.archive_count }}</td>
+                <td><strong>{{ row.cab.code }}</strong></td>
+                <td>{{ row.cab.location|default:"—" }}</td>
+                <td>{{ row.cab.layers }}</td>
+                <td><code>{{ row.layer_cells_summary }}</code></td>
+                <td>{{ row.total_cells }}</td>
+                <td>{{ row.used_cells }} / {{ row.free_cells }}</td>
+                <td>{{ row.archive_count }}</td>
                 <td>
                     {% can "archive" "update" %}
-                    <a href="{% url 'archive:cabinet_edit' cab.pk %}" class="btn btn-sm btn-outline-secondary" data-modal-edit data-modal-title="编辑档案柜">编辑</a>
+                    <a href="{% url 'archive:cabinet_edit' row.cab.pk %}" class="btn btn-sm btn-outline-secondary" data-modal-edit data-modal-title="编辑档案柜">编辑</a>
                     {% endcan %}
                     {% can "archive" "delete" %}
-                    <a href="{% url 'archive:cabinet_delete' cab.pk %}" class="btn btn-sm btn-outline-danger">删除</a>
+                    <a href="{% url 'archive:cabinet_delete' row.cab.pk %}" class="btn btn-sm btn-outline-danger">删除</a>
                     {% endcan %}
                 </td>
             </tr>

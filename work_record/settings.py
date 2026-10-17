@@ -20,12 +20,37 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-9&=3#@a0f9t77wq1b^q+%b^5h9x5f0p8#k%@v$q&b@y7b4l5e9'
+# SECRET_KEY：优先读环境变量 DJANGO_SECRET_KEY；否则使用项目根目录下的 .secret_key
+# 文件（已加入 .gitignore，不入库），首次运行自动生成。局域网单机部署可 zero-config。
+_key_file = BASE_DIR / '.secret_key'
 
-# SECURITY WARNING: don't run with debug turned on in production!
+
+def _load_secret_key():
+    env_key = os.environ.get('DJANGO_SECRET_KEY')
+    if env_key:
+        return env_key
+    try:
+        existing = _key_file.read_text(encoding='utf-8').strip()
+        if existing:
+            return existing
+    except OSError:
+        pass
+    from django.core.management.utils import get_random_secret_key
+
+    generated = get_random_secret_key()
+    try:
+        _key_file.write_text(generated, encoding='utf-8')
+    except OSError:
+        pass
+    return generated
+
+
+SECRET_KEY = _load_secret_key()
+
+# 当前为局域网单机使用（非生产部署），DEBUG 保持 True；若日后公网/正式部署必须改为 False
 DEBUG = True
 
+# 局域网同网段用户通过本机 IP 访问；'*' 保证 DHCP 变更 IP 后仍可用（非生产环境的取舍）
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '172.17.222.183', '*']
 
 
@@ -103,8 +128,27 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
+        # 局域网多用户并发：提高 SQLite 忙等超时，缓解 database is locked
+        'OPTIONS': {
+            'timeout': 20,
+        },
     }
 }
+
+# SQLite 并发优化：WAL 模式（读写不互斥）+ 忙等超时。
+# 通过 connection_created 信号对每个新连接生效（Django 4.2 不支持 init_command）。
+from django.db.backends.signals import connection_created as _connection_created
+
+
+def _sqlite_concurrency_pragmas(sender, connection, **kwargs):
+    if connection.vendor == 'sqlite':
+        with connection.cursor() as cur:
+            cur.execute('PRAGMA journal_mode=WAL;')
+            cur.execute('PRAGMA busy_timeout=10000;')
+            cur.execute('PRAGMA synchronous=NORMAL;')
+
+
+_connection_created.connect(_sqlite_concurrency_pragmas)
 
 
 # Password validation
@@ -166,6 +210,14 @@ PROOF_ALLOWED_EXT = [
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# 数据备份中心：允许操作的根目录白名单（sysbackup 模块的下载/删除/恢复/扫描/备份目标
+# 均必须落在这些目录之内，防止任意路径读写）。如需备份到项目外的目录（如 D:\backups），
+# 设置环境变量 BACKUP_ALLOWED_ROOTS（Windows 下多个路径用分号分隔）。
+BACKUP_ALLOWED_ROOTS = [
+    str(BASE_DIR),
+    *[p.strip() for p in os.environ.get('BACKUP_ALLOWED_ROOTS', '').split(';') if p.strip()],
+]
+
 # CORS settings
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:8000",
@@ -193,21 +245,26 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 10,
 }
 
-# Logging settings
+# Logging settings：django 内置 logger 降为 INFO（不再逐条落盘 SQL，日志量大幅下降）。
+# 按大小轮转（单文件 5MB，保留 3 份历史）。Windows 下 RotatingFileHandler 的 rename
+# 与运行中服务进程句柄冲突时，SafeRotatingFileHandler 会降级为截断当前文件，日志不中断。
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'handlers': {
         'file': {
-            'level': 'DEBUG',
-            'class': 'logging.FileHandler',
+            'level': 'INFO',
+            'class': 'work_record.log_handlers.SafeRotatingFileHandler',
             'filename': os.path.join(BASE_DIR, 'logs', 'debug.log'),
+            'maxBytes': 5 * 1024 * 1024,
+            'backupCount': 3,
+            'encoding': 'utf-8',
         },
     },
     'loggers': {
         'django': {
             'handlers': ['file'],
-            'level': 'DEBUG',
+            'level': 'INFO',
             'propagate': True,
         },
     },

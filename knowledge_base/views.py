@@ -98,6 +98,30 @@ def document_list(request):
     return render(request, 'knowledge_base/document_list.html', context)
 
 
+# —— XSS 防护：markdown 转换结果经 bleach 白名单过滤后才交给模板 |safe 渲染 ——
+_ALLOWED_TAGS = [
+    "p", "br", "strong", "em", "u", "s", "del", "ins", "h1", "h2", "h3", "h4",
+    "h5", "h6", "ul", "ol", "li", "blockquote", "code", "pre", "hr",
+    "table", "thead", "tbody", "tr", "th", "td",
+    "a", "img", "span", "div", "sup", "sub",
+]
+_ALLOWED_ATTRS = {
+    "a": ["href", "title", "target", "rel"],
+    "img": ["src", "alt", "title", "width", "height"],
+    "th": ["align"], "td": ["align"],
+    "span": ["class"], "div": ["class"], "code": ["class"], "pre": ["class"],
+}
+
+
+def _sanitize_html(html: str) -> str:
+    import bleach
+
+    return bleach.clean(
+        html, tags=_ALLOWED_TAGS, attributes=_ALLOWED_ATTRS,
+        protocols=["http", "https", "mailto"], strip=True,
+    )
+
+
 @perm_required("knowledge", "read")
 def document_detail(request, pk):
     """文档详情"""
@@ -107,15 +131,15 @@ def document_detail(request, pk):
         document.view_count += 1
         document.save()
 
-    # 将Markdown内容转换为HTML
-    document.content_html = markdown.markdown(
+    # 将Markdown内容转换为HTML，并过滤 script/iframe/事件属性等危险内容
+    document.content_html = _sanitize_html(markdown.markdown(
         document.content,
         extensions=[
             'markdown.extensions.extra',
             'markdown.extensions.codehilite',
             'markdown.extensions.toc',
         ]
-    )
+    ))
 
     # 获取相关文档（同分类或同标签）
     related_docs = KnowledgeDocument.objects.filter(

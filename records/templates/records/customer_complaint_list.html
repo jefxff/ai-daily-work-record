@@ -161,7 +161,7 @@
                                 <a href="{% url 'customer_complaint_edit' complaint.id %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑客户客诉">编辑</a>
                                 {% endcan %}
                                 {% can "customer_complaint" "delete" %}
-                                <a href="{% url 'customer_complaint_delete' complaint.id %}" class="btn-transparent btn-sm btn-delete" onclick="return confirm('确定要删除这条记录吗？');">删除</a>
+                                <form method="post" action="{% url 'customer_complaint_delete' complaint.id %}" style="display:inline" onsubmit="return confirm('确定要删除这条记录吗？');">{% csrf_token %}<button type="submit" class="btn-transparent btn-sm btn-delete">删除</button></form>
                                 {% endcan %}
                             </div>
                         </td>

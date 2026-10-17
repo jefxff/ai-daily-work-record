@@ -93,6 +93,68 @@
             </div>
         </div>
     </div>
+
+    <!-- 操作记录 -->
+    <div class="card mt-3 shadow-sm" style="border:none;border-radius:12px;">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                <h6 class="mb-0" style="font-weight:600;">操作记录</h6>
+                <form class="d-flex gap-2 align-items-center flex-wrap" id="logFilterForm">
+                    <input type="date" class="form-control form-control-sm" id="logStart" style="max-width:150px;" title="开始日期">
+                    <span class="text-muted" style="font-size:.8rem;">至</span>
+                    <input type="date" class="form-control form-control-sm" id="logEnd" style="max-width:150px;" title="结束日期">
+                    <button class="btn btn-sm btn-outline-primary text-nowrap" type="submit">查询</button>
+                    <button class="btn btn-sm btn-outline-secondary text-nowrap" type="button" id="btnLogReset">重置</button>
+                </form>
+            </div>
+            <ul class="nav nav-tabs" id="logTabs">
+                <li class="nav-item">
+                    <button type="button" class="nav-link active" data-op-type="">全部 <span class="badge bg-secondary" id="logCountAll">0</span></button>
+                </li>
+                <li class="nav-item">
+                    <button type="button" class="nav-link" data-op-type="backup">备份导出 <span class="badge bg-secondary" id="logCountBackup">0</span></button>
+                </li>
+                <li class="nav-item">
+                    <button type="button" class="nav-link" data-op-type="restore">数据恢复 <span class="badge bg-secondary" id="logCountRestore">0</span></button>
+                </li>
+            </ul>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0" style="font-size:.85rem;">
+                    <thead>
+                        <tr>
+                            <th>操作类型</th>
+                            <th>操作时间</th>
+                            <th>操作人</th>
+                            <th style="min-width:180px;">操作文件标识</th>
+                            <th>操作结果</th>
+                            <th style="min-width:220px;">操作详情</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logTbody">
+                        <tr><td colspan="7" class="text-center text-muted py-4">加载中…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="pagination-info" id="logPager">
+                <span id="logTotalText">共 0 条记录</span>
+                <div>
+                    <form id="logSizeForm" class="d-flex align-items-center gap-1">
+                        <label class="text-muted" style="font-size:.8rem;" for="logPageSize">每页</label>
+                        <select id="logPageSize" class="per-page-select">
+                            <option value="10">10 条</option>
+                            <option value="20">20 条</option>
+                            <option value="50">50 条</option>
+                        </select>
+                    </form>
+                    <ul class="pagination" id="logPagination"></ul>
+                </div>
+            </div>
+            <div class="text-muted mt-1" style="font-size:.76rem;">
+                完整留存全部数据备份导出与数据恢复操作轨迹（含失败记录），数据持久化存储、实时更新。
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- 恢复/删除确认弹窗（本页专属：确认后走 AJAX） -->
@@ -131,10 +193,29 @@
     </div>
 </div>
 
+<!-- 操作记录详情弹窗 -->
+<div id="logDetailBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:12px;max-width:640px;width:94%;padding:1.5rem;">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="mb-0" style="font-weight:700;">操作记录详情</h6>
+            <button type="button" class="btn-close" id="logDetailClose" aria-label="关闭"></button>
+        </div>
+        <div id="logDetailBody" style="font-size:.86rem;"></div>
+        <div class="d-flex justify-content-end mt-3">
+            <button class="btn btn-sm btn-secondary" id="logDetailOk">关 闭</button>
+        </div>
+    </div>
+</div>
+
 <style>
 .table th { background:#fafafa; color:#595959; font-weight:600; white-space:nowrap; }
 .btn-restore { --bs-btn-color:#cf1322; --bs-btn-border-color:#ffa39e; }
 .btn-restore:hover { --bs-btn-color:#fff; --bs-btn-bg:#cf1322; --bs-btn-border-color:#cf1322; }
+#logTabs { margin-left:0; gap:0; border-bottom:1px solid #f0f0f0; }
+#logTabs .nav-link { border:none; border-bottom:2px solid transparent; background:none; color:#595959; padding:.5rem .1rem; margin-right:1.5rem; font-size:.85rem; }
+#logTabs .nav-link:hover { color:#1890ff; background:none; }
+#logTabs .nav-link.active { color:#1890ff; border-bottom-color:#1890ff; background:none; font-weight:500; }
+#logTabs .badge { margin-left:2px; font-weight:400; }
 </style>
 {% endblock %}
 
@@ -177,6 +258,10 @@
     function toast(msg, type) {
         if (window.showToast) window.showToast(msg, type || 'info');
         else alert(msg);
+    }
+    function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; });
     }
 
     /* ---------- 风险确认弹窗 ---------- */
@@ -240,11 +325,13 @@
                 showResult(true, t.message);
                 $('taskClose').textContent = '关 闭';
                 refreshList($('scanDirInput').value);
+                loadLogs();
             } else {
                 showResult(false, t.message);
                 $('taskLogToggle').classList.remove('d-none');
                 $('taskLog').style.display = '';
                 $('taskClose').textContent = '关 闭';
+                loadLogs();
             }
         }).catch(function (e) { showResult(false, '网络错误：' + e); });
     }
@@ -349,8 +436,6 @@
             var tb = $('backupTbody');
             tb.innerHTML = '';
             d.backups.forEach(function (b) {
-                var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
-                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
                 tb.insertAdjacentHTML('beforeend',
                     '<tr data-path="' + esc(b.path) + '" data-name="' + esc(b.name) + '">' +
                     '<td class="text-break" style="font-weight:600;">' + esc(b.name) +
@@ -383,6 +468,159 @@
     });
 
     bindRowButtons();
+
+    /* ---------- 操作记录模块 ---------- */
+    var logState = { page: 1, pageSize: 10, opType: '' };
+
+    function logQueryUrl() {
+        var p = new URLSearchParams();
+        p.set('page', logState.page);
+        p.set('page_size', logState.pageSize);
+        if (logState.opType) p.set('op_type', logState.opType);
+        var s = $('logStart').value.trim(), e = $('logEnd').value.trim();
+        if (s) p.set('start', s);
+        if (e) p.set('end', e);
+        return '/system/backup/oplogs/?' + p.toString();
+    }
+
+    function loadLogs() {
+        apiGet(logQueryUrl()).then(function (d) {
+            if (!d.ok) { toast(d.message || '操作记录加载失败', 'error'); return; }
+            $('logCountAll').textContent = d.stats.all;
+            $('logCountBackup').textContent = d.stats.backup;
+            $('logCountRestore').textContent = d.stats.restore;
+            renderLogs(d.items);
+            renderLogPager(d);
+        }).catch(function (e) {
+            toast('操作记录加载失败：' + (e && e.message ? e.message : e), 'error');
+        });
+    }
+
+    function renderLogs(items) {
+        var tb = $('logTbody');
+        tb.innerHTML = '';
+        if (!items.length) {
+            tb.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">暂无操作记录</td></tr>';
+            return;
+        }
+        items.forEach(function (x, idx) {
+            var typeBadge = x.op_type === 'backup'
+                ? '<span class="badge bg-primary">备份导出</span>'
+                : '<span class="badge bg-warning text-dark">数据恢复</span>';
+            var resultBadge = x.success
+                ? '<span class="badge bg-success">成功</span>'
+                : '<span class="badge bg-danger">失败</span>';
+            var shortDetail = x.detail && x.detail.length > 40 ? x.detail.slice(0, 40) + '…' : (x.detail || '');
+            tb.insertAdjacentHTML('beforeend',
+                '<tr>' +
+                '<td>' + typeBadge + '</td>' +
+                '<td class="text-nowrap">' + esc(x.created_at) + '</td>' +
+                '<td>' + esc(x.operator) + '</td>' +
+                '<td class="text-break">' + (esc(x.file_name) || '—') + '</td>' +
+                '<td>' + resultBadge + '</td>' +
+                '<td class="text-break text-muted" style="max-width:280px;">' + esc(shortDetail) + '</td>' +
+                '<td><button type="button" class="btn btn-sm btn-outline-secondary btn-log-detail" data-idx="' + idx + '">详情</button></td>' +
+                '</tr>');
+        });
+        tb.querySelectorAll('.btn-log-detail').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                showLogDetail(items[parseInt(btn.getAttribute('data-idx'), 10)]);
+            });
+        });
+    }
+
+    function renderLogPager(d) {
+        $('logTotalText').textContent = '共 ' + d.total + ' 条记录，第 ' + d.page + ' / ' + (d.pages || 1) + ' 页';
+        var ul = $('logPagination');
+        ul.innerHTML = '';
+        var pages = d.pages || 1;
+        function mk(label, page, disabled, active) {
+            return '<li class="page-item' + (disabled ? ' disabled' : '') + (active ? ' active' : '') + '">' +
+                '<a class="page-link" href="#" data-page="' + page + '">' + label + '</a></li>';
+        }
+        var win = 2, sp = Math.max(1, d.page - win), ep = Math.min(pages, d.page + win);
+        ul.insertAdjacentHTML('beforeend', mk('«', d.page - 1, d.page <= 1, false));
+        if (sp > 1) {
+            ul.insertAdjacentHTML('beforeend', mk('1', 1, false, d.page === 1));
+            if (sp > 2) ul.insertAdjacentHTML('beforeend', '<li class="page-item disabled"><span class="page-link">…</span></li>');
+        }
+        for (var p = sp; p <= ep; p++) ul.insertAdjacentHTML('beforeend', mk(p, p, false, p === d.page));
+        if (ep < pages) {
+            if (ep < pages - 1) ul.insertAdjacentHTML('beforeend', '<li class="page-item disabled"><span class="page-link">…</span></li>');
+            ul.insertAdjacentHTML('beforeend', mk(pages, pages, false, false));
+        }
+        ul.insertAdjacentHTML('beforeend', mk('»', d.page + 1, d.page >= pages, false));
+        ul.querySelectorAll('a.page-link').forEach(function (a) {
+            a.addEventListener('click', function (e) {
+                e.preventDefault();
+                var pg = parseInt(a.getAttribute('data-page'), 10);
+                if (pg >= 1 && pg <= pages && pg !== logState.page) { logState.page = pg; loadLogs(); }
+            });
+        });
+    }
+
+    function showLogDetail(x) {
+        var resultVal = x.success
+            ? '<span class="badge bg-success">成功</span>'
+            : '<span class="badge bg-danger">失败</span>';
+        var rows = [
+            ['操作类型', esc(x.op_type_text)],
+            ['操作时间', esc(x.created_at)],
+            ['操作人', esc(x.operator)],
+            ['操作文件标识', esc(x.file_name) || '—'],
+            ['操作结果', resultVal],
+            ['文件完整路径', esc(x.file_path) || '—'],
+            ['操作详情', esc(x.detail) || '—'],
+        ];
+        $('logDetailBody').innerHTML = rows.map(function (r) {
+            return '<div class="detail-row"><div class="detail-label">' + r[0] +
+                '</div><div class="detail-value" style="word-break:break-all;">' + r[1] + '</div></div>';
+        }).join('');
+        $('logDetailBackdrop').style.display = 'flex';
+    }
+
+    $('logDetailClose').addEventListener('click', function () { $('logDetailBackdrop').style.display = 'none'; });
+    $('logDetailOk').addEventListener('click', function () { $('logDetailBackdrop').style.display = 'none'; });
+    $('logDetailBackdrop').addEventListener('click', function (e) {
+        if (e.target === this) this.style.display = 'none';
+    });
+
+    // 类型 tab 切换
+    $('logTabs').querySelectorAll('.nav-link').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            $('logTabs').querySelectorAll('.nav-link').forEach(function (b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            logState.opType = btn.getAttribute('data-op-type');
+            logState.page = 1;
+            loadLogs();
+        });
+    });
+
+    // 时间范围查询 / 重置
+    $('logFilterForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        logState.page = 1;
+        loadLogs();
+    });
+    $('btnLogReset').addEventListener('click', function () {
+        $('logStart').value = '';
+        $('logEnd').value = '';
+        $('logTabs').querySelectorAll('.nav-link').forEach(function (b) { b.classList.remove('active'); });
+        var first = $('logTabs').querySelector('.nav-link');
+        if (first) first.classList.add('active');
+        logState.opType = '';
+        logState.page = 1;
+        loadLogs();
+    });
+
+    // 每页条数
+    $('logPageSize').addEventListener('change', function () {
+        logState.pageSize = parseInt(this.value, 10) || 10;
+        logState.page = 1;
+        loadLogs();
+    });
+
+    loadLogs();  // 页面加载时自动拉取最新操作记录
 })();
 </script>
 {% endblock %}

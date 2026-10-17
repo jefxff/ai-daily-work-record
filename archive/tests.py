@@ -320,13 +320,14 @@ class LedgerFlowTests(TestCase):
         self.assertEqual(len(resp.context["page_obj"]), 2)
         self.assertEqual(resp.context["page_obj"].paginator.count, 12)
 
-    def test_ledger_delete_blocked_when_has_archives(self):
-        """台账下有档案时禁止删除；空台账可删除。"""
+    def test_ledger_delete_cascades_archives(self):
+        """台账删除为级联删除：连同其下档案一并删除（需求变更：移除存在档案时的删除拦截）。"""
         ledger = Ledger.objects.create(name="非空台账")
-        Archive.objects.create(code="D001", name="占用档案", ledger=ledger, creator=self.user)
+        arc = Archive.objects.create(code="D001", name="占用档案", ledger=ledger, creator=self.user)
         resp = self.client.post(reverse("archive:ledger_delete", args=[ledger.pk]))
         self.assertEqual(resp.status_code, 302)
-        self.assertTrue(Ledger.objects.filter(pk=ledger.pk).exists())
+        self.assertFalse(Ledger.objects.filter(pk=ledger.pk).exists())
+        self.assertFalse(Archive.objects.filter(pk=arc.pk).exists())
         empty = Ledger.objects.create(name="空台账")
         resp = self.client.post(reverse("archive:ledger_delete", args=[empty.pk]))
         self.assertEqual(resp.status_code, 302)

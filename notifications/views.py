@@ -1,24 +1,48 @@
-"""通知中心视图：列表 / 已读 / 撤回 / 未读接口 / 偏好设置 / 公告推送。
+"""通知中心视图：列表 / 已读 / 撤回 / 未读接口 / 偏好设置 / 公告推送 / 定时任务。
 
 权限码（registry: notifications 模块为只读）：
-- notifications.read：通知中心、未读接口、偏好设置（行级校验保证仅本人数据）
+- notifications.read：通知中心、未读接口、偏好设置、定时任务展示（行级校验保证仅本人数据）
 - system.create：系统公告推送（管理员专属，staff 默认不授予）
 - system.update：撤回（仅触发人本人或超管，行级校验兜底）
+- 定时任务配置/手动执行：仅超级管理员（页面仅超管可见配置入口）
 """
+import datetime
+import functools
+
+from django.conf import settings
 from django.contrib import messages
 from django.http import JsonResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from accounts.decorators import perm_required
 
-from . import services
-from .models import Notification, TEMPLATE_CATEGORIES
+from . import scheduler, services
+from .models import Notification, ScheduledTask, TEMPLATE_CATEGORIES
 
 
 def _is_ajax(request):
     return request.headers.get("x-requested-with") == "XMLHttpRequest"
+
+
+def _superuser_required(view_func):
+    """定时任务配置/执行仅超级管理员可用。"""
+    @functools.wraps(view_func)
+    def _wrapped(request, *args, **kwargs):
+        user = getattr(request, "user", None)
+        if not getattr(user, "is_authenticated", False):
+            if _is_ajax(request):
+                return JsonResponse({"ok": False, "message": "请先登录"}, status=401)
+            from urllib.parse import quote
+
+            return redirect(f"{settings.LOGIN_URL}?next={quote(request.get_full_path(), safe='/?&=')}")
+        if not user.is_superuser:
+            if _is_ajax(request):
+                return JsonResponse({"ok": False, "message": "仅超级管理员可操作"}, status=403)
+            return render(request, "accounts/403.html", status=403)
+        return view_func(request, *args, **kwargs)
+    return _wrapped
 
 
 def _per_page(request, default=10):
@@ -31,7 +55,7 @@ def _per_page(request, default=10):
 
 @perm_required("notifications", "read")
 def notification_list(request):
-    """通知中心列表：仅本人，且不展示已撤回/已过期。"""
+    """通知中心列表：仅本人，且不展示已撤回/已过期；底部展示定时任务状态。"""
     from django.core.paginator import Paginator
 
     qs = services._my_notifications(request.user).exclude(
@@ -50,6 +74,10 @@ def notification_list(request):
     paginator = Paginator(qs, _per_page(request))
     page_obj = paginator.get_page(request.GET.get("page"))
 
+    tasks_ctx = [
+        {"task": task, "next_run_at": scheduler.next_run_at(task)}
+        for task in ScheduledTask.objects.all()
+    ]
     return render(request, "notifications/notification_list.html", {
         "page_obj": page_obj,
         "total": paginator.count,
@@ -59,6 +87,9 @@ def notification_list(request):
         "unread_only": unread_only,
         "categories": TEMPLATE_CATEGORIES,
         "now": timezone.now(),
+        "scheduled_tasks": tasks_ctx,
+        "worker_alive": scheduler.worker_alive(),
+        "scheduler_alive": scheduler.scheduler_alive(),
     })
 
 
@@ -246,3 +277,106 @@ def announce(request):
     return render(request, "notifications/announce_form.html", {
         "form_data": {},
     })
+
+
+# ---- 定时任务（展示于通知中心页面，配置/执行仅超管） ----
+
+def _parse_task_params(code, post):
+    """按任务白名单解析参数；返回 (params, 错误信息)。"""
+    try:
+        if code == "check_expiry_notices":
+            days = int(post.get("days", 7))
+            if not 1 <= days <= 365:
+                return None, "提前提醒天数需在 1~365 之间"
+            return {"days": days}, None
+        if code == "check_daily_incomplete":
+            return {"skip_history": post.get("skip_history") == "on"}, None
+        if code == "notify_expire":
+            purge_days = int(post.get("purge_days", 0))
+            if not 0 <= purge_days <= 3650:
+                return None, "清理天数需在 0~3650 之间（0=不清理）"
+            return {"purge_days": purge_days}, None
+        if code == "notify_stats":
+            return {"check": post.get("check") == "on"}, None
+    except (TypeError, ValueError):
+        return None, "参数格式不正确"
+    return {}, None
+
+
+def _task_summary(message, limit=120):
+    """取执行输出首行作为摘要。"""
+    for line in (message or "").splitlines():
+        line = line.strip()
+        if line:
+            return line[:limit]
+    return "无输出"
+
+
+@_superuser_required
+@require_POST
+def scheduled_task_update(request, pk):
+    """超管配置定时任务：启用开关 / 触发方式 / 执行时间 / 任务参数。"""
+    task = get_object_or_404(ScheduledTask, pk=pk)
+    errors = []
+    enabled = request.POST.get("enabled") == "on"
+    trigger_type = request.POST.get("trigger_type")
+    run_time = None
+    interval_minutes = None
+
+    if trigger_type == ScheduledTask.TriggerType.DAILY:
+        raw = (request.POST.get("run_time") or "").strip()
+        try:
+            run_time = datetime.time.fromisoformat(raw)
+        except ValueError:
+            errors.append("请选择有效的每日执行时间")
+    elif trigger_type == ScheduledTask.TriggerType.INTERVAL:
+        try:
+            interval_minutes = int(request.POST.get("interval_minutes", 0))
+        except (TypeError, ValueError):
+            interval_minutes = 0
+        if not 1 <= interval_minutes <= 7 * 24 * 60:
+            errors.append("间隔分钟数需在 1~10080 之间")
+    else:
+        errors.append("触发方式无效")
+        trigger_type = None
+
+    params, param_error = _parse_task_params(task.code, request.POST)
+    if param_error:
+        errors.append(param_error)
+
+    if errors:
+        if _is_ajax(request):
+            return JsonResponse({"ok": False, "message": "；".join(errors)}, status=422)
+        messages.error(request, "；".join(errors))
+        return redirect("notifications:list")
+
+    task.enabled = enabled
+    task.trigger_type = trigger_type
+    task.run_time = run_time
+    task.interval_minutes = interval_minutes
+    task.params = params
+    task.save(update_fields=[
+        "enabled", "trigger_type", "run_time", "interval_minutes", "params", "updated_at",
+    ])
+    if _is_ajax(request):
+        return JsonResponse({"ok": True, "message": f"「{task.name}」配置已保存"})
+    messages.success(request, f"「{task.name}」配置已保存")
+    return redirect("notifications:list")
+
+
+@_superuser_required
+@require_POST
+def scheduled_task_run(request, pk):
+    """超管手动立即执行一次定时任务（与调度线程共用原子领取，防并发重复）。"""
+    task = get_object_or_404(ScheduledTask, pk=pk)
+    executed, ok, message = scheduler.run_task(task, source="manual")
+    if not executed:
+        if _is_ajax(request):
+            return JsonResponse({"ok": False, "message": message}, status=422)
+        messages.error(request, message)
+        return redirect("notifications:list")
+    summary = f"「{task.name}」执行{'成功' if ok else '失败'}：{_task_summary(message)}"
+    if _is_ajax(request):
+        return JsonResponse({"ok": bool(ok), "message": summary}, status=200 if ok else 422)
+    (messages.success if ok else messages.error)(request, summary)
+    return redirect("notifications:list")

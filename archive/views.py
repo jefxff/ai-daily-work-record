@@ -9,6 +9,7 @@ import io
 import json
 import os
 import re
+from collections import defaultdict
 from datetime import date, datetime, timedelta
 
 from django.contrib import messages
@@ -16,7 +17,7 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.http import FileResponse, HttpResponse, Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
@@ -24,16 +25,16 @@ from django.utils import timezone
 from urllib.parse import quote
 
 from accounts.decorators import perm_required
+from records.crud import _per_page
 from records.models import OperationLog
-from records.views import _per_page
 
 from .forms import (
     ArchiveForm, BorrowForm, CabinetForm, CategoryForm, LedgerForm,
     LicenseForm, AnnualReviewForm, LicenseBorrowForm, validate_archive_file,
 )
 from .models import (
-    AnnualReview, Archive, ArchiveFile, BorrowRecord, Cabinet, Category,
-    Ledger, License, LicenseBorrowRecord, _add_months,
+    AnnualReview, Archive, ArchiveFile, BorrowRecord, Cabinet, CabinetLayer,
+    Category, Ledger, License, LicenseBorrowRecord, _add_months,
 )
 
 
@@ -303,8 +304,9 @@ def ledger_delete(request, pk):
         cnt = lg.archives.count()
         name = lg.name
         _log(request, "删除", f"台账#{lg.id}", f"删除台账: {name}（级联删除档案 {cnt} 份）")
-        lg.archives.all().delete()  # 级联删除台账下全部档案（附件、借出记录随之删除）
-        lg.delete()
+        with transaction.atomic():
+            lg.archives.all().delete()  # 级联删除台账下全部档案（附件、借出记录随之删除）
+            lg.delete()
         if _is_ajax(request):
             return JsonResponse({"ok": True, "message": f"台账已删除（含档案 {cnt} 份）"})
         messages.success(request, f"台账 {name} 已删除（含档案 {cnt} 份）")
@@ -319,11 +321,34 @@ def ledger_delete(request, pk):
 @login_required
 @perm_required("archive", "read")
 def cabinet_list(request):
-    """档案柜列表：编号、位置、各层格数与空位占用一览。"""
-    cabinets = Cabinet.objects.prefetch_related("archives", "layer_configs")
-    for cab in cabinets:
-        cab.archive_count = cab.archives.count()
-    return render(request, "archive/cabinet_list.html", {"cabinets": cabinets})
+    """档案柜列表：编号、位置、各层格数与空位占用一览。
+
+    三批聚合/枚举查询预取数据（层配置、占用格、档案数），
+    替代原逐柜渲染时触发模型属性查询的 N+1；数值口径与模型属性完全一致。
+    """
+    cells_map = defaultdict(list)
+    for row in CabinetLayer.objects.values("cabinet_id", "layer_no", "cells").order_by("cabinet_id", "layer_no"):
+        cells_map[row["cabinet_id"]].append(row["cells"])
+    used_map = defaultdict(set)
+    for cab_id, layer, cell in Archive.objects.values_list("cabinet_id", "layer", "cell"):
+        used_map[cab_id].add((layer, cell))
+    count_map = dict(
+        Archive.objects.values("cabinet_id").annotate(n=Count("id")).values_list("cabinet_id", "n")
+    )
+    rows = []
+    for cab in Cabinet.objects.all():
+        cells = cells_map.get(cab.pk, [])
+        total = sum(cells)
+        used = len(used_map.get(cab.pk, ()))
+        rows.append({
+            "cab": cab,
+            "layer_cells_summary": ",".join(map(str, cells)) if cells else "—",
+            "total_cells": total,
+            "used_cells": used,
+            "free_cells": total - used,
+            "archive_count": count_map.get(cab.pk, 0),
+        })
+    return render(request, "archive/cabinet_list.html", {"rows": rows})
 
 
 def _parse_layer_cells(post, layers, instance=None):
@@ -1043,6 +1068,13 @@ def import_archives(request):
     return redirect("archive:overview")
 
 
+def _csv_safe(v):
+    """CSV 导出防公式注入：'='/'+'/'-'/'@'/Tab 开头的文本会被 Excel 当公式解析。"""
+    if isinstance(v, str) and v[:1] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + v
+    return v
+
+
 @login_required
 @perm_required("archive", "read")
 def export_archives(request):
@@ -1052,12 +1084,12 @@ def export_archives(request):
     writer.writerow(["所属台账", "来源Sheet", "编号", "名称", "档案柜", "位置", "层", "格", "类别", "标签", "创建人", "创建时间"])
     for a in Archive.objects.select_related("cabinet", "category", "creator", "ledger"):
         writer.writerow([
-            a.ledger.name if a.ledger else "", a.source_sheet,
-            a.code, a.name,
-            a.cabinet.code if a.cabinet_id else "", a.cabinet.location if a.cabinet_id else "",
+            _csv_safe(a.ledger.name if a.ledger else ""), _csv_safe(a.source_sheet),
+            _csv_safe(a.code), _csv_safe(a.name),
+            _csv_safe(a.cabinet.code if a.cabinet_id else ""), _csv_safe(a.cabinet.location if a.cabinet_id else ""),
             a.layer if a.layer is not None else "", a.cell if a.cell is not None else "",
-            a.category.name if a.category else "", a.tags,
-            a.creator.username if a.creator else "",
+            _csv_safe(a.category.name if a.category else ""), _csv_safe(a.tags),
+            _csv_safe(a.creator.username if a.creator else ""),
             a.created_at.strftime("%Y-%m-%d %H:%M"),
         ])
     _log(request, "导出", "档案清单导出", "导出全部档案清单")

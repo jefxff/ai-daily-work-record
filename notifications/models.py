@@ -208,6 +208,67 @@ class NotificationPreference(models.Model):
         return self.quiet_start <= now_time <= self.quiet_end
 
 
+class ScheduledTask(models.Model):
+    """通知定时任务配置（超管在通知中心页面维护）。
+
+    进程内调度器（scheduler.py）随 web 进程启动，按触发配置执行对应
+    management command；执行结果持久化在本表，通知中心页面直接展示。
+    last_status：idle 未执行 / running 执行中 / success / fail。
+    """
+
+    class TriggerType(models.TextChoices):
+        DAILY = "daily", "每天定时"
+        INTERVAL = "interval", "固定间隔"
+
+    code = models.CharField("命令编码", max_length=50, unique=True)
+    name = models.CharField("任务名称", max_length=100)
+    description = models.CharField("用途说明", max_length=200, blank=True, default="")
+    enabled = models.BooleanField("启用", default=False)
+    trigger_type = models.CharField(
+        "触发方式", max_length=10, choices=TriggerType.choices,
+        default=TriggerType.DAILY,
+    )
+    run_time = models.TimeField("每日执行时间", null=True, blank=True)
+    interval_minutes = models.IntegerField("间隔分钟数", null=True, blank=True)
+    params = models.JSONField("任务参数", default=dict, blank=True)
+    last_run_at = models.DateTimeField("上次执行时间", null=True, blank=True)
+    last_status = models.CharField("上次执行状态", max_length=10, default="idle")
+    last_message = models.TextField("上次执行结果", blank=True, default="")
+    last_duration_ms = models.IntegerField("上次耗时(ms)", null=True, blank=True)
+    created_at = models.DateTimeField("创建时间", auto_now_add=True)
+    updated_at = models.DateTimeField("更新时间", auto_now=True)
+
+    class Meta:
+        verbose_name = "通知定时任务"
+        verbose_name_plural = verbose_name
+        ordering = ["code"]
+
+    STATUS_BADGES = {
+        "idle": "default", "running": "info", "success": "success", "fail": "danger",
+    }
+
+    def __str__(self):
+        return f"{self.name} ({self.code})"
+
+    @property
+    def status_badge_class(self):
+        return self.STATUS_BADGES.get(self.last_status, "default")
+
+    @property
+    def trigger_display(self):
+        if self.trigger_type == self.TriggerType.DAILY and self.run_time:
+            return f"每天 {self.run_time.strftime('%H:%M')}"
+        if self.trigger_type == self.TriggerType.INTERVAL and self.interval_minutes:
+            return f"每 {self.interval_minutes} 分钟"
+        return "未配置"
+
+    @property
+    def params_display(self):
+        if not self.params:
+            return "—"
+        return "，".join(f"{k}={v}" for k, v in self.params.items())
+
+
 class NotificationDelivery(models.Model):
     """发送渠道日志：一条通知 × 一个渠道一行（重试时累计 attempts）。"""
 

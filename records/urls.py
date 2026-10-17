@@ -76,13 +76,10 @@ urlpatterns = [
     path('complaint/edit/<int:pk>/', views.complaint_edit, name='complaint_edit'),
     path('complaint/delete/<int:pk>/', views.complaint_delete, name='complaint_delete'),
     path('complaint/export/', views.complaint_export, name='complaint_export'),
-    
-    # 测试视图
-    path('test/', views.test_view, name='test_view'),
-    
+
     # 数据展示看板
     path('dashboard/', views.dashboard, name='dashboard'),
-    
+
     # 数据下载页面
     path('data_download/', views.data_download, name='data_download'),
 

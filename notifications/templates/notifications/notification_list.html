@@ -36,6 +36,36 @@
     .notif-detail-meta .meta-chip.high { background: #fff1f0; color: #f5222d; }
     .notif-detail-content { color: #1f2329; font-size: 0.9rem; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
     .notif-detail-actions { padding: 0.875rem 1.25rem; border-top: 1px solid #f0f0f0; display: flex; gap: 0.75rem; justify-content: flex-end; background: #fafafa; border-radius: 0 0 8px 8px; flex-shrink: 0; }
+
+    /* 定时任务展示区 */
+    .sched-header { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; padding: 14px 24px; border-bottom: 1px solid #f0f0f0; }
+    .sched-header h3 { margin: 0; font-size: 1rem; font-weight: 600; color: #1f2329; display: flex; align-items: center; gap: 0.5rem; }
+    .sched-thread-badges { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .sched-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .sched-table th { text-align: left; padding: 10px 12px; color: #8c8c8c; font-weight: 500; border-bottom: 1px solid #f0f0f0; white-space: nowrap; }
+    .sched-table td { padding: 12px; border-bottom: 1px solid #f7f7f7; vertical-align: top; color: #595959; }
+    .sched-table tr:last-child td { border-bottom: none; }
+    .sched-task-name { font-weight: 600; color: #1f2329; }
+    .sched-task-desc { color: #8c8c8c; font-size: 0.78rem; margin-top: 2px; }
+    .sched-msg { max-width: 360px; white-space: pre-wrap; word-break: break-word; font-size: 0.78rem; }
+    .sched-actions { display: flex; gap: 0.5rem; white-space: nowrap; }
+
+    /* 定时任务配置弹窗 */
+    .sched-config-backdrop { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.45); z-index: 10002; display: none; align-items: flex-start; justify-content: center; padding: 8vh 1rem 2rem; overflow-y: auto; }
+    .sched-config-backdrop.show { display: flex; }
+    .sched-config-modal { background: #fff; border-radius: 8px; width: 480px; max-width: 96vw; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18); display: flex; flex-direction: column; max-height: 80vh; }
+    .sched-config-header { display: flex; align-items: center; justify-content: space-between; padding: 0.875rem 1.25rem; border-bottom: 1px solid #f0f0f0; flex-shrink: 0; }
+    .sched-config-title { font-size: 1rem; font-weight: 600; color: #1f2329; margin: 0; }
+    .sched-config-close { background: none; border: none; cursor: pointer; color: #8c8c8c; padding: 0.25rem; border-radius: 4px; line-height: 1; font-size: 1.5rem; }
+    .sched-config-close:hover { color: #595959; background: #f5f5f5; }
+    .sched-config-body { padding: 1rem 1.25rem; overflow-y: auto; flex: 1; }
+    .sched-config-field { margin-bottom: 0.875rem; }
+    .sched-config-field > label { display: block; font-size: 0.82rem; color: #595959; margin-bottom: 4px; }
+    .sched-config-field input[type="time"], .sched-config-field input[type="number"], .sched-config-field select {
+        width: 100%; padding: 7px 10px; border: 1px solid #d9d9d9; border-radius: 6px; font-size: 0.875rem; box-sizing: border-box;
+    }
+    .sched-config-check { display: flex; align-items: center; gap: 6px; font-size: 0.875rem; color: #1f2329; }
+    .sched-config-footer { padding: 0.875rem 1.25rem; border-top: 1px solid #f0f0f0; display: flex; gap: 0.75rem; justify-content: flex-end; background: #fafafa; border-radius: 0 0 8px 8px; flex-shrink: 0; }
 </style>
 {% endblock %}
 
@@ -53,6 +83,99 @@
             <button type="submit" class="btn-transparent" {% if unread_count == 0 %}disabled style="opacity:.5;"{% endif %}>全部已读</button>
         </form>
     </div>
+</div>
+
+<!-- 定时任务展示区 -->
+<div class="table-container" style="margin-bottom: 1.25rem;">
+    <div class="sched-header">
+        <h3>⏰ 定时任务</h3>
+        <div class="sched-thread-badges">
+            <span class="status-badge {{ worker_alive|yesno:'success,danger' }}" title="站内/邮件队列发送线程（随服务进程自动运行）">后台发送线程：{{ worker_alive|yesno:'运行中,未运行' }}</span>
+            <span class="status-badge {{ scheduler_alive|yesno:'success,danger' }}" title="定时任务调度线程（随服务进程自动运行）">定时调度：{{ scheduler_alive|yesno:'运行中,未运行' }}</span>
+        </div>
+    </div>
+    <table class="sched-table">
+        <thead>
+            <tr>
+                <th>任务</th>
+                <th>触发方式</th>
+                <th>参数</th>
+                <th>状态</th>
+                <th>上次执行</th>
+                <th>结果摘要</th>
+                <th>下次预计</th>
+                {% if request.user.is_superuser %}<th>操作</th>{% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in scheduled_tasks %}
+            <tr>
+                <td>
+                    <div class="sched-task-name">{{ item.task.name }}</div>
+                    <div class="sched-task-desc">{{ item.task.description }}</div>
+                </td>
+                <td>{{ item.task.trigger_display }}</td>
+                <td>{{ item.task.params_display }}</td>
+                <td>
+                    {% if item.task.enabled %}
+                    <span class="status-badge success">已启用</span>
+                    {% else %}
+                    <span class="status-badge default">已停用</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if item.task.last_run_at %}
+                    {{ item.task.last_run_at|date:"m-d H:i" }}
+                    {% if item.task.last_status == 'running' %}
+                    <span class="status-badge info">执行中</span>
+                    {% elif item.task.last_status == 'success' %}
+                    <span class="status-badge success">成功</span>
+                    {% elif item.task.last_status == 'fail' %}
+                    <span class="status-badge danger">失败</span>
+                    {% endif %}
+                    {% if item.task.last_duration_ms %}<div class="sched-task-desc">耗时 {{ item.task.last_duration_ms }}ms</div>{% endif %}
+                    {% else %}
+                    <span class="sched-task-desc">从未执行</span>
+                    {% endif %}
+                </td>
+                <td><div class="sched-msg" {% if item.task.last_message %}title="{{ item.task.last_message }}"{% endif %}>{{ item.task.last_message|truncatechars:80|default:"—" }}</div></td>
+                <td>
+                    {% if not item.task.enabled %}—
+                    {% elif item.next_run_at and item.next_run_at <= now %}<span style="color:#fa8c16;">即将执行</span>
+                    {% elif item.next_run_at %}{{ item.next_run_at|date:"m-d H:i" }}
+                    {% else %}—{% endif %}
+                </td>
+                {% if request.user.is_superuser %}
+                <td>
+                    <div class="sched-actions">
+                        <form method="post" action="{% url 'notifications:task_run' item.task.pk %}" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-transparent btn-sm"
+                               {% if item.task.last_status == 'running' %}disabled style="opacity:.5;"{% endif %}
+                               data-confirm="确定立即执行「{{ item.task.name }}」吗？">立即执行</button>
+                        </form>
+                        <button type="button" class="btn-secondary btn-sm sched-config-btn"
+                           data-url="{% url 'notifications:task_update' item.task.pk %}"
+                           data-name="{{ item.task.name }}"
+                           data-code="{{ item.task.code }}"
+                           data-enabled="{% if item.task.enabled %}1{% endif %}"
+                           data-trigger="{{ item.task.trigger_type }}"
+                           data-run-time="{% if item.task.run_time %}{{ item.task.run_time|time:'H:i' }}{% endif %}"
+                           data-interval="{{ item.task.interval_minutes|default_if_none:'' }}"
+                           data-days="{{ item.task.params.days|default_if_none:'' }}"
+                           data-skip-history="{% if item.task.params.skip_history %}1{% endif %}"
+                           data-purge-days="{{ item.task.params.purge_days|default_if_none:'' }}"
+                           data-check="{% if item.task.params.check %}1{% endif %}"
+                           onclick="openTaskConfig(this)">配置</button>
+                    </div>
+                </td>
+                {% endif %}
+            </tr>
+            {% empty %}
+            <tr><td colspan="8" style="text-align:center;color:#8c8c8c;padding:24px;">暂无定时任务</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
 
 <div class="filter-chips" style="margin-bottom: 1rem;">
@@ -167,6 +290,63 @@
 </div>
 {% endif %}
 
+<!-- 定时任务配置弹窗（仅超管） -->
+{% if request.user.is_superuser %}
+<div class="sched-config-backdrop" id="schedConfigBackdrop">
+    <div class="sched-config-modal" role="dialog" aria-modal="true">
+        <div class="sched-config-header">
+            <h3 class="sched-config-title" id="schedConfigTitle">配置定时任务</h3>
+            <button type="button" class="sched-config-close" id="schedConfigClose" aria-label="关闭">×</button>
+        </div>
+        <form method="post" id="schedConfigForm">
+            {% csrf_token %}
+            <div class="sched-config-body">
+                <div class="sched-config-field">
+                    <label>任务</label>
+                    <div id="schedConfigName" style="font-size:0.875rem;color:#1f2329;"></div>
+                </div>
+                <div class="sched-config-field">
+                    <label class="sched-config-check"><input type="checkbox" name="enabled" id="schedEnabled"> 启用该任务</label>
+                </div>
+                <div class="sched-config-field">
+                    <label>触发方式</label>
+                    <select name="trigger_type" id="schedTriggerType">
+                        <option value="daily">每天定时</option>
+                        <option value="interval">固定间隔（分钟）</option>
+                    </select>
+                </div>
+                <div class="sched-config-field" id="schedRunTimeField">
+                    <label>每日执行时间</label>
+                    <input type="time" name="run_time" id="schedRunTime">
+                </div>
+                <div class="sched-config-field" id="schedIntervalField" style="display:none;">
+                    <label>执行间隔（分钟，1~10080）</label>
+                    <input type="number" name="interval_minutes" id="schedInterval" min="1" max="10080">
+                </div>
+                <div class="sched-config-field" id="schedParamDays" style="display:none;">
+                    <label>提前提醒天数（1~365）</label>
+                    <input type="number" name="days" id="schedDays" min="1" max="365">
+                </div>
+                <div class="sched-config-field" id="schedParamSkipHistory" style="display:none;">
+                    <label class="sched-config-check"><input type="checkbox" name="skip_history" id="schedSkipHistory"> 跳过「过期未完成记录」提醒（仅扫描当日缺失）</label>
+                </div>
+                <div class="sched-config-field" id="schedParamPurgeDays" style="display:none;">
+                    <label>历史清理天数（0=不清理，删除 N 天前已读/作废通知）</label>
+                    <input type="number" name="purge_days" id="schedPurgeDays" min="0" max="3650">
+                </div>
+                <div class="sched-config-field" id="schedParamCheck" style="display:none;">
+                    <label class="sched-config-check"><input type="checkbox" name="check" id="schedCheck"> 启用阈值检查（越限时告警超管）</label>
+                </div>
+            </div>
+            <div class="sched-config-footer">
+                <button type="button" class="btn-transparent" id="schedConfigCancel">取消</button>
+                <button type="submit" class="btn-primary">保存配置</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
 <!-- 通知详情弹窗 -->
 <div class="notif-detail-backdrop" id="notifDetailBackdrop">
     <div class="notif-detail-modal" role="dialog" aria-modal="true">
@@ -258,6 +438,64 @@
         backdrop.addEventListener('click', function (e) { if (e.target === backdrop) closeModal(); });
         document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
         updateHint();
+    })();
+
+    // 定时任务配置弹窗（仅超管）
+    (function () {
+        var backdrop = document.getElementById('schedConfigBackdrop');
+        if (!backdrop) return;
+        var form = document.getElementById('schedConfigForm');
+        var nameEl = document.getElementById('schedConfigName');
+        var enabledEl = document.getElementById('schedEnabled');
+        var triggerEl = document.getElementById('schedTriggerType');
+        var runTimeField = document.getElementById('schedRunTimeField');
+        var intervalField = document.getElementById('schedIntervalField');
+        var runTimeEl = document.getElementById('schedRunTime');
+        var intervalEl = document.getElementById('schedInterval');
+        var paramDays = document.getElementById('schedParamDays');
+        var paramSkip = document.getElementById('schedParamSkipHistory');
+        var paramPurge = document.getElementById('schedParamPurgeDays');
+        var paramCheck = document.getElementById('schedParamCheck');
+        var daysEl = document.getElementById('schedDays');
+        var skipEl = document.getElementById('schedSkipHistory');
+        var purgeEl = document.getElementById('schedPurgeDays');
+        var checkEl = document.getElementById('schedCheck');
+
+        function refreshTriggerFields() {
+            var isDaily = triggerEl.value === 'daily';
+            runTimeField.style.display = isDaily ? '' : 'none';
+            intervalField.style.display = isDaily ? 'none' : '';
+        }
+
+        // 按任务编码显示对应的参数项
+        function setParamFields(code) {
+            paramDays.style.display = code === 'check_expiry_notices' ? '' : 'none';
+            paramSkip.style.display = code === 'check_daily_incomplete' ? '' : 'none';
+            paramPurge.style.display = code === 'notify_expire' ? '' : 'none';
+            paramCheck.style.display = code === 'notify_stats' ? '' : 'none';
+        }
+
+        window.openTaskConfig = function (el) {
+            form.setAttribute('action', el.getAttribute('data-url'));
+            nameEl.textContent = el.getAttribute('data-name') + '（' + el.getAttribute('data-code') + '）';
+            enabledEl.checked = !!el.getAttribute('data-enabled');
+            triggerEl.value = el.getAttribute('data-trigger') || 'daily';
+            runTimeEl.value = el.getAttribute('data-run-time') || '';
+            intervalEl.value = el.getAttribute('data-interval') || '';
+            daysEl.value = el.getAttribute('data-days') || '';
+            skipEl.checked = el.getAttribute('data-skip-history') === '1';
+            purgeEl.value = el.getAttribute('data-purge-days') || '';
+            checkEl.checked = el.getAttribute('data-check') === '1';
+            setParamFields(el.getAttribute('data-code'));
+            refreshTriggerFields();
+            backdrop.classList.add('show');
+        };
+
+        triggerEl.addEventListener('change', refreshTriggerFields);
+        document.getElementById('schedConfigClose').addEventListener('click', function () { backdrop.classList.remove('show'); });
+        document.getElementById('schedConfigCancel').addEventListener('click', function () { backdrop.classList.remove('show'); });
+        backdrop.addEventListener('click', function (e) { if (e.target === backdrop) backdrop.classList.remove('show'); });
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') backdrop.classList.remove('show'); });
     })();
 </script>
 {% endblock %}

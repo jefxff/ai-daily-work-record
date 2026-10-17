@@ -6,12 +6,16 @@ from rest_framework.pagination import PageNumberPagination
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Q
 from datetime import datetime, timedelta
+import logging
 
 from accounts.services import has_perm
+from records.audit import log_operation
 from samples.services import (
     create_partner, create_sample, create_test_record, create_batch_record,
-    BusinessError,
+    BusinessError, client_ip,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _can(user, module, action):
@@ -33,6 +37,80 @@ class EnhancedModelViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     # RBAC 模块 key（accounts.registry）；子类必须按业务模块覆盖
     perm_module = None
+
+    # ---- 操作留痕配置（AI API 的更新/删除属静默写通道，必须留痕）----
+    # audit_store: 留痕存储，'records' -> records.OperationLog（records/archive/knowledge 模块）
+    #              'samples' -> samples.OperationLog（samples 模块使用独立留痕表）
+    # audit_label:        留痕模块名（与页面端留痕一致，如 '每日记录'），为空回退 perm_module
+    # audit_object_name:  留痕对象类型名（如 '台账'），为空则用 audit_label
+    # audit_display_field:留痕摘要中引用的展示字段（与页面端 display_field 一致）
+    # audit_style:        标识符风格，'bracket' -> '[模块]下的记录#id'（records 模块）
+    #                     'plain' -> '对象#id'（archive/knowledge 页面端既有风格）
+    audit_store = 'records'
+    audit_label = None
+    audit_object_name = None
+    audit_display_field = None
+    audit_style = 'bracket'
+
+    def _audit_label(self):
+        return self.audit_label or self.perm_module or '未知模块'
+
+    def _audit_display(self, obj):
+        if self.audit_display_field:
+            value = getattr(obj, self.audit_display_field, None)
+            if value:
+                return str(value)
+        return f'ID {obj.pk}'
+
+    def _audit_operator(self):
+        user = self.request.user
+        if user.is_authenticated:
+            return user.get_username()
+        # 未登录请求 fallback 到 IP（与 records.audit 语义一致）
+        xff = self.request.META.get('HTTP_X_FORWARDED_FOR')
+        if xff:
+            return xff.split(',')[0].strip()
+        return self.request.META.get('REMOTE_ADDR', '未知')
+
+    def _write_audit(self, op_type, obj_id, summary):
+        """写入操作留痕；留痕失败仅记日志，不影响 API 主流程。"""
+        try:
+            label = self._audit_label()
+            obj_name = self.audit_object_name or label
+            if self.audit_store == 'samples':
+                from samples.models import OperationLog as SampleOperationLog
+                SampleOperationLog.objects.create(
+                    action=(SampleOperationLog.Action.UPDATE if op_type == '更新'
+                            else SampleOperationLog.Action.DELETE),
+                    target_type=label,
+                    target_repr=f'{obj_name}#{obj_id}',
+                    summary=summary,
+                    operator=self._audit_operator(),
+                    ip=client_ip(self.request),
+                )
+            else:
+                if self.audit_style == 'plain':
+                    identifier = f'{obj_name}#{obj_id}'
+                else:
+                    identifier = f'[{label}]下的记录#{obj_id}'
+                log_operation(self.request, label, op_type, identifier, summary)
+        except Exception:
+            logger.exception('AI API 操作留痕写入失败（%s %s#%s）',
+                             op_type, self.audit_label or self.perm_module, obj_id)
+
+    def perform_update(self, serializer):
+        obj = serializer.save()
+        label = self._audit_label()
+        display = self._audit_display(obj)
+        self._write_audit('更新', obj.pk, f'编辑{label}: {display}')
+
+    def perform_destroy(self, instance):
+        # delete() 会将实例 pk 置 None，须先取出再删除（与页面端删除留痕一致）
+        obj_id = instance.pk
+        display = self._audit_display(instance)
+        label = self._audit_label()
+        instance.delete()
+        self._write_audit('删除', obj_id, f'删除{label}: {display}')
 
     def get_queryset(self):
         """重写查询集以支持过滤"""
@@ -122,6 +200,8 @@ from .serializers import (
 class DecorationViewSet(EnhancedModelViewSet):
     """装修记录 API"""
     perm_module = 'decoration'
+    audit_label = '装修'
+    audit_display_field = 'project_name'
     queryset = Decoration.objects.all()
     serializer_class = DecorationSerializer
     search_fields = ['project_name', 'constructor', 'project_address']
@@ -131,6 +211,8 @@ class DecorationViewSet(EnhancedModelViewSet):
 class CustomerCreditViewSet(EnhancedModelViewSet):
     """客户账期 API"""
     perm_module = 'customer_credit'
+    audit_label = '客户账期'
+    audit_display_field = 'customer_name'
     queryset = CustomerCredit.objects.all()
     serializer_class = CustomerCreditSerializer
     search_fields = ['customer_name', 'salesperson', 'work_content', 'specific_content']
@@ -140,6 +222,8 @@ class CustomerCreditViewSet(EnhancedModelViewSet):
 class CustomerComplaintViewSet(EnhancedModelViewSet):
     """客户客诉 API"""
     perm_module = 'customer_complaint'
+    audit_label = '客户客诉'
+    audit_display_field = 'customer_name'
     queryset = CustomerComplaint.objects.all()
     serializer_class = CustomerComplaintSerializer
     search_fields = ['customer_name', 'responsible_salesperson', 'terminal_customer', 'product_model']
@@ -149,6 +233,8 @@ class CustomerComplaintViewSet(EnhancedModelViewSet):
 class RegulationViewSet(EnhancedModelViewSet):
     """制度及处罚 API"""
     perm_module = 'regulation'
+    audit_label = '制度及处罚'
+    audit_display_field = 'title'
     queryset = Regulation.objects.all()
     serializer_class = RegulationSerializer
     search_fields = ['title', 'content', 'doc_no']
@@ -158,6 +244,8 @@ class RegulationViewSet(EnhancedModelViewSet):
 class PriceEvaluationViewSet(EnhancedModelViewSet):
     """核价 API"""
     perm_module = 'price_evaluation'
+    audit_label = '核价'
+    audit_display_field = 'project_category'
     queryset = PriceEvaluation.objects.all()
     serializer_class = PriceEvaluationSerializer
     search_fields = ['project_category', 'proposing_department', 'proposer', 'evaluation_content']
@@ -167,6 +255,8 @@ class PriceEvaluationViewSet(EnhancedModelViewSet):
 class DailyRecordViewSet(EnhancedModelViewSet):
     """每日记录 API（数据隔离：仅返回/操作当前用户的记录）"""
     perm_module = 'daily_record'
+    audit_label = '每日记录'
+    audit_display_field = 'work_content'
     queryset = DailyRecord.objects.all()
     serializer_class = DailyRecordSerializer
     search_fields = ['department', 'work_content']
@@ -184,6 +274,8 @@ class DailyRecordViewSet(EnhancedModelViewSet):
 class MetalPriceViewSet(EnhancedModelViewSet):
     """金属价格 API（registry 仅授予 read/update，故普通角色无法 create/destroy）"""
     perm_module = 'metal_price'
+    audit_label = '金属价格'
+    audit_display_field = 'metal_name'
     queryset = MetalPrice.objects.all()
     serializer_class = MetalPriceSerializer
     search_fields = ['metal_name', 'unit']
@@ -193,6 +285,8 @@ class MetalPriceViewSet(EnhancedModelViewSet):
 class InsuranceViewSet(EnhancedModelViewSet):
     """保险 API"""
     perm_module = 'insurance'
+    audit_label = '保险'
+    audit_display_field = 'title'
     queryset = Insurance.objects.all()
     serializer_class = InsuranceSerializer
     search_fields = ['company_name', 'title', 'order_number', 'department']
@@ -202,6 +296,8 @@ class InsuranceViewSet(EnhancedModelViewSet):
 class ComplaintViewSet(EnhancedModelViewSet):
     """客诉 API"""
     perm_module = 'complaint'
+    audit_label = '客诉'
+    audit_display_field = 'case_number'
     queryset = Complaint.objects.all()
     serializer_class = ComplaintSerializer
     search_fields = ['dispute_type', 'defendant', 'case_number', 'court', 'lawyer']
@@ -213,6 +309,9 @@ class ComplaintViewSet(EnhancedModelViewSet):
 class PartnerViewSet(EnhancedModelViewSet):
     """供应商档案 API"""
     perm_module = 'samples'
+    audit_store = 'samples'
+    audit_label = '供应商档案'
+    audit_display_field = 'name'
     queryset = Partner.objects.all()
     serializer_class = PartnerSerializer
     search_fields = ['partner_code', 'name', 'contact_person', 'contact_info']
@@ -222,6 +321,9 @@ class PartnerViewSet(EnhancedModelViewSet):
 class SampleViewSet(EnhancedModelViewSet):
     """样品主档 API（不含已软删除样品；删除请走页面软删除流程）"""
     perm_module = 'samples'
+    audit_store = 'samples'
+    audit_label = '样品主档'
+    audit_display_field = 'sample_no'
     queryset = Sample.objects.filter(is_deleted=False)
     serializer_class = SampleSerializer
     search_fields = ['sample_no', 'material_name', 'model', 'spec', 'registrar']
@@ -231,6 +333,9 @@ class SampleViewSet(EnhancedModelViewSet):
 class TestRecordViewSet(EnhancedModelViewSet):
     """试样记录 API"""
     perm_module = 'samples'
+    audit_store = 'samples'
+    audit_label = '试样记录'
+    audit_display_field = 'test_no'
     queryset = TestRecord.objects.all()
     serializer_class = TestRecordSerializer
     search_fields = ['test_no', 'test_result', 'report_code', 'operator', 'package_type']
@@ -240,6 +345,9 @@ class TestRecordViewSet(EnhancedModelViewSet):
 class BatchRecordViewSet(EnhancedModelViewSet):
     """小批量记录 API"""
     perm_module = 'samples'
+    audit_store = 'samples'
+    audit_label = '小批量记录'
+    audit_display_field = 'batch_no'
     queryset = BatchRecord.objects.all()
     serializer_class = BatchRecordSerializer
     search_fields = ['batch_no', 'alternative_model', 'operator', 'remark']
@@ -249,6 +357,9 @@ class BatchRecordViewSet(EnhancedModelViewSet):
 class AuditRecordViewSet(EnhancedModelViewSet):
     """审厂记录 API（附件上传走页面）"""
     perm_module = 'samples'
+    audit_store = 'samples'
+    audit_label = '审厂记录'
+    audit_display_field = 'audit_no'
     queryset = AuditRecord.objects.all()
     serializer_class = AuditRecordSerializer
     search_fields = ['audit_no', 'audit_remark', 'auditor']
@@ -260,6 +371,10 @@ class AuditRecordViewSet(EnhancedModelViewSet):
 class CabinetViewSet(EnhancedModelViewSet):
     """档案柜 API（层格配置请走页面，AI 创建后需补充层配置）"""
     perm_module = 'archive'
+    audit_label = '档案管理'
+    audit_object_name = '档案柜'
+    audit_display_field = 'code'
+    audit_style = 'plain'
     queryset = Cabinet.objects.all()
     serializer_class = CabinetSerializer
     search_fields = ['code', 'location']
@@ -269,6 +384,10 @@ class CabinetViewSet(EnhancedModelViewSet):
 class ArchiveCategoryViewSet(EnhancedModelViewSet):
     """档案类别 API"""
     perm_module = 'archive'
+    audit_label = '档案管理'
+    audit_object_name = '类别'
+    audit_display_field = 'name'
+    audit_style = 'plain'
     queryset = ArchiveCategory.objects.all()
     serializer_class = ArchiveCategorySerializer
     search_fields = ['name']
@@ -278,6 +397,10 @@ class ArchiveCategoryViewSet(EnhancedModelViewSet):
 class LedgerViewSet(EnhancedModelViewSet):
     """台账 API"""
     perm_module = 'archive'
+    audit_label = '档案管理'
+    audit_object_name = '台账'
+    audit_display_field = 'name'
+    audit_style = 'plain'
     queryset = Ledger.objects.all()
     serializer_class = LedgerSerializer
     search_fields = ['name', 'description']
@@ -287,6 +410,10 @@ class LedgerViewSet(EnhancedModelViewSet):
 class ArchiveViewSet(EnhancedModelViewSet):
     """档案 API"""
     perm_module = 'archive'
+    audit_label = '档案管理'
+    audit_object_name = '档案'
+    audit_display_field = 'code'
+    audit_style = 'plain'
     queryset = Archive.objects.all()
     serializer_class = ArchiveSerializer
     search_fields = [
@@ -308,6 +435,10 @@ class BorrowRecordViewSet(ReadOnlyEnhancedViewSet):
 class LicenseViewSet(EnhancedModelViewSet):
     """证照 API"""
     perm_module = 'archive'
+    audit_label = '档案管理'
+    audit_object_name = '证照'
+    audit_display_field = 'name'
+    audit_style = 'plain'
     queryset = License.objects.all()
     serializer_class = LicenseSerializer
     search_fields = ['name', 'code', 'holder', 'issuer', 'remark']
@@ -337,6 +468,10 @@ class LicenseBorrowRecordViewSet(ReadOnlyEnhancedViewSet):
 class KnowledgeCategoryViewSet(EnhancedModelViewSet):
     """知识分类 API"""
     perm_module = 'knowledge'
+    audit_label = '知识库'
+    audit_object_name = '知识分类'
+    audit_display_field = 'name'
+    audit_style = 'plain'
     queryset = KnowledgeCategory.objects.all()
     serializer_class = KnowledgeCategorySerializer
     search_fields = ['name', 'description']
@@ -346,6 +481,10 @@ class KnowledgeCategoryViewSet(EnhancedModelViewSet):
 class KnowledgeDocumentViewSet(EnhancedModelViewSet):
     """知识文档 API"""
     perm_module = 'knowledge'
+    audit_label = '知识库'
+    audit_object_name = '知识文档'
+    audit_display_field = 'title'
+    audit_style = 'plain'
     queryset = KnowledgeDocument.objects.all()
     serializer_class = KnowledgeDocumentSerializer
     search_fields = ['title', 'content', 'summary', 'tags']
@@ -872,7 +1011,11 @@ def ai_create(request):
             return Response(message, status=400)
         return Response(serializer_class(obj).data, status=201)
 
-    serializer.save()
+    if model_type == 'daily_record':
+        # DailyRecord.user 为非空外键且序列化器只读：必须绑定当前用户，否则触发 IntegrityError 500
+        serializer.save(user=request.user)
+    else:
+        serializer.save()
     return Response(serializer.data, status=201)
 
 

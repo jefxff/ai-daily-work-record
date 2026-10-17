@@ -12,4 +12,5 @@ urlpatterns = [
     path("scan/", views.api_scan, name="api_scan"),
     path("delete/", views.api_delete, name="api_delete"),
     path("download/", views.download, name="download"),
+    path("oplogs/", views.api_oplogs, name="api_oplogs"),
 ]

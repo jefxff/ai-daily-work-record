@@ -10,7 +10,7 @@
     <a href="{% url 'customer_credit_edit' credit.id %}" class="btn-transparent" data-modal-edit data-modal-title="编辑客户账期">编辑记录</a>
     {% endcan %}
     {% can "customer_credit" "delete" %}
-    <a href="{% url 'customer_credit_delete' credit.id %}" class="btn-transparent btn-delete" data-confirm="确定要删除这条记录吗？">删除记录</a>
+    <form method="post" action="{% url 'customer_credit_delete' credit.id %}" style="display:inline" onsubmit="return confirm('确定要删除这条记录吗？');">{% csrf_token %}<button type="submit" class="btn-transparent btn-delete">删除记录</button></form>
     {% endcan %}
 {% endblock %}
 

@@ -13,4 +13,6 @@ urlpatterns = [
     path("revoke-log/", views.revoke_log, name="revoke_log"),
     path("preferences/", views.preference_edit, name="preferences"),
     path("announce/", views.announce, name="announce"),
+    path("tasks/<int:pk>/update/", views.scheduled_task_update, name="task_update"),
+    path("tasks/<int:pk>/run/", views.scheduled_task_run, name="task_run"),
 ]

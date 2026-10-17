@@ -33,7 +33,14 @@ def clear_failures(ip, username):
 
 
 def client_ip(request):
-    forwarded = request.META.get("HTTP_X_FORWARDED_FOR")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.META.get("REMOTE_ADDR")
+    """取客户端真实 IP。
+
+    仅当请求来自本机回环（如经本机反向代理转发）时才采信 X-Forwarded-For，
+    否则直接用 REMOTE_ADDR —— 防止直连场景下伪造 XFF 绕过登录失败锁定。
+    """
+    remote = request.META.get("REMOTE_ADDR", "")
+    if remote in ("127.0.0.1", "::1"):
+        forwarded = request.META.get("HTTP_X_FORWARDED_FOR")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
+    return remote or None

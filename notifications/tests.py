@@ -518,3 +518,150 @@ class RevokeLogTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertNotContains(resp, "推送系统公告")
         self.assertNotContains(resp, "撤回记录")
+
+
+class ScheduledTaskTests(TestCase):
+    """定时任务：种子数据 / 页面展示 / 超管配置与执行 / 到期判定。"""
+
+    def setUp(self):
+        self.superuser = User.objects.create_superuser("boss", password="x12345678")
+        self.staff = User.objects.create_user("staff", password="x12345678")
+
+    def test_seed_tasks_exist(self):
+        """迁移种子：4 个内置任务存在且默认触发配置正确。"""
+        from notifications.models import ScheduledTask
+
+        codes = set(ScheduledTask.objects.values_list("code", flat=True))
+        self.assertEqual(codes, {
+            "check_expiry_notices", "check_daily_incomplete",
+            "notify_expire", "notify_stats",
+        })
+        expiry = ScheduledTask.objects.get(code="check_expiry_notices")
+        self.assertTrue(expiry.enabled)
+        self.assertEqual(expiry.trigger_type, ScheduledTask.TriggerType.DAILY)
+        self.assertEqual(expiry.params["days"], 7)
+        self.assertEqual(ScheduledTask.objects.get(code="notify_stats").interval_minutes, 720)
+
+    def test_list_page_shows_tasks(self):
+        """通知中心页面展示定时任务区（含任务名与线程状态）。"""
+        grant_perms(self.staff, "notifications.read")
+        c = Client()
+        c.force_login(self.staff)
+        resp = c.get(reverse("notifications:list"))
+        self.assertEqual(resp.status_code, 200)
+        body = resp.content.decode()
+        self.assertIn("定时任务", body)
+        self.assertIn("到期提醒扫描", body)
+        self.assertIn("每日记录提醒", body)
+        # 普通用户无配置/执行入口
+        self.assertNotContains(resp, "立即执行")
+        self.assertNotContains(resp, ">配置<")
+
+    def test_update_and_run_require_superuser(self):
+        """非超管配置/执行 → 403；未登录 → 302 跳登录。"""
+        from notifications.models import ScheduledTask
+
+        pk = ScheduledTask.objects.get(code="notify_expire").pk
+        c = Client()
+        c.force_login(self.staff)
+        self.assertEqual(c.post(reverse("notifications:task_update", args=[pk]), {}).status_code, 403)
+        self.assertEqual(c.post(reverse("notifications:task_run", args=[pk]), {}).status_code, 403)
+        anon = Client()
+        self.assertEqual(anon.post(reverse("notifications:task_run", args=[pk]), {}).status_code, 302)
+
+    def test_update_by_superuser(self):
+        """超管保存配置：触发方式/时间/参数/启停均落库。"""
+        from notifications.models import ScheduledTask
+
+        task = ScheduledTask.objects.get(code="check_expiry_notices")
+        c = Client()
+        c.force_login(self.superuser)
+        resp = c.post(reverse("notifications:task_update", args=[task.pk]), {
+            "enabled": "on", "trigger_type": "daily", "run_time": "08:30", "days": "14",
+        })
+        self.assertEqual(resp.status_code, 302)
+        task.refresh_from_db()
+        self.assertTrue(task.enabled)
+        self.assertEqual(str(task.run_time), "08:30:00")
+        self.assertEqual(task.params, {"days": 14})
+
+        # 非法参数被拒绝（表单提交 → redirect + 错误 toast，配置不落库）
+        resp = c.post(reverse("notifications:task_update", args=[task.pk]), {
+            "enabled": "on", "trigger_type": "daily", "run_time": "08:30", "days": "999",
+        })
+        self.assertEqual(resp.status_code, 302)
+        task.refresh_from_db()
+        self.assertEqual(task.params["days"], 14)
+
+    def test_run_by_superuser_records_result(self):
+        """超管手动执行：命令真实运行，结果/耗时持久化，过期通知被兜底。"""
+        from notifications.models import ScheduledTask
+
+        user = User.objects.create_user("u1", password="x12345678")
+        tpl = NotificationTemplate.objects.create(
+            code="expire_tpl", name="过期模板", title_template="t", content_template="c",
+            category="task", is_active=True,
+        )
+        Notification.objects.create(
+            recipient=user, template=tpl, title="t", content="c",
+            expires_at=timezone.now() - timedelta(hours=1),
+        )
+        task = ScheduledTask.objects.get(code="notify_expire")
+        c = Client()
+        c.force_login(self.superuser)
+        resp = c.post(reverse("notifications:task_run", args=[task.pk]))
+        self.assertEqual(resp.status_code, 302)
+        task.refresh_from_db()
+        self.assertEqual(task.last_status, "success")
+        self.assertIn("过期兜底", task.last_message)
+        self.assertIsNotNone(task.last_duration_ms)
+        self.assertEqual(
+            Notification.objects.get(pk=Notification.objects.first().pk).status,
+            Notification.Status.EXPIRED,
+        )
+
+    def test_run_claim_prevents_concurrent(self):
+        """执行中（running）的任务不允许重复领取执行。"""
+        from notifications.models import ScheduledTask
+        from notifications import scheduler
+
+        task = ScheduledTask.objects.get(code="notify_expire")
+        ScheduledTask.objects.filter(pk=task.pk).update(last_status="running")
+        task.refresh_from_db()
+        executed, ok, message = scheduler.run_task(task)
+        self.assertFalse(executed)
+        self.assertIn("执行中", message)
+
+    def test_is_due_daily_and_interval(self):
+        """到期判定：每日按当日时间点，间隔按上次执行时间推算。"""
+        from datetime import timedelta as td
+
+        from notifications.models import ScheduledTask
+        from notifications import scheduler
+
+        now = timezone.localtime()
+        daily = ScheduledTask(
+            code="x", name="x", enabled=True,
+            trigger_type=ScheduledTask.TriggerType.DAILY,
+            run_time=(now + td(minutes=2)).time(),
+        )
+        self.assertFalse(scheduler.is_due(daily))
+
+        daily.run_time = (now - td(minutes=2)).time()
+        self.assertTrue(scheduler.is_due(daily))
+
+        daily.last_run_at = now - td(hours=1)  # 今天已跑过
+        self.assertFalse(scheduler.is_due(daily))
+
+        interval = ScheduledTask(
+            code="y", name="y", enabled=True,
+            trigger_type=ScheduledTask.TriggerType.INTERVAL,
+            interval_minutes=60, last_run_at=timezone.now() - td(minutes=30),
+        )
+        self.assertFalse(scheduler.is_due(interval))
+        interval.last_run_at = timezone.now() - td(minutes=90)
+        self.assertTrue(scheduler.is_due(interval))
+
+        # 停用任务永不到期
+        interval.enabled = False
+        self.assertFalse(scheduler.is_due(interval))
