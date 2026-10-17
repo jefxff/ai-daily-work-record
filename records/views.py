@@ -11,6 +11,9 @@ from .crud import make_delete_view, make_export_view, make_form_view, make_list_
 from django.utils import timezone
 from accounts.decorators import perm_required
 from accounts.services import visible_modules
+from knowledge_base.models import KnowledgeDocument
+from samples.models import Sample, Partner
+from archive.models import Archive
 
 
 def _is_ajax(request):
@@ -237,7 +240,48 @@ def search(request):
         Q(detailed_progress__icontains=search_term) |
         Q(remarks__icontains=search_term)
     )
-    
+
+    # 搜索知识库文档（与列表行为一致，仅覆盖已发布文档）
+    knowledge_results = KnowledgeDocument.objects.filter(status='published').filter(
+        Q(title__icontains=search_term) |
+        Q(content__icontains=search_term) |
+        Q(summary__icontains=search_term) |
+        Q(tags__icontains=search_term)
+    )
+
+    # 搜索样品主档（排除软删除，含供应商名称）
+    sample_results = Sample.objects.filter(is_deleted=False).filter(
+        Q(sample_no__icontains=search_term) |
+        Q(material_name__icontains=search_term) |
+        Q(model__icontains=search_term) |
+        Q(spec__icontains=search_term) |
+        Q(registrar__icontains=search_term) |
+        Q(supplier__name__icontains=search_term)
+    )
+
+    # 搜索供应商档案（试样管理模块）
+    partner_results = Partner.objects.filter(
+        Q(name__icontains=search_term) |
+        Q(partner_code__icontains=search_term) |
+        Q(contact_person__icontains=search_term) |
+        Q(contact_info__icontains=search_term)
+    )
+
+    # 搜索档案（档案管理模块，含台账名称与类别名称）
+    archive_results = Archive.objects.filter(
+        Q(code__icontains=search_term) |
+        Q(name__icontains=search_term) |
+        Q(description__icontains=search_term) |
+        Q(tags__icontains=search_term) |
+        Q(location_code__icontains=search_term) |
+        Q(counterpart__icontains=search_term) |
+        Q(contract_no__icontains=search_term) |
+        Q(department__icontains=search_term) |
+        Q(handler__icontains=search_term) |
+        Q(ledger__name__icontains=search_term) |
+        Q(category__name__icontains=search_term)
+    )
+
     # 按用户可见模块收敛搜索结果，防止越权查看无权限模块的数据
     visible = set(visible_modules(request.user))
 
@@ -252,6 +296,10 @@ def search(request):
         'insurance_results': insurance_results if 'insurance' in visible else Insurance.objects.none(),
         'metal_price_results': metal_price_results if 'metal_price' in visible else MetalPrice.objects.none(),
         'complaint_results': complaint_results if 'complaint' in visible else Complaint.objects.none(),
+        'knowledge_results': knowledge_results if 'knowledge' in visible else KnowledgeDocument.objects.none(),
+        'sample_results': sample_results if 'samples' in visible else Sample.objects.none(),
+        'partner_results': partner_results if 'samples' in visible else Partner.objects.none(),
+        'archive_results': archive_results if 'archive' in visible else Archive.objects.none(),
     }
     
     return render(request, 'records/search_results.html', context)

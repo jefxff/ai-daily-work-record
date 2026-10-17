@@ -39,7 +39,7 @@
 
 {% block content %}
 <div class="page-header">
-    <h2>搜索结果<span class="total-hint">关键词：{{ search_term }}{% if daily_record_results %} · 每日记录 {{ daily_record_results|length }} 条{% endif %}{% if decoration_results %} · 装修 {{ decoration_results|length }} 条{% endif %}{% if customer_credit_results %} · 账期 {{ customer_credit_results|length }} 条{% endif %}{% if customer_complaint_results %} · 客诉 {{ customer_complaint_results|length }} 条{% endif %}{% if regulation_results %} · 制度 {{ regulation_results|length }} 条{% endif %}{% if price_evaluation_results %} · 核价 {{ price_evaluation_results|length }} 条{% endif %}{% if insurance_results %} · 保险 {{ insurance_results|length }} 条{% endif %}{% if complaint_results %} · 诉讼 {{ complaint_results|length }} 条{% endif %}</span></h2>
+    <h2>搜索结果<span class="total-hint">关键词：{{ search_term }}{% if daily_record_results %} · 每日记录 {{ daily_record_results|length }} 条{% endif %}{% if decoration_results %} · 装修 {{ decoration_results|length }} 条{% endif %}{% if customer_credit_results %} · 账期 {{ customer_credit_results|length }} 条{% endif %}{% if customer_complaint_results %} · 客诉 {{ customer_complaint_results|length }} 条{% endif %}{% if regulation_results %} · 制度 {{ regulation_results|length }} 条{% endif %}{% if price_evaluation_results %} · 核价 {{ price_evaluation_results|length }} 条{% endif %}{% if insurance_results %} · 保险 {{ insurance_results|length }} 条{% endif %}{% if complaint_results %} · 诉讼 {{ complaint_results|length }} 条{% endif %}{% if knowledge_results %} · 知识库 {{ knowledge_results|length }} 条{% endif %}{% if sample_results %} · 样品 {{ sample_results|length }} 条{% endif %}{% if partner_results %} · 供应商 {{ partner_results|length }} 条{% endif %}{% if archive_results %} · 档案 {{ archive_results|length }} 条{% endif %}</span></h2>
     <div class="filter-chips">
         {% if search_term %}
         <a class="filter-chip" href="{% url 'search' %}">搜索：{{ search_term }} ✕</a>
@@ -397,8 +397,152 @@
 </div>
 {% endif %}
 
+<!-- 知识库文档结果 -->
+{% if knowledge_results %}
+<div class="table-container">
+    <h2 class="section-title">知识库文档</h2>
+    <table class="table table-hover table-sticky">
+        <thead>
+            <tr>
+                <th>文档标题</th>
+                <th>所属分类</th>
+                <th>摘要</th>
+                <th>标签</th>
+                <th>浏览次数</th>
+                <th>更新时间</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for doc in knowledge_results %}
+            <tr>
+                <td>{{ doc.title }}</td>
+                <td>{{ doc.category.name|default:'—' }}</td>
+                <td>{{ doc.summary|default:''|truncatechars:30 }}</td>
+                <td>{{ doc.tags|default:'—' }}</td>
+                <td>{{ doc.view_count }}</td>
+                <td>{{ doc.updated_at|date:'Y-m-d H:i' }}</td>
+                <td>
+                    <a href="{% url 'knowledge_base:document_detail' doc.id %}" class="btn-transparent">查看</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- 样品结果 -->
+{% if sample_results %}
+<div class="table-container">
+    <h2 class="section-title">样品主档</h2>
+    <table class="table table-hover table-sticky">
+        <thead>
+            <tr>
+                <th>样品编号</th>
+                <th>物料名称</th>
+                <th>型号</th>
+                <th>物料规格</th>
+                <th>供应商</th>
+                <th>送样时间</th>
+                <th>当前状态</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for sample in sample_results %}
+            <tr>
+                <td>{{ sample.sample_no }}</td>
+                <td>{{ sample.material_name }}</td>
+                <td>{{ sample.model }}</td>
+                <td>{{ sample.spec|default:'—' }}</td>
+                <td>{{ sample.supplier.name|default:'—' }}</td>
+                <td>{{ sample.sample_date|date:'Y-m-d' }}</td>
+                <td>
+                    <span class="status-badge {{ sample.status_badge_class }}">{{ sample.get_status_display }}</span>
+                </td>
+                <td>
+                    <a href="{% url 'samples:detail' sample.id %}" class="btn-transparent">详情</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- 供应商档案结果 -->
+{% if partner_results %}
+<div class="table-container">
+    <h2 class="section-title">供应商档案</h2>
+    <table class="table table-hover table-sticky">
+        <thead>
+            <tr>
+                <th>档案编号</th>
+                <th>名称</th>
+                <th>联系人</th>
+                <th>联系方式</th>
+                <th>合作状态</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for partner in partner_results %}
+            <tr>
+                <td>{{ partner.partner_code }}</td>
+                <td>{{ partner.name }}</td>
+                <td>{{ partner.contact_person|default:'—' }}</td>
+                <td>{{ partner.contact_info|default:'—' }}</td>
+                <td>
+                    <span class="status-badge {{ partner.status_badge }}">{{ partner.get_status_display }}</span>
+                </td>
+                <td>
+                    <a href="{% url 'samples:partner_detail' partner.id %}" class="btn-transparent">详情</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- 档案结果 -->
+{% if archive_results %}
+<div class="table-container">
+    <h2 class="section-title">档案管理</h2>
+    <table class="table table-hover table-sticky">
+        <thead>
+            <tr>
+                <th>档案编号</th>
+                <th>档案名称</th>
+                <th>存放位置</th>
+                <th>所属台账</th>
+                <th>公司名称/相对方</th>
+                <th>合同编号</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for archive in archive_results %}
+            <tr>
+                <td>{{ archive.code }}</td>
+                <td>{{ archive.name }}</td>
+                <td>{{ archive.location_path }}</td>
+                <td>{{ archive.ledger.name|default:'—' }}</td>
+                <td>{{ archive.counterpart|default:'—' }}</td>
+                <td>{{ archive.contract_no|default:'—' }}</td>
+                <td>
+                    <a href="{% url 'archive:archive_detail' archive.id %}" class="btn-transparent">详情</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
 <!-- 无结果提示 -->
-{% if not decoration_results and not customer_credit_results and not customer_complaint_results and not regulation_results and not price_evaluation_results and not daily_record_results and not insurance_results and not metal_price_results and not complaint_results %}
+{% if not decoration_results and not customer_credit_results and not customer_complaint_results and not regulation_results and not price_evaluation_results and not daily_record_results and not insurance_results and not metal_price_results and not complaint_results and not knowledge_results and not sample_results and not partner_results and not archive_results %}
 <div class="no-results">
     <h3>未找到与 "{{ search_term }}" 相关的记录</h3>
     <p>请尝试使用其他关键词进行搜索</p>
