@@ -74,13 +74,27 @@ class CategoryForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # 父类别选项排除自身，避免循环引用
+        # 父类别选项排除自身与全部后代：仅排除自身挡不住 A→B→A 这类两次编辑成环
         qs = Category.objects.all()
         if self.instance and self.instance.pk:
-            qs = qs.exclude(pk=self.instance.pk)
+            blocked = self._descendant_ids(self.instance.pk) | {self.instance.pk}
+            qs = qs.exclude(pk__in=blocked)
         self.fields["parent"].queryset = qs
         self.fields["parent"].required = False
         self.fields["parent"].empty_label = "— 顶级类别 —"
+
+    @staticmethod
+    def _descendant_ids(root_pk) -> set:
+        """广度优先取后代 id，不递归 children.all()，避免把整棵树读进内存。"""
+        ids, frontier = set(), [root_pk]
+        while frontier:
+            children = list(
+                Category.objects.filter(parent_id__in=frontier).values_list("pk", flat=True)
+            )
+            frontier = [i for i in children if i not in ids]
+            ids.update(frontier)
+        return ids
+
 
 
 class ArchiveForm(forms.ModelForm):

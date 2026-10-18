@@ -164,19 +164,34 @@ def run_task(task, source="schedule"):
     return True, ok, message
 
 
+def run_due_tasks(should_stop=None) -> int:
+    """执行一轮到期任务，返回本轮实际执行数量。
+
+    web 进程内的调度线程与独立进程（manage.py run_scheduler）共用本函数，
+    两条路径的执行语义完全一致；should_stop 为可选的中断判断（退出信号）。
+    """
+    executed = 0
+    for task in ScheduledTask.objects.filter(enabled=True):
+        if should_stop is not None and should_stop():
+            break
+        if not is_due(task):
+            continue
+        with _run_lock:
+            task.refresh_from_db()
+            if task.enabled and is_due(task):
+                run_task(task)
+                executed += 1
+    return executed
+
+
 def scheduler_loop():
     """调度主循环：串行执行到期任务。"""
     while True:
         HEARTBEATS["scheduler"] = time.time()
         try:
             close_old_connections()
-            for task in ScheduledTask.objects.filter(enabled=True):
-                if not is_due(task):
-                    continue
-                with _run_lock:
-                    task.refresh_from_db()
-                    if task.enabled and is_due(task):
-                        run_task(task)
+            run_due_tasks()
         except Exception:
             logger.exception("通知定时任务调度轮询异常")
         time.sleep(SCAN_INTERVAL_SECONDS)
+

@@ -2,6 +2,8 @@ django==4.2.24
 djangorestframework==3.15.2
 django-cors-headers==4.4.0
 openpyxl==3.1.5
+# .xls 老格式解析（openpyxl 只支持 .xlsx）；xlrd 2.x 不再支持 .xlsx
+xlrd==2.0.1
 requests==2.32.3
 beautifulsoup4==4.12.3
 markdown==3.7

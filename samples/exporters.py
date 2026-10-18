@@ -18,13 +18,10 @@ WRAP = Alignment(wrap_text=True, vertical="center")
 
 
 def _sanitize_xlsx_formulas(wb):
-    """导出前防护公式注入：openpyxl 会把 '=' 开头的字符串按公式存储，
-    Excel 打开时会被执行。统一改写为以 ' 前缀的普通文本。"""
-    for ws in wb.worksheets:
-        for row in ws.iter_rows():
-            for cell in row:
-                if cell.data_type == "f" and isinstance(cell.value, str):
-                    cell.value = "'" + cell.value
+    """导出前防护公式注入（实现已收敛到 work_record.export_utils）。"""
+    from work_record.export_utils import sanitize_xlsx_formulas
+
+    return sanitize_xlsx_formulas(wb)
 
 
 def _write_sheet(ws, headers, rows):
@@ -180,7 +177,9 @@ def export_samples_xlsx(filter_qs):
     )
     filename = f"试样跟进台账_{date.today():%Y%m%d}.xlsx"
     # RFC 5987：filename* 携带 URL 编码中文，兼容主流浏览器
-    response["Content-Disposition"] = f"attachment; filename*=UTF-8''{quote(filename)}"
+    from work_record.export_utils import content_disposition
+
+    response["Content-Disposition"] = content_disposition(filename)
     _sanitize_xlsx_formulas(wb)
     wb.save(response)
     return response

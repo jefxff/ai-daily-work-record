@@ -19,6 +19,7 @@ import os
 from datetime import date, timedelta
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
@@ -164,7 +165,16 @@ class CabinetLayer(models.Model):
 
 
 class Category(models.Model):
-    """档案类别（树形多级结构，支持父子关系）。"""
+    """档案类别（树形多级结构，支持父子关系）。
+
+    防环三道防线（缺一不可，见技术审计报告 #2）：
+    1. full_path 有硬深度上限——已有环的数据渲染时不挂死；
+    2. clean() / save() 校验父链——shell、admin、导入等一切写入路径都挡；
+    3. CategoryForm 在选项层排除自身与全部后代——把错误挡在提交前。
+    """
+
+    # 实际最大层级为 3；32 层远超业务需要，仅作为"遇到环就停"的兜底
+    MAX_DEPTH = 32
 
     name = models.CharField("类别名称", max_length=100)
     parent = models.ForeignKey(
@@ -187,13 +197,61 @@ class Category(models.Model):
 
     @property
     def full_path(self) -> str:
-        """返回完整类别路径，如 '客户档案/客诉记录'。"""
+        """完整类别路径，如 '客户档案/客诉记录'。
+
+        加深度上限而不是 visited 集合：该属性在模板里高频调用，每次分配 set
+        的代价高于两个局部变量；环上任意节点都会在 32 步内被截断。
+        """
         names = [self.name]
         node = self.parent
-        while node is not None:
+        guard = 0
+        while node is not None and guard < self.MAX_DEPTH:
             names.insert(0, node.name)
             node = node.parent
+            guard += 1
+        if guard >= self.MAX_DEPTH:
+            return "⚠ 类别层级异常（疑似循环引用）"
         return "/".join(names)
+
+    def _ancestor_ids(self):
+        """向上遍历父链，返回祖先 id 列表；遇到环时提前停止。"""
+        ids = []
+        node = self.parent
+        seen = {self.pk} if self.pk else set()
+        while node is not None and len(ids) < self.MAX_DEPTH:
+            if node.pk in seen:
+                break
+            seen.add(node.pk)
+            ids.append(node.pk)
+            node = node.parent
+        return ids
+
+    def clean(self):
+        """校验父链不成环。ModelForm.is_valid() 会调用到这里。"""
+        super().clean()
+        if not self.parent_id:
+            return
+        node = self.parent
+        seen = {self.pk} if self.pk else set()
+        depth = 0
+        while node is not None and depth < self.MAX_DEPTH:
+            if node.pk in seen:
+                raise ValidationError({"parent": "父类别形成了循环引用，请另选。"})
+            seen.add(node.pk)
+            node = node.parent
+            depth += 1
+
+    def save(self, *args, **kwargs):
+        """写入前做一次父链环检测。
+
+        clean() 只在 full_clean() 时执行，而 Category.objects.create()、
+        Excel 导入、admin 批量操作都不会调用它——本次修复的核心 P0 正是
+        "两次普通编辑即可成环"，所以校验必须放在 save() 这条唯一收口上。
+        """
+        if self.parent_id:
+            self.clean()
+        return super().save(*args, **kwargs)
+
 
 
 class Ledger(TimeStampedModel):
@@ -301,7 +359,14 @@ class Archive(TimeStampedModel):
 
     @property
     def is_borrowed(self) -> bool:
-        """是否处于借出状态。"""
+        """是否处于借出状态。
+
+        若查询集已 annotate(_borrowed=Exists(...))，直接用数据库算好的结果，
+        避免逐行 EXISTS（审计 #10 的证照列表就是这条路径）。
+        """
+        cached = getattr(self, "_borrowed", None)
+        if cached is not None:
+            return bool(cached)
         return self.borrow_records.filter(return_time__isnull=True).exists()
 
     @property
@@ -390,6 +455,8 @@ class BorrowRecord(models.Model):
         verbose_name = "借阅记录"
         verbose_name_plural = "借阅记录"
         ordering = ["-borrow_time"]
+        # 列表页与 is_borrowed 判定都按 return_time 过滤（审计 #20）
+        indexes = [models.Index(fields=["return_time"], name="idx_borrow_return_time")]
 
     def __str__(self):
         return f"{self.archive.code} - {self.borrower}"
@@ -456,6 +523,8 @@ class License(TimeStampedModel):
         verbose_name = "证照"
         verbose_name_plural = "证照"
         ordering = ["-id"]
+        # 状态判定与到期提醒都按 expire_date 排序/过滤（审计 #20）
+        indexes = [models.Index(fields=["expire_date"], name="idx_license_expire_date")]
 
     def __str__(self):
         return f"{self.code} - {self.name}"
@@ -468,8 +537,15 @@ class License(TimeStampedModel):
 
     @property
     def status(self) -> str:
-        """状态：normal / expiring / expired（基于有效期和下次年审日）。"""
-        today = date.today()
+        """状态：normal / expiring / expired（基于有效期和下次年审日）。
+
+        若查询集已 annotate(_status=...)，直接采用数据库算好的值：列表页因此
+        不必逐行做 Python 判断（原来 100 行 = 300 次 EXISTS，见审计 #10）。
+        """
+        cached = getattr(self, "_status", None)
+        if cached:
+            return cached
+        today = timezone.localdate()
         threshold = today + timedelta(days=30)
         # 已过期：有效期或下次年审日已过
         if self.expire_date and self.expire_date < today:
@@ -482,6 +558,7 @@ class License(TimeStampedModel):
         if self.next_review_date and self.next_review_date <= threshold:
             return "expiring"
         return "normal"
+
 
     @property
     def status_display(self) -> str:
@@ -497,7 +574,14 @@ class License(TimeStampedModel):
 
     @property
     def is_borrowed(self) -> bool:
-        """是否处于借出状态。"""
+        """是否处于借出状态。
+
+        若查询集已 annotate(_borrowed=Exists(...))，直接用数据库算好的结果，
+        避免逐行 EXISTS（审计 #10 的证照列表就是这条路径）。
+        """
+        cached = getattr(self, "_borrowed", None)
+        if cached is not None:
+            return bool(cached)
         return self.borrow_records.filter(return_time__isnull=True).exists()
 
     @property

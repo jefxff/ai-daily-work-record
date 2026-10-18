@@ -6,6 +6,7 @@ URL 配置仍通过 views.py 门面 re-export 引用，URL 名称与行为完全
 
 import csv
 import io
+import logging
 import os
 from datetime import datetime
 
@@ -25,6 +26,8 @@ from .services.import_export import (
     _get_spec, _match_obj, _parse_excel_sheets, _read_import_rows,
     _validate_archive_row,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @login_required

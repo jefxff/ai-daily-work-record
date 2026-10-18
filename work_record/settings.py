@@ -47,11 +47,53 @@ def _load_secret_key():
 
 SECRET_KEY = _load_secret_key()
 
-# 当前为局域网单机使用（非生产部署），DEBUG 保持 True；若日后公网/正式部署必须改为 False
-DEBUG = True
+# DEBUG 由环境变量控制：默认 1 = 保持本机 runserver 的现状（静态文件、详细报错）。
+# 需要关闭时显式设 DJANGO_DEBUG=0。注意：DEBUG=0 时 runserver 不再自动服务
+# /static/，必须先把 STATIC_ROOT 收集好并由前置代理托管。
+DEBUG = os.environ.get('DJANGO_DEBUG', '1') == '1'
 
-# 局域网同网段用户通过本机 IP 访问；'*' 保证 DHCP 变更 IP 后仍可用（非生产环境的取舍）
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '172.17.222.183', '*']
+# 允许访问的主机。
+# - 默认值保留局域网访问能力（127.0.0.1 / localhost / 本机固定 IP）；
+# - '*' 仅在 DEBUG 下追加，用于 DHCP 换 IP 后仍可访问；
+# - DJANGO_DEBUG=0 时必须显式给出 DJANGO_ALLOWED_HOSTS，否则 Host 头校验会拦住
+#   所有非本地请求（这是刻意的：通配符会让 Host 校验完全失效）。
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '172.17.222.183']
+ALLOWED_HOSTS += [
+    h.strip()
+    for h in os.environ.get('DJANGO_ALLOWED_HOSTS', '').split(',')
+    if h.strip()
+]
+if DEBUG and '*' not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append('*')
+
+# 反向代理场景（可选）：只有显式配置才启用，避免内网直连时误判协议
+if os.environ.get('DJANGO_BEHIND_HTTPS_PROXY', '0') == '1':
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    CSRF_TRUSTED_ORIGINS = [
+        o.strip()
+        for o in os.environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',')
+        if o.strip()
+    ]
+
+# 仅在生产模式（DEBUG=0）加固 Cookie；本机 http 访问不受影响
+if not DEBUG:
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+
+# 全站 HTTPS 部署开关（默认关闭）。
+# 现状：系统在内网以 http://IP:8000 直连访问，因此下面这些项默认不开启——
+# 一旦开启而没有真实 TLS，浏览器会因为 Secure cookie 收不到而定不上登录态。
+# 若将来前置了 HTTPS 反向代理，只需 DJANGO_HTTPS_ONLY=1（配合
+# DJANGO_BEHIND_HTTPS_PROXY=1），即可一次性消除 check --deploy 的
+# W004 / W008 / W012 / W016 四条告警，无需改代码。
+if os.environ.get('DJANGO_HTTPS_ONLY', '0') == '1':
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = int(os.environ.get('DJANGO_HSTS_SECONDS', '31536000'))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+
 
 
 # Application definition
@@ -248,31 +290,65 @@ REST_FRAMEWORK = {
 # Logging settings：django 内置 logger 降为 INFO（不再逐条落盘 SQL，日志量大幅下降）。
 # 按大小轮转（单文件 5MB，保留 3 份历史）。Windows 下 RotatingFileHandler 的 rename
 # 与运行中服务进程句柄冲突时，SafeRotatingFileHandler 会降级为截断当前文件，日志不中断。
+#
+# 关键：必须配置 root logger。业务模块用 logging.getLogger(__name__)（如
+# archive.views_ledger）取到的 logger 不在 "loggers" 里，会向 root 传播；
+# 没有 root handler 时 Python 回退到 lastResort —— 只输出 WARNING 以上到 stderr，
+# INFO 全部丢失。这就是"写了日志却看不见"的根因。
+_LOG_DIR = os.path.join(BASE_DIR, 'logs')
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'formatters': {
+        'std': {'format': '%(asctime)s %(levelname)s %(name)s %(message)s'},
+    },
     'handlers': {
         'file': {
             'level': 'INFO',
             'class': 'work_record.log_handlers.SafeRotatingFileHandler',
-            'filename': os.path.join(BASE_DIR, 'logs', 'debug.log'),
+            'filename': os.path.join(_LOG_DIR, 'debug.log'),
             'maxBytes': 5 * 1024 * 1024,
             'backupCount': 3,
             'encoding': 'utf-8',
+            'formatter': 'std',
         },
+        'console': {
+            'level': 'WARNING',
+            'class': 'logging.StreamHandler',
+            'formatter': 'std',
+        },
+    },
+    'root': {
+        'handlers': ['file', 'console'],
+        'level': os.environ.get('DJANGO_LOG_LEVEL', 'INFO'),
     },
     'loggers': {
         'django': {
             'handlers': ['file'],
             'level': 'INFO',
-            'propagate': True,
+            # 已显式挂 handler，不再向 root 传播，避免同一条日志写两遍
+            'propagate': False,
         },
+        # 第三方库噪声：只在 WARNING 以上落盘
+        'django.db.backends': {'level': 'WARNING', 'propagate': True},
+        'urllib3': {'level': 'WARNING', 'propagate': True},
+        'requests': {'level': 'WARNING', 'propagate': True},
     },
 }
 
-# Create logs directory if it doesn't exist
-if not os.path.exists(os.path.join(BASE_DIR, 'logs')):
-    os.makedirs(os.path.join(BASE_DIR, 'logs'))
+# 日志目录：exist_ok=True 消除"检查-创建"之间的竞态（两个进程同时启动时
+# 第二个会抛 FileExistsError，而它发生在 settings 导入期 = 进程起不来）。
+# 目录不可创建（只读盘/权限不足）时降级到 stderr，不阻断启动。
+try:
+    os.makedirs(_LOG_DIR, exist_ok=True)
+except OSError:
+    LOGGING['handlers']['file'] = {
+        'level': 'INFO',
+        'class': 'logging.StreamHandler',
+        'formatter': 'std',
+    }
+
 
 # === 消息通知模块 ===
 # 邮件渠道：DEBUG 下走 console 后端（无需 SMTP，输出到控制台）；
@@ -293,3 +369,13 @@ else:
     EMAIL_HOST_USER = _os.environ.get('EMAIL_HOST_USER', '')
     EMAIL_HOST_PASSWORD = _os.environ.get('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = _os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@localhost')
+
+# === 通知调度器 ===
+# 是否在 web 进程内起后台线程（发送 worker + 定时任务调度）。
+# True：runserver 单进程的现状，随进程自动运行；
+# False：由独立进程 `manage.py run_scheduler` 承担（gunicorn/uwsgi 等多 worker
+#        部署必须用这种方式，否则每个 worker 都会起一份调度器）。
+# 默认跟 DEBUG 走，保证本机启动行为与改造前完全一致。
+NOTIFICATIONS_SCHEDULER_INPROCESS = _os.environ.get(
+    'DJANGO_SCHEDULER_INPROCESS', '1' if DEBUG else '0'
+) == '1'

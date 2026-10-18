@@ -1,3 +1,9 @@
+# 破坏性操作说明（补记，2026-10 审计 #44）
+# RenameField: Regulation.recipients → doc_no（收件人 → 文号）
+# 原因：该列在台账里始终存放制度文号，原字段名与实际语义不符。
+# 数据去向：原地改名，数据不丢失。
+# 回滚代价：可逆（反向 RenameField）。
+
 from django.db import migrations, models
 
 

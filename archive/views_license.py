@@ -23,6 +23,7 @@ from .forms import AnnualReviewForm, LicenseBorrowForm, LicenseForm
 from .models import AnnualReview, License, LicenseBorrowRecord, _add_months
 from .services.common import _is_ajax, _operator
 from .services.import_export import _parse_excel_sheets
+from .services.license_query import annotate_status, status_aggregate
 
 
 # ==================== 证照管理子模块 ====================
@@ -42,11 +43,19 @@ def _license_log(request, op_type: str, obj_id: str, summary: str):
 @login_required
 @perm_required("archive", "read")
 def license_list(request):
-    """证照列表：仪表盘统计 + 搜索 + 状态筛选。"""
+    """证照列表：仪表盘统计 + 搜索 + 状态筛选。
+
+    状态与借出标记由 license_query 下推为数据库注解（审计 #10）：
+    改造前 100 行 = 323 条 SQL（其中 312 次逐行 EXISTS），改造后固定 2 条。
+    统计仍取全表（与改造前一致），不随筛选条件变化。
+    """
     q = request.GET.get("q", "").strip()
     status = request.GET.get("status", "")  # normal / expiring / expired
 
-    qs = License.objects.all()
+    annotated = annotate_status(License.objects.all())
+    stats = status_aggregate(annotated)
+
+    qs = annotated
     if q:
         qs = qs.filter(
             Q(name__icontains=q)
@@ -54,26 +63,18 @@ def license_list(request):
             | Q(holder__icontains=q)
             | Q(issuer__icontains=q)
         )
-
-    # 按 Python 属性筛选状态（因 status 是计算属性，非 DB 字段）
-    all_licenses = list(qs)
     if status:
-        all_licenses = [l for l in all_licenses if l.status == status]
-
-    # 仪表盘统计
-    total = License.objects.count()
-    expiring_count = sum(1 for l in License.objects.all() if l.status == "expiring")
-    expired_count = sum(1 for l in License.objects.all() if l.status == "expired")
-    borrowed_count = sum(1 for l in License.objects.all() if l.is_borrowed)
+        # 状态筛选同样在数据库完成，不再把整表读进 Python
+        qs = qs.filter(_status=status)
 
     context = {
-        "licenses": all_licenses,
+        "licenses": list(qs),
         "q": q,
         "status": status,
-        "total": total,
-        "expiring_count": expiring_count,
-        "expired_count": expired_count,
-        "borrowed_count": borrowed_count,
+        "total": stats["total"],
+        "expiring_count": stats["expiring_count"],
+        "expired_count": stats["expired_count"],
+        "borrowed_count": stats["borrowed_count"],
     }
     return render(request, "archive/license_list.html", context)
 
@@ -163,23 +164,38 @@ def license_delete(request, pk):
 @login_required
 @perm_required("archive", "create")
 def annual_review_create(request, license_pk):
-    """年审登记（AJAX 弹窗）。年审通过后自动更新证照有效期和下次年审日。"""
+    """年审登记（AJAX 弹窗）。
+
+    续期口径（审计 #24）：只有本次登记填了「新有效期」才推进 next_review_date。
+    改造前无论是否变更有效期都会把下次年审日推到 review_date + cycle，
+    结果是"有效期没变、年审计划却跳走"——不报错、也没人会发现的合规数据静默出错。
+    未变更有效期时只登记、不动证照任何日期，并在页面上明确告知。
+    """
     lic = get_object_or_404(License, pk=license_pk)
     form = AnnualReviewForm(request.POST or None)
     if form.is_valid():
         review = form.save(commit=False)
         review.license = lic
         review.save()
-        # 年审通过后自动续期：更新证照有效期和下次年审日
-        if review.result == "passed":
-            if review.new_expire_date:
-                lic.expire_date = review.new_expire_date
+        renewed = False
+        if review.result == "passed" and review.new_expire_date:
+            lic.expire_date = review.new_expire_date
             if lic.review_cycle:
                 lic.next_review_date = _add_months(review.review_date, lic.review_cycle)
             lic.save(update_fields=["expire_date", "next_review_date", "updated_at"])
-        _license_log(request, "年审", f"证照#{lic.id}", f"年审登记: {lic.code} - {review.get_result_display()}")
+            renewed = True
+        if review.result == "passed" and not renewed:
+            notice = "年审已登记；本次未填写新有效期，证照有效期与下次年审日均保持不变。"
+        else:
+            notice = "年审登记成功"
+        _license_log(
+            request, "年审", f"证照#{lic.id}",
+            f"年审登记: {lic.code} - {review.get_result_display()}"
+            + ("（续期至 %s）" % lic.expire_date if renewed else "（未变更有效期）"),
+        )
         if _is_ajax(request):
-            return JsonResponse({"ok": True, "message": "年审登记成功"})
+            return JsonResponse({"ok": True, "message": notice, "renewed": renewed})
+        messages.info(request, notice)
         return redirect("archive:license_detail", pk=lic.pk)
     if _is_ajax(request):
         html = render_to_string(
@@ -189,6 +205,7 @@ def annual_review_create(request, license_pk):
             return JsonResponse({"ok": False, "html": html}, status=422)
         return JsonResponse({"ok": True, "html": html})
     return render(request, "archive/license_review_form.html", {"form": form, "license": lic})
+
 
 
 @login_required

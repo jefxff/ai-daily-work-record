@@ -24,13 +24,10 @@ from .audit import log_operation
 
 
 def _sanitize_xlsx_formulas(wb):
-    """导出前防护公式注入：openpyxl 会把 '=' 开头的字符串按公式存储，
-    Excel 打开时会被执行。统一改写为以 ' 前缀的普通文本。"""
-    for ws in wb.worksheets:
-        for row in ws.iter_rows():
-            for cell in row:
-                if cell.data_type == "f" and isinstance(cell.value, str):
-                    cell.value = "'" + cell.value
+    """导出前防护公式注入（实现已收敛到 work_record.export_utils）。"""
+    from work_record.export_utils import sanitize_xlsx_formulas
+
+    return sanitize_xlsx_formulas(wb)
 
 
 def make_form_view(*, model, form_class, perm_module, log_label, display_field,
@@ -172,7 +169,9 @@ def make_export_view(*, model=None, perm_module, sheet_title, filename_base,
         filename = f'{filename_base}-{datetime.now().strftime("%Y%m%d")}.xlsx'
         response = HttpResponse(
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        from work_record.export_utils import content_disposition
+
+        response['Content-Disposition'] = content_disposition(filename)
         _sanitize_xlsx_formulas(wb)
         wb.save(response)
         return response

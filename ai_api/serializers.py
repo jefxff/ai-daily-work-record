@@ -1,4 +1,5 @@
 from rest_framework import serializers
+
 from records.models import (
     Decoration, CustomerCredit, CustomerComplaint, Regulation,
     PriceEvaluation, DailyRecord, MetalPrice, Insurance, Complaint
@@ -10,32 +11,55 @@ from archive.models import (
 )
 from knowledge_base.models import KnowledgeCategory, KnowledgeDocument
 
+
+# 系统维护字段：任何业务序列化器都不得通过 API 直写。
+# 改造前 fields = '__all__' 把"模型有哪些字段"直接变成了"API 能写哪些字段"，
+# 于是 status / is_deleted 这类应由状态机与软删除流程控制的字段出现旁路（审计 #9）。
+READ_ONLY_BY_DEFAULT = {
+    "id", "pk", "created_at", "updated_at", "created_by",
+    "is_deleted", "deleted_at", "deleted_by",
+    "registered_at", "terminated_at", "imported_at",
+}
+
+
+class EnhancedModelSerializer(serializers.ModelSerializer):
+    """统一收窄可写字段的基类。
+
+    子类仍可写 fields = '__all__'：这里按模型实际字段集取交集后逐个置为只读，
+    新增模型字段时不需要再到每个序列化器里补一遍。
+    """
+
+    def get_fields(self):
+        fields = super().get_fields()
+        for name in READ_ONLY_BY_DEFAULT & fields.keys():
+            fields[name].read_only = True
+        return fields
 # 装修记录序列化
-class DecorationSerializer(serializers.ModelSerializer):
+class DecorationSerializer(EnhancedModelSerializer):
     class Meta:
         model = Decoration
         fields = '__all__'
 
 # 客户账期序列化
-class CustomerCreditSerializer(serializers.ModelSerializer):
+class CustomerCreditSerializer(EnhancedModelSerializer):
     class Meta:
         model = CustomerCredit
         fields = '__all__'
 
 # 客户客诉序列化
-class CustomerComplaintSerializer(serializers.ModelSerializer):
+class CustomerComplaintSerializer(EnhancedModelSerializer):
     class Meta:
         model = CustomerComplaint
         fields = '__all__'
 
 # 制度及处罚序列化
-class RegulationSerializer(serializers.ModelSerializer):
+class RegulationSerializer(EnhancedModelSerializer):
     class Meta:
         model = Regulation
         fields = '__all__'
 
 # 核价序列化
-class PriceEvaluationSerializer(serializers.ModelSerializer):
+class PriceEvaluationSerializer(EnhancedModelSerializer):
     reduction_amount = serializers.ReadOnlyField()
 
     class Meta:
@@ -43,7 +67,7 @@ class PriceEvaluationSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 # 每日记录序列化
-class DailyRecordSerializer(serializers.ModelSerializer):
+class DailyRecordSerializer(EnhancedModelSerializer):
     # 归属用户只读：归属由服务端在创建时强制绑定，禁止通过 API 指定
     user = serializers.PrimaryKeyRelatedField(read_only=True)
 
@@ -52,7 +76,7 @@ class DailyRecordSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 # 金属价格序列化
-class MetalPriceSerializer(serializers.ModelSerializer):
+class MetalPriceSerializer(EnhancedModelSerializer):
     is_expired = serializers.ReadOnlyField()
     expired_days = serializers.ReadOnlyField()
 
@@ -62,7 +86,7 @@ class MetalPriceSerializer(serializers.ModelSerializer):
         extra_kwargs = {'price': {'required': False, 'allow_null': True}}
 
 # 保险序列化
-class InsuranceSerializer(serializers.ModelSerializer):
+class InsuranceSerializer(EnhancedModelSerializer):
     is_expired = serializers.ReadOnlyField()
     expired_days = serializers.ReadOnlyField()
 
@@ -71,7 +95,7 @@ class InsuranceSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 # 客诉序列化
-class ComplaintSerializer(serializers.ModelSerializer):
+class ComplaintSerializer(EnhancedModelSerializer):
     class Meta:
         model = Complaint
         fields = '__all__'
@@ -80,35 +104,37 @@ class ComplaintSerializer(serializers.ModelSerializer):
 # ==================== 试样管理 ====================
 
 # 供应商档案序列化
-class PartnerSerializer(serializers.ModelSerializer):
+class PartnerSerializer(EnhancedModelSerializer):
     class Meta:
         model = Partner
         fields = '__all__'
 
 
 # 样品主档序列化
-class SampleSerializer(serializers.ModelSerializer):
+class SampleSerializer(EnhancedModelSerializer):
     class Meta:
         model = Sample
         fields = '__all__'
+        # 状态只能由 samples.services 的状态机推进，API 不可直写
+        read_only_fields = ("status", "sample_no")
 
 
 # 试样记录序列化
-class TestRecordSerializer(serializers.ModelSerializer):
+class TestRecordSerializer(EnhancedModelSerializer):
     class Meta:
         model = TestRecord
         fields = '__all__'
 
 
 # 小批量记录序列化
-class BatchRecordSerializer(serializers.ModelSerializer):
+class BatchRecordSerializer(EnhancedModelSerializer):
     class Meta:
         model = BatchRecord
         fields = '__all__'
 
 
 # 审厂记录序列化
-class AuditRecordSerializer(serializers.ModelSerializer):
+class AuditRecordSerializer(EnhancedModelSerializer):
     class Meta:
         model = AuditRecord
         fields = '__all__'
@@ -117,14 +143,14 @@ class AuditRecordSerializer(serializers.ModelSerializer):
 # ==================== 档案管理 ====================
 
 # 档案柜序列化
-class CabinetSerializer(serializers.ModelSerializer):
+class CabinetSerializer(EnhancedModelSerializer):
     class Meta:
         model = Cabinet
         fields = '__all__'
 
 
 # 档案类别序列化
-class ArchiveCategorySerializer(serializers.ModelSerializer):
+class ArchiveCategorySerializer(EnhancedModelSerializer):
     full_path = serializers.ReadOnlyField()
 
     class Meta:
@@ -133,7 +159,7 @@ class ArchiveCategorySerializer(serializers.ModelSerializer):
 
 
 # 台账序列化
-class LedgerSerializer(serializers.ModelSerializer):
+class LedgerSerializer(EnhancedModelSerializer):
     archive_count = serializers.ReadOnlyField()
 
     class Meta:
@@ -142,7 +168,7 @@ class LedgerSerializer(serializers.ModelSerializer):
 
 
 # 档案序列化
-class ArchiveSerializer(serializers.ModelSerializer):
+class ArchiveSerializer(EnhancedModelSerializer):
     is_borrowed = serializers.ReadOnlyField()
     is_expiring = serializers.ReadOnlyField()
     location_path = serializers.ReadOnlyField()
@@ -156,7 +182,7 @@ class ArchiveSerializer(serializers.ModelSerializer):
 
 
 # 档案借阅记录序列化
-class BorrowRecordSerializer(serializers.ModelSerializer):
+class BorrowRecordSerializer(EnhancedModelSerializer):
     is_overdue = serializers.ReadOnlyField()
 
     class Meta:
@@ -165,7 +191,7 @@ class BorrowRecordSerializer(serializers.ModelSerializer):
 
 
 # 证照序列化
-class LicenseSerializer(serializers.ModelSerializer):
+class LicenseSerializer(EnhancedModelSerializer):
     status = serializers.ReadOnlyField()
     status_display = serializers.ReadOnlyField()
     is_expiring = serializers.ReadOnlyField()
@@ -180,14 +206,14 @@ class LicenseSerializer(serializers.ModelSerializer):
 
 
 # 年审记录序列化
-class AnnualReviewSerializer(serializers.ModelSerializer):
+class AnnualReviewSerializer(EnhancedModelSerializer):
     class Meta:
         model = AnnualReview
         fields = '__all__'
 
 
 # 证照借阅记录序列化
-class LicenseBorrowRecordSerializer(serializers.ModelSerializer):
+class LicenseBorrowRecordSerializer(EnhancedModelSerializer):
     is_overdue = serializers.ReadOnlyField()
 
     class Meta:
@@ -198,14 +224,14 @@ class LicenseBorrowRecordSerializer(serializers.ModelSerializer):
 # ==================== 知识库 ====================
 
 # 知识分类序列化
-class KnowledgeCategorySerializer(serializers.ModelSerializer):
+class KnowledgeCategorySerializer(EnhancedModelSerializer):
     class Meta:
         model = KnowledgeCategory
         fields = '__all__'
 
 
 # 知识文档序列化
-class KnowledgeDocumentSerializer(serializers.ModelSerializer):
+class KnowledgeDocumentSerializer(EnhancedModelSerializer):
     tag_list = serializers.ReadOnlyField()
 
     class Meta:

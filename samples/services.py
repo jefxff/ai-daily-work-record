@@ -15,6 +15,10 @@ from django.utils import timezone
 from . import serialno
 from .models import BatchRecord, OperationLog, Partner, ProofAttachment, Sample, TestRecord
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class BusinessError(Exception):
     """业务规则校验错误，视图层捕获后以页面错误提示展示。"""

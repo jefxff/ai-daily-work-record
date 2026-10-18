@@ -5,8 +5,10 @@ from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Q
+from django.utils import timezone
 from datetime import datetime, timedelta
 import logging
+import os
 
 from accounts.services import has_perm
 from records.audit import log_operation
@@ -79,9 +81,22 @@ class EnhancedModelViewSet(viewsets.ModelViewSet):
             obj_name = self.audit_object_name or label
             if self.audit_store == 'samples':
                 from samples.models import OperationLog as SampleOperationLog
+                # 显式映射：改造前用三元表达式（'更新' → UPDATE，其余 → DELETE），
+                # 一旦传入 '新增' 会被静默记成"删除"（审计 #8）
+                _ACTION_MAP = {
+                    '新增': SampleOperationLog.Action.CREATE,
+                    '更新': SampleOperationLog.Action.UPDATE,
+                    '删除': SampleOperationLog.Action.DELETE,
+                }
+                action = _ACTION_MAP.get(op_type)
+                if action is None:
+                    logger.warning(
+                        '未知留痕动作 %r，回退为 UPDATE；audit_label=%s',
+                        op_type, label,
+                    )
+                    action = SampleOperationLog.Action.UPDATE
                 SampleOperationLog.objects.create(
-                    action=(SampleOperationLog.Action.UPDATE if op_type == '更新'
-                            else SampleOperationLog.Action.DELETE),
+                    action=action,
                     target_type=label,
                     target_repr=f'{obj_name}#{obj_id}',
                     summary=summary,
@@ -97,6 +112,17 @@ class EnhancedModelViewSet(viewsets.ModelViewSet):
         except Exception:
             logger.exception('AI API 操作留痕写入失败（%s %s#%s）',
                              op_type, self.audit_label or self.perm_module, obj_id)
+
+    def perform_create(self, serializer):
+        """创建同样要留痕。
+
+        改造前只覆写了 update / destroy —— 一条来源不明的记录比一条被修改的
+        记录更难追责，创建恰恰是最需要留痕的动作（审计 #8）。
+        """
+        obj = serializer.save()
+        label = self._audit_label()
+        display = self._audit_display(obj)
+        self._write_audit('新增', obj.pk, f'新增{label}: {display}')
 
     def perform_update(self, serializer):
         obj = serializer.save()
@@ -709,15 +735,20 @@ def ai_query(request):
     }
 
     def match_score(q, keywords):
-        """计算问题与映射的匹配得分"""
-        score = 0
+        """问题与主题的匹配得分 = 命中关键词总长度 / 问题长度。
+
+        改造前是"每命中一个关键词就累加该词长度"，于是词表里词越长越容易排前面，
+        排序实际取决于分词表而不是相关度（审计 #35）。归一化后分数落在 0~1，
+        同一问题在不同主题间的比较才有意义。
+        同一关键词不再因大小写两次命中而重复计分。
+        """
+        if not q:
+            return 0.0
         q_lower = q.lower()
-        for kw in keywords:
-            if kw in q:
-                score += len(kw)  # 关键词越长得分越高
-            if kw in q_lower:
-                score += 0.5
-        return score
+        matched = {kw for kw in keywords if kw and kw.lower() in q_lower}
+        if not matched:
+            return 0.0
+        return sum(len(kw) for kw in matched) / len(q)
 
     # 找出最匹配的主题
     best_match = None
@@ -1022,14 +1053,59 @@ def ai_create(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def health_check(request):
-    """健康检查接口"""
-    return Response({
-        'status': 'ok',
+    """健康检查：做真实探测，而不是恒定返回 ok。
+
+    改造前固定返回 {'status': 'ok', 'ai_ready': True}——一个永远绿的检查等于
+    没有检查（审计 #23）。现在逐项探测：数据库、未应用迁移、日志目录可写。
+    任一项不通过 => status=degraded + HTTP 503（便于探针直接判死）。
+    """
+    from django.conf import settings
+    from django.db import connection
+    from django.db.migrations.executor import MigrationExecutor
+
+    checks = {}
+
+    # 1) 数据库连接（SELECT 1）
+    try:
+        with connection.cursor() as cur:
+            cur.execute('SELECT 1')
+            cur.fetchone()
+        checks['database'] = 'ok'
+    except Exception as exc:  # 探针本身不能抛异常
+        logger.exception('健康检查：数据库不可用')
+        checks['database'] = f'error: {exc.__class__.__name__}'
+
+    # 2) 是否有未应用的迁移
+    try:
+        executor = MigrationExecutor(connection)
+        pending = executor.migration_plan(executor.loader.graph.leaf_nodes())
+        checks['migrations'] = 'ok' if not pending else f'pending: {len(pending)}'
+    except Exception:
+        logger.exception('健康检查：迁移状态不可读')
+        checks['migrations'] = 'unknown'
+
+    # 3) 日志目录可写（日志写不进去时排障会完全失明）
+    try:
+        log_dir = os.path.join(str(settings.BASE_DIR), 'logs')
+        probe = os.path.join(log_dir, '.health_probe')
+        with open(probe, 'w', encoding='utf-8') as fh:
+            fh.write('ok')
+        os.remove(probe)
+        checks['log_dir'] = 'ok'
+    except Exception:
+        checks['log_dir'] = 'error'
+
+    healthy = checks['database'] == 'ok' and checks['log_dir'] == 'ok'
+    payload = {
+        'status': 'ok' if healthy else 'degraded',
         'service': 'AI_daily_work_record',
         'version': '1.0.0',
-        'ai_ready': True,
-        'timestamp': datetime.now().isoformat()
-    })
+        # 旧的键保留（调用方可能已经在读），值改为真实探测结果
+        'ai_ready': False,
+        'checks': checks,
+        'timestamp': timezone.now().isoformat(),
+    }
+    return Response(payload, status=200 if healthy else 503)
 
 
 @api_view(['GET'])

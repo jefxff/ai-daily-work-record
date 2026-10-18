@@ -9,11 +9,15 @@ from .forms import DecorationForm, CustomerCreditForm, CustomerComplaintForm, Re
 from .audit import log_operation
 from .crud import make_delete_view, make_export_view, make_form_view, make_list_view
 from django.utils import timezone
-from accounts.decorators import perm_required
+from accounts.decorators import perm_required, require_any_module
 from accounts.services import visible_modules
 from knowledge_base.models import KnowledgeDocument
 from samples.models import Sample, Partner
 from archive.models import Archive
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def _is_ajax(request):
@@ -60,109 +64,130 @@ def _weekly_trend(user):
 
 
 def home(request):
-    """首页视图"""
-    # 装修卡片：总装修数、核减金额求和
-    decorations = Decoration.objects.all()
-    total_decorations = decorations.count()
-    decoration_reduced_total = sum(dec.reduced_price or 0 for dec in decorations)
-    
-    # 客户账期卡片：总客户数、同意数、不同意数
-    customer_credits = CustomerCredit.objects.all()
-    total_customers = customer_credits.values('customer_name').distinct().count()
-    agree_count = customer_credits.filter(result='同意').count()
-    disagree_count = customer_credits.filter(result='不同意').count()
-    
-    # 客户客诉卡片：总客诉数、未完成客诉数
-    customer_complaints = CustomerComplaint.objects.all()
-    total_complaints = customer_complaints.count()
-    incomplete_complaints = customer_complaints.filter(complaint_status='未完成').count()
-    
-    # 制度及处罚卡片：总制度数
-    total_regulations = Regulation.objects.count()
-    
-    # 核价卡片：总核价数、总核减金额
-    price_evaluations = PriceEvaluation.objects.all()
-    total_price_evaluations = price_evaluations.count()
-    total_price_reduction = sum(eval.get_reduction_amount() for eval in price_evaluations)
-    
-# 每日记录：未完成工作（用annotate合并查询，避免重复count）；仅统计当前用户的记录
-    from django.db.models import Count
-    my_daily = _my_daily_records(request.user)
-    daily_stats = my_daily.aggregate(
-        total=Count('id'),
-        incomplete=Count('id', filter=Q(status='未完成'))
-    )
-    total_daily_records = daily_stats['total']
-    incomplete_daily_records_count = daily_stats['incomplete']
-    incomplete_daily_records = my_daily.filter(status='未完成').order_by('-record_date')
+    """首页：按用户可见模块裁剪内容。
 
-    # 获取金属价格数据
-    # 检查今天是否已经有数据
-    today = datetime.now().date()
-    today_prices = MetalPrice.objects.filter(crawl_date=today)
+    改造前首页没有任何权限判定：一个已登录但没有任何模块权限的账号，
+    可以直接看到全站数据摘要（审计 #6）。这里不直接加 @perm_required ——
+    那会让只有档案权限的用户打不开首页 —— 而是"有哪个模块就统计哪个模块"，
+    一个都没有时给出明确空态。
+    """
+    from . import stats as stats_svc
 
-    if today_prices.exists():
-        # 今天已有数据，直接从数据库读取
-        all_prices = list(today_prices)
-    else:
-        # 今天没有数据，尝试从最近一次爬取读取（避免阻塞页面）
-        last_prices = MetalPrice.objects.order_by('-crawl_date', '-crawl_time').first()
-        if last_prices:
-            all_prices = list(MetalPrice.objects.filter(crawl_date=last_prices.crawl_date))
-        else:
-            all_prices = []
+    mods = set(visible_modules(request.user))
 
-    # 自定义排序：将黄金、1#白银、1#铜、1#锡、A00铝排在前面
-    priority_metals = ['黄金', '1#白银', '1#铜', '1#锡', 'A00铝']
-    
-    def custom_sort(metal):
-        metal_name = metal.metal_name
-        if metal_name in priority_metals:
-            return (0, priority_metals.index(metal_name))
-        else:
-            return (1, metal_name)
-    
-    all_prices.sort(key=custom_sort)
-    
-    # 保险到期台账数据 - 获取所有未到期的保险，按未到期天数从小到大排序
-    from datetime import date
-    today = date.today()
-    
-    # 获取所有未到期的保险（截止日期大于今天）
-    expiring_insurances = Insurance.objects.filter(end_date__gt=today).order_by('end_date')  # 获取所有未到期的保险
-    
-    # 获取进度未完结的诉讼案件（排除已结案的案件）
-    incomplete_litigations = Complaint.objects.exclude(progress='结案').order_by('-id')
-
-    # 近 7 天每日记录数趋势（含今天，升序，缺数的天补 0，共 7 项）
-    weekly_trend = _weekly_trend(request.user)
-
+    # 先给全部键一个安全的默认值：模板里任何位置引用都不会得到空字符串意外
     context = {
-        'total_decorations': total_decorations,
-        'decoration_reduced_total': decoration_reduced_total,
-        'total_customers': total_customers,
-        'agree_count': agree_count,
-        'disagree_count': disagree_count,
-        'total_complaints': total_complaints,
-        'incomplete_complaints': incomplete_complaints,
-        'total_regulations': total_regulations,
-        'total_price_evaluations': total_price_evaluations,
-        'total_price_reduction': total_price_reduction,
-        'incomplete_daily_records': incomplete_daily_records,
-        'total_daily_records': total_daily_records,
-        'incomplete_daily_records_count': incomplete_daily_records_count,
-        'metal_prices': all_prices,
-        'expiring_insurances': expiring_insurances,
-        'incomplete_litigations': incomplete_litigations,
-        'weekly_trend': weekly_trend,
-        'trend_max': max([x['c'] for x in weekly_trend] + [1]),
+        'mods': mods,
+        'no_permission': not mods,
+        'total_daily_records': 0,
+        'incomplete_daily_records_count': 0,
+        'incomplete_daily_records': [],
+        'total_customers': 0,
+        'agree_count': 0,
+        'disagree_count': 0,
+        'total_complaints': 0,
+        'incomplete_complaints': 0,
+        'total_regulations': 0,
+        'total_price_evaluations': 0,
+        'total_price_reduction': 0,
+        'total_decorations': 0,
+        'decoration_reduced_total': 0,
+        'metal_prices': [],
+        'expiring_insurances': [],
+        'incomplete_litigations': [],
+        'weekly_trend': [],
+        'trend_max': 1,
     }
+    if not mods:
+        return render(request, 'records/home.html', context)
+
+    if 'daily_record' in mods:
+        ds = stats_svc.daily_stats(request.user)
+        context.update({
+            'total_daily_records': ds['total'],
+            'incomplete_daily_records_count': ds['incomplete'],
+            'incomplete_daily_records': _my_daily_records(request.user)
+                .filter(status='未完成').order_by('-record_date'),
+            'weekly_trend': _weekly_trend(request.user),
+        })
+        context['trend_max'] = max([x['c'] for x in context['weekly_trend']] + [1])
+
+    if 'customer_credit' in mods:
+        cs = stats_svc.credit_stats()
+        context.update({
+            'total_customers': cs['distinct_customers'],
+            'agree_count': cs['agree'],
+            'disagree_count': cs['disagree'],
+        })
+
+    if 'customer_complaint' in mods:
+        cc = stats_svc.customer_complaint_stats()
+        context.update({
+            'total_complaints': cc['total'],
+            'incomplete_complaints': cc['pending'],
+        })
+
+    if 'regulation' in mods:
+        context['total_regulations'] = stats_svc.regulation_count()
+
+    if 'price_evaluation' in mods:
+        ps = stats_svc.price_stats()
+        context.update({
+            'total_price_evaluations': ps['total_price_evaluations'],
+            'total_price_reduction': ps['total_price_reduction'],
+        })
+
+    if 'decoration' in mods:
+        context.update(stats_svc.decoration_stats())
+
+    if 'metal_price' in mods:
+        all_prices = stats_svc.metal_prices_today()
+        # 黄金、白银、铜、锡、铝优先展示，其余按名称排序
+        priority = ['黄金', '1#白银', '1#铜', '1#锡', 'A00铝']
+
+        def _sort(metal):
+            name = metal.metal_name
+            return (0, priority.index(name)) if name in priority else (1, name)
+
+        all_prices.sort(key=_sort)
+        context['metal_prices'] = all_prices
+
+    if 'insurance' in mods:
+        today = timezone.localdate()
+        context['expiring_insurances'] = Insurance.objects.filter(
+            end_date__gt=today).order_by('end_date')
+
+    if 'complaint' in mods:
+        context['incomplete_litigations'] = Complaint.objects.exclude(
+            progress='结案').order_by('-id')
+
     return render(request, 'records/home.html', context)
 
 
+PER_GROUP_CAP = 50
+
+
+@require_any_module
 def search(request):
-    """搜索视图"""
-    search_term = request.GET.get('search', '')
+    """全站搜索。
+
+    三处改造（审计 #3 / #6）：
+    1. 空关键词直接返回空态：改造前 icontains('') 会匹配全表，13 个模型各发一条
+       无 LIMIT 的 SELECT（实测 487 SQL / 1456ms）；
+    2. 每组硬顶 50 条并给出真实条数：搜索页的语义是"按关键词定位"，
+       命中过多时应提示补充关键词，而不是让用户翻 20 页；
+    3. 只查用户有 read 权限的模块（原实现查完再置空，SQL 已经发出去了）。
+    """
+    search_term = (request.GET.get('search') or '').strip()
+    visible = set(visible_modules(request.user))
+
+    if not search_term:
+        return render(request, 'records/search_results.html', {
+            'empty_term': True,
+            'search_term': '',
+            'search_counts': {},
+            'search_total': 0,
+        })
     
     # 搜索装修记录
     decoration_results = Decoration.objects.filter(
@@ -242,7 +267,7 @@ def search(request):
     )
 
     # 搜索知识库文档（与列表行为一致，仅覆盖已发布文档）
-    knowledge_results = KnowledgeDocument.objects.filter(status='published').filter(
+    knowledge_results = KnowledgeDocument.objects.select_related('category').filter(status='published').filter(
         Q(title__icontains=search_term) |
         Q(content__icontains=search_term) |
         Q(summary__icontains=search_term) |
@@ -250,7 +275,7 @@ def search(request):
     )
 
     # 搜索样品主档（排除软删除，含供应商名称）
-    sample_results = Sample.objects.filter(is_deleted=False).filter(
+    sample_results = Sample.objects.select_related('supplier').filter(is_deleted=False).filter(
         Q(sample_no__icontains=search_term) |
         Q(material_name__icontains=search_term) |
         Q(model__icontains=search_term) |
@@ -268,7 +293,9 @@ def search(request):
     )
 
     # 搜索档案（档案管理模块，含台账名称与类别名称）
-    archive_results = Archive.objects.filter(
+    archive_results = Archive.objects.select_related(
+        'ledger', 'category', 'cabinet'
+    ).filter(
         Q(code__icontains=search_term) |
         Q(name__icontains=search_term) |
         Q(description__icontains=search_term) |
@@ -282,26 +309,34 @@ def search(request):
         Q(category__name__icontains=search_term)
     )
 
-    # 按用户可见模块收敛搜索结果，防止越权查看无权限模块的数据
-    visible = set(visible_modules(request.user))
-
-    context = {
-        'search_term': search_term,
-        'decoration_results': decoration_results if 'decoration' in visible else Decoration.objects.none(),
-        'customer_credit_results': customer_credit_results if 'customer_credit' in visible else CustomerCredit.objects.none(),
-        'customer_complaint_results': customer_complaint_results if 'customer_complaint' in visible else CustomerComplaint.objects.none(),
-        'regulation_results': regulation_results if 'regulation' in visible else Regulation.objects.none(),
-        'price_evaluation_results': price_evaluation_results if 'price_evaluation' in visible else PriceEvaluation.objects.none(),
-        'daily_record_results': daily_record_results if 'daily_record' in visible else DailyRecord.objects.none(),
-        'insurance_results': insurance_results if 'insurance' in visible else Insurance.objects.none(),
-        'metal_price_results': metal_price_results if 'metal_price' in visible else MetalPrice.objects.none(),
-        'complaint_results': complaint_results if 'complaint' in visible else Complaint.objects.none(),
-        'knowledge_results': knowledge_results if 'knowledge' in visible else KnowledgeDocument.objects.none(),
-        'sample_results': sample_results if 'samples' in visible else Sample.objects.none(),
-        'partner_results': partner_results if 'samples' in visible else Partner.objects.none(),
-        'archive_results': archive_results if 'archive' in visible else Archive.objects.none(),
+    # 按用户可见模块收敛搜索结果：无权限的模块既不查计数也不查数据
+    groups = {
+        'decoration': ('decoration_results', decoration_results),
+        'customer_credit': ('customer_credit_results', customer_credit_results),
+        'customer_complaint': ('customer_complaint_results', customer_complaint_results),
+        'regulation': ('regulation_results', regulation_results),
+        'price_evaluation': ('price_evaluation_results', price_evaluation_results),
+        'daily_record': ('daily_record_results', daily_record_results),
+        'insurance': ('insurance_results', insurance_results),
+        'metal_price': ('metal_price_results', metal_price_results),
+        'complaint': ('complaint_results', complaint_results),
+        'knowledge': ('knowledge_results', knowledge_results),
+        'samples': ('sample_results', sample_results),
+        'partners': ('partner_results', partner_results),
+        'archive': ('archive_results', archive_results),
     }
-    
+    context = {'search_term': search_term, 'empty_term': False}
+    counts = {}
+    for key, (var, qs) in groups.items():
+        if key in visible:
+            counts[key] = qs.count()
+            context[var] = qs[:PER_GROUP_CAP]
+        else:
+            counts[key] = 0
+            context[var] = []
+    context['search_counts'] = counts
+    context['search_total'] = sum(counts.values())
+    context['per_group_cap'] = PER_GROUP_CAP
     return render(request, 'records/search_results.html', context)
 
 
@@ -926,8 +961,14 @@ def dashboard(request):
     regulation_list_count = total_regulations
     regulation_recent_count = min(5, total_regulations)
     
-    # 计算总记录数
-    total_records = total_decorations + total_customers + complaint_total_count + lawsuit_total_count + total_regulations + price_total_count + insurance_total_count + daily_total_count
+    # 总记录数：口径统一在 records/stats.py（含试样/档案/知识库三个模块，
+    # 改造前漏计，导致首页与看板两个"总数"——审计 #21）
+    from . import stats as stats_svc
+    _records_total = (
+        total_decorations + total_customers + complaint_total_count + lawsuit_total_count
+        + total_regulations + price_total_count + insurance_total_count + daily_total_count
+    )
+    total_records = stats_svc.total_records(set(visible_modules(request.user)), _records_total)
     
     # 计算完成率（基于实际数据，等价于原 exists()+count() 逻辑）
     total_processed = daily_stats['completed'] + complaint_stats['completed']
@@ -952,6 +993,7 @@ def dashboard(request):
             'title': record.work_content[:50] + '...' if len(record.work_content) > 50 else record.work_content,
             'department': record.department,
             'created_at': record.record_date.strftime('%Y-%m-%d %H:%M'),
+            'sort_at': record.record_date.timestamp(),
             'status': '未完成',
             'url': f'/daily_record/detail/{record.id}/'
         })
@@ -966,6 +1008,7 @@ def dashboard(request):
             'title': complaint.customer_name,
             'department': complaint.responsible_salesperson,
             'created_at': complaint.complaint_date.strftime('%Y-%m-%d'),
+            'sort_at': datetime.combine(complaint.complaint_date, datetime.min.time()).timestamp(),
             'status': '未完成',
             'url': f'/customer_complaint/edit/{complaint.id}/'
         })
@@ -979,13 +1022,20 @@ def dashboard(request):
             'type_icon': '⚖️',
             'title': lawsuit.defendant,
             'department': lawsuit.lawyer,
-            'created_at': '立案中',
+            # 诉讼没有登记日期字段：不再把「立案中」塞进日期列（审计 #37）
+            'created_at': '—',
+            'sort_at': None,
             'status': lawsuit.progress,
             'url': f'/complaint/detail/{lawsuit.id}/'
         })
     
-    # 按时间排序（最近的在前）
-    pending_items.sort(key=lambda x: x['created_at'], reverse=True)
+    # 排序：有日期的按时间倒序在前；无日期项（诉讼）排在最后并保持 id 倒序。
+    # 改造前把 '立案中' 当日期字符串与 '2026-10-18' 混排，字符串恒大于日期，
+    # 导致诉讼永远占据首页第一屏（审计 #37）。
+    dated = [i for i in pending_items if i['sort_at'] is not None]
+    undated = [i for i in pending_items if i['sort_at'] is None]
+    dated.sort(key=lambda x: x['sort_at'], reverse=True)
+    pending_items = dated + undated
     
     # 近 7 天每日记录数趋势（含今天，升序，缺数的天补 0，共 7 项）
     weekly_trend = _weekly_trend(request.user)

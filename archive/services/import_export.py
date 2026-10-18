@@ -9,6 +9,15 @@ import csv
 import io
 from datetime import datetime
 
+# .xls 老格式解析依赖（openpyxl 只支持 .xlsx）。
+# 采用"可选导入 + 明确报错"而不是模块级硬导入：缺依赖时应用仍能启动，
+# 只是上传 .xls 时给出可读提示，而不是一个 ImportError 500。
+# requirements.txt 已声明 xlrd==2.0.1（xlrd 2.x 只支持 .xls）。
+try:
+    import xlrd
+except ImportError:  # pragma: no cover - 仅在依赖缺失的环境触发
+    xlrd = None
+
 from django.db import transaction
 from django.http import Http404, HttpResponse
 from django.utils import timezone
@@ -36,7 +45,12 @@ def _read_import_rows(f):
             raise ValueError("文件编码无法识别，请使用 UTF-8 编码 CSV")
         return list(csv.DictReader(io.StringIO(content)))
     if name.endswith(".xls"):
-        import xlrd
+        if xlrd is None:
+            raise ValueError(
+                "服务器缺少 xlrd 依赖，暂时无法解析 .xls 文件；"
+                "请让管理员执行 pip install -r requirements.txt，"
+                "或把文件另存为 .xlsx 后重新上传。"
+            )
         wb = xlrd.open_workbook(file_contents=f.read())
         ws = wb.sheet_by_index(0)
         if ws.nrows < 2:
@@ -93,7 +107,12 @@ def _parse_excel_sheets(f):
     name = (getattr(f, "name", "") or "").lower()
     result = {}
     if name.endswith(".xls"):
-        import xlrd
+        if xlrd is None:
+            raise ValueError(
+                "服务器缺少 xlrd 依赖，暂时无法解析 .xls 文件；"
+                "请让管理员执行 pip install -r requirements.txt，"
+                "或把文件另存为 .xlsx 后重新上传。"
+            )
         wb = xlrd.open_workbook(file_contents=f.read())
         for idx in range(wb.nsheets):
             ws = wb.sheet_by_index(idx)
@@ -549,6 +568,8 @@ def _export_response(spec, include_header_only=False):
     if not include_header_only:
         for obj in spec["queryset"]():
             ws.append([c[1](obj) for c in spec["columns"]])
+    from work_record.export_utils import sanitize_xlsx_formulas
+    sanitize_xlsx_formulas(wb)   # 防公式注入（审计 #27）
     buf = io.BytesIO()
     wb.save(buf)
     suffix = "模板" if include_header_only else "导出"
@@ -557,7 +578,8 @@ def _export_response(spec, include_header_only=False):
         buf.getvalue(),
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
-    resp["Content-Disposition"] = f"attachment; filename=export.xlsx; filename*=utf-8''{quote(fname)}"
+    from work_record.export_utils import content_disposition
+    resp["Content-Disposition"] = content_disposition(fname)   # 中文名 + 头注入防护
     return resp
 
 
@@ -577,6 +599,8 @@ def _archive_book_bytes(sheets):
             cell.fill = PatternFill("solid", fgColor="E6F7FF")
         for a in archives:
             ws.append([c[1](a) for c in _ARCHIVE_COLS])
+    from work_record.export_utils import sanitize_xlsx_formulas
+    sanitize_xlsx_formulas(wb)   # 防公式注入（审计 #27）
     buf = io.BytesIO()
     wb.save(buf)
     return buf.getvalue()
@@ -587,7 +611,8 @@ def _xlsx_response(data, fname):
         data,
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
-    resp["Content-Disposition"] = f"attachment; filename=export.xlsx; filename*=utf-8''{quote(fname)}"
+    from work_record.export_utils import content_disposition
+    resp["Content-Disposition"] = content_disposition(fname)
     return resp
 
 

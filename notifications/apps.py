@@ -56,10 +56,27 @@ class NotificationsConfig(AppConfig):
     verbose_name = "消息通知"
 
     def ready(self):
-        # 仅长驻 web 进程启动：runserver --noreload 主进程，或 autoreload 子进程（RUN_MAIN=true）
-        if "runserver" not in sys.argv:
+        # 是否在进程内起线程由配置决定（settings.NOTIFICATIONS_SCHEDULER_INPROCESS）。
+        # 改造前用 `"runserver" in sys.argv` 判断运行环境：换成 gunicorn/uwsgi 后
+        # 定时任务会全部静默停摆且不报错。现在改为显式开关：
+        #   True  —— 开发/单进程 runserver，随进程启动（保持原行为）
+        #   False —— 多 worker 部署，由 `manage.py run_scheduler` 独立进程承担
+        from django.conf import settings
+
+        if not getattr(settings, "NOTIFICATIONS_SCHEDULER_INPROCESS", False):
             return
-        if not ("--noreload" in sys.argv or os.environ.get("RUN_MAIN") == "true"):
+
+        # 只有 runserver 才需要在进程内起线程。manage.py 的短命令（test / migrate /
+        # shell / run_scheduler …）以及 `python script.py`、一次性的管理脚本都不该起：
+        # 后台线程会在这些进程里抢写数据库，产生
+        # "attempt to write a readonly database" 之类的噪音错误，也会污染测试数据。
+        # 若确实要在 gunicorn/uwsgi 等非 runserver 容器里进程内调度，
+        # 显式设 DJANGO_SCHEDULER_FORCE_INPROCESS=1。
+        is_runserver = "runserver" in sys.argv
+        if not is_runserver and os.environ.get("DJANGO_SCHEDULER_FORCE_INPROCESS") != "1":
+            return
+        # runserver 的重载器有两个进程，只在真正干活的子进程里起
+        if is_runserver and not ("--noreload" in sys.argv or os.environ.get("RUN_MAIN") == "true"):
             return
         from . import scheduler
 

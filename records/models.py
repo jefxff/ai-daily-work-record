@@ -155,6 +155,8 @@ class MetalPrice(models.Model):
         verbose_name = '金属价格'
         verbose_name_plural = '金属价格'
         ordering = ['-crawl_time']
+        # 首页/看板每条请求都按 crawl_date 取当日或最近一批（审计 #20）
+        indexes = [models.Index(fields=['crawl_date'], name='idx_metalprice_crawl_date')]
         
     def __str__(self):
         return f"{self.metal_name} - {self.price} {self.unit} ({self.crawl_date})"
@@ -232,3 +234,8 @@ class OperationLog(models.Model):
         verbose_name = '操作留痕'
         verbose_name_plural = '操作留痕'
         ordering = ['-operation_time']
+        # 留痕列表按时间倒序分页、且写入量在补齐创建留痕后上升（审计 #20 / #8）
+        indexes = [
+            models.Index(fields=['operation_time'], name='idx_oplog_time'),
+            models.Index(fields=['module_type', 'operation_time'], name='idx_oplog_module_time'),
+        ]

@@ -7,6 +7,7 @@
 客户端提交值被忽略（防伪造），表单控件只读或隐藏。
 """
 
+import logging
 from datetime import datetime
 
 from django import forms
@@ -43,6 +44,8 @@ from .models import (
     Sample,
     TestRecord,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _per_page(request):
