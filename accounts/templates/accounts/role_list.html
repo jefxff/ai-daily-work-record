@@ -11,37 +11,37 @@
     {% endcan %}
 </div>
 <div class="table-container">
-    <table class="table">
+    <table class="table--cards table">
         <thead>
             <tr>
-                <th>角色编码</th>
-                <th>角色名称</th>
-                <th>说明</th>
-                <th>权限数</th>
-                <th>用户数</th>
-                <th>状态</th>
-                <th style="width:200px;">操作</th>
+                <th scope="col">角色编码</th>
+                <th scope="col">角色名称</th>
+                <th scope="col">说明</th>
+                <th scope="col">权限数</th>
+                <th scope="col">用户数</th>
+                <th scope="col">状态</th>
+                <th scope="col" style="width:200px;">操作</th>
             </tr>
         </thead>
         <tbody>
             {% for r in roles %}
             <tr>
-                <td><code>{{ r.code }}</code></td>
-                <td>
+                <td data-label="角色编码"><code>{{ r.code }}</code></td>
+                <td data-label="角色名称">
                     <strong>{{ r.name }}</strong>
                     {% if r.is_builtin %}<span class="status-badge default">内置</span>{% endif %}
                 </td>
-                <td style="color:#595959;">{{ r.description|default:'—' }}</td>
-                <td>{{ r.permissions.count }}</td>
-                <td>{{ r.user_count }}</td>
-                <td>
+                <td data-label="说明" style="color:var(--c-text-secondary);">{{ r.description|default:'—' }}</td>
+                <td data-label="权限数">{{ r.permissions.count }}</td>
+                <td data-label="用户数">{{ r.user_count }}</td>
+                <td data-label="状态">
                     {% if r.is_active %}
                     <span class="status-badge success">启用</span>
                     {% else %}
                     <span class="status-badge danger">停用</span>
                     {% endif %}
                 </td>
-                <td style="white-space:nowrap;">
+                <td data-label="操作" style="white-space:nowrap;">
                     {% can "system" "update" %}
                     <a class="btn-transparent btn-sm" href="{% url 'accounts:role_edit' r.id %}" data-modal-edit data-modal-title="编辑角色：{{ r.name }}">权限矩阵/编辑</a>
                     {% endcan %}
@@ -53,7 +53,7 @@
                     <form method="post" action="{% url 'accounts:role_delete' r.id %}" style="display:inline;"
                           data-confirm="确定删除角色「{{ r.name }}」吗？该角色当前关联 {{ r.user_count }} 个用户，删除后将解除全部关联，相关用户立即失去对应权限。">
                         {% csrf_token %}
-                        <button type="submit" class="btn-transparent btn-sm" style="border-color:#ffa39e; color:#cf1322;">删除</button>
+                        <button type="submit" class="btn-transparent btn-sm" style="border-color:var(--c-danger-line); color:var(--c-danger);">删除</button>
                     </form>
                     {% endif %}
                     {% endcan %}

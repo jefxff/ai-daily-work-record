@@ -57,24 +57,24 @@
         </div>
     </div>
     <div class="table-container">
-        <table class="table table-sticky">
+        <table class="table--cards table table-sticky">
             <thead>
                 <tr>
-                    <th>操作时间</th>
-                    <th>操作人</th>
-                    <th>模块类型</th>
-                    <th>类型</th>
-                    <th>对象标识</th>
-                    <th>变更摘要</th>
+                    <th scope="col">操作时间</th>
+                    <th scope="col">操作人</th>
+                    <th scope="col">模块类型</th>
+                    <th scope="col">类型</th>
+                    <th scope="col">对象标识</th>
+                    <th scope="col">变更摘要</th>
                 </tr>
             </thead>
             <tbody>
                 {% for log in logs %}
                 <tr>
-                    <td title="{{ log.operation_time|date:'Y-m-d H:i:s' }}">{{ log.operation_time|date:"Y-m-d H:i:s" }}</td>
-                    <td>{{ log.operator }}</td>
-                    <td>{{ log.module_type }}</td>
-                    <td>
+                    <td data-label="操作时间" title="{{ log.operation_time|date:'Y-m-d H:i:s' }}">{{ log.operation_time|date:"Y-m-d H:i:s" }}</td>
+                    <td data-label="操作人">{{ log.operator }}</td>
+                    <td data-label="模块类型">{{ log.module_type }}</td>
+                    <td data-label="类型">
                         {% if log.operation_type == '新增' %}
                             <span class="status-badge success">{{ log.operation_type }}</span>
                         {% elif log.operation_type == '更新' %}
@@ -87,8 +87,8 @@
                             <span class="status-badge default">{{ log.operation_type }}</span>
                         {% endif %}
                     </td>
-                    <td>{{ log.object_identifier }}</td>
-                    <td class="summary-cell" title="{{ log.change_summary|default:'' }}">{{ log.change_summary|default:"—" }}</td>
+                    <td data-label="对象标识">{{ log.object_identifier }}</td>
+                    <td data-label="变更摘要" class="summary-cell" title="{{ log.change_summary|default:'' }}">{{ log.change_summary|default:"—" }}</td>
                 </tr>
                 {% empty %}
                 <tr>

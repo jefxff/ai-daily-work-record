@@ -19,17 +19,17 @@
     </div>
 
     <div class="card">
-        <table class="table">
-            <thead><tr><th>类别名称</th><th>完整路径</th><th>父类别</th><th>排序</th><th>档案数</th><th>操作</th></tr></thead>
+        <table class="table--cards table">
+            <thead><tr><th scope="col">类别名称</th><th scope="col">完整路径</th><th scope="col">父类别</th><th scope="col">排序</th><th scope="col">档案数</th><th scope="col">操作</th></tr></thead>
             <tbody>
             {% for c in categories %}
             <tr>
-                <td>{{ c.name }}</td>
-                <td>{{ c.full_path }}</td>
-                <td>{{ c.parent.name|default:"—" }}</td>
-                <td>{{ c.sort_order }}</td>
-                <td>{{ c.archives.count }}</td>
-                <td>
+                <td data-label="类别名称">{{ c.name }}</td>
+                <td data-label="完整路径">{{ c.full_path }}</td>
+                <td data-label="父类别">{{ c.parent.name|default:"—" }}</td>
+                <td data-label="排序">{{ c.sort_order }}</td>
+                <td data-label="档案数">{{ c.archives.count }}</td>
+                <td data-label="操作">
                     {% can "archive" "update" %}
                     <a href="{% url 'archive:category_edit' c.pk %}" class="btn btn-sm btn-outline-secondary" data-modal-edit data-modal-title="编辑类别">编辑</a>
                     {% endcan %}

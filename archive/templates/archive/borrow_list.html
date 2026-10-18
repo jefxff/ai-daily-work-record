@@ -22,18 +22,18 @@
     </div>
 
     <div class="card">
-        <table class="table">
-            <thead><tr><th>档案</th><th>借阅人</th><th>借阅时间</th><th>应还日期</th><th>实际归还</th><th>状态</th><th>操作</th></tr></thead>
+        <table class="table--cards table">
+            <thead><tr><th scope="col">档案</th><th scope="col">借阅人</th><th scope="col">借阅时间</th><th scope="col">应还日期</th><th scope="col">实际归还</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead>
             <tbody>
             {% for r in records %}
             <tr>
-                <td><a href="{% url 'archive:archive_detail' r.archive.pk %}">{{ r.archive.code }} - {{ r.archive.name }}</a></td>
-                <td>{{ r.borrower }}</td>
-                <td>{{ r.borrow_time|date:"Y-m-d H:i" }}</td>
-                <td>{{ r.due_time|date:"Y-m-d" }}</td>
-                <td>{{ r.return_time|date:"Y-m-d H:i"|default:"—" }}</td>
-                <td><span class="badge {% if r.status == 'returned' %}bg-success{% elif r.status == 'overdue' %}bg-danger{% else %}bg-warning{% endif %}">{{ r.get_status_display }}</span></td>
-                <td>{% if r.status != 'returned' %}<a href="{% url 'archive:borrow_return' r.pk %}" class="btn btn-sm btn-outline-success">归还</a>{% endif %}</td>
+                <td data-label="档案"><a href="{% url 'archive:archive_detail' r.archive.pk %}">{{ r.archive.code }} - {{ r.archive.name }}</a></td>
+                <td data-label="借阅人">{{ r.borrower }}</td>
+                <td data-label="借阅时间">{{ r.borrow_time|date:"Y-m-d H:i" }}</td>
+                <td data-label="应还日期">{{ r.due_time|date:"Y-m-d" }}</td>
+                <td data-label="实际归还">{{ r.return_time|date:"Y-m-d H:i"|default:"—" }}</td>
+                <td data-label="状态"><span class="badge {% if r.status == 'returned' %}bg-success{% elif r.status == 'overdue' %}bg-danger{% else %}bg-warning{% endif %}">{{ r.get_status_display }}</span></td>
+                <td data-label="操作">{% if r.status != 'returned' %}<a href="{% url 'archive:borrow_return' r.pk %}" class="btn btn-sm btn-outline-success">归还</a>{% endif %}</td>
             </tr>
             {% empty %}
             <tr><td colspan="7" class="text-center text-muted">暂无借阅记录</td></tr>

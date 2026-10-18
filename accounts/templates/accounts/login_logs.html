@@ -17,34 +17,34 @@
     </form>
 </div>
 <div class="table-container">
-    <table class="table">
+    <table class="table--cards table">
         <thead>
             <tr>
-                <th>时间</th>
-                <th>用户名</th>
-                <th>类型</th>
-                <th>结果</th>
-                <th>IP</th>
-                <th>说明</th>
-                <th>User-Agent</th>
+                <th scope="col">时间</th>
+                <th scope="col">用户名</th>
+                <th scope="col">类型</th>
+                <th scope="col">结果</th>
+                <th scope="col">IP</th>
+                <th scope="col">说明</th>
+                <th scope="col">User-Agent</th>
             </tr>
         </thead>
         <tbody>
             {% for log in page %}
             <tr>
-                <td style="white-space:nowrap;">{{ log.created_at|date:'Y-m-d H:i:s' }}</td>
-                <td>{{ log.username }}</td>
-                <td>{{ log.get_login_type_display }}</td>
-                <td>
+                <td data-label="时间" style="white-space:nowrap;">{{ log.created_at|date:'Y-m-d H:i:s' }}</td>
+                <td data-label="用户名">{{ log.username }}</td>
+                <td data-label="类型">{{ log.get_login_type_display }}</td>
+                <td data-label="结果">
                     {% if log.success %}
                     <span class="status-badge success">成功</span>
                     {% else %}
                     <span class="status-badge danger">失败</span>
                     {% endif %}
                 </td>
-                <td>{{ log.ip|default:'—' }}</td>
-                <td>{{ log.reason|default:'—' }}</td>
-                <td style="max-width:320px; word-break:break-all; font-size:0.78rem; color:#8c8c8c;">{{ log.user_agent|default:'—' }}</td>
+                <td data-label="IP">{{ log.ip|default:'—' }}</td>
+                <td data-label="说明">{{ log.reason|default:'—' }}</td>
+                <td data-label="User-Agent" style="max-width:320px; word-break:break-all; font-size:0.78rem; color:var(--c-text-secondary);">{{ log.user_agent|default:'—' }}</td>
             </tr>
             {% empty %}
             <tr><td colspan="7" class="empty-cell">📭 暂无日志</td></tr>

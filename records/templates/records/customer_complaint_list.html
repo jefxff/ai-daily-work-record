@@ -103,47 +103,47 @@
     <div class="table-container">
         <!-- 表格 -->
         <div class="table-responsive">
-            <table class="table table-sticky">
+            <div class="hidden-cols-hint">窄屏已隐藏 4 个次要列；需要逐列比对时请横屏或改用桌面端。</div><table class="table--cards table table-sticky">
                 <thead>
                     <tr>
-                        <th class="col-optional">序号</th>
-                        <th>客户名称</th>
-                        <th>责任业务员</th>
-                        <th>客诉申请日期</th>
-                        <th>终端客户</th>
-                        <th>产品型号</th>
-                        <th class="col-optional">我司出货量</th>
-                        <th class="col-optional">客户出货量</th>
-                        <th>客诉现象及客户诉求描述</th>
-                        <th>客户诉求（赔偿金额）</th>
-                        <th>是否报保险</th>
-                        <th>工程报告</th>
-                        <th>工程部分析原因报告</th>
-                        <th>欠缺材料</th>
-                        <th>客诉状态</th>
-                        <th>跟进情况</th>
-                        <th class="col-optional">备注</th>
-                        <th class="col-actions">操作</th>
+                        <th scope="col" class="col-optional">序号</th>
+                        <th scope="col">客户名称</th>
+                        <th scope="col">责任业务员</th>
+                        <th scope="col">客诉申请日期</th>
+                        <th scope="col">终端客户</th>
+                        <th scope="col">产品型号</th>
+                        <th scope="col" class="col-optional">我司出货量</th>
+                        <th scope="col" class="col-optional">客户出货量</th>
+                        <th scope="col">客诉现象及客户诉求描述</th>
+                        <th scope="col">客户诉求（赔偿金额）</th>
+                        <th scope="col">是否报保险</th>
+                        <th scope="col">工程报告</th>
+                        <th scope="col">工程部分析原因报告</th>
+                        <th scope="col">欠缺材料</th>
+                        <th scope="col">客诉状态</th>
+                        <th scope="col">跟进情况</th>
+                        <th scope="col" class="col-optional">备注</th>
+                        <th scope="col" class="col-actions">操作</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for complaint in complaints %}
                     <tr>
-                        <td class="col-optional">{{ forloop.counter }}</td>
-                        <td>{{ complaint.customer_name }}</td>
-                        <td>{{ complaint.responsible_salesperson }}</td>
-                        <td>{{ complaint.complaint_date|date:'Y-m-d' }}</td>
-                        <td>{{ complaint.terminal_customer|default:'' }}</td>
-                        <td>{{ complaint.product_model|default:'' }}</td>
-                        <td class="col-optional">{{ complaint.our_shipment|default:'' }}</td>
-                        <td class="col-optional">{{ complaint.customer_shipment|default:'' }}</td>
-                        <td title="{{ complaint.complaint_description|default:'' }}">{{ complaint.complaint_description|default:''|truncatechars:30 }}</td>
-                        <td>{% if complaint.compensation_amount %}¥{{ complaint.compensation_amount|floatformat:2 }}{% else %}-{% endif %}</td>
-                        <td>{% if complaint.is_insured %}<span class="status-badge warning">是</span>{% else %}<span class="status-badge default">否</span>{% endif %}</td>
-                        <td title="{{ complaint.engineering_report|default:'' }}">{{ complaint.engineering_report|default:''|truncatechars:30 }}</td>
-                        <td title="{{ complaint.engineering_analysis|default:'' }}">{{ complaint.engineering_analysis|default:''|truncatechars:30 }}</td>
-                        <td title="{{ complaint.missing_materials|default:'' }}">{{ complaint.missing_materials|default:''|truncatechars:20 }}</td>
-                        <td>
+                        <td data-label="序号" class="col-optional">{{ forloop.counter }}</td>
+                        <td data-label="客户名称">{{ complaint.customer_name }}</td>
+                        <td data-label="责任业务员">{{ complaint.responsible_salesperson }}</td>
+                        <td data-label="客诉申请日期">{{ complaint.complaint_date|date:'Y-m-d' }}</td>
+                        <td data-label="终端客户">{{ complaint.terminal_customer|default:'' }}</td>
+                        <td data-label="产品型号">{{ complaint.product_model|default:'' }}</td>
+                        <td data-label="我司出货量" class="col-optional">{{ complaint.our_shipment|default:'' }}</td>
+                        <td data-label="客户出货量" class="col-optional">{{ complaint.customer_shipment|default:'' }}</td>
+                        <td data-label="客诉现象及客户诉求描述" title="{{ complaint.complaint_description|default:'' }}">{{ complaint.complaint_description|default:''|truncatechars:30 }}</td>
+                        <td data-label="客户诉求（赔偿金额）">{% if complaint.compensation_amount %}¥{{ complaint.compensation_amount|floatformat:2 }}{% else %}-{% endif %}</td>
+                        <td data-label="是否报保险">{% if complaint.is_insured %}<span class="status-badge warning">是</span>{% else %}<span class="status-badge default">否</span>{% endif %}</td>
+                        <td data-label="工程报告" title="{{ complaint.engineering_report|default:'' }}">{{ complaint.engineering_report|default:''|truncatechars:30 }}</td>
+                        <td data-label="工程部分析原因报告" title="{{ complaint.engineering_analysis|default:'' }}">{{ complaint.engineering_analysis|default:''|truncatechars:30 }}</td>
+                        <td data-label="欠缺材料" title="{{ complaint.missing_materials|default:'' }}">{{ complaint.missing_materials|default:''|truncatechars:20 }}</td>
+                        <td data-label="客诉状态">
                             {% if complaint.complaint_status == '已完成' %}
                             <span class="status-badge success">{{ complaint.complaint_status }}</span>
                             {% elif complaint.complaint_status == '处理中' %}
@@ -152,9 +152,9 @@
                             <span class="status-badge danger">{{ complaint.complaint_status }}</span>
                             {% endif %}
                         </td>
-                        <td title="{{ complaint.follow_up_status|default:'' }}">{{ complaint.follow_up_status|default:''|truncatechars:30 }}</td>
-                        <td class="col-optional" title="{{ complaint.remarks|default:'' }}">{{ complaint.remarks|default:''|truncatechars:30 }}</td>
-                        <td class="col-actions">
+                        <td data-label="跟进情况" title="{{ complaint.follow_up_status|default:'' }}">{{ complaint.follow_up_status|default:''|truncatechars:30 }}</td>
+                        <td data-label="备注" class="col-optional" title="{{ complaint.remarks|default:'' }}">{{ complaint.remarks|default:''|truncatechars:30 }}</td>
+                        <td data-label="操作" class="col-actions">
                             <div style="display: flex; gap: 0.25rem; align-items: center; flex-wrap: nowrap;">
                                 <a href="{% url 'customer_detail' complaint.id %}" class="btn-transparent btn-sm" data-modal-detail data-modal-title="客户详情">详细</a>
                                 {% can "customer_complaint" "update" %}
@@ -248,17 +248,17 @@
     .table tbody td.col-actions {
         position: sticky !important;
         right: 0;
-        background: #fff !important;
+        background: var(--c-surface) !important;
         z-index: 10;
         box-shadow: -3px 0 5px rgba(0,0,0,0.08);
         border-left: 1px solid #e8e8e8;
     }
     .table tbody tr:hover td.col-actions {
-        background: #fafafa !important;
+        background: var(--c-surface-sunken) !important;
     }
     .table thead th.col-actions {
         z-index: 20;
-        background: #fafafa !important;
+        background: var(--c-surface-sunken) !important;
     }
 
     /* 筛选按钮容器 */

@@ -16,12 +16,12 @@
             <label class="form-label">按类别接收邮件</label>
             <div class="table-container" style="margin-bottom: 0.5rem;">
                 {% for cat in categories %}
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 20px;border-bottom:1px solid #f0f0f0;">
-                    <span style="color:#1f2329;font-size:0.9rem;">{{ cat.1 }}<span class="text-muted" style="margin-left:0.5rem;font-size:0.75rem;">邮件</span></span>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 20px;border-bottom:1px solid var(--c-border);">
+                    <span style="color:var(--c-text);font-size:0.9rem;">{{ cat.1 }}<span class="text-muted" style="margin-left:0.5rem;font-size:0.75rem;">邮件</span></span>
                     <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;margin:0;">
                         <input type="checkbox" name="email_{{ cat.0 }}"
                            {% if cat.2 %}checked{% endif %}>
-                        <span style="font-size:0.85rem;color:#595959;">开启</span>
+                        <span style="font-size:0.85rem;color:var(--c-text-secondary);">开启</span>
                     </label>
                 </div>
                 {% endfor %}

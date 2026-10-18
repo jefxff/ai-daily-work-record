@@ -18,15 +18,15 @@
 </div>
 {% if other_complaints.exists %}
 <div style="margin-top:1rem;">
-    <h4 style="color:#1f2329;margin:0 0 0.75rem;font-weight:600;">其他客诉记录</h4>
+    <h4 style="color:var(--c-text);margin:0 0 0.75rem;font-weight:600;">其他客诉记录</h4>
     {% for other in other_complaints %}
-    <div style="background:#fafafa;border:1px solid #f0f0f0;border-radius:8px;padding:0.75rem 1rem;margin-bottom:0.5rem;">
+    <div style="background:var(--c-surface-sunken);border:1px solid var(--c-border);border-radius:8px;padding:0.75rem 1rem;margin-bottom:0.5rem;">
         <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:0.25rem 1rem;font-size:0.85rem;">
             <span><b>日期：</b>{{ other.complaint_date|date:'Y-m-d' }}</span>
             <span><b>产品型号：</b>{{ other.product_model|default:'-' }}</span>
             <span><b>状态：</b>{{ other.complaint_status }}</span>
         </div>
-        <div style="margin-top:0.35rem;font-size:0.85rem;color:#595959;">{{ other.complaint_description|default:'-'|truncatechars:120 }}</div>
+        <div style="margin-top:0.35rem;font-size:0.85rem;color:var(--c-text-secondary);">{{ other.complaint_description|default:'-'|truncatechars:120 }}</div>
     </div>
     {% endfor %}
 </div>

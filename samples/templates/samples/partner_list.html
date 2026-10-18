@@ -5,7 +5,7 @@
 
 {% block extra_css %}
 <style>
-    .filter-bar { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 1rem 1.25rem; margin-bottom: 1.25rem; }
+    .filter-bar { background: var(--c-surface); border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 1rem 1.25rem; margin-bottom: 1.25rem; }
     .filter-form { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; }
 </style>
 {% endblock %}
@@ -36,28 +36,28 @@
 
 <div class="table-container">
     <div class="table-responsive">
-        <table class="table">
+        <table class="table--cards table">
             <thead>
                 <tr>
-                    <th>档案编号</th>
-                    <th>名称</th>
-                    <th>联系人</th>
-                    <th>联系方式</th>
-                    <th>合作状态</th>
-                    <th>创建时间</th>
-                    <th>操作</th>
+                    <th scope="col">档案编号</th>
+                    <th scope="col">名称</th>
+                    <th scope="col">联系人</th>
+                    <th scope="col">联系方式</th>
+                    <th scope="col">合作状态</th>
+                    <th scope="col">创建时间</th>
+                    <th scope="col">操作</th>
                 </tr>
             </thead>
             <tbody>
                 {% for partner in page_obj %}
                 <tr>
-                    <td>{{ partner.partner_code }}</td>
-                    <td><a href="{% url 'samples:partner_detail' partner.pk %}" data-modal-detail data-modal-title="{{ partner.name }} 档案">{{ partner.name }}</a></td>
-                    <td>{{ partner.contact_person|default:'—' }}</td>
-                    <td>{{ partner.contact_info|default:'—' }}</td>
-                    <td><span class="status-badge {{ partner.status_badge }}">{{ partner.get_status_display }}</span></td>
-                    <td>{{ partner.created_at|date:'Y-m-d' }}</td>
-                    <td>
+                    <td data-label="档案编号">{{ partner.partner_code }}</td>
+                    <td data-label="名称"><a href="{% url 'samples:partner_detail' partner.pk %}" data-modal-detail data-modal-title="{{ partner.name }} 档案">{{ partner.name }}</a></td>
+                    <td data-label="联系人">{{ partner.contact_person|default:'—' }}</td>
+                    <td data-label="联系方式">{{ partner.contact_info|default:'—' }}</td>
+                    <td data-label="合作状态"><span class="status-badge {{ partner.status_badge }}">{{ partner.get_status_display }}</span></td>
+                    <td data-label="创建时间">{{ partner.created_at|date:'Y-m-d' }}</td>
+                    <td data-label="操作">
                         <div style="display:flex; gap:0.25rem; align-items:center; flex-wrap:nowrap;">
                             <a href="{% url 'samples:partner_detail' partner.pk %}" class="btn-transparent btn-sm" data-modal-detail data-modal-title="{{ partner.name }} 档案">详细</a>
                             {% can "samples" "update" %}

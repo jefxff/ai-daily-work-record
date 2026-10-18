@@ -17,13 +17,13 @@
         </div>
         <div class="col-md-4">
             <div class="card text-center"><div class="card-body">
-                <div style="font-size: 1.6rem; font-weight: 600; color: #52c41a;">{{ created_n }}</div>
+                <div style="font-size: 1.6rem; font-weight: 600; color: var(--c-success);">{{ created_n }}</div>
                 <div class="text-muted">将新增</div>
             </div></div>
         </div>
         <div class="col-md-4">
             <div class="card text-center"><div class="card-body">
-                <div style="font-size: 1.6rem; font-weight: 600; color: #1890ff;">{{ updated_n }}</div>
+                <div style="font-size: 1.6rem; font-weight: 600; color: var(--c-primary);">{{ updated_n }}</div>
                 <div class="text-muted">将更新（按「{{ match_header }}」匹配）</div>
             </div></div>
         </div>
@@ -33,17 +33,17 @@
     <div class="card mb-4">
         <div class="card-header"><h5 class="mb-0">工作表 → 台账</h5></div>
         <div class="card-body p-0">
-            <table class="table mb-0">
+            <table class="table--cards table mb-0">
                 <thead>
-                <tr><th>工作表名</th><th>匹配结果</th><th>将新增</th><th>将更新</th></tr>
+                <tr><th scope="col">工作表名</th><th scope="col">匹配结果</th><th scope="col">将新增</th><th scope="col">将更新</th></tr>
                 </thead>
                 <tbody>
                 {% for n in sheet_notes %}
                 <tr>
-                    <td>{{ n.name }}</td>
-                    <td>{% if n.note == '新建台账' %}<span class="status-badge warning">新建台账</span>{% else %}<span class="status-badge info">已有台账</span>{% endif %}</td>
-                    <td>{{ n.created }}</td>
-                    <td>{{ n.updated }}</td>
+                    <td data-label="工作表名">{{ n.name }}</td>
+                    <td data-label="匹配结果">{% if n.note == '新建台账' %}<span class="status-badge warning">新建台账</span>{% else %}<span class="status-badge info">已有台账</span>{% endif %}</td>
+                    <td data-label="将新增">{{ n.created }}</td>
+                    <td data-label="将更新">{{ n.updated }}</td>
                 </tr>
                 {% endfor %}
                 </tbody>
@@ -53,14 +53,14 @@
     {% endif %}
 
     {% if bad_cells %}
-    <div class="card mb-4" style="border-left: 3px solid #fa8c16;">
+    <div class="card mb-4" style="border-left: 3px solid var(--c-warning);">
         <div class="card-header">
-            <h5 class="mb-0" style="color: #d46b08;">⚠️ 将忽略的无效单元格（共 {{ bad_cells|length }} 个，导入时该单元格保留原值，其余数据正常写入）</h5>
+            <h5 class="mb-0" style="color: var(--c-warning);">⚠️ 将忽略的无效单元格（共 {{ bad_cells|length }} 个，导入时该单元格保留原值，其余数据正常写入）</h5>
         </div>
         <div class="card-body p-0" style="max-height: 260px; overflow-y: auto;">
             <table class="table table-sm mb-0">
                 <thead>
-                <tr><th style="width:70px;">行号</th><th style="width:160px;">{{ match_header }}</th><th style="width:110px;">列</th><th>原因</th></tr>
+                <tr><th scope="col" style="width:70px;">行号</th><th scope="col" style="width:160px;">{{ match_header }}</th><th scope="col" style="width:110px;">列</th><th scope="col">原因</th></tr>
                 </thead>
                 <tbody>
                 {% for b in bad_cells %}
@@ -86,9 +86,9 @@
             <table class="table mb-0">
                 <thead>
                 <tr>
-                    <th>{{ match_header }}</th>
-                    <th>动作</th>
-                    {% for f in preview_fields %}{% if f != match_header %}<th>{{ f }}</th>{% endif %}{% endfor %}
+                    <th scope="col">{{ match_header }}</th>
+                    <th scope="col">动作</th>
+                    {% for f in preview_fields %}{% if f != match_header %}<th scope="col">{{ f }}</th>{% endif %}{% endfor %}
                 </tr>
                 </thead>
                 <tbody>

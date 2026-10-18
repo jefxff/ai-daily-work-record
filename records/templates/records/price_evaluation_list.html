@@ -27,53 +27,53 @@
     <div class="table-container">
         <!-- 表格 -->
         <div class="table-responsive">
-            <table class="table table-sticky">
+            <div class="hidden-cols-hint">窄屏已隐藏 3 个次要列；需要逐列比对时请横屏或改用桌面端。</div><table class="table--cards table table-sticky">
                 <thead>
                     <tr>
-                        <th class="col-optional">序号</th>
-                        <th>项目分类</th>
-                        <th>项目提出部门</th>
-                        <th>提出人</th>
-                        <th>核价内容</th>
-                        <th>供应商1报价</th>
-                        <th>供应商2报价</th>
-                        <th class="col-optional">供应商3报价</th>
-                        <th class="col-optional">内控审核供应商</th>
-                        <th>内控审核价</th>
-                        <th>核减金额</th>
-                        <th class="col-actions">操作</th>
+                        <th scope="col" class="col-optional">序号</th>
+                        <th scope="col">项目分类</th>
+                        <th scope="col">项目提出部门</th>
+                        <th scope="col">提出人</th>
+                        <th scope="col">核价内容</th>
+                        <th scope="col">供应商1报价</th>
+                        <th scope="col">供应商2报价</th>
+                        <th scope="col" class="col-optional">供应商3报价</th>
+                        <th scope="col" class="col-optional">内控审核供应商</th>
+                        <th scope="col">内控审核价</th>
+                        <th scope="col">核减金额</th>
+                        <th scope="col" class="col-actions">操作</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for evaluation in evaluations %}
                     <tr>
-                        <td class="col-optional">{{ forloop.counter }}</td>
-                        <td>{{ evaluation.project_category }}</td>
-                        <td>{{ evaluation.proposing_department }}</td>
-                        <td>{{ evaluation.proposer }}</td>
-                        <td title="{{ evaluation.evaluation_content|default:'' }}">{{ evaluation.evaluation_content|default:''|truncatechars:30 }}</td>
-                        <td>
+                        <td data-label="序号" class="col-optional">{{ forloop.counter }}</td>
+                        <td data-label="项目分类">{{ evaluation.project_category }}</td>
+                        <td data-label="项目提出部门">{{ evaluation.proposing_department }}</td>
+                        <td data-label="提出人">{{ evaluation.proposer }}</td>
+                        <td data-label="核价内容" title="{{ evaluation.evaluation_content|default:'' }}">{{ evaluation.evaluation_content|default:''|truncatechars:30 }}</td>
+                        <td data-label="供应商1报价">
                             <div class="supplier-cell">
                                 <span class="supplier-name" title="{{ evaluation.supplier1_name|default:'' }}">{{ evaluation.supplier1_name|default:'—' }}</span>
                                 <span class="supplier-price">{% if evaluation.supplier1_price %}¥{{ evaluation.supplier1_price|floatformat:2 }}{% else %}—{% endif %}</span>
                             </div>
                         </td>
-                        <td>
+                        <td data-label="供应商2报价">
                             <div class="supplier-cell">
                                 <span class="supplier-name" title="{{ evaluation.supplier2_name|default:'' }}">{{ evaluation.supplier2_name|default:'—' }}</span>
                                 <span class="supplier-price">{% if evaluation.supplier2_price %}¥{{ evaluation.supplier2_price|floatformat:2 }}{% else %}—{% endif %}</span>
                             </div>
                         </td>
-                        <td class="col-optional">
+                        <td data-label="供应商3报价" class="col-optional">
                             <div class="supplier-cell">
                                 <span class="supplier-name" title="{{ evaluation.supplier3_name|default:'' }}">{{ evaluation.supplier3_name|default:'—' }}</span>
                                 <span class="supplier-price">{% if evaluation.supplier3_price %}¥{{ evaluation.supplier3_price|floatformat:2 }}{% else %}—{% endif %}</span>
                             </div>
                         </td>
-                        <td class="col-optional" title="{{ evaluation.internal_control_supplier|default:'' }}">{{ evaluation.internal_control_supplier|default:'—' }}</td>
-                        <td>¥{{ evaluation.internal_control_price|floatformat:2 }}</td>
-                        <td>¥{{ evaluation.get_reduction_amount|floatformat:2 }}</td>
-                        <td class="col-actions">
+                        <td data-label="内控审核供应商" class="col-optional" title="{{ evaluation.internal_control_supplier|default:'' }}">{{ evaluation.internal_control_supplier|default:'—' }}</td>
+                        <td data-label="内控审核价">¥{{ evaluation.internal_control_price|floatformat:2 }}</td>
+                        <td data-label="核减金额">¥{{ evaluation.get_reduction_amount|floatformat:2 }}</td>
+                        <td data-label="操作" class="col-actions">
                     <div style="display: flex; gap: 0.25rem; align-items: center; flex-wrap: nowrap;">
                         <a href="{% url 'price_evaluation_detail' evaluation.id %}" class="btn-transparent btn-sm" data-modal-detail data-modal-title="核价详情">详细</a>
                         {% can "price_evaluation" "update" %}
@@ -167,23 +167,23 @@
     .table tbody td.col-actions {
         position: sticky !important;
         right: 0;
-        background: #fff !important;
+        background: var(--c-surface) !important;
         z-index: 10;
         box-shadow: -3px 0 5px rgba(0,0,0,0.08);
         border-left: 1px solid #e8e8e8;
     }
     .table tbody tr:hover td.col-actions {
-        background: #fafafa !important;
+        background: var(--c-surface-sunken) !important;
     }
     .table thead th.col-actions {
         z-index: 20;
-        background: #fafafa !important;
+        background: var(--c-surface-sunken) !important;
     }
     .table td { font-variant-numeric: tabular-nums; }
     /* 供应商组：名称上、报价下（报价右对齐、等宽数字） */
     .supplier-cell { display: flex; flex-direction: column; gap: 1px; min-width: 96px; }
-    .supplier-name { font-size: 12px; color: #595959; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .supplier-price { font-size: 13px; font-weight: 600; color: #1f2329; font-variant-numeric: tabular-nums; align-self: flex-end; }
+    .supplier-name { font-size: 12px; color: var(--c-text-secondary); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .supplier-price { font-size: 13px; font-weight: 600; color: var(--c-text); font-variant-numeric: tabular-nums; align-self: flex-end; }
 </style>
 {% endblock %}
 

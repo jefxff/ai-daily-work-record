@@ -4,15 +4,15 @@
 
 {% block extra_css %}
 <style>
-    .field-error { color: #f5222d; font-size: 0.8rem; margin-top: 0.25rem; }
-    .form-hint { color: #8c8c8c; font-size: 0.8rem; margin-top: 0.25rem; }
+    .field-error { color: var(--c-danger); font-size: 0.8rem; margin-top: 0.25rem; }
+    .form-hint { color: var(--c-text-secondary); font-size: 0.8rem; margin-top: 0.25rem; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="form-container">
     <h1 class="form-title">{% if record %}编辑第 {{ record.round_no }} 轮审厂记录{% else %}新增第 {{ next_round }} 轮审厂记录{% endif %}</h1>
-    <p style="color:#8c8c8c; font-size:0.875rem; margin-top:-0.75rem; margin-bottom:1.25rem;">
+    <p style="color:var(--c-text-secondary); font-size:0.875rem; margin-top:-0.75rem; margin-bottom:1.25rem;">
         供应商：<a href="{% url 'samples:partner_detail' partner.pk %}">{{ partner.name }}</a>（{{ partner.partner_code }}）
     </p>
     <form method="POST" enctype="multipart/form-data" novalidate>

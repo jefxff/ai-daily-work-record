@@ -3,7 +3,7 @@
     <div class="lic-form-grid">
         {% for field in form.visible_fields %}
         <div class="lic-field{% if field.field.widget.input_type == 'file' %} lic-field-full{% endif %}">
-            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span style="color:#f5222d">*</span>{% endif %}</label>
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span style="color:var(--c-danger)">*</span>{% endif %}</label>
             {{ field }}
             {% if field.help_text %}<div class="lic-hint">{{ field.help_text }}</div>{% endif %}
             {% for error in field.errors %}<div class="lic-error">{{ error }}</div>{% endfor %}
@@ -25,9 +25,9 @@
     .lic-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem 1rem; }
     .lic-field-full, .lic-field:has(textarea) { grid-column: 1 / -1; }
     @media (max-width: 560px) { .lic-form-grid { grid-template-columns: 1fr; } }
-    .lic-field label { display:block; font-weight:600; color:#1f2329; font-size:0.85rem; margin-bottom:0.25rem; }
-    .lic-field .form-control, .lic-field .form-select { width:100%; padding:0.45rem 0.6rem; font-size:0.88rem; border:1px solid #d9d9d9; border-radius:4px; background:#fff; color:#1f2329; }
-    .lic-field .form-control:focus, .lic-field .form-select:focus { border-color:#1890ff; box-shadow:0 0 0 2px rgba(24,144,255,0.1); outline:none; }
-    .lic-error { color:#f5222d; font-size:0.8rem; margin-top:0.25rem; }
-    .lic-hint { color:#8c8c8c; font-size:0.78rem; margin-top:0.25rem; }
+    .lic-field label { display:block; font-weight:600; color:var(--c-text); font-size:0.85rem; margin-bottom:0.25rem; }
+    .lic-field .form-control, .lic-field .form-select { width:100%; padding:0.45rem 0.6rem; font-size:0.88rem; border:1px solid var(--c-border-strong); border-radius:4px; background:var(--c-surface); color:var(--c-text); }
+    .lic-field .form-control:focus, .lic-field .form-select:focus { border-color:var(--c-primary); box-shadow:0 0 0 2px rgba(24,144,255,0.1); outline:none; }
+    .lic-error { color:var(--c-danger); font-size:0.8rem; margin-top:0.25rem; }
+    .lic-hint { color:var(--c-text-secondary); font-size:0.78rem; margin-top:0.25rem; }
 </style>

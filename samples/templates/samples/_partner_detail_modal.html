@@ -1,24 +1,24 @@
 {% load accounts_tags %}
 <style>
 .pt-info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0.7rem 1.2rem;}
-.pt-info-item .pt-lbl{font-size:0.74rem;color:#8c8c8c;margin-bottom:2px;}
-.pt-info-item .pt-val{font-size:0.85rem;color:#1f2329;word-break:break-all;line-height:1.5;}
-.pt-rc{background:#fff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.08);padding:1rem;margin-bottom:0.9rem;}
+.pt-info-item .pt-lbl{font-size:0.74rem;color:var(--c-text-secondary);margin-bottom:2px;}
+.pt-info-item .pt-val{font-size:0.85rem;color:var(--c-text);word-break:break-all;line-height:1.5;}
+.pt-rc{background:var(--c-surface);border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.08);padding:1rem;margin-bottom:0.9rem;}
 .pt-rt{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.7rem;}
-.pt-rt h4{font-size:0.92rem;font-weight:600;color:#1f2329;margin:0;display:flex;align-items:center;gap:0.4rem;}
-.pt-rt h4::before{content:'';width:3px;height:13px;border-radius:2px;background:#1890ff;}
+.pt-rt h4{font-size:0.92rem;font-weight:600;color:var(--c-text);margin:0;display:flex;align-items:center;gap:0.4rem;}
+.pt-rt h4::before{content:'';width:3px;height:13px;border-radius:2px;background:var(--c-primary);}
 .pt-rc .table{width:100%;table-layout:fixed;margin-bottom:0;font-size:0.8rem;}
-.pt-rc .table th{background:#fff;color:#1f2329;font-weight:600;font-size:0.78rem;border-bottom:2px solid #e8e8e8;padding:8px 6px;white-space:nowrap;}
-.pt-rc .table td{padding:8px 6px;border-bottom:1px solid #f0f0f0;vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.pt-rd{font-weight:600;color:#1f2329;}
-.pt-rs{font-size:0.72rem;color:#8c8c8c;margin-top:2px;}
+.pt-rc .table th{background:var(--c-surface);color:var(--c-text);font-weight:600;font-size:0.78rem;border-bottom:2px solid #e8e8e8;padding:8px 6px;white-space:nowrap;}
+.pt-rc .table td{padding:8px 6px;border-bottom:1px solid var(--c-border);vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pt-rd{font-weight:600;color:var(--c-text);}
+.pt-rs{font-size:0.72rem;color:var(--c-text-secondary);margin-top:2px;}
 #formModal.form-modal{width:880px;}
 #formModalBody{max-height:80vh;overflow-y:auto;}
 </style>
 
 <div class="pt-rc" style="padding:1rem;">
     <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.7rem;flex-wrap:wrap;">
-        <h3 style="margin:0;font-size:1.1rem;color:#1f2329;">{{ partner.name }}</h3>
+        <h3 style="margin:0;font-size:1.1rem;color:var(--c-text);">{{ partner.name }}</h3>
         <span class="status-badge {{ partner.status_badge }}">{{ partner.get_status_display }}</span>
     </div>
     <div class="pt-info-grid">
@@ -32,17 +32,17 @@
 
 <div class="pt-rc">
     <div class="pt-rt"><h4>🏭 审厂记录（共 {{ audit_records|length }} 轮）</h4></div>
-    <div class="table-responsive"><table class="table">
-        <thead><tr><th>轮次</th><th>审厂日期</th><th>审厂结果</th><th>审核文件</th><th>备注</th><th>操作人</th></tr></thead>
+    <div class="table-responsive"><table class="table--cards table">
+        <thead><tr><th scope="col">轮次</th><th scope="col">审厂日期</th><th scope="col">审厂结果</th><th scope="col">审核文件</th><th scope="col">备注</th><th scope="col">操作人</th></tr></thead>
         <tbody>
         {% for r in audit_records reversed %}
         <tr>
-            <td><div class="pt-rd">第{{ r.round_no }}轮</div><div class="pt-rs">{{ r.audit_no }}</div></td>
-            <td>{{ r.audit_date|date:'Y-m-d' }}</td>
-            <td><span class="status-badge {{ r.result_badge }}">{{ r.get_audit_result_display }}</span></td>
-            <td>{% if r.file %}<a href="{{ r.file.url }}" target="_blank">📎 {{ r.file.name|cut:'audits/'|truncatechars:18 }}</a>{% else %}—{% endif %}</td>
-            <td>{{ r.audit_remark|truncatechars:24|default:'—' }}</td>
-            <td>{{ r.auditor|default:'—' }}</td>
+            <td data-label="轮次"><div class="pt-rd">第{{ r.round_no }}轮</div><div class="pt-rs">{{ r.audit_no }}</div></td>
+            <td data-label="审厂日期">{{ r.audit_date|date:'Y-m-d' }}</td>
+            <td data-label="审厂结果"><span class="status-badge {{ r.result_badge }}">{{ r.get_audit_result_display }}</span></td>
+            <td data-label="审核文件">{% if r.file %}<a href="{{ r.file.url }}" target="_blank">📎 {{ r.file.name|cut:'audits/'|truncatechars:18 }}</a>{% else %}—{% endif %}</td>
+            <td data-label="备注">{{ r.audit_remark|truncatechars:24|default:'—' }}</td>
+            <td data-label="操作人">{{ r.auditor|default:'—' }}</td>
         </tr>
         {% empty %}
         <tr><td colspan="6" class="text-center py-3">暂无审厂记录</td></tr>
@@ -53,17 +53,17 @@
 
 <div class="pt-rc" style="margin-bottom:0;">
     <div class="pt-rt"><h4>📦 关联样品（共 {{ samples_count }} 条）</h4></div>
-    <div class="table-responsive"><table class="table">
-        <thead><tr><th>样品编号</th><th>物料名称</th><th>型号</th><th>当前状态</th><th>供应商类型</th><th>登记时间</th></tr></thead>
+    <div class="table-responsive"><table class="table--cards table">
+        <thead><tr><th scope="col">样品编号</th><th scope="col">物料名称</th><th scope="col">型号</th><th scope="col">当前状态</th><th scope="col">供应商类型</th><th scope="col">登记时间</th></tr></thead>
         <tbody>
         {% for s in samples_list %}
         <tr>
-            <td>{{ s.sample_no }}</td>
-            <td>{{ s.material_name }}</td>
-            <td>{{ s.model|default:'—' }}</td>
-            <td><span class="status-badge {{ s.status_badge_class }}">{{ s.get_status_display }}</span></td>
-            <td>{% if s.supplier_type == 'new' %}<span class="status-badge warning">新增</span>{% else %}<span class="status-badge default">已合作</span>{% endif %}</td>
-            <td>{{ s.created_at|date:'Y-m-d H:i' }}</td>
+            <td data-label="样品编号">{{ s.sample_no }}</td>
+            <td data-label="物料名称">{{ s.material_name }}</td>
+            <td data-label="型号">{{ s.model|default:'—' }}</td>
+            <td data-label="当前状态"><span class="status-badge {{ s.status_badge_class }}">{{ s.get_status_display }}</span></td>
+            <td data-label="供应商类型">{% if s.supplier_type == 'new' %}<span class="status-badge warning">新增</span>{% else %}<span class="status-badge default">已合作</span>{% endif %}</td>
+            <td data-label="登记时间">{{ s.created_at|date:'Y-m-d H:i' }}</td>
         </tr>
         {% empty %}
         <tr><td colspan="6" class="text-center py-3">暂无关联样品</td></tr>

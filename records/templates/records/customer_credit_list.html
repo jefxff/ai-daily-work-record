@@ -98,37 +98,37 @@
     <div class="table-container">
         <!-- 表格 -->
         <div class="table-responsive">
-            <table class="table table-sticky">
+            <div class="hidden-cols-hint">窄屏已隐藏 5 个次要列；需要逐列比对时请横屏或改用桌面端。</div><table class="table--cards table table-sticky">
                 <thead>
                     <tr>
-                        <th class="col-optional">序号</th>
-                        <th>提出日期</th>
-                        <th>现场日期</th>
-                        <th>客户名称</th>
-                        <th>客户类型</th>
-                        <th class="col-optional">业务员</th>
-                        <th>工作内容</th>
-                        <th>具体内容</th>
-                        <th class="col-optional">前期调查表</th>
-                        <th class="col-optional">工作方式</th>
-                        <th>结果</th>
-                        <th class="col-optional">备注</th>
-                        <th>是否有业绩考核期</th>
-                        <th class="col-actions">操作</th>
+                        <th scope="col" class="col-optional">序号</th>
+                        <th scope="col">提出日期</th>
+                        <th scope="col">现场日期</th>
+                        <th scope="col">客户名称</th>
+                        <th scope="col">客户类型</th>
+                        <th scope="col" class="col-optional">业务员</th>
+                        <th scope="col">工作内容</th>
+                        <th scope="col">具体内容</th>
+                        <th scope="col" class="col-optional">前期调查表</th>
+                        <th scope="col" class="col-optional">工作方式</th>
+                        <th scope="col">结果</th>
+                        <th scope="col" class="col-optional">备注</th>
+                        <th scope="col">是否有业绩考核期</th>
+                        <th scope="col" class="col-actions">操作</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for credit in credits %}
                     <tr>
-                        <td class="col-optional">{{ forloop.counter }}</td>
-                        <td>{{ credit.proposal_date|date:'Y-m-d' }}</td>
-                        <td>{{ credit.site_date|date:'Y-m-d'|default:'' }}</td>
-                        <td>{{ credit.customer_name }}</td>
-                        <td>{{ credit.customer_type }}</td>
-                        <td class="col-optional">{{ credit.salesperson }}</td>
-                        <td title="{{ credit.work_content|default:'' }}">{{ credit.work_content|default:''|truncatechars:30 }}</td>
-                        <td title="{{ credit.specific_content|default:'' }}">{{ credit.specific_content|default:''|truncatechars:30 }}</td>
-                        <td class="col-optional">
+                        <td data-label="序号" class="col-optional">{{ forloop.counter }}</td>
+                        <td data-label="提出日期">{{ credit.proposal_date|date:'Y-m-d' }}</td>
+                        <td data-label="现场日期">{{ credit.site_date|date:'Y-m-d'|default:'' }}</td>
+                        <td data-label="客户名称">{{ credit.customer_name }}</td>
+                        <td data-label="客户类型">{{ credit.customer_type }}</td>
+                        <td data-label="业务员" class="col-optional">{{ credit.salesperson }}</td>
+                        <td data-label="工作内容" title="{{ credit.work_content|default:'' }}">{{ credit.work_content|default:''|truncatechars:30 }}</td>
+                        <td data-label="具体内容" title="{{ credit.specific_content|default:'' }}">{{ credit.specific_content|default:''|truncatechars:30 }}</td>
+                        <td data-label="前期调查表" class="col-optional">
                             {% if credit.pre_survey == '有' %}
                             <span class="status-badge info">有</span>
                             {% elif credit.pre_survey == '无' %}
@@ -137,8 +137,8 @@
                             {{ credit.pre_survey|default:'' }}
                             {% endif %}
                         </td>
-                        <td class="col-optional" title="{{ credit.work_method|default:'' }}">{{ credit.work_method|default:'' }}</td>
-                        <td>
+                        <td data-label="工作方式" class="col-optional" title="{{ credit.work_method|default:'' }}">{{ credit.work_method|default:'' }}</td>
+                        <td data-label="结果">
                             {% if credit.result == '不同意' %}
                             <span class="status-badge danger">{{ credit.result }}</span>
                             {% elif credit.result == '待定' %}
@@ -149,8 +149,8 @@
                             <span class="status-badge default">{{ credit.result }}</span>
                             {% endif %}
                         </td>
-                        <td class="col-optional" title="{{ credit.remarks|default:'' }}">{{ credit.remarks|default:''|truncatechars:50 }}</td>
-                        <td>
+                        <td data-label="备注" class="col-optional" title="{{ credit.remarks|default:'' }}">{{ credit.remarks|default:''|truncatechars:50 }}</td>
+                        <td data-label="是否有业绩考核期">
                             {% if credit.customer_type == '普通客户' and credit.has_assessment_period %}
                             <span class="status-badge warning" title="{{ credit.assessment_start_date|date:'Y-m-d' }} 至 {{ credit.assessment_end_date|date:'Y-m-d' }}&#10;{{ credit.assessment_content|default:'' }}">⚠️ 有</span>
                             <span class="assessment-range" title="{{ credit.assessment_content|default:'' }}">{{ credit.assessment_start_date|date:'Y/m' }}-{{ credit.assessment_end_date|date:'Y/m' }}</span>
@@ -160,7 +160,7 @@
                             <span class="status-badge default">—</span>
                             {% endif %}
                         </td>
-                        <td class="col-actions">
+                        <td data-label="操作" class="col-actions">
                     <div style="display: flex; gap: 0.25rem; align-items: center; flex-wrap: nowrap;">
                         <a href="{% url 'customer_credit_detail' credit.id %}" class="btn-transparent btn-sm" data-modal-detail data-modal-title="客户账期详情">详细</a>
                         {% can "customer_credit" "update" %}
@@ -254,20 +254,20 @@
     .table tbody td.col-actions {
         position: sticky !important;
         right: 0;
-        background: #fff !important;
+        background: var(--c-surface) !important;
         z-index: 10;
         box-shadow: -3px 0 5px rgba(0,0,0,0.08);
         border-left: 1px solid #e8e8e8;
     }
     .table tbody tr:hover td.col-actions {
-        background: #fafafa !important;
+        background: var(--c-surface-sunken) !important;
     }
     .table thead th.col-actions {
         z-index: 20;
-        background: #fafafa !important;
+        background: var(--c-surface-sunken) !important;
     }
     .table td { font-variant-numeric: tabular-nums; }
-    .assessment-range { font-size: 12px; color: #8c8c8c; margin-left: 4px; }
+    .assessment-range { font-size: 12px; color: var(--c-text-secondary); margin-left: 4px; }
 
     /* 筛选按钮容器 */
     .filter-container {

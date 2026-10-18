@@ -40,7 +40,7 @@
                 </div>
             </div>
             <div style="margin-top: 1rem; display: flex; align-items: center; gap: 1rem;">
-                <span style="font-size: 0.75rem; color: #8c8c8c; white-space: nowrap;">近 7 天每日记录</span>
+                <span style="font-size: 0.75rem; color: var(--c-text-secondary); white-space: nowrap;">近 7 天每日记录</span>
                 <div class="trend-bars">
                     {% for d in weekly_trend %}
                     <div class="trend-bar" title="{{ d.date }}：{{ d.c }} 条" data-h="{% widthratio d.c trend_max 40 %}"></div>
@@ -124,17 +124,17 @@
                     <table>
                         <thead>
                             <tr>
-                                <th>项目名称</th>
-                                <th>状态</th>
-                                <th>金额</th>
+                                <th scope="col">项目名称</th>
+                                <th scope="col">状态</th>
+                                <th scope="col">金额</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for decoration in decorations|slice:':5' %}
                             <tr>
-                                <td>{{ decoration.project_name }}</td>
-                                <td>{% if decoration.final_price %}已完成{% else %}进行中{% endif %}</td>
-                                <td>¥{{ decoration.original_price|default:0|stringformat:"d" }}</td>
+                                <td data-label="项目名称">{{ decoration.project_name }}</td>
+                                <td data-label="状态">{% if decoration.final_price %}已完成{% else %}进行中{% endif %}</td>
+                                <td data-label="金额">¥{{ decoration.original_price|default:0|stringformat:"d" }}</td>
                             </tr>
                             {% empty %}
                             <tr>
@@ -182,17 +182,17 @@
                     <table>
                         <thead>
                             <tr>
-                                <th>客户名称</th>
-                                <th>账期</th>
-                                <th>结果</th>
+                                <th scope="col">客户名称</th>
+                                <th scope="col">账期</th>
+                                <th scope="col">结果</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for credit in customer_credits|slice:':5' %}
                             <tr>
-                                <td>{{ credit.customer_name }}</td>
-                                <td>{{ credit.work_method|default:'- ' }}</td>
-                                <td>{{ credit.result|default:'- ' }}</td>
+                                <td data-label="客户名称">{{ credit.customer_name }}</td>
+                                <td data-label="账期">{{ credit.work_method|default:'- ' }}</td>
+                                <td data-label="结果">{{ credit.result|default:'- ' }}</td>
                             </tr>
                             {% empty %}
                             <tr>
@@ -236,17 +236,17 @@
                     <table>
                         <thead>
                             <tr>
-                                <th>客户名称</th>
-                                <th>类型</th>
-                                <th>状态</th>
+                                <th scope="col">客户名称</th>
+                                <th scope="col">类型</th>
+                                <th scope="col">状态</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for complaint in customer_complaints|slice:':5' %}
                             <tr>
-                                <td>{{ complaint.customer_name }}</td>
-                                <td>{{ complaint.complaint_status }}</td>
-                                <td>{{ complaint.follow_up_status }}</td>
+                                <td data-label="客户名称">{{ complaint.customer_name }}</td>
+                                <td data-label="类型">{{ complaint.complaint_status }}</td>
+                                <td data-label="状态">{{ complaint.follow_up_status }}</td>
                             </tr>
                             {% empty %}
                             <tr>
@@ -290,17 +290,17 @@
                     <table>
                         <thead>
                             <tr>
-                                <th>被告</th>
-                                <th>案号</th>
-                                <th>进度</th>
+                                <th scope="col">被告</th>
+                                <th scope="col">案号</th>
+                                <th scope="col">进度</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for complaint in complaints|slice:':5' %}
                             <tr>
-                                <td>{{ complaint.defendant }}</td>
-                                <td>{{ complaint.case_number }}</td>
-                                <td>{{ complaint.progress }}</td>
+                                <td data-label="被告">{{ complaint.defendant }}</td>
+                                <td data-label="案号">{{ complaint.case_number }}</td>
+                                <td data-label="进度">{{ complaint.progress }}</td>
                             </tr>
                             {% empty %}
                             <tr>
@@ -340,17 +340,17 @@
                     <table>
                         <thead>
                             <tr>
-                                <th>标题</th>
-                                <th>类型</th>
-                                <th>出文日期</th>
+                                <th scope="col">标题</th>
+                                <th scope="col">类型</th>
+                                <th scope="col">出文日期</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for regulation in regulations|slice:':5' %}
                             <tr>
-                                <td>{{ regulation.title }}</td>
-                                <td>{{ regulation.type|default:'- ' }}</td>
-                                <td>{{ regulation.issue_date|date:"Y-m-d"|default:'- ' }}</td>
+                                <td data-label="标题">{{ regulation.title }}</td>
+                                <td data-label="类型">{{ regulation.type|default:'- ' }}</td>
+                                <td data-label="出文日期">{{ regulation.issue_date|date:"Y-m-d"|default:'- ' }}</td>
                             </tr>
                             {% empty %}
                             <tr>
@@ -390,17 +390,17 @@
                     <table>
                         <thead>
                             <tr>
-                                <th>项目分类</th>
-                                <th>提出部门</th>
-                                <th>内控审核价</th>
+                                <th scope="col">项目分类</th>
+                                <th scope="col">提出部门</th>
+                                <th scope="col">内控审核价</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for evaluation in price_evaluations|slice:':5' %}
                             <tr>
-                                <td>{{ evaluation.project_category }}</td>
-                                <td>{{ evaluation.proposing_department }}</td>
-                                <td>¥{{ evaluation.internal_control_price }}</td>
+                                <td data-label="项目分类">{{ evaluation.project_category }}</td>
+                                <td data-label="提出部门">{{ evaluation.proposing_department }}</td>
+                                <td data-label="内控审核价">¥{{ evaluation.internal_control_price }}</td>
                             </tr>
                             {% empty %}
                             <tr>
@@ -440,17 +440,17 @@
                     <table>
                         <thead>
                             <tr>
-                                <th>公司名称</th>
-                                <th>标题</th>
-                                <th>截止日期</th>
+                                <th scope="col">公司名称</th>
+                                <th scope="col">标题</th>
+                                <th scope="col">截止日期</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for insurance in insurances|slice:':5' %}
                             <tr>
-                                <td>{{ insurance.company_name }}</td>
-                                <td>{{ insurance.title }}</td>
-                                <td>{{ insurance.end_date|date:"Y-m-d" }}</td>
+                                <td data-label="公司名称">{{ insurance.company_name }}</td>
+                                <td data-label="标题">{{ insurance.title }}</td>
+                                <td data-label="截止日期">{{ insurance.end_date|date:"Y-m-d" }}</td>
                             </tr>
                             {% empty %}
                             <tr>
@@ -490,17 +490,17 @@
                     <table>
                         <thead>
                             <tr>
-                                <th>部门</th>
-                                <th>工作内容</th>
-                                <th>状态</th>
+                                <th scope="col">部门</th>
+                                <th scope="col">工作内容</th>
+                                <th scope="col">状态</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for record in daily_records|slice:':5' %}
                             <tr>
-                                <td>{{ record.department }}</td>
-                                <td>{{ record.work_content|truncatechars:20 }}</td>
-                                <td>{{ record.status }}</td>
+                                <td data-label="部门">{{ record.department }}</td>
+                                <td data-label="工作内容">{{ record.work_content|truncatechars:20 }}</td>
+                                <td data-label="状态">{{ record.status }}</td>
                             </tr>
                             {% empty %}
                             <tr>
@@ -527,7 +527,7 @@
 
     /* 概览卡片 */
     .overview-card {
-        background: #ffffff;
+        background: var(--c-surface);
         border: none;
         border-radius: 8px;
         padding: 1.5rem;
@@ -545,7 +545,7 @@
     .overview-title {
         font-size: 1.125rem;
         font-weight: 600;
-        color: #1f2329;
+        color: var(--c-text);
     }
 
     .overview-meta {
@@ -555,24 +555,24 @@
     }
 
     .update-time {
-        color: #8c8c8c;
+        color: var(--c-text-secondary);
         font-size: 0.875rem;
     }
 
     .refresh-btn {
-        background: #fff;
-        border: 1px solid #d9d9d9;
+        background: var(--c-surface);
+        border: 1px solid var(--c-border-strong);
         border-radius: 4px;
         padding: 0.375rem 0.875rem;
-        color: #595959;
+        color: var(--c-text-secondary);
         font-size: 0.85rem;
         cursor: pointer;
         transition: all 0.2s ease;
     }
 
     .refresh-btn:hover {
-        color: #1890ff;
-        border-color: #1890ff;
+        color: var(--c-primary);
+        border-color: var(--c-primary);
     }
 
     .overview-stats {
@@ -585,27 +585,27 @@
     .stat-item {
         text-align: center;
         padding: 1rem;
-        background: #fafafa;
+        background: var(--c-surface-sunken);
         border-radius: 8px;
     }
 
     .stat-value {
         font-size: 1.5rem;
         font-weight: 600;
-        color: #1f2329;
+        color: var(--c-text);
         margin-bottom: 0.25rem;
     }
 
-    .pending-stat .stat-value { color: #f5222d; }
+    .pending-stat .stat-value { color: var(--c-danger); }
 
     .stat-label {
         font-size: 0.875rem;
-        color: #8c8c8c;
+        color: var(--c-text-secondary);
     }
 
     /* 待处理项目卡片 */
     .pending-card {
-        background: #ffffff;
+        background: var(--c-surface);
         border: none;
         border-radius: 8px;
         padding: 1.5rem;
@@ -619,7 +619,7 @@
         align-items: center;
         margin-bottom: 1.5rem;
         padding-bottom: 1rem;
-        border-bottom: 1px solid #f0f0f0;
+        border-bottom: 1px solid var(--c-border);
     }
 
     .pending-title {
@@ -632,12 +632,12 @@
         margin: 0;
         font-size: 1.125rem;
         font-weight: 600;
-        color: #1f2329;
+        color: var(--c-text);
     }
 
     .pending-count {
-        background: #fff1f0;
-        color: #f5222d;
+        background: var(--c-danger-bg);
+        color: var(--c-danger);
         border-radius: 10px;
         padding: 0.25rem 0.75rem;
         font-size: 0.875rem;
@@ -652,11 +652,11 @@
     }
 
     .filter-btn {
-        background: #fff;
-        border: 1px solid #d9d9d9;
+        background: var(--c-surface);
+        border: 1px solid var(--c-border-strong);
         border-radius: 4px;
         padding: 0.375rem 0.75rem;
-        color: #595959;
+        color: var(--c-text-secondary);
         font-size: 0.85rem;
         cursor: pointer;
         transition: all 0.2s ease;
@@ -666,20 +666,20 @@
     }
 
     .filter-btn:hover {
-        color: #1890ff;
-        border-color: #1890ff;
+        color: var(--c-primary);
+        border-color: var(--c-primary);
     }
 
     .filter-btn.active {
-        background: #e6f7ff;
-        border-color: #91d5ff;
-        color: #1890ff;
+        background: var(--c-primary-subtle);
+        border-color: var(--c-border-hover);
+        color: var(--c-primary);
     }
 
     /* 待处理数量徽章样式 */
     .pending-card .badge {
-        background: #f5222d;
-        color: #fff;
+        background: var(--c-danger);
+        color: var(--c-surface);
         border-radius: 10px;
         font-size: 0.7rem;
         font-weight: 600;
@@ -697,15 +697,15 @@
     }
 
     .pending-list::-webkit-scrollbar { width: 6px; }
-    .pending-list::-webkit-scrollbar-track { background: #f5f5f5; border-radius: 3px; }
-    .pending-list::-webkit-scrollbar-thumb { background: #d9d9d9; border-radius: 3px; }
+    .pending-list::-webkit-scrollbar-track { background: var(--c-surface-sunken); border-radius: 3px; }
+    .pending-list::-webkit-scrollbar-thumb { background: var(--c-border-strong); border-radius: 3px; }
 
     .pending-item {
         display: flex;
         align-items: center;
         padding: 1rem;
         margin-bottom: 0.5rem;
-        background: #fafafa;
+        background: var(--c-surface-sunken);
         border-radius: 8px;
         transition: all 0.2s ease;
         cursor: pointer;
@@ -713,12 +713,12 @@
     }
 
     .pending-item:hover {
-        background: #e6f7ff;
+        background: var(--c-primary-subtle);
     }
 
-    .pending-item.daily { border-left-color: #1890ff; }
-    .pending-item.customer_complaint { border-left-color: #fa8c16; }
-    .pending-item.lawsuit { border-left-color: #f5222d; }
+    .pending-item.daily { border-left-color: var(--c-primary); }
+    .pending-item.customer_complaint { border-left-color: var(--c-warning); }
+    .pending-item.lawsuit { border-left-color: var(--c-danger); }
 
     .pending-icon {
         font-size: 1.5rem;
@@ -734,20 +734,20 @@
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        color: #1f2329;
+        color: var(--c-text);
     }
 
     .pending-meta {
         display: flex;
         gap: 1rem;
         font-size: 0.875rem;
-        color: #8c8c8c;
+        color: var(--c-text-secondary);
         flex-wrap: wrap;
     }
 
     .pending-type {
-        background: #f0f0f0;
-        color: #595959;
+        background: var(--c-border);
+        color: var(--c-text-secondary);
         padding: 0.125rem 0.5rem;
         border-radius: 4px;
         font-size: 0.75rem;
@@ -759,9 +759,9 @@
         font-size: 0.75rem;
     }
 
-    .pending-status.未完成 { background: #fff1f0; color: #f5222d; }
-    .pending-status.立案 { background: #fff7e6; color: #fa8c16; }
-    .pending-status.审理中 { background: #f5f5f5; color: #595959; }
+    .pending-status.未完成 { background: var(--c-danger-bg); color: var(--c-danger); }
+    .pending-status.立案 { background: var(--c-warning-bg); color: var(--c-warning); }
+    .pending-status.审理中 { background: var(--c-surface-sunken); color: var(--c-text-secondary); }
 
     .pending-actions {
         display: flex;
@@ -771,25 +771,25 @@
     }
 
     .action-btn {
-        background: #fff;
-        border: 1px solid #f0f0f0;
+        background: var(--c-surface);
+        border: 1px solid var(--c-border);
         border-radius: 4px;
         padding: 0.5rem;
-        color: #8c8c8c;
+        color: var(--c-text-secondary);
         cursor: pointer;
         transition: all 0.2s ease;
     }
 
     .action-btn:hover {
-        background: #e6f7ff;
-        color: #1890ff;
-        border-color: #91d5ff;
+        background: var(--c-primary-subtle);
+        color: var(--c-primary);
+        border-color: var(--c-border-hover);
     }
 
     .pending-empty {
         text-align: center;
         padding: 2rem;
-        color: #bfbfbf;
+        color: var(--c-text-tertiary);
     }
 
     .pending-footer {
@@ -797,15 +797,15 @@
         justify-content: center;
         margin-top: 1rem;
         padding-top: 1rem;
-        border-top: 1px solid #f0f0f0;
+        border-top: 1px solid var(--c-border);
     }
 
     .view-all-btn {
-        background: #fff;
-        border: 1px solid #d9d9d9;
+        background: var(--c-surface);
+        border: 1px solid var(--c-border-strong);
         border-radius: 4px;
         padding: 0.5rem 1.5rem;
-        color: #595959;
+        color: var(--c-text-secondary);
         text-decoration: none;
         font-size: 0.85rem;
         cursor: pointer;
@@ -813,8 +813,8 @@
     }
 
     .view-all-btn:hover {
-        color: #1890ff;
-        border-color: #1890ff;
+        color: var(--c-primary);
+        border-color: var(--c-primary);
     }
 
     /* 业务模块卡片 */
@@ -825,7 +825,7 @@
     }
 
     .module-card {
-        background: #ffffff;
+        background: var(--c-surface);
         border: none;
         border-radius: 8px;
         padding: 1.5rem;
@@ -852,7 +852,7 @@
         align-items: center;
         justify-content: center;
         margin-right: 1rem;
-        background: #e6f7ff;
+        background: var(--c-primary-subtle);
         font-size: 1.25rem;
         flex-shrink: 0;
     }
@@ -860,7 +860,7 @@
     .module-title {
         font-size: 1.125rem;
         font-weight: 600;
-        color: #1f2329;
+        color: var(--c-text);
     }
 
     .module-status {
@@ -871,16 +871,16 @@
         font-weight: 400;
     }
 
-    .status-normal { background: #f6ffed; color: #52c41a; border: 1px solid #b7eb8f; }
-    .status-warning { background: #fff7e6; color: #fa8c16; border: 1px solid #ffd591; }
-    .status-error { background: #fff1f0; color: #f5222d; border: 1px solid #ffa39e; }
+    .status-normal { background: var(--c-success-bg); color: var(--c-success); border: 1px solid var(--c-success-line); }
+    .status-warning { background: var(--c-warning-bg); color: var(--c-warning); border: 1px solid #ffd591; }
+    .status-error { background: var(--c-danger-bg); color: var(--c-danger); border: 1px solid var(--c-danger-line); }
 
     .module-stats { margin-bottom: 1rem; }
 
     .module-main-stat {
         font-size: 2rem;
         font-weight: 600;
-        color: #1f2329;
+        color: var(--c-text);
         margin-bottom: 0.5rem;
     }
 
@@ -894,19 +894,19 @@
         flex: 1;
         text-align: center;
         padding: 0.5rem;
-        background: #fafafa;
+        background: var(--c-surface-sunken);
         border-radius: 6px;
     }
 
     .sub-stat-value {
         font-size: 1rem;
         font-weight: 600;
-        color: #1f2329;
+        color: var(--c-text);
     }
 
     .sub-stat-label {
         font-size: 0.75rem;
-        color: #8c8c8c;
+        color: var(--c-text-secondary);
     }
 
     /* 数据表格 */
@@ -922,21 +922,21 @@
     }
 
     .data-table th {
-        background: #fafafa;
+        background: var(--c-surface-sunken);
         padding: 0.5rem;
         text-align: left;
-        color: #595959;
+        color: var(--c-text-secondary);
         font-weight: 500;
-        border-bottom: 1px solid #f0f0f0;
+        border-bottom: 1px solid var(--c-border);
     }
 
     .data-table td {
         padding: 0.5rem;
-        color: #595959;
-        border-bottom: 1px solid #f0f0f0;
+        color: var(--c-text-secondary);
+        border-bottom: 1px solid var(--c-border);
     }
 
-    .data-table tr:hover td { background: #fafafa; }
+    .data-table tr:hover td { background: var(--c-surface-sunken); }
 
     /* 查看更多按钮 */
     .module-footer {
@@ -945,19 +945,19 @@
     }
 
     .view-more-btn {
-        background: #fff;
-        border: 1px solid #d9d9d9;
+        background: var(--c-surface);
+        border: 1px solid var(--c-border-strong);
         border-radius: 4px;
         padding: 0.375rem 0.875rem;
-        color: #595959;
+        color: var(--c-text-secondary);
         text-decoration: none;
         font-size: 0.85rem;
         transition: all 0.2s ease;
     }
 
     .view-more-btn:hover {
-        color: #1890ff;
-        border-color: #1890ff;
+        color: var(--c-primary);
+        border-color: var(--c-primary);
         text-decoration: none;
     }
 

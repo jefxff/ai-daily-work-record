@@ -64,28 +64,28 @@
     </div>
     <div class="table-container">
         <div class="table-responsive">
-            <table class="table table-sticky">
+            <div class="hidden-cols-hint">窄屏已隐藏 1 个次要列；需要逐列比对时请横屏或改用桌面端。</div><table class="table--cards table table-sticky">
                 <thead>
                     <tr>
-                        <th class="col-optional">序号</th>
-                        <th>日期及时间</th>
-                        <th>提出部门</th>
-                        <th>工作内容</th>
-                        <th>截至日期</th>
-                        <th>工作状态</th>
-                        <th>工作进度</th>
-                        <th>操作</th>
+                        <th scope="col" class="col-optional">序号</th>
+                        <th scope="col">日期及时间</th>
+                        <th scope="col">提出部门</th>
+                        <th scope="col">工作内容</th>
+                        <th scope="col">截至日期</th>
+                        <th scope="col">工作状态</th>
+                        <th scope="col">工作进度</th>
+                        <th scope="col">操作</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for record in records %}
                     <tr>
-                        <td class="col-optional">{{ forloop.counter }}</td>
-                        <td title="{{ record.record_date|date:'Y-m-d H:i:s' }}">{{ record.record_date|date:'Y-m-d H:i:s' }}</td>
-                        <td>{{ record.department }}</td>
-                        <td>{{ record.work_content|truncatechars:50 }}</td>
-                        <td>{% if record.due_date %}{{ record.due_date|date:'Y-m-d' }}{% else %}—{% endif %}</td>
-                        <td>
+                        <td data-label="序号" class="col-optional">{{ forloop.counter }}</td>
+                        <td data-label="日期及时间" title="{{ record.record_date|date:'Y-m-d H:i:s' }}">{{ record.record_date|date:'Y-m-d H:i:s' }}</td>
+                        <td data-label="提出部门">{{ record.department }}</td>
+                        <td data-label="工作内容">{{ record.work_content|truncatechars:50 }}</td>
+                        <td data-label="截至日期">{% if record.due_date %}{{ record.due_date|date:'Y-m-d' }}{% else %}—{% endif %}</td>
+                        <td data-label="工作状态">
                             {% if record.status == '未完成' %}
                             <span class="status-badge danger">{{ record.status }}</span>
                             {% elif record.status == '进行中' %}
@@ -94,13 +94,13 @@
                             <span class="status-badge success">{{ record.status }}</span>
                             {% endif %}
                         </td>
-                        <td>
+                        <td data-label="工作进度">
                             <div class="progress-cell">
                                 <div class="mini-progress" data-pct="{{ record.progress }}"><span class="mini-progress-fill"></span></div>
                                 <span class="mini-progress-text">{{ record.progress }}%</span>
                             </div>
                         </td>
-                        <td>
+                        <td data-label="操作">
                             <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
                                 <a href="{% url 'daily_record_detail' record.id %}" class="btn-transparent btn-sm" data-modal-detail data-modal-title="每日记录详情">详情</a>
                                 {% can "daily_record" "update" %}
@@ -173,8 +173,8 @@
         top: 100%;
         right: 0;
         margin-top: 0.5rem;
-        background: #ffffff !important;
-        border: 1px solid #f0f0f0 !important;
+        background: var(--c-surface) !important;
+        border: 1px solid var(--c-border) !important;
         border-radius: 8px !important;
         box-shadow: 0 6px 16px rgba(0,0,0,0.08) !important;
         padding: 1rem;
@@ -184,17 +184,17 @@
     }
     .filter-dropdown.show { display: block; }
     .filter-dropdown h4 {
-        color: #1f2329 !important;
+        color: var(--c-text) !important;
         margin: 0 0 1rem 0;
         font-size: 0.95rem;
         font-weight: 600;
-        border-bottom: 1px solid #f0f0f0;
+        border-bottom: 1px solid var(--c-border);
         padding-bottom: 0.5rem;
     }
     .filter-group { margin-bottom: 1rem; }
     .filter-group label {
         display: block;
-        color: #595959 !important;
+        color: var(--c-text-secondary) !important;
         font-size: 0.8125rem;
         font-weight: 500;
         margin-bottom: 0.5rem;
@@ -202,10 +202,10 @@
     .filter-group select {
         width: 100%;
         padding: 0.375rem 0.75rem;
-        border: 1px solid #f0f0f0 !important;
+        border: 1px solid var(--c-border) !important;
         border-radius: 4px !important;
-        background: #fff !important;
-        color: #1f2329 !important;
+        background: var(--c-surface) !important;
+        color: var(--c-text) !important;
         font-size: 0.85rem;
         cursor: pointer;
     }
@@ -214,7 +214,7 @@
         gap: 0.5rem;
         margin-top: 1rem;
         padding-top: 1rem;
-        border-top: 1px solid #f0f0f0;
+        border-top: 1px solid var(--c-border);
     }
     .filter-actions button {
         flex: 1;
@@ -226,29 +226,29 @@
         cursor: pointer;
         transition: all 0.2s ease;
     }
-    .filter-apply { background: #1890ff !important; color: #fff !important; }
-    .filter-apply:hover { background: #40a9ff !important; }
-    .filter-reset { background: #f5f5f5 !important; color: #595959 !important; }
-    .filter-reset:hover { background: #d9d9d9 !important; }
+    .filter-apply { background: var(--c-primary) !important; color: var(--c-surface) !important; }
+    .filter-apply:hover { background: var(--c-primary-hover) !important; }
+    .filter-reset { background: var(--c-surface-sunken) !important; color: var(--c-text-secondary) !important; }
+    .filter-reset:hover { background: var(--c-border-strong) !important; }
 
     /* 删除按钮特殊样式 */
     .btn-delete {
-        background: #fff1f0 !important;
-        color: #f5222d !important;
+        background: var(--c-danger-bg) !important;
+        color: var(--c-danger) !important;
         border: 1px solid #ffccc7 !important;
     }
     .btn-delete:hover {
-        background: #f5222d !important;
-        color: #fff !important;
-        border-color: #f5222d !important;
+        background: var(--c-danger) !important;
+        color: var(--c-surface) !important;
+        border-color: var(--c-danger) !important;
     }
 
     /* 工作进度迷你进度条 */
     .progress-cell { display: flex; align-items: center; gap: 8px; min-width: 130px; }
-    .mini-progress { flex: 1; max-width: 90px; height: 6px; background: #f0f0f0; border-radius: 3px; overflow: hidden; }
-    .mini-progress-fill { display: block; height: 100%; width: 0; background: #1890ff; border-radius: 3px; transition: width 0.4s ease; }
-    .mini-progress.done .mini-progress-fill { background: #52c41a; }
-    .mini-progress-text { font-size: 12px; color: #595959; font-variant-numeric: tabular-nums; min-width: 36px; text-align: right; }
+    .mini-progress { flex: 1; max-width: 90px; height: 6px; background: var(--c-border); border-radius: 3px; overflow: hidden; }
+    .mini-progress-fill { display: block; height: 100%; width: 0; background: var(--c-primary); border-radius: 3px; transition: width 0.4s ease; }
+    .mini-progress.done .mini-progress-fill { background: var(--c-success); }
+    .mini-progress-text { font-size: 12px; color: var(--c-text-secondary); font-variant-numeric: tabular-nums; min-width: 36px; text-align: right; }
 
     /* 状态标签 */
     .status-tag {
@@ -258,9 +258,9 @@
         font-size: 12px;
         font-weight: 400;
     }
-    .status-unfinished { background: #fff1f0; color: #f5222d; }
-    .status-progress { background: #fff7e6; color: #fa8c16; }
-    .status-done { background: #f6ffed; color: #52c41a; }
+    .status-unfinished { background: var(--c-danger-bg); color: var(--c-danger); }
+    .status-progress { background: var(--c-warning-bg); color: var(--c-warning); }
+    .status-done { background: var(--c-success-bg); color: var(--c-success); }
 </style>
 {% endblock %}
 

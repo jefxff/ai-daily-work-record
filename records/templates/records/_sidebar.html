@@ -1,113 +1,6 @@
-<style>
-/* === 共享布局 CSS（所有页面通用，请勿在各模板中重复定义） === */
-* { font-family: 'Inter', sans-serif; }
-body { min-height: 100vh; margin: 0; padding: 0; }
-
-/* 左侧导航栏 */
-.sidebar { position: fixed; top: 56px; left: 0; width: 250px; height: calc(100vh - 56px); background: rgba(255, 255, 255, 0.2); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-right: 1px solid rgba(255, 255, 255, 0.15); box-shadow: 2px 0 8px rgba(0, 0, 0, 0.04); z-index: 999; padding: 0.5rem 0 1rem; overflow-y: auto; transition: all 0.3s ease; margin: 0; border-radius: 0 !important; }
-.sidebar-header { padding: 0 1.5rem 1rem; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
-.sidebar-logo { font-size: 1.5rem; font-weight: 700; color: rgba(255, 255, 255, 0.95); text-decoration: none; display: block; }
-.sidebar-search { padding: 1rem 1.5rem; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
-.sidebar-search form { display: flex; gap: 0.5rem; width: 100%; }
-.sidebar-search input { flex: 1; padding: 0.6rem; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 0; font-size: 0.85rem; width: 100%; background: rgba(255, 255, 255, 0.2); color: rgba(255, 255, 255, 0.95); }
-.sidebar-search input::placeholder { color: rgba(255, 255, 255, 0.7); }
-.sidebar-search button { padding: 0.6rem 1.2rem; background: rgba(255, 255, 255, 0.3); color: rgba(255, 255, 255, 0.95); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 0; font-size: 0.85rem; cursor: pointer; white-space: nowrap; transition: all 0.3s ease; }
-.sidebar-search button:hover { background: rgba(255, 255, 255, 0.4); }
-.theme-toggle-section { border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
-.theme-toggle { list-style: none; margin: 0; padding: 0; }
-.theme-toggle li { margin: 0; padding: 0; }
-.theme-toggle .dropdown-toggle { display: flex; justify-content: space-between; align-items: center; width: 100%; text-align: left; background: none; border: none; padding: 0.75rem 1.5rem; color: rgba(255, 255, 255, 0.95); font-size: 0.95rem; font-weight: 500; cursor: pointer; transition: all 0.3s ease; }
-.theme-toggle .dropdown-toggle:hover { color: rgba(255, 255, 255, 0.95); background-color: rgba(255, 255, 255, 0.1); }
-.theme-dropdown { background: rgba(255, 255, 255, 0.1); display: none; }
-.theme-dropdown.show { display: block; }
-.theme-dropdown button { display: block; width: 100%; text-align: left; background: none; border: none; padding: 0.5rem 2.5rem; color: rgba(255, 255, 255, 0.8); font-size: 0.85rem; cursor: pointer; transition: all 0.3s ease; }
-.theme-dropdown button:hover { color: rgba(255, 255, 255, 0.95); background-color: rgba(255, 255, 255, 0.1); }
-.sidebar-menu { padding: 0.5rem 0; }
-.sidebar-section-title { padding: 0.75rem 1.5rem 0.375rem; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(255, 255, 255, 0.5); }
-.sidebar-menu-item { list-style: none; margin: 0; padding: 0; }
-.sidebar-menu-item li { margin: 0; padding: 0; }
-.sidebar-menu-item a { display: flex; align-items: center; gap: 0.625rem; padding: 0.625rem 1.5rem; color: rgba(255, 255, 255, 0.8); text-decoration: none; transition: all 0.2s ease; font-size: 0.875rem; font-weight: 500; border-radius: 0; margin: 0; position: relative; }
-.sidebar-menu-item a svg { flex-shrink: 0; opacity: 0.8; }
-.sidebar-menu-item a:hover, .sidebar-menu-item a.active { color: rgba(255, 255, 255, 0.95); background-color: rgba(255, 255, 255, 0.1); }
-.sidebar-menu-item a.active { font-weight: 600; }
-.sidebar-menu-item a.active::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 3px; height: 60%; background: rgba(255, 255, 255, 0.9); border-radius: 0; }
-.sidebar-menu-item .dropdown-toggle { display: flex; align-items: center; gap: 0.625rem; width: 100%; text-align: left; background: none; border: none; padding: 0.625rem 1.5rem; color: rgba(255, 255, 255, 0.8); font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s ease; border-radius: 0; margin: 0; }
-.sidebar-menu-item .dropdown-toggle svg { flex-shrink: 0; opacity: 0.8; }
-.sidebar-menu-item .dropdown-toggle:hover { color: rgba(255, 255, 255, 0.95); background-color: rgba(255, 255, 255, 0.1); }
-.sidebar-menu-item .dropdown-toggle.active { color: #1890ff; background: #e6f7ff; }
-.sidebar-dropdown { background: rgba(255, 255, 255, 0.05); display: none; margin: 0; border-radius: 0; }
-.sidebar-dropdown.show { display: block; }
-.sidebar-dropdown a { padding-left: 3rem; font-size: 0.8rem; margin: 0; border-radius: 0; }
-
-/* 底部推广卡片 */
-.sidebar-cta-card { margin: 1rem 0.75rem; padding: 1rem; background: rgba(30, 41, 59, 0.8); border-radius: 0; text-align: center; }
-.sidebar-cta-card .cta-title { font-size: 0.875rem; font-weight: 600; color: rgba(255, 255, 255, 0.95); margin-bottom: 0.25rem; }
-.sidebar-cta-card .cta-desc { font-size: 0.75rem; color: rgba(255, 255, 255, 0.6); margin-bottom: 0.75rem; }
-.sidebar-cta-card .cta-btn { display: inline-block; padding: 0.375rem 1rem; background: rgba(37, 99, 235, 0.8); color: #fff; border-radius: 0; font-size: 0.8rem; font-weight: 500; text-decoration: none; transition: all 0.2s ease; }
-.sidebar-cta-card .cta-btn:hover { background: rgba(37, 99, 235, 1); transform: translateY(-1px); }
-
-/* 主内容区域 */
-.main-content { margin-left: 250px; min-height: 100vh; padding: 1.5rem; transition: all 0.3s ease; display: flex; justify-content: center; margin-top: 56px; }
-.container { background: transparent; border-radius: 0; padding: 0; margin: 0; max-width: 1400px; width: 100%; }
-@media (min-width: 1600px) { .container { max-width: 1600px; } }
-@media (min-width: 1920px) { .container { max-width: 1800px; } }
-.mobile-menu-toggle { display: none; position: fixed; top: 0.75rem; left: 0.75rem; z-index: 1001; background: rgba(255, 255, 255, 0.9); border: none; border-radius: 0; padding: 0.5rem; cursor: pointer; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); }
-
-/* 顶部导航栏 */
-.top-nav { position: fixed; top: 0; left: 0; right: 0; height: 56px; background: rgba(255, 255, 255, 0.2); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255, 255, 255, 0.15); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); z-index: 1000; transition: all 0.3s ease; margin: 0; border-radius: 0 !important; max-width: 100%; width: 100%; }
-.top-nav-container { padding: 0.875rem 1.5rem; height: 100%; display: flex; align-items: center; }
-.top-nav-title { font-size: 1.25rem; font-weight: 700; color: rgba(255, 255, 255, 0.95); margin: 0; }
-
-/* 响应式 */
-@media (max-width: 768px) {
-    .sidebar { width: 200px; }
-    .main-content { margin-left: 200px; padding: 1rem; }
-    .container { max-width: 100%; }
-    .top-nav-title { font-size: 1.1rem; }
-}
-@media (max-width: 576px) {
-    .main-content { margin-top: 56px; }
-    .sidebar { transform: translateX(-100%); width: 250px; top: 56px; height: calc(100vh - 56px); }
-    .sidebar.show { transform: translateX(0); }
-    .main-content { margin-left: 0; padding: 1rem; }
-    .container { max-width: 100%; }
-    .mobile-menu-toggle { display: block !important; }
-}
-
-/* 通用组件 */
-.page-title { font-size: 1.8rem; font-weight: 700; color: rgba(255, 255, 255, 0.95); text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5); margin: 0; text-decoration: none; }
-.page-title:hover { color: rgba(255, 255, 255, 0.95); text-decoration: none; }
-.btn-transparent { background: rgba(255, 255, 255, 0.2); backdrop-filter: blur(10px); color: rgba(255, 255, 255, 0.95); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 8px; padding: 0.75rem 1.25rem; font-weight: 500; transition: all 0.3s ease; text-decoration: none; display: inline-block; }
-.btn-transparent:hover { background: rgba(255, 255, 255, 0.3); color: rgba(255, 255, 255, 0.95); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); }
-.btn-sm { padding: 0.5rem 1rem; font-size: 0.875rem; border-radius: 6px; }
-.search-input { background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 8px; padding: 0.5rem 1rem; color: rgba(255, 255, 255, 0.95); transition: all 0.3s ease; }
-.search-input::placeholder { color: rgba(255, 255, 255, 0.7); }
-.search-input:focus { background: rgba(255, 255, 255, 0.3); border-color: rgba(255, 255, 255, 0.5); outline: none; color: rgba(255, 255, 255, 0.95); }
-
-/* 表格 */
-.table-container { background: rgba(255, 255, 255, 0.2); border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); padding: 2rem; overflow-x: auto; }
-.table { margin: 0; width: 100%; }
-.table th { background: rgba(255, 255, 255, 0.2); font-weight: 600; color: rgba(255, 255, 255, 0.95); text-align: center; padding: 1rem; border-bottom: 2px solid rgba(255, 255, 255, 0.2); white-space: nowrap; }
-.table td { text-align: center; padding: 1rem; border-bottom: 1px solid rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.95); word-wrap: break-word; }
-.table tr:hover { background-color: rgba(255, 255, 255, 0.2); }
-
-/* 分页 */
-.pagination { margin-top: 2rem; }
-.pagination .page-item .page-link { border-radius: 8px; margin: 0 0.25rem; border: 1px solid rgba(255, 255, 255, 0.3); background: rgba(255, 255, 255, 0.2); color: rgba(255, 255, 255, 0.95); transition: all 0.3s ease; }
-.pagination .page-item .page-link:hover { background: rgba(255, 255, 255, 0.3); color: rgba(255, 255, 255, 0.95); }
-.pagination .page-item.active .page-link { background: rgba(255, 255, 255, 0.4); border: 1px solid rgba(255, 255, 255, 0.5); color: rgba(255, 255, 255, 0.95); }
-.pagination .page-item.disabled .page-link { opacity: 0.5; background: rgba(255, 255, 255, 0.1); }
-
-/* 响应式表格 */
-@media (max-width: 768px) {
-    .page-title { font-size: 1.5rem; }
-    .table-container { padding: 1rem; }
-    .table th, .table td { padding: 0.75rem 0.5rem; font-size: 0.875rem; }
-}
-</style>
-
 <!-- 移动端菜单切换按钮 -->
-<button class="mobile-menu-toggle" id="mobileMenuToggle">
+<button class="mobile-menu-toggle" id="mobileMenuToggle"
+        aria-label="打开导航菜单" aria-controls="sidebar" aria-expanded="false">
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <line x1="3" y1="12" x2="21" y2="12"></line>
         <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -117,7 +10,7 @@ body { min-height: 100vh; margin: 0; padding: 0; }
 
 <!-- 左侧导航栏 -->
 {% load accounts_tags %}
-<div class="sidebar" id="sidebar">
+<nav class="sidebar" id="sidebar" aria-label="主导航">
     <div class="sidebar-header">
         <a href="{% url 'home' %}" class="sidebar-logo">DWR</a>
     </div>
@@ -228,7 +121,7 @@ body { min-height: 100vh; margin: 0; padding: 0; }
     </div>
     {% endif %}
 
-</div>
+</nav>
 
 <script>
 (function () {

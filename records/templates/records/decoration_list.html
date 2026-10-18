@@ -53,32 +53,32 @@
     </div>
     <div class="table-container">
         <div class="table-responsive">
-            <table class="table table-sticky">
+            <div class="hidden-cols-hint">窄屏已隐藏 1 个次要列；需要逐列比对时请横屏或改用桌面端。</div><table class="table--cards table table-sticky">
                 <thead>
                     <tr>
-                        <th class="col-optional">序号</th>
-                        <th>项目名称</th>
-                        <th>施工方</th>
-                        <th>项目地址</th>
-                        <th>开工日期</th>
-                        <th>原价</th>
-                        <th>核后价</th>
-                        <th>核减金额</th>
-                        <th>操作</th>
+                        <th scope="col" class="col-optional">序号</th>
+                        <th scope="col">项目名称</th>
+                        <th scope="col">施工方</th>
+                        <th scope="col">项目地址</th>
+                        <th scope="col">开工日期</th>
+                        <th scope="col">原价</th>
+                        <th scope="col">核后价</th>
+                        <th scope="col">核减金额</th>
+                        <th scope="col">操作</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for decoration in decorations %}
                     <tr>
-                        <td class="col-optional">{{ forloop.counter }}</td>
-                        <td>{{ decoration.project_name }}</td>
-                        <td>{{ decoration.constructor }}</td>
-                        <td title="{{ decoration.project_address|default:'' }}">{{ decoration.project_address|default:'' }}</td>
-                        <td>{{ decoration.start_date|date:'Y-m-d' }}</td>
-                        <td>¥{{ decoration.original_price|default:0|floatformat:2 }}</td>
-                        <td>¥{{ decoration.final_price|floatformat:2 }}</td>
-                        <td>{% if decoration.reduced_price and decoration.reduced_price > 0 %}<span class="reduced-amt">¥{{ decoration.reduced_price|floatformat:2 }}</span>{% else %}¥{{ decoration.reduced_price|default:0|floatformat:2 }}{% endif %}</td>
-                        <td>
+                        <td data-label="序号" class="col-optional">{{ forloop.counter }}</td>
+                        <td data-label="项目名称">{{ decoration.project_name }}</td>
+                        <td data-label="施工方">{{ decoration.constructor }}</td>
+                        <td data-label="项目地址" title="{{ decoration.project_address|default:'' }}">{{ decoration.project_address|default:'' }}</td>
+                        <td data-label="开工日期">{{ decoration.start_date|date:'Y-m-d' }}</td>
+                        <td data-label="原价">¥{{ decoration.original_price|default:0|floatformat:2 }}</td>
+                        <td data-label="核后价">¥{{ decoration.final_price|floatformat:2 }}</td>
+                        <td data-label="核减金额">{% if decoration.reduced_price and decoration.reduced_price > 0 %}<span class="reduced-amt">¥{{ decoration.reduced_price|floatformat:2 }}</span>{% else %}¥{{ decoration.reduced_price|default:0|floatformat:2 }}{% endif %}</td>
+                        <td data-label="操作">
                             <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
                                 <a href="{% url 'decoration_detail' decoration.id %}" class="btn-transparent btn-sm" data-modal-detail data-modal-title="装修详情">详细</a>
                                 {% can "decoration" "update" %}
@@ -149,7 +149,7 @@
     .table tbody td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
     .table tbody td:last-child { overflow: visible; }
     .table td { font-variant-numeric: tabular-nums; }
-    .reduced-amt { color: #f5222d; font-weight: 600; }
+    .reduced-amt { color: var(--c-danger); font-weight: 600; }
 
     /* 筛选下拉 */
     .filter-container { position: relative; display: inline-block; }
@@ -157,8 +157,8 @@
         position: absolute;
         top: calc(100% + 0.5rem);
         right: 0;
-        background: #ffffff !important;
-        border: 1px solid #f0f0f0 !important;
+        background: var(--c-surface) !important;
+        border: 1px solid var(--c-border) !important;
         border-radius: 8px !important;
         box-shadow: 0 6px 16px rgba(0,0,0,0.08) !important;
         padding: 1rem;
@@ -168,17 +168,17 @@
     }
     .filter-dropdown.show { display: block; }
     .filter-dropdown h4 {
-        color: #1f2329 !important;
+        color: var(--c-text) !important;
         margin: 0 0 1rem 0;
         font-size: 0.95rem;
         font-weight: 600;
-        border-bottom: 1px solid #f0f0f0;
+        border-bottom: 1px solid var(--c-border);
         padding-bottom: 0.5rem;
     }
     .filter-group { margin-bottom: 1rem; }
     .filter-group label {
         display: block;
-        color: #595959 !important;
+        color: var(--c-text-secondary) !important;
         font-size: 0.8125rem;
         font-weight: 500;
         margin-bottom: 0.5rem;
@@ -186,23 +186,23 @@
     .filter-group select {
         width: 100%;
         padding: 0.375rem 0.75rem;
-        border: 1px solid #f0f0f0 !important;
+        border: 1px solid var(--c-border) !important;
         border-radius: 4px !important;
-        background: #fff !important;
-        color: #1f2329 !important;
+        background: var(--c-surface) !important;
+        color: var(--c-text) !important;
         font-size: 0.85rem;
         cursor: pointer;
     }
     .filter-group select:focus {
         outline: none;
-        border-color: #1890ff !important;
+        border-color: var(--c-primary) !important;
     }
     .filter-actions {
         display: flex;
         gap: 0.5rem;
         margin-top: 1rem;
         padding-top: 1rem;
-        border-top: 1px solid #f0f0f0;
+        border-top: 1px solid var(--c-border);
     }
     .filter-actions button {
         flex: 1;
@@ -214,21 +214,21 @@
         cursor: pointer;
         transition: all 0.2s ease;
     }
-    .filter-apply { background: #1890ff !important; color: #fff !important; }
-    .filter-apply:hover { background: #40a9ff !important; }
-    .filter-reset { background: #f5f5f5 !important; color: #595959 !important; }
-    .filter-reset:hover { background: #d9d9d9 !important; }
+    .filter-apply { background: var(--c-primary) !important; color: var(--c-surface) !important; }
+    .filter-apply:hover { background: var(--c-primary-hover) !important; }
+    .filter-reset { background: var(--c-surface-sunken) !important; color: var(--c-text-secondary) !important; }
+    .filter-reset:hover { background: var(--c-border-strong) !important; }
 
     /* 删除按钮 */
     .btn-delete {
-        background: #fff1f0 !important;
-        color: #f5222d !important;
+        background: var(--c-danger-bg) !important;
+        color: var(--c-danger) !important;
         border: 1px solid #ffccc7 !important;
     }
     .btn-delete:hover {
-        background: #f5222d !important;
-        color: #fff !important;
-        border-color: #f5222d !important;
+        background: var(--c-danger) !important;
+        color: var(--c-surface) !important;
+        border-color: var(--c-danger) !important;
     }
 </style>
 {% endblock %}

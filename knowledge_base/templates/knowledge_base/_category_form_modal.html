@@ -7,7 +7,7 @@
 
     <div class="kb-row">
         <div class="kb-field">
-            <label class="form-label">{{ form.name.label }} <span style="color:#f5222d;">*</span></label>
+            <label class="form-label">{{ form.name.label }} <span style="color:var(--c-danger);">*</span></label>
             {{ form.name }}
             {% if form.name.errors %}<div class="kb-error">{{ form.name.errors|join:'；' }}</div>{% endif %}
         </div>
@@ -38,10 +38,10 @@
 
 <style>
     #formModalBody .kb-field { margin-bottom: 0.85rem; }
-    #formModalBody .kb-field > .form-label { font-size: 0.875rem; color: #595959; font-weight: 500; display: block; margin-bottom: 0.25rem; }
+    #formModalBody .kb-field > .form-label { font-size: 0.875rem; color: var(--c-text-secondary); font-weight: 500; display: block; margin-bottom: 0.25rem; }
     #formModalBody .kb-field .form-control { width: 100%; }
     #formModalBody .kb-row { display: flex; gap: 1rem; }
     #formModalBody .kb-row .kb-field { flex: 1; }
-    #formModalBody .kb-error { color: #f5222d; font-size: 0.78rem; margin-top: 2px; }
-    #formModalBody .kb-modal-alert { background: #fff1f0; border: 1px solid #ffa39e; color: #cf1322; border-radius: 6px; padding: 0.6rem 0.85rem; margin-bottom: 1rem; font-size: 0.85rem; }
+    #formModalBody .kb-error { color: var(--c-danger); font-size: 0.78rem; margin-top: 2px; }
+    #formModalBody .kb-modal-alert { background: var(--c-danger-bg); border: 1px solid var(--c-danger-line); color: var(--c-danger); border-radius: 6px; padding: 0.6rem 0.85rem; margin-bottom: 1rem; font-size: 0.85rem; }
 </style>

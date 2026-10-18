@@ -6,8 +6,8 @@
 <style>
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1.5rem; }
     @media (max-width: 768px) { .form-grid { grid-template-columns: 1fr; } }
-    .field-error { color: #f5222d; font-size: 0.8rem; margin-top: 0.25rem; }
-    .form-hint { color: #8c8c8c; font-size: 0.8rem; margin-top: 0.25rem; }
+    .field-error { color: var(--c-danger); font-size: 0.8rem; margin-top: 0.25rem; }
+    .form-hint { color: var(--c-text-secondary); font-size: 0.8rem; margin-top: 0.25rem; }
     .full-width { grid-column: 1 / -1; }
 </style>
 {% endblock %}
@@ -15,7 +15,7 @@
 {% block content %}
 <div class="form-container">
     <h1 class="form-title">{% if record %}编辑第 {{ record.round_no }} 轮试样记录{% else %}新增第 {{ next_round }} 轮试样记录{% endif %}</h1>
-    <p style="color:#8c8c8c; font-size:0.875rem; margin-top:-0.75rem; margin-bottom:1.25rem;">
+    <p style="color:var(--c-text-secondary); font-size:0.875rem; margin-top:-0.75rem; margin-bottom:1.25rem;">
         样品：<a href="{% url 'samples:detail' sample.pk %}">{{ sample.sample_no }}</a> · {{ sample.material_name }} / {{ sample.model }} · 当前状态：<span class="status-badge {{ sample.status_badge_class }}">{{ sample.get_status_display }}</span>
     </p>
     <form method="POST" novalidate>

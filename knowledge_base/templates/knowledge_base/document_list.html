@@ -11,7 +11,7 @@
                 <button type="submit" class="kb-search-btn">搜索</button>
             </form>
             {% can "knowledge" "create" %}
-            <a href="{% url 'knowledge_base:document_create' %}" class="kb-btn-primary" data-modal-add data-modal-title="新建文档"><i class="fas fa-plus"></i> 新建文档</a>
+            <a href="{% url 'knowledge_base:document_create' %}" class="kb-btn-primary" data-modal-add data-modal-title="新建文档"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> 新建文档</a>
             {% endcan %}
         </div>
     </div>
@@ -26,7 +26,7 @@
             <div class="kb-doc-item-meta">
                 {% if document.category %}<span class="kb-chip kb-chip-cat">{{ document.category.name }}</span>{% endif %}
                 {% for tag in document.tag_list %}<span class="kb-chip">{{ tag }}</span>{% endfor %}
-                <span class="kb-doc-item-views"><i class="fas fa-eye"></i> {{ document.view_count }}</span>
+                <span class="kb-doc-item-views"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> {{ document.view_count }}</span>
             </div>
         </a>
         {% empty %}
@@ -59,10 +59,10 @@
     <div class="kb-side-title">分类管理</div>
     <div class="kb-side-actions">
         {% can "knowledge" "update" %}
-        <a href="{% url 'knowledge_base:category_list' %}" class="kb-side-btn"><i class="fas fa-list"></i> 管理分类</a>
+        <a href="{% url 'knowledge_base:category_list' %}" class="kb-side-btn"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg> 管理分类</a>
         {% endcan %}
         {% can "knowledge" "create" %}
-        <a href="{% url 'knowledge_base:category_create' %}" class="kb-side-btn kb-side-btn-primary" data-modal-add data-modal-title="新建分类"><i class="fas fa-plus"></i> 新建分类</a>
+        <a href="{% url 'knowledge_base:category_create' %}" class="kb-side-btn kb-side-btn-primary" data-modal-add data-modal-title="新建分类"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> 新建分类</a>
         {% endcan %}
     </div>
 </div>

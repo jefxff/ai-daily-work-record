@@ -105,33 +105,33 @@
     <div class="table-container">
         <!-- 表格 -->
         <div class="table-responsive">
-            <table class="table table-sticky">
+            <div class="hidden-cols-hint">窄屏已隐藏 4 个次要列；需要逐列比对时请横屏或改用桌面端。</div><table class="table--cards table table-sticky">
                 <thead>
                     <tr>
-                        <th class="col-optional">序号</th>
-                        <th>纠纷类型</th>
-                        <th>被告</th>
-                        <th>案号</th>
-                        <th>涉案金额（元）</th>
-                        <th class="col-optional">受理法院</th>
-                        <th class="col-optional">代理律师</th>
-                        <th>进度</th>
-                        <th>详细进度</th>
-                        <th class="col-optional">备注</th>
-                        <th class="col-actions">操作</th>
+                        <th scope="col" class="col-optional">序号</th>
+                        <th scope="col">纠纷类型</th>
+                        <th scope="col">被告</th>
+                        <th scope="col">案号</th>
+                        <th scope="col">涉案金额（元）</th>
+                        <th scope="col" class="col-optional">受理法院</th>
+                        <th scope="col" class="col-optional">代理律师</th>
+                        <th scope="col">进度</th>
+                        <th scope="col">详细进度</th>
+                        <th scope="col" class="col-optional">备注</th>
+                        <th scope="col" class="col-actions">操作</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for complaint in complaints %}
                     <tr>
-                        <td class="col-optional">{{ forloop.counter }}</td>
-                        <td>{{ complaint.dispute_type }}</td>
-                        <td>{{ complaint.defendant }}</td>
-                        <td>{{ complaint.case_number }}</td>
-                        <td>{{ complaint.amount }}</td>
-                        <td class="col-optional" title="{{ complaint.court }}">{{ complaint.court }}</td>
-                        <td class="col-optional">{{ complaint.lawyer }}</td>
-                        <td>
+                        <td data-label="序号" class="col-optional">{{ forloop.counter }}</td>
+                        <td data-label="纠纷类型">{{ complaint.dispute_type }}</td>
+                        <td data-label="被告">{{ complaint.defendant }}</td>
+                        <td data-label="案号">{{ complaint.case_number }}</td>
+                        <td data-label="涉案金额（元）">{{ complaint.amount }}</td>
+                        <td data-label="受理法院" class="col-optional" title="{{ complaint.court }}">{{ complaint.court }}</td>
+                        <td data-label="代理律师" class="col-optional">{{ complaint.lawyer }}</td>
+                        <td data-label="进度">
                             {% if complaint.progress == '结案' %}
                             <span class="status-badge success">{{ complaint.progress }}</span>
                             {% elif complaint.progress == '审理中' %}
@@ -142,9 +142,9 @@
                             <span class="status-badge default">{{ complaint.progress }}</span>
                             {% endif %}
                         </td>
-                        <td title="{{ complaint.detailed_progress|default:'' }}">{{ complaint.detailed_progress|default:''|truncatechars:30 }}</td>
-                        <td class="col-optional" title="{{ complaint.remarks|default:'' }}">{{ complaint.remarks|default:''|truncatechars:30 }}</td>
-                        <td class="col-actions">
+                        <td data-label="详细进度" title="{{ complaint.detailed_progress|default:'' }}">{{ complaint.detailed_progress|default:''|truncatechars:30 }}</td>
+                        <td data-label="备注" class="col-optional" title="{{ complaint.remarks|default:'' }}">{{ complaint.remarks|default:''|truncatechars:30 }}</td>
+                        <td data-label="操作" class="col-actions">
                             <div style="display: flex; gap: 0.25rem; align-items: center; flex-wrap: nowrap;">
                                 <a href="{% url 'complaint_detail' complaint.pk %}" class="btn-transparent btn-sm" data-modal-detail data-modal-title="诉讼详情">详细</a>
                                 {% can "complaint" "update" %}
@@ -238,17 +238,17 @@
     .table tbody td.col-actions {
         position: sticky !important;
         right: 0;
-        background: #fff !important;
+        background: var(--c-surface) !important;
         z-index: 10;
         box-shadow: -3px 0 5px rgba(0,0,0,0.08);
         border-left: 1px solid #e8e8e8;
     }
     .table tbody tr:hover td.col-actions {
-        background: #fafafa !important;
+        background: var(--c-surface-sunken) !important;
     }
     .table thead th.col-actions {
         z-index: 20;
-        background: #fafafa !important;
+        background: var(--c-surface-sunken) !important;
     }
 
     /* 筛选按钮容器 */
@@ -388,7 +388,7 @@
     }
 
     .filter-reset {
-        background: #f5f5f5;
+        background: var(--c-surface-sunken);
         color: #666;
         border: 1px solid #ddd;
     }

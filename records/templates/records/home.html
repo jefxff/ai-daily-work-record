@@ -5,6 +5,23 @@
 {% block page_title %}每日工作记录管理网站{% endblock %}
 
 {% block content %}
+{% if no_permission %}
+<div class="state">
+    <div class="state__icon">🔒</div>
+    <h2 class="state__title">当前账号还没有任何模块权限</h2>
+    <p class="state__desc">
+        账号已登录成功，但没有被授予任何业务模块的查看权限，因此首页暂不展示数据。
+        请联系系统管理员为你分配角色后再访问。
+    </p>
+    <div class="state__actions">
+        <a class="btn-transparent btn-sm" href="{% url 'accounts:password' %}">修改密码</a>
+        <form method="post" action="{% url 'accounts:logout' %}" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn-transparent btn-sm">退出登录</button>
+        </form>
+    </div>
+</div>
+{% endif %}
 <div class="row g-4">
     <!-- 每日记录卡片 -->
     {% can_view "daily_record" %}
@@ -25,7 +42,7 @@
                     </div>
                 </div>
                 <div style="margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                    <span style="font-size: 0.7rem; color: #8c8c8c; white-space: nowrap;">近 7 天</span>
+                    <span style="font-size: 0.7rem; color: var(--c-text-secondary); white-space: nowrap;">近 7 天</span>
                     <div class="trend-bars" style="height: 28px;">
                         {% for d in weekly_trend %}
                         <div class="trend-bar" title="{{ d.date }}：{{ d.c }} 条" data-h="{% widthratio d.c trend_max 28 %}"></div>
@@ -147,43 +164,43 @@
     {% endcan_view %}
 </div>
 
-<!-- 未完成工作记录列表 -->
 {% can_view "daily_record" %}
+<!-- 未完成工作记录列表 -->
 <div class="daily-records-section">
     <h2 class="section-title">未完成工作记录 <a href="{% url 'daily_record_list' %}" class="section-link">查看全部 →</a></h2>
     <div class="table-container">
-        <table class="table table-hover">
+        <table class="table--cards table table-hover">
             <thead>
                 <tr>
-                    <th>序号</th>
-                    <th>日期及时间</th>
-                    <th>提出部门</th>
-                    <th>工作内容</th>
-                    <th>截至日期</th>
-                    <th>工作状态</th>
-                    <th>工作进度</th>
-                    <th>操作</th>
+                    <th scope="col">序号</th>
+                    <th scope="col">日期及时间</th>
+                    <th scope="col">提出部门</th>
+                    <th scope="col">工作内容</th>
+                    <th scope="col">截至日期</th>
+                    <th scope="col">工作状态</th>
+                    <th scope="col">工作进度</th>
+                    <th scope="col">操作</th>
                 </tr>
             </thead>
             <tbody>
                 {% for record in incomplete_daily_records %}
                 <tr {% if forloop.counter > 5 %}class="record-row" style="display: none;"{% endif %}>
-                    <td>{{ forloop.counter }}</td>
-                    <td>{{ record.record_date|date:"Y-m-d H:i" }}</td>
-                    <td>{{ record.department }}</td>
-                    <td>{{ record.work_content|truncatechars:50 }}</td>
-                    <td>{% if record.due_date %}{{ record.due_date|date:"Y-m-d" }}{% else %}—{% endif %}</td>
-                    <td>
+                    <td data-label="序号">{{ forloop.counter }}</td>
+                    <td data-label="日期及时间">{{ record.record_date|date:"Y-m-d H:i" }}</td>
+                    <td data-label="提出部门">{{ record.department }}</td>
+                    <td data-label="工作内容">{{ record.work_content|truncatechars:50 }}</td>
+                    <td data-label="截至日期">{% if record.due_date %}{{ record.due_date|date:"Y-m-d" }}{% else %}—{% endif %}</td>
+                    <td data-label="工作状态">
                         <span class="badge-transparent">{{ record.status }}</span>
                     </td>
-                    <td>
+                    <td data-label="工作进度">
                         <div class="progress">
                             <div class="progress-bar" role="progressbar" aria-valuenow="{{ record.progress }}" aria-valuemin="0" aria-valuemax="100" data-progress="{{ record.progress }}">
                                 {{ record.progress }}%
                             </div>
                         </div>
                     </td>
-                    <td>
+                    <td data-label="操作">
                         {% can "daily_record" "update" %}
                         <a href="{% url 'daily_record_edit' record.pk %}" class="btn-transparent" data-modal-edit data-modal-title="编辑每日记录">编辑</a>
                         {% endcan %}
@@ -286,28 +303,28 @@
         <a href="{% url 'insurance_list' %}" class="metal-title-link">未到期保险台账</a> <a href="{% url 'insurance_list' %}" class="section-link">查看全部 →</a>
     </h2>
     <div class="table-container">
-        <table class="table table-hover">
+        <table class="table--cards table table-hover">
             <thead>
                 <tr>
-                    <th>序号</th>
-                    <th>公司名称</th>
-                    <th>标题</th>
-                    <th>截止日期</th>
-                    <th>是否已经到期</th>
-                    <th>部门</th>
-                    <th>操作</th>
+                    <th scope="col">序号</th>
+                    <th scope="col">公司名称</th>
+                    <th scope="col">标题</th>
+                    <th scope="col">截止日期</th>
+                    <th scope="col">是否已经到期</th>
+                    <th scope="col">部门</th>
+                    <th scope="col">操作</th>
                 </tr>
             </thead>
             <tbody>
                 {% for insurance in expiring_insurances %}
                 <tr {% if forloop.counter0 >= 5 %}class="insurance-more" style="display: none;"{% endif %}>
-                    <td>{{ forloop.counter }}</td>
-                    <td>{{ insurance.company_name }}</td>
-                    <td>{{ insurance.title }}</td>
-                    <td>{{ insurance.end_date|date:"Y-m-d" }}</td>
-                    <td>{{ insurance.expired_days }}</td>
-                    <td>{{ insurance.department }}</td>
-                    <td>
+                    <td data-label="序号">{{ forloop.counter }}</td>
+                    <td data-label="公司名称">{{ insurance.company_name }}</td>
+                    <td data-label="标题">{{ insurance.title }}</td>
+                    <td data-label="截止日期">{{ insurance.end_date|date:"Y-m-d" }}</td>
+                    <td data-label="是否已经到期">{{ insurance.expired_days }}</td>
+                    <td data-label="部门">{{ insurance.department }}</td>
+                    <td data-label="操作">
                         {% can "insurance" "update" %}
                         <a href="{% url 'insurance_edit' insurance.pk %}" class="btn-transparent" data-modal-edit data-modal-title="编辑保险">编辑</a>
                         {% endcan %}
@@ -340,32 +357,32 @@
         <a href="{% url 'complaint_list' %}" class="metal-title-link">进度未完结诉讼</a> <a href="{% url 'complaint_list' %}" class="section-link">查看全部 →</a>
     </h2>
     <div class="table-container">
-        <table class="table table-hover">
+        <table class="table--cards table table-hover">
             <thead>
                 <tr>
-                    <th>序号</th>
-                    <th>纠纷类型</th>
-                    <th>被告</th>
-                    <th>案号</th>
-                    <th>涉案金额（元）</th>
-                    <th>受理法院</th>
-                    <th>代理律师</th>
-                    <th>进度</th>
-                    <th>操作</th>
+                    <th scope="col">序号</th>
+                    <th scope="col">纠纷类型</th>
+                    <th scope="col">被告</th>
+                    <th scope="col">案号</th>
+                    <th scope="col">涉案金额（元）</th>
+                    <th scope="col">受理法院</th>
+                    <th scope="col">代理律师</th>
+                    <th scope="col">进度</th>
+                    <th scope="col">操作</th>
                 </tr>
             </thead>
             <tbody>
                 {% for litigation in incomplete_litigations %}
                 <tr {% if forloop.counter0 >= 5 %}class="litigation-more" style="display: none;"{% endif %}>
-                    <td>{{ forloop.counter }}</td>
-                    <td>{{ litigation.dispute_type }}</td>
-                    <td>{{ litigation.defendant }}</td>
-                    <td>{{ litigation.case_number }}</td>
-                    <td>¥{{ litigation.amount|floatformat:2 }}</td>
-                    <td>{{ litigation.court }}</td>
-                    <td>{{ litigation.lawyer }}</td>
-                    <td>{{ litigation.progress }}</td>
-                    <td>
+                    <td data-label="序号">{{ forloop.counter }}</td>
+                    <td data-label="纠纷类型">{{ litigation.dispute_type }}</td>
+                    <td data-label="被告">{{ litigation.defendant }}</td>
+                    <td data-label="案号">{{ litigation.case_number }}</td>
+                    <td data-label="涉案金额（元）">¥{{ litigation.amount|floatformat:2 }}</td>
+                    <td data-label="受理法院">{{ litigation.court }}</td>
+                    <td data-label="代理律师">{{ litigation.lawyer }}</td>
+                    <td data-label="进度">{{ litigation.progress }}</td>
+                    <td data-label="操作">
                         {% can "complaint" "update" %}
                         <a href="{% url 'complaint_edit' litigation.pk %}" class="btn-transparent" data-modal-edit data-modal-title="编辑诉讼">编辑</a>
                         {% endcan %}
@@ -432,6 +449,7 @@
             });
         }
 
+        {% can_view "daily_record" %}
         // 未完成工作记录折叠功能
         const toggleRecordsButton = document.getElementById('toggleIncompleteRecords');
         const recordRows = document.querySelectorAll('.record-row');
@@ -469,6 +487,7 @@
                 }, 300);
             });
         }
+        {% endcan_view %}
     });
 
     // 设置进度条宽度和卡片点击事件

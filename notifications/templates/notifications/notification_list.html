@@ -5,67 +5,67 @@
 
 {% block extra_css %}
 <style>
-    .notif-item { display: flex; align-items: flex-start; gap: 0.75rem; padding: 14px 24px; border-bottom: 1px solid #f0f0f0; transition: background 0.15s ease; }
+    .notif-item { display: flex; align-items: flex-start; gap: 0.75rem; padding: 14px 24px; border-bottom: 1px solid var(--c-border); transition: background 0.15s ease; }
     .notif-item:last-child { border-bottom: none; }
-    .notif-item:hover { background: #fafafa; }
-    .notif-item.unread { background: #e6f7ff; }
-    .notif-item.unread:hover { background: #bae7ff; }
-    .notif-dot { width: 8px; height: 8px; border-radius: 50%; background: #1890ff; margin-top: 8px; flex-shrink: 0; }
-    .notif-dot.read { background: transparent; border: 1px solid #d9d9d9; }
+    .notif-item:hover { background: var(--c-surface-sunken); }
+    .notif-item.unread { background: var(--c-primary-subtle); }
+    .notif-item.unread:hover { background: var(--c-primary-subtle); }
+    .notif-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c-primary); margin-top: 8px; flex-shrink: 0; }
+    .notif-dot.read { background: transparent; border: 1px solid var(--c-border-strong); }
     .notif-main { flex: 1; min-width: 0; }
     .notif-title-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-    .notif-title { font-weight: 500; color: #1f2329; font-size: 0.925rem; }
+    .notif-title { font-weight: 500; color: var(--c-text); font-size: 0.925rem; }
     .notif-item.unread .notif-title { font-weight: 600; }
-    .notif-content { color: #595959; font-size: 0.85rem; margin-top: 0.25rem; white-space: pre-wrap; word-break: break-word; }
-    .notif-meta { color: #8c8c8c; font-size: 0.75rem; margin-top: 0.375rem; display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+    .notif-content { color: var(--c-text-secondary); font-size: 0.85rem; margin-top: 0.25rem; white-space: pre-wrap; word-break: break-word; }
+    .notif-meta { color: var(--c-text-secondary); font-size: 0.75rem; margin-top: 0.375rem; display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
     .notif-actions { display: flex; gap: 0.5rem; flex-shrink: 0; align-items: center; }
-    .notif-agg-badge { background: #fff7e6; color: #fa8c16; border-radius: 4px; padding: 0 6px; font-size: 12px; font-weight: 500; }
-    .filter-chip.active { color: #1890ff; border-color: #91d5ff; }
+    .notif-agg-badge { background: var(--c-warning-bg); color: var(--c-warning); border-radius: 4px; padding: 0 6px; font-size: 12px; font-weight: 500; }
+    .filter-chip.active { color: var(--c-primary); border-color: var(--c-border-hover); }
 
     /* 通知详情弹窗 */
     .notif-detail-backdrop { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.45); z-index: 10002; display: none; align-items: flex-start; justify-content: center; padding: 8vh 1rem 2rem; overflow-y: auto; }
     .notif-detail-backdrop.show { display: flex; }
-    .notif-detail-modal { background: #fff; border-radius: 8px; width: 560px; max-width: 96vw; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18); display: flex; flex-direction: column; max-height: 80vh; }
-    .notif-detail-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; padding: 0.875rem 1.25rem; border-bottom: 1px solid #f0f0f0; flex-shrink: 0; }
-    .notif-detail-title { font-size: 1rem; font-weight: 600; color: #1f2329; word-break: break-word; margin: 0; }
-    .notif-detail-close { background: none; border: none; cursor: pointer; color: #8c8c8c; padding: 0.25rem; border-radius: 4px; line-height: 1; font-size: 1.5rem; flex-shrink: 0; }
-    .notif-detail-close:hover { color: #595959; background: #f5f5f5; }
+    .notif-detail-modal { background: var(--c-surface); border-radius: 8px; width: 560px; max-width: 96vw; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18); display: flex; flex-direction: column; max-height: 80vh; }
+    .notif-detail-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; padding: 0.875rem 1.25rem; border-bottom: 1px solid var(--c-border); flex-shrink: 0; }
+    .notif-detail-title { font-size: 1rem; font-weight: 600; color: var(--c-text); word-break: break-word; margin: 0; }
+    .notif-detail-close { background: none; border: none; cursor: pointer; color: var(--c-text-secondary); padding: 0.25rem; border-radius: 4px; line-height: 1; font-size: 1.5rem; flex-shrink: 0; }
+    .notif-detail-close:hover { color: var(--c-text-secondary); background: var(--c-surface-sunken); }
     .notif-detail-body { padding: 1rem 1.25rem; overflow-y: auto; flex: 1; }
-    .notif-detail-meta { display: flex; flex-wrap: wrap; gap: 0.5rem 0.5rem; align-items: center; margin-bottom: 0.875rem; font-size: 0.78rem; color: #8c8c8c; }
-    .notif-detail-meta .meta-chip { background: #f5f5f5; border-radius: 4px; padding: 1px 8px; color: #595959; }
-    .notif-detail-meta .meta-chip.high { background: #fff1f0; color: #f5222d; }
-    .notif-detail-content { color: #1f2329; font-size: 0.9rem; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
-    .notif-detail-actions { padding: 0.875rem 1.25rem; border-top: 1px solid #f0f0f0; display: flex; gap: 0.75rem; justify-content: flex-end; background: #fafafa; border-radius: 0 0 8px 8px; flex-shrink: 0; }
+    .notif-detail-meta { display: flex; flex-wrap: wrap; gap: 0.5rem 0.5rem; align-items: center; margin-bottom: 0.875rem; font-size: 0.78rem; color: var(--c-text-secondary); }
+    .notif-detail-meta .meta-chip { background: var(--c-surface-sunken); border-radius: 4px; padding: 1px 8px; color: var(--c-text-secondary); }
+    .notif-detail-meta .meta-chip.high { background: var(--c-danger-bg); color: var(--c-danger); }
+    .notif-detail-content { color: var(--c-text); font-size: 0.9rem; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+    .notif-detail-actions { padding: 0.875rem 1.25rem; border-top: 1px solid var(--c-border); display: flex; gap: 0.75rem; justify-content: flex-end; background: var(--c-surface-sunken); border-radius: 0 0 8px 8px; flex-shrink: 0; }
 
     /* 定时任务展示区 */
-    .sched-header { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; padding: 14px 24px; border-bottom: 1px solid #f0f0f0; }
-    .sched-header h3 { margin: 0; font-size: 1rem; font-weight: 600; color: #1f2329; display: flex; align-items: center; gap: 0.5rem; }
+    .sched-header { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; padding: 14px 24px; border-bottom: 1px solid var(--c-border); }
+    .sched-header h3 { margin: 0; font-size: 1rem; font-weight: 600; color: var(--c-text); display: flex; align-items: center; gap: 0.5rem; }
     .sched-thread-badges { display: flex; gap: 0.5rem; flex-wrap: wrap; }
     .sched-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-    .sched-table th { text-align: left; padding: 10px 12px; color: #8c8c8c; font-weight: 500; border-bottom: 1px solid #f0f0f0; white-space: nowrap; }
-    .sched-table td { padding: 12px; border-bottom: 1px solid #f7f7f7; vertical-align: top; color: #595959; }
+    .sched-table th { text-align: left; padding: 10px 12px; color: var(--c-text-secondary); font-weight: 500; border-bottom: 1px solid var(--c-border); white-space: nowrap; }
+    .sched-table td { padding: 12px; border-bottom: 1px solid #f7f7f7; vertical-align: top; color: var(--c-text-secondary); }
     .sched-table tr:last-child td { border-bottom: none; }
-    .sched-task-name { font-weight: 600; color: #1f2329; }
-    .sched-task-desc { color: #8c8c8c; font-size: 0.78rem; margin-top: 2px; }
+    .sched-task-name { font-weight: 600; color: var(--c-text); }
+    .sched-task-desc { color: var(--c-text-secondary); font-size: 0.78rem; margin-top: 2px; }
     .sched-msg { max-width: 360px; white-space: pre-wrap; word-break: break-word; font-size: 0.78rem; }
     .sched-actions { display: flex; gap: 0.5rem; white-space: nowrap; }
 
     /* 定时任务配置弹窗 */
     .sched-config-backdrop { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.45); z-index: 10002; display: none; align-items: flex-start; justify-content: center; padding: 8vh 1rem 2rem; overflow-y: auto; }
     .sched-config-backdrop.show { display: flex; }
-    .sched-config-modal { background: #fff; border-radius: 8px; width: 480px; max-width: 96vw; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18); display: flex; flex-direction: column; max-height: 80vh; }
-    .sched-config-header { display: flex; align-items: center; justify-content: space-between; padding: 0.875rem 1.25rem; border-bottom: 1px solid #f0f0f0; flex-shrink: 0; }
-    .sched-config-title { font-size: 1rem; font-weight: 600; color: #1f2329; margin: 0; }
-    .sched-config-close { background: none; border: none; cursor: pointer; color: #8c8c8c; padding: 0.25rem; border-radius: 4px; line-height: 1; font-size: 1.5rem; }
-    .sched-config-close:hover { color: #595959; background: #f5f5f5; }
+    .sched-config-modal { background: var(--c-surface); border-radius: 8px; width: 480px; max-width: 96vw; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18); display: flex; flex-direction: column; max-height: 80vh; }
+    .sched-config-header { display: flex; align-items: center; justify-content: space-between; padding: 0.875rem 1.25rem; border-bottom: 1px solid var(--c-border); flex-shrink: 0; }
+    .sched-config-title { font-size: 1rem; font-weight: 600; color: var(--c-text); margin: 0; }
+    .sched-config-close { background: none; border: none; cursor: pointer; color: var(--c-text-secondary); padding: 0.25rem; border-radius: 4px; line-height: 1; font-size: 1.5rem; }
+    .sched-config-close:hover { color: var(--c-text-secondary); background: var(--c-surface-sunken); }
     .sched-config-body { padding: 1rem 1.25rem; overflow-y: auto; flex: 1; }
     .sched-config-field { margin-bottom: 0.875rem; }
-    .sched-config-field > label { display: block; font-size: 0.82rem; color: #595959; margin-bottom: 4px; }
+    .sched-config-field > label { display: block; font-size: 0.82rem; color: var(--c-text-secondary); margin-bottom: 4px; }
     .sched-config-field input[type="time"], .sched-config-field input[type="number"], .sched-config-field select {
-        width: 100%; padding: 7px 10px; border: 1px solid #d9d9d9; border-radius: 6px; font-size: 0.875rem; box-sizing: border-box;
+        width: 100%; padding: 7px 10px; border: 1px solid var(--c-border-strong); border-radius: 6px; font-size: 0.875rem; box-sizing: border-box;
     }
-    .sched-config-check { display: flex; align-items: center; gap: 6px; font-size: 0.875rem; color: #1f2329; }
-    .sched-config-footer { padding: 0.875rem 1.25rem; border-top: 1px solid #f0f0f0; display: flex; gap: 0.75rem; justify-content: flex-end; background: #fafafa; border-radius: 0 0 8px 8px; flex-shrink: 0; }
+    .sched-config-check { display: flex; align-items: center; gap: 6px; font-size: 0.875rem; color: var(--c-text); }
+    .sched-config-footer { padding: 0.875rem 1.25rem; border-top: 1px solid var(--c-border); display: flex; gap: 0.75rem; justify-content: flex-end; background: var(--c-surface-sunken); border-radius: 0 0 8px 8px; flex-shrink: 0; }
 </style>
 {% endblock %}
 
@@ -94,36 +94,36 @@
             <span class="status-badge {{ scheduler_alive|yesno:'success,danger' }}" title="定时任务调度线程（随服务进程自动运行）">定时调度：{{ scheduler_alive|yesno:'运行中,未运行' }}</span>
         </div>
     </div>
-    <table class="sched-table">
+    <table class="table--cards sched-table">
         <thead>
             <tr>
-                <th>任务</th>
-                <th>触发方式</th>
-                <th>参数</th>
-                <th>状态</th>
-                <th>上次执行</th>
-                <th>结果摘要</th>
-                <th>下次预计</th>
-                {% if request.user.is_superuser %}<th>操作</th>{% endif %}
+                <th scope="col">任务</th>
+                <th scope="col">触发方式</th>
+                <th scope="col">参数</th>
+                <th scope="col">状态</th>
+                <th scope="col">上次执行</th>
+                <th scope="col">结果摘要</th>
+                <th scope="col">下次预计</th>
+                {% if request.user.is_superuser %}<th scope="col">操作</th>{% endif %}
             </tr>
         </thead>
         <tbody>
             {% for item in scheduled_tasks %}
             <tr>
-                <td>
+                <td data-label="任务">
                     <div class="sched-task-name">{{ item.task.name }}</div>
                     <div class="sched-task-desc">{{ item.task.description }}</div>
                 </td>
-                <td>{{ item.task.trigger_display }}</td>
-                <td>{{ item.task.params_display }}</td>
-                <td>
+                <td data-label="触发方式">{{ item.task.trigger_display }}</td>
+                <td data-label="参数">{{ item.task.params_display }}</td>
+                <td data-label="状态">
                     {% if item.task.enabled %}
                     <span class="status-badge success">已启用</span>
                     {% else %}
                     <span class="status-badge default">已停用</span>
                     {% endif %}
                 </td>
-                <td>
+                <td data-label="上次执行">
                     {% if item.task.last_run_at %}
                     {{ item.task.last_run_at|date:"m-d H:i" }}
                     {% if item.task.last_status == 'running' %}
@@ -138,15 +138,15 @@
                     <span class="sched-task-desc">从未执行</span>
                     {% endif %}
                 </td>
-                <td><div class="sched-msg" {% if item.task.last_message %}title="{{ item.task.last_message }}"{% endif %}>{{ item.task.last_message|truncatechars:80|default:"—" }}</div></td>
-                <td>
+                <td data-label="结果摘要"><div class="sched-msg" {% if item.task.last_message %}title="{{ item.task.last_message }}"{% endif %}>{{ item.task.last_message|truncatechars:80|default:"—" }}</div></td>
+                <td data-label="下次预计">
                     {% if not item.task.enabled %}—
-                    {% elif item.next_run_at and item.next_run_at <= now %}<span style="color:#fa8c16;">即将执行</span>
+                    {% elif item.next_run_at and item.next_run_at <= now %}<span style="color:var(--c-warning);">即将执行</span>
                     {% elif item.next_run_at %}{{ item.next_run_at|date:"m-d H:i" }}
                     {% else %}—{% endif %}
                 </td>
                 {% if request.user.is_superuser %}
-                <td>
+                <td data-label="操作">
                     <div class="sched-actions">
                         <form method="post" action="{% url 'notifications:task_run' item.task.pk %}" style="display:inline;">
                             {% csrf_token %}
@@ -172,7 +172,7 @@
                 {% endif %}
             </tr>
             {% empty %}
-            <tr><td colspan="8" style="text-align:center;color:#8c8c8c;padding:24px;">暂无定时任务</td></tr>
+            <tr><td colspan="8" style="text-align:center;color:var(--c-text-secondary);padding:24px;">暂无定时任务</td></tr>
             {% endfor %}
         </tbody>
     </table>
@@ -187,7 +187,7 @@
        href="?status=pending{% if category_filter %}&category={{ category_filter }}{% endif %}">待发送</a>
     <a class="filter-chip {% if status_filter == 'failed' %}active{% endif %}"
        href="?status=failed{% if category_filter %}&category={{ category_filter }}{% endif %}">发送失败</a>
-    <span style="width:1px;background:#f0f0f0;margin:0 0.25rem;"></span>
+    <span style="width:1px;background:var(--c-border);margin:0 0.25rem;"></span>
     {% for cat in categories %}
     <a class="filter-chip {% if category_filter == cat.0 %}active{% endif %}"
        href="?category={{ cat.0 }}{% if unread_only %}&unread=1{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">{{ cat.1 }}</a>
@@ -303,7 +303,7 @@
             <div class="sched-config-body">
                 <div class="sched-config-field">
                     <label>任务</label>
-                    <div id="schedConfigName" style="font-size:0.875rem;color:#1f2329;"></div>
+                    <div id="schedConfigName" style="font-size:0.875rem;color:var(--c-text);"></div>
                 </div>
                 <div class="sched-config-field">
                     <label class="sched-config-check"><input type="checkbox" name="enabled" id="schedEnabled"> 启用该任务</label>

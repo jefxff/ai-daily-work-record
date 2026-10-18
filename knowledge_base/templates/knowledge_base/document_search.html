@@ -11,7 +11,7 @@
             <div class="input-group">
                 <input type="text" name="keyword" class="form-control" placeholder="搜索文档..." value="{{ keyword }}">
                 <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-search"></i>
+                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 </button>
             </div>
         </form>
@@ -36,7 +36,7 @@
         </div>
         {% else %}
         <div class="text-center py-8">
-            <i class="fas fa-search text-gray-400" style="font-size: 4rem;"></i>
+            <svg class="icon text-gray-400 icon--xl" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="font-size: 4rem;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <p class="mt-4 text-muted">未找到相关文档</p>
             {% can "knowledge" "create" %}
             <a href="{% url 'knowledge_base:document_create' %}" class="btn btn-primary" data-modal-add data-modal-title="新建文档">创建新文档</a>

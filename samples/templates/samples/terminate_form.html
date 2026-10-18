@@ -4,8 +4,8 @@
 
 {% block extra_css %}
 <style>
-    .field-error { color: #f5222d; font-size: 0.8rem; margin-top: 0.25rem; }
-    .terminate-warn { background: #fff7e6; border: 1px solid #ffd591; color: #fa8c16; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1.25rem; font-size: 0.875rem; }
+    .field-error { color: var(--c-danger); font-size: 0.8rem; margin-top: 0.25rem; }
+    .terminate-warn { background: var(--c-warning-bg); border: 1px solid #ffd591; color: var(--c-warning); border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1.25rem; font-size: 0.875rem; }
 </style>
 {% endblock %}
 
@@ -15,10 +15,10 @@
     <div class="terminate-warn">
         ⚠️ 终止为终态操作：样品将转为「已终止」状态，且不再参与状态机重算。请务必填写终止原因。
     </div>
-    <p style="color:#8c8c8c; font-size:0.875rem; margin-bottom:1.25rem;">
+    <p style="color:var(--c-text-secondary); font-size:0.875rem; margin-bottom:1.25rem;">
         {{ sample.material_name }} / {{ sample.model }} · 当前状态：<span class="status-badge {{ sample.status_badge_class }}">{{ sample.get_status_display }}</span>
     </p>
-    <p style="color:#8c8c8c; font-size:0.875rem; margin-bottom:1.25rem;">操作人：<strong>{{ operator_name }}</strong>（由系统自动记录）</p>
+    <p style="color:var(--c-text-secondary); font-size:0.875rem; margin-bottom:1.25rem;">操作人：<strong>{{ operator_name }}</strong>（由系统自动记录）</p>
     <form method="POST" novalidate>
         {% csrf_token %}
         {% for field in form.visible_fields %}
@@ -30,7 +30,7 @@
         {% endfor %}
         <div class="form-actions">
             <a class="btn-secondary" href="{% url 'samples:detail' sample.pk %}">取消</a>
-            <button type="submit" class="btn-primary" style="background:#f5222d !important; border-color:#f5222d !important;" data-confirm="确定要终止该样品吗？此操作不可逆。">确认终止</button>
+            <button type="submit" class="btn-primary" style="background:var(--c-danger) !important; border-color:var(--c-danger) !important;" data-confirm="确定要终止该样品吗？此操作不可逆。">确认终止</button>
         </div>
     </form>
 </div>

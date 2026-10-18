@@ -17,7 +17,7 @@
 <style>
     /* 局部表单样式微调（在弹窗内） */
     #formModalBody form p { margin-bottom: 1rem; }
-    #formModalBody form p label { display: block; font-weight: 600; color: #1f2329; margin-bottom: 0.25rem; font-size: 0.9rem; }
+    #formModalBody form p label { display: block; font-weight: 600; color: var(--c-text); margin-bottom: 0.25rem; font-size: 0.9rem; }
     #formModalBody form p input[type="text"],
     #formModalBody form p input[type="number"],
     #formModalBody form p input[type="date"],
@@ -28,20 +28,20 @@
     #formModalBody form p select,
     #formModalBody form p textarea {
         display: block; width: 100%; padding: 0.5rem 0.625rem; font-size: 0.9rem;
-        border: 1px solid #d9d9d9; border-radius: 4px; background: #fff; color: #1f2329;
+        border: 1px solid var(--c-border-strong); border-radius: 4px; background: var(--c-surface); color: var(--c-text);
         transition: border-color 0.2s, box-shadow 0.2s;
     }
     #formModalBody form p input:focus,
     #formModalBody form p select:focus,
     #formModalBody form p textarea:focus {
-        border-color: #1890ff; box-shadow: 0 0 0 2px rgba(24,144,255,0.1); outline: none;
+        border-color: var(--c-primary); box-shadow: 0 0 0 2px rgba(24,144,255,0.1); outline: none;
     }
     #formModalBody form p .errorlist,
     #formModalBody form p .errorlist li {
-        color: #f5222d; font-size: 0.8rem; margin-top: 0.25rem; list-style: none; padding: 0;
+        color: var(--c-danger); font-size: 0.8rem; margin-top: 0.25rem; list-style: none; padding: 0;
     }
     #formModalBody form p .help-text,
     #formModalBody form p .helptext {
-        color: #8c8c8c; font-size: 0.8rem; margin-top: 0.25rem; display: block;
+        color: var(--c-text-secondary); font-size: 0.8rem; margin-top: 0.25rem; display: block;
     }
 </style>

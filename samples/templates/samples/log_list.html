@@ -4,7 +4,7 @@
 
 {% block extra_css %}
 <style>
-    .filter-bar { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 1rem 1.25rem; margin-bottom: 1.25rem; }
+    .filter-bar { background: var(--c-surface); border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 1rem 1.25rem; margin-bottom: 1.25rem; }
     .filter-form { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; }
 </style>
 {% endblock %}
@@ -48,23 +48,23 @@
 
 <div class="table-container">
     <div class="table-responsive">
-        <table class="table">
+        <table class="table--cards table">
             <thead>
                 <tr>
-                    <th>操作时间</th>
-                    <th>操作人</th>
-                    <th>类型</th>
-                    <th>对象类型</th>
-                    <th>对象标识</th>
-                    <th>变更摘要</th>
+                    <th scope="col">操作时间</th>
+                    <th scope="col">操作人</th>
+                    <th scope="col">类型</th>
+                    <th scope="col">对象类型</th>
+                    <th scope="col">对象标识</th>
+                    <th scope="col">变更摘要</th>
                 </tr>
             </thead>
             <tbody>
                 {% for log in page_obj %}
                 <tr>
-                    <td style="white-space:nowrap;">{{ log.created_at|date:'Y-m-d H:i:s' }}</td>
-                    <td>{{ log.operator|default:'系统' }}</td>
-                    <td>
+                    <td data-label="操作时间" style="white-space:nowrap;">{{ log.created_at|date:'Y-m-d H:i:s' }}</td>
+                    <td data-label="操作人">{{ log.operator|default:'系统' }}</td>
+                    <td data-label="类型">
                         {% if log.action == 'create' %}
                         <span class="status-badge success">新增</span>
                         {% elif log.action == 'update' %}
@@ -77,9 +77,9 @@
                         <span class="status-badge default">{{ log.action }}</span>
                         {% endif %}
                     </td>
-                    <td>{{ log.target_type }}</td>
-                    <td style="max-width:220px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="{{ log.target_repr }}">{{ log.target_repr }}</td>
-                    <td style="max-width:420px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="{{ log.summary }}">{{ log.summary|default:'—' }}</td>
+                    <td data-label="对象类型">{{ log.target_type }}</td>
+                    <td data-label="对象标识" style="max-width:220px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="{{ log.target_repr }}">{{ log.target_repr }}</td>
+                    <td data-label="变更摘要" style="max-width:420px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="{{ log.summary }}">{{ log.summary|default:'—' }}</td>
                 </tr>
                 {% empty %}
                 <tr><td colspan="6" class="empty-cell">📭 暂无操作留痕记录</td></tr>

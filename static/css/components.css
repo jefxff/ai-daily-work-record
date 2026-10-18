@@ -1,0 +1,279 @@
+/* ============================================================================
+   components.css · 增量组件层（不改动 app.css 已有规则）
+   ----------------------------------------------------------------------------
+   只放"新增能力"，全部走 tokens.css 的变量：
+     §1 可访问性基线（跳转链接 / 焦点圈 / 触控目标 / 减少动效）
+     §2 宽表格三档策略（冻结首列 / 显式"已隐藏 N 列" / 卡片模式）
+     §3 空态 / 错误态
+     §4 打印
+     §5 响应式断点收敛（640 / 960 / 1280）
+   加载顺序必须在 app.css 之后（同名选择器以后者为准）。
+   ========================================================================== */
+
+/* ---------- §1 可访问性基线 ---------- */
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 9999;
+  padding: var(--sp-2) var(--sp-4);
+  background: var(--c-surface);
+  color: var(--c-text);
+  border: 1px solid var(--c-border-strong);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-sm);
+}
+.skip-link:focus,
+.skip-link:focus-visible {
+  left: var(--sp-3);
+  top: var(--sp-3);
+  text-decoration: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--c-primary);
+  outline-offset: 2px;
+}
+
+/* 数字按位对齐：金额、日期、编号列 */
+.table td,
+.table th,
+.num,
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 触屏：表格行内按钮的可点区域不低于 44px（不可见于鼠标环境） */
+@media (hover: none) and (pointer: coarse) {
+  .table td .btn-transparent,
+  .table td button,
+  .table td a.btn {
+    min-height: 44px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms;
+    animation-iteration-count: 1;
+    transition-duration: 0.001ms;
+    scroll-behavior: auto;
+  }
+}
+
+/* ---------- §2 宽表格三档策略 ---------- */
+
+/* 第二档：1280px 以下被 .col-optional 隐藏的列，给出显式提示（模板放 .hidden-cols-hint） */
+.hidden-cols-hint {
+  display: none;
+  margin: 0 0 var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-xs);
+  color: var(--c-text-secondary);
+  background: var(--c-surface-sunken);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+}
+@media (max-width: 1280px) {
+  .hidden-cols-hint { display: block; }
+}
+
+/* 第三档：卡片模式。需同时满足
+   ① 表格有 .table--cards 类；② 每个 td 有 data-label（构建脚本已补）。
+   二者缺一，卡片模式不生效——避免出现"有值无标签"的空卡片。 */
+@media (max-width: 640px) {
+  .table-container:has(.table--cards) {
+    padding: var(--sp-3);
+    overflow-x: visible;
+  }
+  .table--cards thead { display: none; }
+  .table--cards,
+  .table--cards tbody,
+  .table--cards tr,
+  .table--cards td {
+    display: block;
+    width: 100%;
+  }
+  .table--cards tr {
+    margin-bottom: var(--sp-3);
+    padding: var(--sp-1) 0;
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-sm);
+    box-shadow: none;
+  }
+  .table--cards td {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    padding: var(--sp-2) var(--sp-3);
+    border-bottom: 1px solid var(--c-divider);
+    text-align: right;
+    white-space: normal;
+    word-break: break-word;
+  }
+  .table--cards td:last-child { border-bottom: 0; }
+  .table--cards td::before {
+    content: attr(data-label);
+    flex: 0 0 38%;
+    text-align: left;
+    font-weight: 600;
+    color: var(--c-text-secondary);
+  }
+  /* 首列（通常是编号）加粗，作为卡片的"标题行" */
+  .table--cards td:first-child {
+    font-weight: 600;
+    background: var(--c-surface-sunken);
+    border-radius: var(--r-sm) var(--r-sm) 0 0;
+  }
+}
+
+/* ---------- §3 空态 / 错误态 ---------- */
+
+.state {
+  padding: var(--sp-9) var(--sp-5);
+  text-align: center;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+}
+.state__icon {
+  font-size: 2.25rem;
+  line-height: 1;
+  margin-bottom: var(--sp-3);
+  opacity: 0.85;
+}
+.state__title {
+  margin: 0 0 var(--sp-2);
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  color: var(--c-text);
+}
+.state__desc {
+  margin: 0 auto var(--sp-4);
+  max-width: 42em;
+  font-size: var(--fs-sm);
+  color: var(--c-text-secondary);
+  line-height: var(--lh-base);
+}
+.state__actions {
+  display: flex;
+  gap: var(--sp-2);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.state--error {
+  border-color: var(--c-danger-line);
+  background: var(--c-danger-bg);
+}
+.state--warn {
+  border-color: var(--c-warning-line);
+  background: var(--c-warning-bg);
+}
+
+/* ---------- §4 打印 ---------- */
+
+@media print {
+  body { background: var(--c-surface); }
+  .sidebar,
+  .top-nav,
+  .mobile-menu-toggle,
+  .sidebar-scrim,
+  .pagination,
+  .no-print,
+  .btn-transparent,
+  .hidden-cols-hint {
+    display: none;
+  }
+  .main-content {
+    margin: 0;
+    padding: 0;
+    display: block;
+  }
+  .container { max-width: none; }
+  .table-container {
+    padding: 0;
+    border: 0;
+    box-shadow: none;
+    overflow: visible;
+  }
+  .table { width: 100%; font-size: 10.5pt; }
+  .table thead { display: table-header-group; }
+  .table tr { break-inside: avoid; }
+  .table th,
+  .table td { border: 1px solid #999; }
+  a[href]::after { content: ""; }
+  @page { margin: 12mm; }
+}
+
+/* ---------- §5 断点收敛：640 / 960 / 1280 ---------- */
+
+/* 960px 以下：侧栏退出文档流（抽屉），内容区恢复全宽。
+   原实现要到 576px 才收起，平板竖屏（600~960px）长期被 200px 侧栏挤压。 */
+.sidebar-scrim {
+  display: none;
+  position: fixed;
+  inset: 56px 0 0 0;
+  background: rgba(18, 22, 28, 0.45);
+  z-index: 998;
+}
+body.sidebar-open { overflow: hidden; }
+body.sidebar-open .sidebar-scrim { display: block; }
+
+@media (max-width: 960px) {
+  .sidebar {
+    width: 250px;
+    transform: translateX(-100%);
+    transition: transform var(--dur-base) var(--ease-out);
+    box-shadow: none;
+  }
+  .sidebar.show { transform: translateX(0); box-shadow: var(--sh-2); }
+  .main-content {
+    margin-left: 0;
+    padding: var(--sp-4);
+  }
+  .mobile-menu-toggle { display: block; }
+  .container { max-width: 100%; }
+}
+
+/* 640px 以下：页面内边距与标题收紧 */
+@media (max-width: 640px) {
+  .main-content { padding: var(--sp-3); }
+  .page-title { font-size: 1.35rem; }
+  .table-container { padding: var(--sp-3); }
+}
+
+/* 1280px 以上：内容区不再无限拉宽 */
+@media (min-width: 1600px) {
+  .container { max-width: 1440px; }
+}
+
+/* ==========================================================================
+   内联 SVG 图标（替代 FontAwesome，前端方案 F3-1 ②）
+   - 尺寸随字号（1em），因此沿用占位元素原有的 font-size 即可；
+   - stroke 用 currentColor，跟随文字颜色与状态色；
+   - 不改变 baseline 过多，避免按钮内文字错位。
+   ========================================================================== */
+.icon {
+  width: 1em;
+  height: 1em;
+  flex: 0 0 auto;
+  display: inline-block;
+  vertical-align: -0.125em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* 大尺寸装饰图标（如搜索空态） */
+.icon--xl { stroke-width: 1.5; }

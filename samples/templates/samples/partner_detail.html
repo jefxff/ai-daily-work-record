@@ -5,13 +5,13 @@
 
 {% block extra_css %}
 <style>
-    .record-card { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 1.5rem; margin-bottom: 1.25rem; }
+    .record-card { background: var(--c-surface); border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 1.5rem; margin-bottom: 1.25rem; }
     .record-card-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
-    .record-card-header h5 { margin: 0; font-size: 15px; font-weight: 600; color: #1f2329; }
+    .record-card-header h5 { margin: 0; font-size: 15px; font-weight: 600; color: var(--c-text); }
     .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
-    .info-item .info-label { font-size: 12px; color: #8c8c8c; margin-bottom: 2px; }
-    .info-item .info-value { font-size: 14px; color: #1f2329; word-break: break-all; }
-    .audit-hint { font-size: 12px; color: #8c8c8c; background: #fafafa; border-radius: 4px; padding: 6px 10px; margin-bottom: 0.75rem; }
+    .info-item .info-label { font-size: 12px; color: var(--c-text-secondary); margin-bottom: 2px; }
+    .info-item .info-value { font-size: 14px; color: var(--c-text); word-break: break-all; }
+    .audit-hint { font-size: 12px; color: var(--c-text-secondary); background: var(--c-surface-sunken); border-radius: 4px; padding: 6px 10px; margin-bottom: 0.75rem; }
     .table-sm-compact td, .table-sm-compact th { padding: 10px 12px; font-size: 13px; }
 </style>
 {% endblock %}
@@ -61,34 +61,34 @@
     </div>
     <div class="audit-hint">ℹ️ 审厂记录按供应商维度管理，同一供应商的所有样品共享审厂结果。</div>
     <div class="table-responsive">
-        <table class="table table-sm-compact">
+        <table class="table--cards table table-sm-compact">
             <thead>
                 <tr>
-                    <th>轮次</th>
-                    <th>审厂日期</th>
-                    <th>审厂结果</th>
-                    <th>审核文件</th>
-                    <th>备注</th>
-                    <th>操作人</th>
-                    <th>操作</th>
+                    <th scope="col">轮次</th>
+                    <th scope="col">审厂日期</th>
+                    <th scope="col">审厂结果</th>
+                    <th scope="col">审核文件</th>
+                    <th scope="col">备注</th>
+                    <th scope="col">操作人</th>
+                    <th scope="col">操作</th>
                 </tr>
             </thead>
             <tbody>
                 {% for r in audit_records reversed %}
                 <tr>
-                    <td style="white-space:nowrap;">第{{ r.round_no }}轮<div style="font-size:12px; color:#8c8c8c;">{{ r.audit_no }}</div></td>
-                    <td style="white-space:nowrap;">{{ r.audit_date|date:'Y-m-d' }}</td>
-                    <td><span class="status-badge {{ r.result_badge }}">{{ r.get_audit_result_display }}</span></td>
-                    <td>
+                    <td data-label="轮次" style="white-space:nowrap;">第{{ r.round_no }}轮<div style="font-size:12px; color:var(--c-text-secondary);">{{ r.audit_no }}</div></td>
+                    <td data-label="审厂日期" style="white-space:nowrap;">{{ r.audit_date|date:'Y-m-d' }}</td>
+                    <td data-label="审厂结果"><span class="status-badge {{ r.result_badge }}">{{ r.get_audit_result_display }}</span></td>
+                    <td data-label="审核文件">
                         {% if r.file %}
                         <a href="{{ r.file.url }}" target="_blank" title="{{ r.file.name }}">{{ r.file.name|cut:'audits/'|truncatechars:20 }}{% if r.is_image %} 🖼️{% else %} 📄{% endif %}</a>
                         {% else %}
                         <span class="empty-cell-inline">—</span>
                         {% endif %}
                     </td>
-                    <td>{{ r.audit_remark|truncatechars:28|default:'—' }}</td>
-                    <td>{{ r.auditor|default:'—' }}</td>
-                    <td>
+                    <td data-label="备注">{{ r.audit_remark|truncatechars:28|default:'—' }}</td>
+                    <td data-label="操作人">{{ r.auditor|default:'—' }}</td>
+                    <td data-label="操作">
                         <div style="display:flex; gap:0.25rem; align-items:center; flex-wrap:nowrap;">
                             {% can "samples" "update" %}
                             <a href="{% url 'samples:audit_edit' partner.pk r.pk %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑第{{ r.round_no }}轮审厂记录">编辑</a>
@@ -112,32 +112,32 @@
         <h5>📦 关联样品（共 {{ samples.paginator.count }} 条）</h5>
     </div>
     <div class="table-responsive">
-        <table class="table table-sm-compact">
+        <table class="table--cards table table-sm-compact">
             <thead>
                 <tr>
-                    <th>样品编号</th>
-                    <th>物料名称</th>
-                    <th>型号</th>
-                    <th>当前状态</th>
-                    <th>供应商类型</th>
-                    <th>登记时间</th>
+                    <th scope="col">样品编号</th>
+                    <th scope="col">物料名称</th>
+                    <th scope="col">型号</th>
+                    <th scope="col">当前状态</th>
+                    <th scope="col">供应商类型</th>
+                    <th scope="col">登记时间</th>
                 </tr>
             </thead>
             <tbody>
                 {% for s in samples %}
                 <tr>
-                    <td><a href="{% url 'samples:detail' s.pk %}">{{ s.sample_no }}</a></td>
-                    <td>{{ s.material_name }}</td>
-                    <td>{{ s.model|default:'—' }}</td>
-                    <td><span class="status-badge {{ s.status_badge_class }}">{{ s.get_status_display }}</span></td>
-                    <td>
+                    <td data-label="样品编号"><a href="{% url 'samples:detail' s.pk %}">{{ s.sample_no }}</a></td>
+                    <td data-label="物料名称">{{ s.material_name }}</td>
+                    <td data-label="型号">{{ s.model|default:'—' }}</td>
+                    <td data-label="当前状态"><span class="status-badge {{ s.status_badge_class }}">{{ s.get_status_display }}</span></td>
+                    <td data-label="供应商类型">
                         {% if s.supplier_type == 'new' %}
                         <span class="status-badge warning">新增</span>
                         {% else %}
                         <span class="status-badge default">已合作</span>
                         {% endif %}
                     </td>
-                    <td style="white-space:nowrap;">{{ s.created_at|date:'Y-m-d H:i' }}</td>
+                    <td data-label="登记时间" style="white-space:nowrap;">{{ s.created_at|date:'Y-m-d H:i' }}</td>
                 </tr>
                 {% empty %}
                 <tr><td colspan="6" class="empty-cell">📭 暂无关联样品</td></tr>

@@ -7,16 +7,16 @@
 <style>
     .lic-sec-title { font-weight: 600; color: #1f1f1f; border-left: 3px solid #1677ff; padding-left: 0.6rem; margin-bottom: 0.85rem; }
     .lic-detail-table { --bs-table-hover-bg: transparent; }
-    .lic-detail-table td { text-align: left !important; padding: 0.6rem 0.75rem !important; border: none; border-bottom: 1px dashed #f0f0f0; vertical-align: middle; }
+    .lic-detail-table td { text-align: left !important; padding: 0.6rem 0.75rem !important; border: none; border-bottom: 1px dashed var(--c-border); vertical-align: middle; }
     .lic-detail-table tr:last-child td { border-bottom: none; }
-    .lic-detail-table td.lic-label { font-weight: 600; color: #262626; width: 110px; white-space: nowrap; background: #f5f7fa !important; border-radius: 6px; }
+    .lic-detail-table td.lic-label { font-weight: 600; color: var(--c-text); width: 110px; white-space: nowrap; background: #f5f7fa !important; border-radius: 6px; }
     .lic-status-badge { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 0.78rem; font-weight: 500; }
-    .lic-status-badge.normal { background: #f6ffed; color: #389e0d; border: 1px solid #b7eb8f; }
-    .lic-status-badge.expiring { background: #fff7e6; color: #d46b08; border: 1px solid #ffd591; }
-    .lic-status-badge.expired { background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e; }
+    .lic-status-badge.normal { background: var(--c-success-bg); color: var(--c-success); border: 1px solid var(--c-success-line); }
+    .lic-status-badge.expiring { background: var(--c-warning-bg); color: var(--c-warning); border: 1px solid #ffd591; }
+    .lic-status-badge.expired { background: var(--c-danger-bg); color: var(--c-danger); border: 1px solid var(--c-danger-line); }
     .lic-file-panel { border: 1px solid #eef0f3; border-radius: 10px; padding: 1rem 1.25rem; background: #fafbfc; }
     .lic-preview-box img { max-width: 100%; max-height: 420px; border: 1px solid #eef0f3; border-radius: 8px; }
-    .lic-pdf-frame { width: 100%; height: 520px; border: 1px solid #eef0f3; border-radius: 8px; background: #fff; }
+    .lic-pdf-frame { width: 100%; height: 520px; border: 1px solid #eef0f3; border-radius: 8px; background: var(--c-surface); }
 </style>
 {% endblock %}
 
@@ -67,7 +67,7 @@
                     {% if license.remark %}
                     <div style="background:#f5f7fa;border-radius:8px;padding:0.85rem 1rem;color:#555;white-space:pre-wrap;word-break:break-all;min-height:60px;">{{ license.remark }}</div>
                     {% else %}
-                    <div style="background:#f5f7fa;border-radius:8px;padding:0.85rem 1rem;color:#8c8c8c;min-height:60px;">（未填写备注）</div>
+                    <div style="background:#f5f7fa;border-radius:8px;padding:0.85rem 1rem;color:var(--c-text-secondary);min-height:60px;">（未填写备注）</div>
                     {% endif %}
 
                     <div class="lic-file-panel mt-4">
@@ -113,16 +113,16 @@
             </div>
         </div>
         <div class="card-body">
-            <table class="table table-sm">
-                <thead><tr><th>年审日期</th><th>结果</th><th>经办人</th><th>新有效期至</th><th>备注</th></tr></thead>
+            <table class="table--cards table table-sm">
+                <thead><tr><th scope="col">年审日期</th><th scope="col">结果</th><th scope="col">经办人</th><th scope="col">新有效期至</th><th scope="col">备注</th></tr></thead>
                 <tbody>
                 {% for r in reviews %}
                 <tr>
-                    <td>{{ r.review_date }}</td>
-                    <td>{% if r.result == 'passed' %}<span class="badge bg-success">通过</span>{% elif r.result == 'failed' %}<span class="badge bg-danger">未通过</span>{% else %}<span class="badge bg-warning text-dark">待处理</span>{% endif %}</td>
-                    <td>{{ r.reviewer }}</td>
-                    <td>{{ r.new_expire_date|default:"—" }}</td>
-                    <td>{{ r.remark|default:"—" }}</td>
+                    <td data-label="年审日期">{{ r.review_date }}</td>
+                    <td data-label="结果">{% if r.result == 'passed' %}<span class="badge bg-success">通过</span>{% elif r.result == 'failed' %}<span class="badge bg-danger">未通过</span>{% else %}<span class="badge bg-warning text-dark">待处理</span>{% endif %}</td>
+                    <td data-label="经办人">{{ r.reviewer }}</td>
+                    <td data-label="新有效期至">{{ r.new_expire_date|default:"—" }}</td>
+                    <td data-label="备注">{{ r.remark|default:"—" }}</td>
                 </tr>
                 {% empty %}
                 <tr><td colspan="5" class="text-center text-muted">暂无年审记录</td></tr>
@@ -136,16 +136,16 @@
     <div class="card mb-4">
         <div class="card-header"><h5 class="mb-0">借阅记录</h5></div>
         <div class="card-body">
-            <table class="table table-sm">
-                <thead><tr><th>借阅人</th><th>借阅时间</th><th>应还日期</th><th>实际归还</th><th>状态</th></tr></thead>
+            <table class="table--cards table table-sm">
+                <thead><tr><th scope="col">借阅人</th><th scope="col">借阅时间</th><th scope="col">应还日期</th><th scope="col">实际归还</th><th scope="col">状态</th></tr></thead>
                 <tbody>
                 {% for b in borrows %}
                 <tr>
-                    <td>{{ b.borrower }}</td>
-                    <td>{{ b.borrow_time|date:"Y-m-d H:i" }}</td>
-                    <td>{{ b.due_time|date:"Y-m-d" }}</td>
-                    <td>{{ b.return_time|date:"Y-m-d H:i"|default:"—" }}</td>
-                    <td>
+                    <td data-label="借阅人">{{ b.borrower }}</td>
+                    <td data-label="借阅时间">{{ b.borrow_time|date:"Y-m-d H:i" }}</td>
+                    <td data-label="应还日期">{{ b.due_time|date:"Y-m-d" }}</td>
+                    <td data-label="实际归还">{{ b.return_time|date:"Y-m-d H:i"|default:"—" }}</td>
+                    <td data-label="状态">
                         <span class="badge {% if b.status == 'returned' %}bg-success{% elif b.status == 'overdue' %}bg-danger{% else %}bg-warning{% endif %}">{{ b.get_status_display }}</span>
                         {% if b.status != 'returned' %}
                         <a href="{% url 'archive:license_borrow_return' b.pk %}" class="btn btn-sm btn-outline-success ms-1" data-confirm="确认归还证照？">归还</a>
@@ -164,15 +164,15 @@
     <div class="card">
         <div class="card-header"><h5 class="mb-0">操作历史</h5></div>
         <div class="card-body">
-            <table class="table table-sm">
-                <thead><tr><th>时间</th><th>操作人</th><th>类型</th><th>摘要</th></tr></thead>
+            <table class="table--cards table table-sm">
+                <thead><tr><th scope="col">时间</th><th scope="col">操作人</th><th scope="col">类型</th><th scope="col">摘要</th></tr></thead>
                 <tbody>
                 {% for log in logs %}
                 <tr>
-                    <td>{{ log.operation_time|date:"Y-m-d H:i" }}</td>
-                    <td>{{ log.operator }}</td>
-                    <td>{{ log.operation_type }}</td>
-                    <td>{{ log.change_summary }}</td>
+                    <td data-label="时间">{{ log.operation_time|date:"Y-m-d H:i" }}</td>
+                    <td data-label="操作人">{{ log.operator }}</td>
+                    <td data-label="类型">{{ log.operation_type }}</td>
+                    <td data-label="摘要">{{ log.change_summary }}</td>
                 </tr>
                 {% empty %}
                 <tr><td colspan="4" class="text-center text-muted">暂无操作记录</td></tr>

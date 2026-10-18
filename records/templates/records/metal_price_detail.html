@@ -22,11 +22,11 @@
     }
 
     .metal-tab {
-        background: #fff;
-        border: 1px solid #d9d9d9;
+        background: var(--c-surface);
+        border: 1px solid var(--c-border-strong);
         border-radius: 4px;
         padding: 0.375rem 0.875rem;
-        color: #595959;
+        color: var(--c-text-secondary);
         text-decoration: none;
         transition: all 0.2s ease;
         font-weight: 500;
@@ -34,20 +34,20 @@
     }
 
     .metal-tab:hover {
-        color: #1890ff;
-        border-color: #1890ff;
+        color: var(--c-primary);
+        border-color: var(--c-primary);
         text-decoration: none;
     }
 
     .metal-tab.active {
-        background: #1890ff;
-        border-color: #1890ff;
-        color: #fff;
+        background: var(--c-primary);
+        border-color: var(--c-primary);
+        color: var(--c-surface);
     }
 
     /* 图表容器 */
     .chart-container {
-        background: #ffffff;
+        background: var(--c-surface);
         border-radius: 8px;
         padding: 2rem;
         margin-bottom: 2rem;
@@ -57,7 +57,7 @@
     .chart-title {
         font-size: 1rem;
         font-weight: 600;
-        color: #1f2329;
+        color: var(--c-text);
         margin-bottom: 1.5rem;
         text-align: left;
     }
@@ -69,7 +69,7 @@
 
     /* 价格详情区块 */
     .price-detail-section {
-        background: #ffffff;
+        background: var(--c-surface);
         border-radius: 8px;
         padding: 2rem;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
@@ -78,16 +78,16 @@
     .section-subtitle {
         font-size: 1rem;
         font-weight: 600;
-        color: #1f2329;
+        color: var(--c-text);
         margin-bottom: 1.5rem;
         padding-left: 0.75rem;
-        border-left: 3px solid #1890ff;
+        border-left: 3px solid var(--c-primary);
     }
 
     /* 刷新价格按钮 */
     .btn-refresh {
-        background: #1890ff;
-        color: #fff;
+        background: var(--c-primary);
+        color: var(--c-surface);
         border: none;
         border-radius: 4px;
         padding: 0.375rem 0.875rem;
@@ -101,7 +101,7 @@
     }
 
     .btn-refresh:hover {
-        background: #40a9ff;
+        background: var(--c-primary-hover);
     }
 
     .btn-refresh:active {
@@ -136,14 +136,14 @@
     }
 
     .alert-success {
-        background: #f6ffed;
-        color: #52c41a;
-        border: 1px solid #b7eb8f;
+        background: var(--c-success-bg);
+        color: var(--c-success);
+        border: 1px solid var(--c-success-line);
     }
 
     .alert-error {
-        background: #fff2f0;
-        color: #f5222d;
+        background: var(--c-danger-bg);
+        color: var(--c-danger);
         border: 1px solid #ffccc7;
     }
 
@@ -200,25 +200,25 @@
     </div>
     <div id="refreshMessage" class="alert" style="display: none;"></div>
     <div class="table-container">
-        <table class="table">
+        <table class="table--cards table">
             <thead>
                 <tr>
-                    <th>市场来源</th>
-                    <th>商品名</th>
-                    <th>更新日期</th>
-                    <th>价格</th>
-                    <th>涨跌</th>
-                    <th>单位</th>
+                    <th scope="col">市场来源</th>
+                    <th scope="col">商品名</th>
+                    <th scope="col">更新日期</th>
+                    <th scope="col">价格</th>
+                    <th scope="col">涨跌</th>
+                    <th scope="col">单位</th>
                 </tr>
             </thead>
             <tbody>
                 {% if latest_price %}
                 <tr>
-                    <td>长江有色</td>
-                    <td>{{ latest_price.metal_name }}</td>
-                    <td>{{ latest_price.crawl_date|date:"Y-m-d" }}</td>
-                    <td style="font-weight: 700; font-size: 1.1rem;">{{ latest_price.price|floatformat:0 }}</td>
-                    <td class="{% if latest_price.price_change > 0 %}price-up{% elif latest_price.price_change < 0 %}price-down{% else %}price-flat{% endif %}">
+                    <td data-label="市场来源">长江有色</td>
+                    <td data-label="商品名">{{ latest_price.metal_name }}</td>
+                    <td data-label="更新日期">{{ latest_price.crawl_date|date:"Y-m-d" }}</td>
+                    <td data-label="价格" style="font-weight: 700; font-size: 1.1rem;">{{ latest_price.price|floatformat:0 }}</td>
+                    <td data-label="涨跌" class="{% if latest_price.price_change > 0 %}price-up{% elif latest_price.price_change < 0 %}price-down{% else %}price-flat{% endif %}">
                         {% if latest_price.price_change > 0 %}
                                     ▲ {{ latest_price.price_change|floatformat:0 }}
                         {% elif latest_price.price_change < 0 %}
@@ -227,7 +227,7 @@
                                     - 0
                         {% endif %}
                     </td>
-                    <td>{{ latest_price.unit }}</td>
+                    <td data-label="单位">{{ latest_price.unit }}</td>
                 </tr>
                 {% else %}
                 <tr>
@@ -243,21 +243,21 @@
 <div class="price-detail-section mt-4">
     <h3 class="section-subtitle">历史价格记录</h3>
     <div class="table-container">
-        <table class="table">
+        <table class="table--cards table">
             <thead>
                 <tr>
-                    <th>日期</th>
-                    <th>价格</th>
-                    <th>涨跌</th>
-                    <th>单位</th>
+                    <th scope="col">日期</th>
+                    <th scope="col">价格</th>
+                    <th scope="col">涨跌</th>
+                    <th scope="col">单位</th>
                 </tr>
             </thead>
             <tbody>
                 {% for price in price_history %}
                 <tr>
-                    <td>{{ price.crawl_date|date:"Y-m-d" }}</td>
-                    <td style="font-weight: 600;">{{ price.price|floatformat:0 }}</td>
-                    <td class="{% if price.price_change > 0 %}price-up{% elif price.price_change < 0 %}price-down{% else %}price-flat{% endif %}">
+                    <td data-label="日期">{{ price.crawl_date|date:"Y-m-d" }}</td>
+                    <td data-label="价格" style="font-weight: 600;">{{ price.price|floatformat:0 }}</td>
+                    <td data-label="涨跌" class="{% if price.price_change > 0 %}price-up{% elif price.price_change < 0 %}price-down{% else %}price-flat{% endif %}">
                         {% if price.price_change > 0 %}
                                     ▲ {{ price.price_change|floatformat:0 }}
                         {% elif price.price_change < 0 %}
@@ -266,7 +266,7 @@
                                     - 0
                         {% endif %}
                     </td>
-                    <td>{{ price.unit }}</td>
+                    <td data-label="单位">{{ price.unit }}</td>
                 </tr>
                 {% empty %}
                 <tr>

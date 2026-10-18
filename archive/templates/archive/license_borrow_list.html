@@ -7,11 +7,11 @@
 <style>
     .lic-table { background: rgba(255,255,255,0.95); border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
     .lic-table table { margin: 0; }
-    .lic-table th { background: #fafafa; font-weight: 600; color: #595959; text-align: center; padding: 12px; white-space: nowrap; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
-    .lic-table td { text-align: center; padding: 10px 12px; border-bottom: 1px solid #f0f0f0; color: #1f2329; font-size: 14px; }
+    .lic-table th { background: var(--c-surface-sunken); font-weight: 600; color: var(--c-text-secondary); text-align: center; padding: 12px; white-space: nowrap; border-bottom: 1px solid var(--c-border); font-size: 14px; }
+    .lic-table td { text-align: center; padding: 10px 12px; border-bottom: 1px solid var(--c-border); color: var(--c-text); font-size: 14px; }
     .lic-table tr:hover { background: #f5f7fa; }
     .lic-table .text-left { text-align: left; }
-    .lic-empty { text-align: center; padding: 3rem 1rem; color: #8c8c8c; }
+    .lic-empty { text-align: center; padding: 3rem 1rem; color: var(--c-text-secondary); }
 </style>
 {% endblock %}
 
@@ -39,32 +39,32 @@
     </form>
 
     <div class="lic-table">
-        <table class="table">
+        <table class="table--cards table">
             <thead>
                 <tr>
-                    <th>证照编号</th>
-                    <th>证照名称</th>
-                    <th>借阅人</th>
-                    <th>借阅时间</th>
-                    <th>应还日期</th>
-                    <th>实际归还</th>
-                    <th>状态</th>
-                    <th>操作</th>
+                    <th scope="col">证照编号</th>
+                    <th scope="col">证照名称</th>
+                    <th scope="col">借阅人</th>
+                    <th scope="col">借阅时间</th>
+                    <th scope="col">应还日期</th>
+                    <th scope="col">实际归还</th>
+                    <th scope="col">状态</th>
+                    <th scope="col">操作</th>
                 </tr>
             </thead>
             <tbody>
                 {% for r in records %}
                 <tr>
-                    <td><strong>{{ r.license.code }}</strong></td>
-                    <td class="text-left"><a href="{% url 'archive:license_detail' r.license.pk %}">{{ r.license.name }}</a></td>
-                    <td>{{ r.borrower }}</td>
-                    <td>{{ r.borrow_time|date:"Y-m-d H:i" }}</td>
-                    <td>{{ r.due_time|date:"Y-m-d" }}</td>
-                    <td>{{ r.return_time|date:"Y-m-d H:i"|default:"—" }}</td>
-                    <td>
+                    <td data-label="证照编号"><strong>{{ r.license.code }}</strong></td>
+                    <td data-label="证照名称" class="text-left"><a href="{% url 'archive:license_detail' r.license.pk %}">{{ r.license.name }}</a></td>
+                    <td data-label="借阅人">{{ r.borrower }}</td>
+                    <td data-label="借阅时间">{{ r.borrow_time|date:"Y-m-d H:i" }}</td>
+                    <td data-label="应还日期">{{ r.due_time|date:"Y-m-d" }}</td>
+                    <td data-label="实际归还">{{ r.return_time|date:"Y-m-d H:i"|default:"—" }}</td>
+                    <td data-label="状态">
                         <span class="badge {% if r.status == 'returned' %}bg-success{% elif r.status == 'overdue' %}bg-danger{% else %}bg-warning text-dark{% endif %}">{{ r.get_status_display }}</span>
                     </td>
-                    <td>
+                    <td data-label="操作">
                         {% if r.status != 'returned' %}
                         <a href="{% url 'archive:license_borrow_return' r.pk %}" class="btn btn-sm btn-outline-success" data-confirm="确认归还？">归还</a>
                         {% endif %}

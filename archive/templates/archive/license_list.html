@@ -7,10 +7,10 @@
 <style>
     .lic-dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
     .lic-stat-card { background: rgba(255,255,255,0.95); border-radius: 12px; padding: 1.25rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-    .lic-stat-value { font-size: 1.8rem; font-weight: 700; color: #1f2329; }
-    .lic-stat-label { font-size: 0.8rem; color: #8c8c8c; margin-top: 0.25rem; }
-    .lic-stat-card.expiring .lic-stat-value { color: #fa8c16; }
-    .lic-stat-card.expired .lic-stat-value { color: #f5222d; }
+    .lic-stat-value { font-size: 1.8rem; font-weight: 700; color: var(--c-text); }
+    .lic-stat-label { font-size: 0.8rem; color: var(--c-text-secondary); margin-top: 0.25rem; }
+    .lic-stat-card.expiring .lic-stat-value { color: var(--c-warning); }
+    .lic-stat-card.expired .lic-stat-value { color: var(--c-danger); }
     .lic-stat-card.borrowed .lic-stat-value { color: #722ed1; }
 
     .lic-toolbar { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-bottom: 1.25rem; }
@@ -20,18 +20,18 @@
 
     .lic-table { background: rgba(255,255,255,0.95); border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
     .lic-table table { margin: 0; }
-    .lic-table th { background: #fafafa; font-weight: 600; color: #595959; text-align: center; padding: 12px; white-space: nowrap; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
-    .lic-table td { text-align: center; padding: 10px 12px; border-bottom: 1px solid #f0f0f0; color: #1f2329; font-size: 14px; }
+    .lic-table th { background: var(--c-surface-sunken); font-weight: 600; color: var(--c-text-secondary); text-align: center; padding: 12px; white-space: nowrap; border-bottom: 1px solid var(--c-border); font-size: 14px; }
+    .lic-table td { text-align: center; padding: 10px 12px; border-bottom: 1px solid var(--c-border); color: var(--c-text); font-size: 14px; }
     .lic-table tr:hover { background: #f5f7fa; }
     .lic-table .text-left { text-align: left; }
 
     .lic-status-badge { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 0.78rem; font-weight: 500; }
-    .lic-status-badge.normal { background: #f6ffed; color: #389e0d; border: 1px solid #b7eb8f; }
-    .lic-status-badge.expiring { background: #fff7e6; color: #d46b08; border: 1px solid #ffd591; }
-    .lic-status-badge.expired { background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e; }
+    .lic-status-badge.normal { background: var(--c-success-bg); color: var(--c-success); border: 1px solid var(--c-success-line); }
+    .lic-status-badge.expiring { background: var(--c-warning-bg); color: var(--c-warning); border: 1px solid #ffd591; }
+    .lic-status-badge.expired { background: var(--c-danger-bg); color: var(--c-danger); border: 1px solid var(--c-danger-line); }
     .lic-borrowed-badge { background: #f9f0ff; color: #722ed1; border: 1px solid #d3adf7; }
 
-    .lic-empty { text-align: center; padding: 3rem 1rem; color: #8c8c8c; }
+    .lic-empty { text-align: center; padding: 3rem 1rem; color: var(--c-text-secondary); }
 </style>
 {% endblock %}
 
@@ -86,35 +86,35 @@
 
     <!-- 列表 -->
     <div class="lic-table">
-        <table class="table">
+        <table class="table--cards table">
             <thead>
                 <tr>
-                    <th>证照编号</th>
-                    <th>证照名称</th>
-                    <th>持证单位</th>
-                    <th>发证机关</th>
-                    <th>发证日期</th>
-                    <th>有效期至</th>
-                    <th>下次年审</th>
-                    <th>状态</th>
-                    <th>操作</th>
+                    <th scope="col">证照编号</th>
+                    <th scope="col">证照名称</th>
+                    <th scope="col">持证单位</th>
+                    <th scope="col">发证机关</th>
+                    <th scope="col">发证日期</th>
+                    <th scope="col">有效期至</th>
+                    <th scope="col">下次年审</th>
+                    <th scope="col">状态</th>
+                    <th scope="col">操作</th>
                 </tr>
             </thead>
             <tbody>
                 {% for lic in licenses %}
                 <tr>
-                    <td><strong>{{ lic.code }}</strong></td>
-                    <td class="text-left">{{ lic.name }}</td>
-                    <td class="text-left">{{ lic.holder|default:"—" }}</td>
-                    <td class="text-left">{{ lic.issuer|default:"—" }}</td>
-                    <td>{{ lic.issue_date|default:"—" }}</td>
-                    <td>{{ lic.expire_date|default:"—" }}</td>
-                    <td>{{ lic.next_review_date|default:"—" }}</td>
-                    <td>
+                    <td data-label="证照编号"><strong>{{ lic.code }}</strong></td>
+                    <td data-label="证照名称" class="text-left">{{ lic.name }}</td>
+                    <td data-label="持证单位" class="text-left">{{ lic.holder|default:"—" }}</td>
+                    <td data-label="发证机关" class="text-left">{{ lic.issuer|default:"—" }}</td>
+                    <td data-label="发证日期">{{ lic.issue_date|default:"—" }}</td>
+                    <td data-label="有效期至">{{ lic.expire_date|default:"—" }}</td>
+                    <td data-label="下次年审">{{ lic.next_review_date|default:"—" }}</td>
+                    <td data-label="状态">
                         <span class="lic-status-badge {{ lic.status }}">{{ lic.status_display }}</span>
                         {% if lic.is_borrowed %}<span class="lic-status-badge lic-borrowed-badge ms-1">借出</span>{% endif %}
                     </td>
-                    <td>
+                    <td data-label="操作">
                         <a href="{% url 'archive:license_detail' lic.pk %}" class="btn btn-sm btn-outline-primary">详情</a>
                         {% can "archive" "update" %}
                         <a href="{% url 'archive:license_edit' lic.pk %}" class="btn btn-sm btn-outline-secondary" data-modal-edit data-modal-title="编辑证照">编辑</a>

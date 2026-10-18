@@ -10,18 +10,18 @@
 
     /* === 信息卡片网格：紧凑双列键值对 === */
     .arc-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
-    .arc-info-item { display: flex; align-items: baseline; padding: 0.5rem 0.75rem; background: #fafbfc; border-radius: 6px; border: 1px solid #f0f2f5; transition: all 0.15s; }
+    .arc-info-item { display: flex; align-items: baseline; padding: 0.5rem 0.75rem; background: #fafbfc; border-radius: 6px; border: 1px solid var(--c-bg); transition: all 0.15s; }
     .arc-info-item:hover { background: #f5f7fa; border-color: #e6e8eb; }
     .arc-info-item.full { grid-column: 1 / -1; }
-    .arc-info-label { font-size: 0.78rem; color: #8c8c8c; font-weight: 500; min-width: 64px; max-width: 90px; white-space: nowrap; flex-shrink: 0; }
+    .arc-info-label { font-size: 0.78rem; color: var(--c-text-secondary); font-weight: 500; min-width: 64px; max-width: 90px; white-space: nowrap; flex-shrink: 0; }
     .arc-info-value { font-size: 0.88rem; color: #1f1f1f; font-weight: 500; word-break: break-all; line-height: 1.4; }
-    .arc-info-value.empty { color: #bfbfbf; font-weight: 400; }
+    .arc-info-value.empty { color: var(--c-text-tertiary); font-weight: 400; }
     .arc-info-value.highlight { color: #1677ff; font-weight: 600; }
 
     /* 高亮状态徽章 */
     .arc-status-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: 10px; font-size: 0.76rem; font-weight: 500; }
-    .arc-status-badge.in { background: #f6ffed; color: #389e0d; border: 1px solid #b7eb8f; }
-    .arc-status-badge.out { background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e; }
+    .arc-status-badge.in { background: var(--c-success-bg); color: var(--c-success); border: 1px solid var(--c-success-line); }
+    .arc-status-badge.out { background: var(--c-danger-bg); color: var(--c-danger); border: 1px solid var(--c-danger-line); }
 
     /* 标签 */
     .arc-tag { display: inline-block; padding: 1px 8px; background: #f0f5ff; color: #2b5fd9; border-radius: 4px; font-size: 0.76rem; margin-right: 4px; }
@@ -30,7 +30,7 @@
     .arc-desc-box { background: linear-gradient(135deg, #f5f7fa 0%, #eef2f7 100%); border-radius: 8px; padding: 0.85rem 1rem; color: #555; white-space: pre-wrap; word-break: break-all; min-height: 64px; border-left: 3px solid #1677ff; }
 
     /* 二维码容器 */
-    .arc-qrcode-box { display: inline-block; text-align: center; background: #fff; border: 1px solid #eef0f3; border-radius: 8px; padding: 10px 14px; }
+    .arc-qrcode-box { display: inline-block; text-align: center; background: var(--c-surface); border: 1px solid #eef0f3; border-radius: 8px; padding: 10px 14px; }
     .arc-qrcode-box img { width: 120px; height: 120px; display: block; }
 
     /* 电子档案面板 */
@@ -38,17 +38,17 @@
     .arc-file-name { font-weight: 600; color: #1f1f1f; word-break: break-all; }
     .arc-file-badge { background: #eef4ff !important; color: #2b5fd9 !important; font-weight: 500; }
     /* 附件行：缩略图 + 信息 + 操作 */
-    .arc-attachment-row { display: flex; align-items: center; gap: 0.9rem; padding: 0.65rem 0.5rem; border-bottom: 1px solid #f0f2f5; }
+    .arc-attachment-row { display: flex; align-items: center; gap: 0.9rem; padding: 0.65rem 0.5rem; border-bottom: 1px solid var(--c-bg); }
     .arc-attachment-row:last-of-type { border-bottom: none; }
-    .arc-att-thumb { width: 64px; height: 64px; flex-shrink: 0; border: 1px solid #eef0f3; border-radius: 8px; background: #fff; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+    .arc-att-thumb { width: 64px; height: 64px; flex-shrink: 0; border: 1px solid #eef0f3; border-radius: 8px; background: var(--c-surface); overflow: hidden; display: flex; align-items: center; justify-content: center; }
     .arc-att-thumb img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
     .arc-att-icon { font-size: 0.72rem; font-weight: 700; color: #2b5fd9; background: #eef4ff; border-radius: 6px; padding: 6px 8px; max-width: 100%; text-align: center; }
     .arc-att-info { flex: 1; min-width: 0; }
 
     /* 右列快速摘要卡片 */
     .arc-quick-stats { display: flex; flex-direction: column; gap: 0.6rem; flex: 1; min-width: 160px; }
-    .arc-quick-stat { background: #fafbfc; border: 1px solid #f0f2f5; border-radius: 6px; padding: 0.5rem 0.85rem; }
-    .arc-quick-label { font-size: 0.74rem; color: #8c8c8c; font-weight: 500; }
+    .arc-quick-stat { background: #fafbfc; border: 1px solid var(--c-bg); border-radius: 6px; padding: 0.5rem 0.85rem; }
+    .arc-quick-label { font-size: 0.74rem; color: var(--c-text-secondary); font-weight: 500; }
     .arc-quick-value { font-size: 0.88rem; color: #1f1f1f; font-weight: 600; margin-top: 0.15rem; }
 
     /* 响应式：窄屏单列 */
@@ -265,16 +265,16 @@
     <div class="card mb-4">
         <div class="card-header"><h5 class="mb-0">借阅记录</h5></div>
         <div class="card-body">
-            <table class="table">
-                <thead><tr><th>借阅人</th><th>借阅时间</th><th>应还日期</th><th>实际归还</th><th>状态</th></tr></thead>
+            <table class="table--cards table">
+                <thead><tr><th scope="col">借阅人</th><th scope="col">借阅时间</th><th scope="col">应还日期</th><th scope="col">实际归还</th><th scope="col">状态</th></tr></thead>
                 <tbody>
                 {% for b in borrows %}
                 <tr>
-                    <td>{{ b.borrower }}</td>
-                    <td>{{ b.borrow_time|date:"Y-m-d H:i" }}</td>
-                    <td>{{ b.due_time|date:"Y-m-d" }}</td>
-                    <td>{{ b.return_time|date:"Y-m-d H:i"|default:"—" }}</td>
-                    <td>
+                    <td data-label="借阅人">{{ b.borrower }}</td>
+                    <td data-label="借阅时间">{{ b.borrow_time|date:"Y-m-d H:i" }}</td>
+                    <td data-label="应还日期">{{ b.due_time|date:"Y-m-d" }}</td>
+                    <td data-label="实际归还">{{ b.return_time|date:"Y-m-d H:i"|default:"—" }}</td>
+                    <td data-label="状态">
                         <span class="badge {% if b.status == 'returned' %}bg-success{% elif b.status == 'overdue' %}bg-danger{% else %}bg-warning{% endif %}">{{ b.get_status_display }}</span>
                         {% if b.status != 'returned' %}
                         <a href="{% url 'archive:borrow_return' b.pk %}" class="btn btn-sm btn-outline-success ms-1">归还</a>
@@ -293,15 +293,15 @@
     <div class="card">
         <div class="card-header"><h5 class="mb-0">操作历史</h5></div>
         <div class="card-body">
-            <table class="table table-sm">
-                <thead><tr><th>时间</th><th>操作人</th><th>类型</th><th>摘要</th></tr></thead>
+            <table class="table--cards table table-sm">
+                <thead><tr><th scope="col">时间</th><th scope="col">操作人</th><th scope="col">类型</th><th scope="col">摘要</th></tr></thead>
                 <tbody>
                 {% for log in logs %}
                 <tr>
-                    <td>{{ log.operation_time|date:"Y-m-d H:i" }}</td>
-                    <td>{{ log.operator }}</td>
-                    <td>{{ log.operation_type }}</td>
-                    <td>{{ log.change_summary }}</td>
+                    <td data-label="时间">{{ log.operation_time|date:"Y-m-d H:i" }}</td>
+                    <td data-label="操作人">{{ log.operator }}</td>
+                    <td data-label="类型">{{ log.operation_type }}</td>
+                    <td data-label="摘要">{{ log.change_summary }}</td>
                 </tr>
                 {% empty %}
                 <tr><td colspan="4" class="text-center text-muted">暂无操作记录</td></tr>

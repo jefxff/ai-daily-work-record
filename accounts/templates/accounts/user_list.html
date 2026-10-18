@@ -29,54 +29,54 @@
     </div>
 </div>
 <div class="table-container">
-    <table class="table">
+    <table class="table--cards table">
         <thead>
             <tr>
-                <th>用户名</th>
-                <th>姓名</th>
-                <th>部门</th>
-                <th>岗位</th>
-                <th>角色</th>
-                <th>状态</th>
-                <th>创建时间</th>
-                <th style="width:220px;">操作</th>
+                <th scope="col">用户名</th>
+                <th scope="col">姓名</th>
+                <th scope="col">部门</th>
+                <th scope="col">岗位</th>
+                <th scope="col">角色</th>
+                <th scope="col">状态</th>
+                <th scope="col">创建时间</th>
+                <th scope="col" style="width:220px;">操作</th>
             </tr>
         </thead>
         <tbody>
             {% for u in page %}
             <tr>
-                <td>
+                <td data-label="用户名">
                     <strong>{{ u.username }}</strong>
                     {% if u.is_superuser %}<span class="status-badge warning">超级管理员</span>{% endif %}
                 </td>
-                <td>{{ u.profile.real_name|default:'—' }}</td>
-                <td>{{ u.profile.department|default:'—' }}</td>
-                <td>{{ u.profile.position|default:'—' }}</td>
-                <td>
+                <td data-label="姓名">{{ u.profile.real_name|default:'—' }}</td>
+                <td data-label="部门">{{ u.profile.department|default:'—' }}</td>
+                <td data-label="岗位">{{ u.profile.position|default:'—' }}</td>
+                <td data-label="角色">
                     {% for r in u.rbac_roles.all %}
                     <span class="status-badge info">{{ r.name }}</span>
                     {% empty %}
-                    <span style="color:#bfbfbf;">未分配</span>
+                    <span style="color:var(--c-text-tertiary);">未分配</span>
                     {% endfor %}
                 </td>
-                <td>
+                <td data-label="状态">
                     {% if u.is_active %}
                     <span class="status-badge success">正常</span>
                     {% else %}
                     <span class="status-badge danger">⚠️ 待审核/停用</span>
                     {% endif %}
                 </td>
-                <td style="white-space:nowrap;">{{ u.date_joined|date:'Y-m-d H:i' }}</td>
-                <td style="white-space:nowrap;">
+                <td data-label="创建时间" style="white-space:nowrap;">{{ u.date_joined|date:'Y-m-d H:i' }}</td>
+                <td data-label="操作" style="white-space:nowrap;">
                     {% can "system" "update" %}
                     {% if u.is_superuser and not request.user.is_superuser %}
-                    <span style="color:#bfbfbf; font-size:0.78rem;">无权操作超管</span>
+                    <span style="color:var(--c-text-tertiary); font-size:0.78rem;">无权操作超管</span>
                     {% else %}
                     {% if not u.is_active %}
                     <form method="post" action="{% url 'accounts:user_approve' u.id %}" style="display:inline;"
                           data-confirm="确定审核通过「{{ u.username }}」并激活账号吗？">
                         {% csrf_token %}
-                        <button type="submit" class="btn-transparent btn-sm" style="border-color:#b7eb8f; color:#389e0d;">通过</button>
+                        <button type="submit" class="btn-transparent btn-sm" style="border-color:var(--c-success-line); color:var(--c-success);">通过</button>
                     </form>
                     {% endif %}
                     <a class="btn-transparent btn-sm" href="{% url 'accounts:user_edit' u.id %}" data-modal-edit data-modal-title="编辑用户：{{ u.username }}">编辑/角色</a>
@@ -87,7 +87,7 @@
                               data-confirm="确定停用「{{ u.username }}」吗？停用后该账号将立即无法登录。">
                             {% csrf_token %}
                             <input type="hidden" name="active" value="false">
-                            <button type="submit" class="btn-transparent btn-sm" style="border-color:#ffa39e; color:#cf1322;">停用</button>
+                            <button type="submit" class="btn-transparent btn-sm" style="border-color:var(--c-danger-line); color:var(--c-danger);">停用</button>
                         </form>
                         {% else %}
                         <form method="post" action="{% url 'accounts:user_toggle' u.id %}" style="display:inline;"
@@ -98,7 +98,7 @@
                         </form>
                         {% endif %}
                     {% else %}
-                    <span style="color:#bfbfbf; font-size:0.78rem;">当前账号</span>
+                    <span style="color:var(--c-text-tertiary); font-size:0.78rem;">当前账号</span>
                     {% endif %}
                     {% endif %}
                     {% endcan %}

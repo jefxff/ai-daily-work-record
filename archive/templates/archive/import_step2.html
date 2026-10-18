@@ -26,7 +26,7 @@
                 {% csrf_token %}
                 <input type="hidden" name="step" value="import">
 
-                <div class="mb-4 p-3 rounded" style="background:#e6f7ff;border:1px solid #91d5ff">
+                <div class="mb-4 p-3 rounded" style="background:var(--c-primary-subtle);border:1px solid var(--c-border-hover)">
                     <label class="form-label fw-bold mb-1">台账名称</label>
                     <p class="text-muted small mb-2">导入的档案将归入该台账（对应一份 Excel 台账，默认取文件名）。已有同名台账会复用，不会重复创建。</p>
                     <input type="text" name="ledger_name" value="{{ default_ledger }}" class="form-control" style="max-width:420px" placeholder="如：专利、商标相关合同">
@@ -42,16 +42,16 @@
                         <table class="table table-sm table-bordered align-middle">
                             <thead class="table-light">
                                 <tr>
-                                    <th style="width:30%">Excel 列头</th>
-                                    <th style="width:35%">映射到系统字段</th>
-                                    <th style="width:35%">首行数据示例</th>
+                                    <th scope="col" style="width:30%">Excel 列头</th>
+                                    <th scope="col" style="width:35%">映射到系统字段</th>
+                                    <th scope="col" style="width:35%">首行数据示例</th>
                                 </tr>
                             </thead>
                             <tbody>
                             {% for h in sdata.header_choices %}
                                 <tr>
-                                    <td><strong>{{ h.col }}</strong></td>
-                                    <td>
+                                    <td data-label="Excel 列头"><strong>{{ h.col }}</strong></td>
+                                    <td data-label="映射到系统字段">
                                         <select name="map__{{ sname }}__{{ h.col }}" class="form-select form-select-sm">
                                             <option value="">— 不导入 —</option>
                                             {% for val, label in field_choices %}
@@ -62,7 +62,7 @@
                                             {% endfor %}
                                         </select>
                                     </td>
-                                    <td class="text-muted small text-truncate" style="max-width:300px">
+                                    <td data-label="首行数据示例" class="text-muted small text-truncate" style="max-width:300px">
                                         {{ h.sample|default:"(空)"|truncatechars:60 }}
                                     </td>
                                 </tr>

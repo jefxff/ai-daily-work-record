@@ -94,42 +94,42 @@
     <div class="table-container">
         <!-- 表格 -->
         <div class="table-responsive">
-            <table class="table table-sticky">
+            <div class="hidden-cols-hint">窄屏已隐藏 2 个次要列；需要逐列比对时请横屏或改用桌面端。</div><table class="table--cards table table-sticky">
                 <thead>
                     <tr>
-                        <th class="col-optional">序号</th>
-                        <th>公司名称</th>
-                        <th>标题</th>
-                        <th>单号</th>
-                        <th>保费</th>
-                        <th>签发日期</th>
-                        <th>截止日期</th>
-                        <th>是否已经到期</th>
-                        <th>部门</th>
-                        <th class="col-optional">备注</th>
-                        <th class="col-actions">操作</th>
+                        <th scope="col" class="col-optional">序号</th>
+                        <th scope="col">公司名称</th>
+                        <th scope="col">标题</th>
+                        <th scope="col">单号</th>
+                        <th scope="col">保费</th>
+                        <th scope="col">签发日期</th>
+                        <th scope="col">截止日期</th>
+                        <th scope="col">是否已经到期</th>
+                        <th scope="col">部门</th>
+                        <th scope="col" class="col-optional">备注</th>
+                        <th scope="col" class="col-actions">操作</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for insurance in insurances %}
                     <tr>
-                        <td class="col-optional">{{ forloop.counter }}</td>
-                        <td>{{ insurance.company_name }}</td>
-                        <td>{{ insurance.title }}</td>
-                        <td>{{ insurance.order_number|default:'' }}</td>
-                        <td>{{ insurance.premium }}</td>
-                        <td>{{ insurance.issue_date|date:'Y-m-d' }}</td>
-                        <td>{{ insurance.end_date|date:'Y-m-d' }}</td>
-                        <td>
+                        <td data-label="序号" class="col-optional">{{ forloop.counter }}</td>
+                        <td data-label="公司名称">{{ insurance.company_name }}</td>
+                        <td data-label="标题">{{ insurance.title }}</td>
+                        <td data-label="单号">{{ insurance.order_number|default:'' }}</td>
+                        <td data-label="保费">{{ insurance.premium }}</td>
+                        <td data-label="签发日期">{{ insurance.issue_date|date:'Y-m-d' }}</td>
+                        <td data-label="截止日期">{{ insurance.end_date|date:'Y-m-d' }}</td>
+                        <td data-label="是否已经到期">
                             {% if '已到期' in insurance.expired_days %}
                             <span class="status-badge warning">⚠️ {{ insurance.expired_days }}</span>
                             {% else %}
                             <span class="status-badge success">✅ {{ insurance.expired_days }}</span>
                             {% endif %}
                         </td>
-                        <td>{{ insurance.department }}</td>
-                        <td class="col-optional">{{ insurance.remarks|default:''|truncatechars:30 }}</td>
-                        <td class="col-actions">
+                        <td data-label="部门">{{ insurance.department }}</td>
+                        <td data-label="备注" class="col-optional">{{ insurance.remarks|default:''|truncatechars:30 }}</td>
+                        <td data-label="操作" class="col-actions">
                             <div style="display: flex; gap: 0.25rem; align-items: center; flex-wrap: nowrap;">
                                 <a href="{% url 'insurance_detail' insurance.pk %}" class="btn-transparent btn-sm" data-modal-detail data-modal-title="保险详情">详细</a>
                                 {% can "insurance" "update" %}
@@ -223,17 +223,17 @@
     .table tbody td.col-actions {
         position: sticky !important;
         right: 0;
-        background: #fff !important;
+        background: var(--c-surface) !important;
         z-index: 10;
         box-shadow: -3px 0 5px rgba(0,0,0,0.08);
         border-left: 1px solid #e8e8e8;
     }
     .table tbody tr:hover td.col-actions {
-        background: #fafafa !important;
+        background: var(--c-surface-sunken) !important;
     }
     .table thead th.col-actions {
         z-index: 20;
-        background: #fafafa !important;
+        background: var(--c-surface-sunken) !important;
     }
 
     /* 筛选按钮容器 */

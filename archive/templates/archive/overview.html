@@ -7,10 +7,10 @@
 <style>
     .lg-dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
     .lg-stat-card { background: rgba(255,255,255,0.95); border-radius: 12px; padding: 1.25rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-    .lg-stat-value { font-size: 1.8rem; font-weight: 700; color: #1f2329; }
-    .lg-stat-label { font-size: 0.8rem; color: #8c8c8c; margin-top: 0.25rem; }
-    .lg-stat-card.borrowed .lg-stat-value { color: #f5222d; }
-    .lg-stat-card.expiring .lg-stat-value { color: #fa8c16; }
+    .lg-stat-value { font-size: 1.8rem; font-weight: 700; color: var(--c-text); }
+    .lg-stat-label { font-size: 0.8rem; color: var(--c-text-secondary); margin-top: 0.25rem; }
+    .lg-stat-card.borrowed .lg-stat-value { color: var(--c-danger); }
+    .lg-stat-card.expiring .lg-stat-value { color: var(--c-warning); }
 
     .lg-toolbar { display: flex; flex-wrap: nowrap; gap: 0.75rem; align-items: center; margin-bottom: 1.25rem; overflow-x: auto; }
     .lg-toolbar .form-control, .lg-toolbar .form-select { width: auto; min-width: 140px; }
@@ -18,38 +18,38 @@
     .lg-toolbar .lg-actions { display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0; }
 
     .lg-search-banner { padding: 0.65rem 1rem; border-radius: 8px; font-size: 0.88rem; margin-bottom: 1rem; }
-    .lg-search-banner.has-hit { background: #fff7e6; border: 1px solid #ffd591; color: #d46b08; }
-    .lg-search-banner.no-hit { background: #fff1f0; border: 1px solid #ffa39e; color: #cf1322; }
+    .lg-search-banner.has-hit { background: var(--c-warning-bg); border: 1px solid #ffd591; color: var(--c-warning); }
+    .lg-search-banner.no-hit { background: var(--c-danger-bg); border: 1px solid var(--c-danger-line); color: var(--c-danger); }
 
     /* 台账卡片：对应一份 Excel 台账 */
     .lg-card { background: rgba(255,255,255,0.95); border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
     .lg-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.9rem; flex-wrap: wrap; gap: 0.5rem; }
-    .lg-card-title { font-size: 1.1rem; font-weight: 600; color: #1f2329; }
-    .lg-card-meta { font-size: 0.8rem; color: #8c8c8c; margin-top: 0.15rem; }
+    .lg-card-title { font-size: 1.1rem; font-weight: 600; color: var(--c-text); }
+    .lg-card-meta { font-size: 0.8rem; color: var(--c-text-secondary); margin-top: 0.15rem; }
     .lg-badge { display: inline-block; font-size: 0.72rem; padding: 1px 8px; border-radius: 10px; margin-left: 6px; vertical-align: 1px; }
-    .lg-badge.expiring { background: #fff7e6; color: #d46b08; border: 1px solid #ffd591; }
-    .lg-badge.borrowed { background: #fff1f0; color: #cf1322; border: 1px solid #ffa39e; }
+    .lg-badge.expiring { background: var(--c-warning-bg); color: var(--c-warning); border: 1px solid #ffd591; }
+    .lg-badge.borrowed { background: var(--c-danger-bg); color: var(--c-danger); border: 1px solid var(--c-danger-line); }
 
     /* 宽表：横向滚动 + 截断 + 紧凑字号，操作按钮横排 */
     .lg-table-wrap { overflow-x: auto; }
     .lg-table { min-width: 1080px; border-collapse: collapse; width: 100%; font-size: 13px; }
-    .lg-table th { background: #fafafa; color: #595959; font-weight: 600; padding: 9px 12px; text-align: left; white-space: nowrap; border-bottom: 1px solid #f0f0f0; }
-    .lg-table td { padding: 9px 12px; color: #1f2329; border-bottom: 1px solid #f5f5f5; white-space: nowrap; }
+    .lg-table th { background: var(--c-surface-sunken); color: var(--c-text-secondary); font-weight: 600; padding: 9px 12px; text-align: left; white-space: nowrap; border-bottom: 1px solid var(--c-border); }
+    .lg-table td { padding: 9px 12px; color: var(--c-text); border-bottom: 1px solid var(--c-surface-sunken); white-space: nowrap; }
     .lg-table td.lg-ellipsis { max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
     .lg-table tbody tr:hover { background: #f5faff; }
     .lg-row-actions { display: flex; gap: 6px; flex-wrap: nowrap; }
-    .lg-empty { text-align: center; color: #8c8c8c; padding: 1.6rem 0; }
+    .lg-empty { text-align: center; color: var(--c-text-secondary); padding: 1.6rem 0; }
     .lg-more { display: inline-block; margin-top: 0.7rem; font-size: 0.85rem; }
 
     /* 搜索命中行高亮（橙色） */
-    tr.lg-row-hit td { background: #fff7e6 !important; }
-    tr.lg-row-hit td:first-child { box-shadow: inset 3px 0 0 #fa8c16; }
-    tr.lg-row-hit td { color: #d46b08; }
+    tr.lg-row-hit td { background: var(--c-warning-bg) !important; }
+    tr.lg-row-hit td:first-child { box-shadow: inset 3px 0 0 var(--c-warning); }
+    tr.lg-row-hit td { color: var(--c-warning); }
 
     /* 台账排序弹窗行 */
-    .ls-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0.25rem; border-bottom: 1px solid #f5f5f5; }
+    .ls-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0.25rem; border-bottom: 1px solid var(--c-surface-sunken); }
     .ls-row:last-child { border-bottom: none; }
-    .ls-row .ls-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #1f2329; }
+    .ls-row .ls-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--c-text); }
 </style>
 {% endblock %}
 
@@ -153,43 +153,43 @@
             </div>
         </div>
         <div class="lg-table-wrap">
-            <table class="lg-table">
+            <table class="table--cards lg-table">
                 <thead>
                     <tr>
-                        <th>编号</th>
-                        <th>名称</th>
-                        <th>相对方/公司名称</th>
-                        <th>合同编号</th>
-                        <th>金额</th>
-                        <th>签订日期</th>
-                        <th>到期日期</th>
-                        <th>部门</th>
-                        <th>位置编码</th>
-                        <th>经办人</th>
-                        <th>状态</th>
-                        <th>操作</th>
+                        <th scope="col">编号</th>
+                        <th scope="col">名称</th>
+                        <th scope="col">相对方/公司名称</th>
+                        <th scope="col">合同编号</th>
+                        <th scope="col">金额</th>
+                        <th scope="col">签订日期</th>
+                        <th scope="col">到期日期</th>
+                        <th scope="col">部门</th>
+                        <th scope="col">位置编码</th>
+                        <th scope="col">经办人</th>
+                        <th scope="col">状态</th>
+                        <th scope="col">操作</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for a in item.rows %}
                     <tr class="{% if a.id in matched_ids %}lg-row-hit{% endif %}">
-                        <td>{{ a.code }}</td>
-                        <td class="lg-ellipsis" title="{{ a.name }}">{{ a.name }}</td>
-                        <td class="lg-ellipsis" title="{{ a.counterpart }}">{{ a.counterpart|default:"—" }}</td>
-                        <td>{{ a.contract_no|default:"—" }}</td>
-                        <td>{{ a.amount|default:"—" }}</td>
-                        <td>{{ a.sign_date|default:"—" }}</td>
-                        <td>{{ a.expire_date|default:"—" }}</td>
-                        <td>{{ a.department|default:"—" }}</td>
-                        <td>{{ a.location_code|default:"—" }}</td>
-                        <td>{{ a.handler|default:"—" }}</td>
-                        <td>
+                        <td data-label="编号">{{ a.code }}</td>
+                        <td data-label="名称" class="lg-ellipsis" title="{{ a.name }}">{{ a.name }}</td>
+                        <td data-label="相对方/公司名称" class="lg-ellipsis" title="{{ a.counterpart }}">{{ a.counterpart|default:"—" }}</td>
+                        <td data-label="合同编号">{{ a.contract_no|default:"—" }}</td>
+                        <td data-label="金额">{{ a.amount|default:"—" }}</td>
+                        <td data-label="签订日期">{{ a.sign_date|default:"—" }}</td>
+                        <td data-label="到期日期">{{ a.expire_date|default:"—" }}</td>
+                        <td data-label="部门">{{ a.department|default:"—" }}</td>
+                        <td data-label="位置编码">{{ a.location_code|default:"—" }}</td>
+                        <td data-label="经办人">{{ a.handler|default:"—" }}</td>
+                        <td data-label="状态">
                             {% if a.is_borrowed %}<span class="status-badge danger">借出中</span>
                             {% elif a.is_expired %}<span class="status-badge danger">已过期</span>
                             {% elif a.is_expiring %}<span class="status-badge warning">即将到期</span>
                             {% else %}<span class="status-badge success">正常</span>{% endif %}
                         </td>
-                        <td>
+                        <td data-label="操作">
                             <div class="lg-row-actions">
                                 <a class="btn btn-sm btn-outline-primary" href="{% url 'archive:archive_detail' a.pk %}">详情</a>
                                 {% can "archive" "update" %}
@@ -222,43 +222,43 @@
             <div class="lg-card-title">未分配台账 <span class="text-muted small">共 {{ unassigned_total }} 条</span></div>
         </div>
         <div class="lg-table-wrap">
-            <table class="lg-table">
+            <table class="table--cards lg-table">
                 <thead>
                     <tr>
-                        <th>编号</th>
-                        <th>名称</th>
-                        <th>相对方/公司名称</th>
-                        <th>合同编号</th>
-                        <th>金额</th>
-                        <th>签订日期</th>
-                        <th>到期日期</th>
-                        <th>部门</th>
-                        <th>位置编码</th>
-                        <th>经办人</th>
-                        <th>状态</th>
-                        <th>操作</th>
+                        <th scope="col">编号</th>
+                        <th scope="col">名称</th>
+                        <th scope="col">相对方/公司名称</th>
+                        <th scope="col">合同编号</th>
+                        <th scope="col">金额</th>
+                        <th scope="col">签订日期</th>
+                        <th scope="col">到期日期</th>
+                        <th scope="col">部门</th>
+                        <th scope="col">位置编码</th>
+                        <th scope="col">经办人</th>
+                        <th scope="col">状态</th>
+                        <th scope="col">操作</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for a in unassigned_rows %}
                     <tr class="{% if a.id in matched_ids %}lg-row-hit{% endif %}">
-                        <td>{{ a.code }}</td>
-                        <td class="lg-ellipsis" title="{{ a.name }}">{{ a.name }}</td>
-                        <td class="lg-ellipsis" title="{{ a.counterpart }}">{{ a.counterpart|default:"—" }}</td>
-                        <td>{{ a.contract_no|default:"—" }}</td>
-                        <td>{{ a.amount|default:"—" }}</td>
-                        <td>{{ a.sign_date|default:"—" }}</td>
-                        <td>{{ a.expire_date|default:"—" }}</td>
-                        <td>{{ a.department|default:"—" }}</td>
-                        <td>{{ a.location_code|default:"—" }}</td>
-                        <td>{{ a.handler|default:"—" }}</td>
-                        <td>
+                        <td data-label="编号">{{ a.code }}</td>
+                        <td data-label="名称" class="lg-ellipsis" title="{{ a.name }}">{{ a.name }}</td>
+                        <td data-label="相对方/公司名称" class="lg-ellipsis" title="{{ a.counterpart }}">{{ a.counterpart|default:"—" }}</td>
+                        <td data-label="合同编号">{{ a.contract_no|default:"—" }}</td>
+                        <td data-label="金额">{{ a.amount|default:"—" }}</td>
+                        <td data-label="签订日期">{{ a.sign_date|default:"—" }}</td>
+                        <td data-label="到期日期">{{ a.expire_date|default:"—" }}</td>
+                        <td data-label="部门">{{ a.department|default:"—" }}</td>
+                        <td data-label="位置编码">{{ a.location_code|default:"—" }}</td>
+                        <td data-label="经办人">{{ a.handler|default:"—" }}</td>
+                        <td data-label="状态">
                             {% if a.is_borrowed %}<span class="status-badge danger">借出中</span>
                             {% elif a.is_expired %}<span class="status-badge danger">已过期</span>
                             {% elif a.is_expiring %}<span class="status-badge warning">即将到期</span>
                             {% else %}<span class="status-badge success">正常</span>{% endif %}
                         </td>
-                        <td>
+                        <td data-label="操作">
                             <div class="lg-row-actions">
                                 <a class="btn btn-sm btn-outline-primary" href="{% url 'archive:archive_detail' a.pk %}">详情</a>
                                 {% can "archive" "update" %}

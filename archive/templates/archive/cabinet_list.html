@@ -21,19 +21,19 @@
     </div>
 
     <div class="card">
-        <table class="table">
-            <thead><tr><th>档案柜编号</th><th>所在位置</th><th>层数</th><th>各层格数</th><th>总格子</th><th>已用 / 空位</th><th>存放档案数</th><th>操作</th></tr></thead>
+        <table class="table--cards table">
+            <thead><tr><th scope="col">档案柜编号</th><th scope="col">所在位置</th><th scope="col">层数</th><th scope="col">各层格数</th><th scope="col">总格子</th><th scope="col">已用 / 空位</th><th scope="col">存放档案数</th><th scope="col">操作</th></tr></thead>
             <tbody>
             {% for row in rows %}
             <tr>
-                <td><strong>{{ row.cab.code }}</strong></td>
-                <td>{{ row.cab.location|default:"—" }}</td>
-                <td>{{ row.cab.layers }}</td>
-                <td><code>{{ row.layer_cells_summary }}</code></td>
-                <td>{{ row.total_cells }}</td>
-                <td>{{ row.used_cells }} / {{ row.free_cells }}</td>
-                <td>{{ row.archive_count }}</td>
-                <td>
+                <td data-label="档案柜编号"><strong>{{ row.cab.code }}</strong></td>
+                <td data-label="所在位置">{{ row.cab.location|default:"—" }}</td>
+                <td data-label="层数">{{ row.cab.layers }}</td>
+                <td data-label="各层格数"><code>{{ row.layer_cells_summary }}</code></td>
+                <td data-label="总格子">{{ row.total_cells }}</td>
+                <td data-label="已用 / 空位">{{ row.used_cells }} / {{ row.free_cells }}</td>
+                <td data-label="存放档案数">{{ row.archive_count }}</td>
+                <td data-label="操作">
                     {% can "archive" "update" %}
                     <a href="{% url 'archive:cabinet_edit' row.cab.pk %}" class="btn btn-sm btn-outline-secondary" data-modal-edit data-modal-title="编辑档案柜">编辑</a>
                     {% endcan %}

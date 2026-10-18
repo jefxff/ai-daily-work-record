@@ -51,31 +51,31 @@
                 </form>
             </div>
             <div class="table-responsive">
-                <table class="table table-sm table-hover align-middle mb-0" style="font-size:.85rem;">
+                <table class="table--cards table table-sm table-hover align-middle mb-0" style="font-size:.85rem;">
                     <thead>
                         <tr>
-                            <th style="min-width:220px;">备份包</th>
-                            <th>备份时间</th>
-                            <th>操作人</th>
-                            <th>大小</th>
-                            <th>数据库</th>
-                            <th>附件</th>
-                            <th style="min-width:190px;">操作</th>
+                            <th scope="col" style="min-width:220px;">备份包</th>
+                            <th scope="col">备份时间</th>
+                            <th scope="col">操作人</th>
+                            <th scope="col">大小</th>
+                            <th scope="col">数据库</th>
+                            <th scope="col">附件</th>
+                            <th scope="col" style="min-width:190px;">操作</th>
                         </tr>
                     </thead>
                     <tbody id="backupTbody">
                         {% for b in backups %}
                         <tr data-path="{{ b.path|escapejs }}" data-name="{{ b.name|escapejs }}">
-                            <td class="text-break">
+                            <td data-label="备份包" class="text-break">
                                 <span style="font-weight:600;">{{ b.name }}</span>
                                 {% if b.schema_version != 1 %}<span class="badge bg-secondary">版本未知</span>{% endif %}
                             </td>
-                            <td>{{ b.created_at|default:b.mtime }}</td>
-                            <td>{{ b.created_by|default:"—" }}</td>
-                            <td>{{ b.size_text }}</td>
-                            <td>{{ b.db_tables }} 表 / {{ b.db_rows }} 条</td>
-                            <td>{{ b.media_files }} 个</td>
-                            <td>
+                            <td data-label="备份时间">{{ b.created_at|default:b.mtime }}</td>
+                            <td data-label="操作人">{{ b.created_by|default:"—" }}</td>
+                            <td data-label="大小">{{ b.size_text }}</td>
+                            <td data-label="数据库">{{ b.db_tables }} 表 / {{ b.db_rows }} 条</td>
+                            <td data-label="附件">{{ b.media_files }} 个</td>
+                            <td data-label="操作">
                                 <button class="btn btn-sm btn-outline-danger btn-restore">恢复</button>
                                 <a class="btn btn-sm btn-outline-secondary btn-download"
                                    href="{% url 'sysbackup:download' %}?path={{ b.path|urlencode }}">下载</a>
@@ -122,13 +122,13 @@
                 <table class="table table-sm table-hover align-middle mb-0" style="font-size:.85rem;">
                     <thead>
                         <tr>
-                            <th>操作类型</th>
-                            <th>操作时间</th>
-                            <th>操作人</th>
-                            <th style="min-width:180px;">操作文件标识</th>
-                            <th>操作结果</th>
-                            <th style="min-width:220px;">操作详情</th>
-                            <th>操作</th>
+                            <th scope="col">操作类型</th>
+                            <th scope="col">操作时间</th>
+                            <th scope="col">操作人</th>
+                            <th scope="col" style="min-width:180px;">操作文件标识</th>
+                            <th scope="col">操作结果</th>
+                            <th scope="col" style="min-width:220px;">操作详情</th>
+                            <th scope="col">操作</th>
                         </tr>
                     </thead>
                     <tbody id="logTbody">
@@ -159,12 +159,12 @@
 
 <!-- 恢复/删除确认弹窗（本页专属：确认后走 AJAX） -->
 <div id="riskBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center;">
-    <div style="background:#fff;border-radius:12px;max-width:520px;width:92%;padding:1.5rem;">
+    <div style="background:var(--c-surface);border-radius:12px;max-width:520px;width:92%;padding:1.5rem;">
         <h6 class="mb-3" style="font-weight:700;" id="riskTitle">操作确认</h6>
         <div id="riskBody" style="font-size:.86rem;"></div>
         <div id="riskAckRow" class="form-check mt-3">
             <input class="form-check-input" type="checkbox" id="riskAck">
-            <label class="form-check-label" for="riskAck" style="font-size:.84rem;color:#cf1322;">我已知晓上述风险，确认继续</label>
+            <label class="form-check-label" for="riskAck" style="font-size:.84rem;color:var(--c-danger);">我已知晓上述风险，确认继续</label>
         </div>
         <div class="d-flex justify-content-end gap-2 mt-3">
             <button class="btn btn-sm btn-outline-secondary" id="riskCancel">取消</button>
@@ -175,7 +175,7 @@
 
 <!-- 任务进度弹窗 -->
 <div id="taskBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center;">
-    <div style="background:#fff;border-radius:12px;max-width:640px;width:94%;padding:1.5rem;">
+    <div style="background:var(--c-surface);border-radius:12px;max-width:640px;width:94%;padding:1.5rem;">
         <h6 class="mb-3" style="font-weight:700;" id="taskTitle">任务进行中</h6>
         <div class="d-flex align-items-center gap-2 mb-2">
             <div class="progress flex-grow-1" style="height:10px;">
@@ -195,7 +195,7 @@
 
 <!-- 操作记录详情弹窗 -->
 <div id="logDetailBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center;">
-    <div style="background:#fff;border-radius:12px;max-width:640px;width:94%;padding:1.5rem;">
+    <div style="background:var(--c-surface);border-radius:12px;max-width:640px;width:94%;padding:1.5rem;">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h6 class="mb-0" style="font-weight:700;">操作记录详情</h6>
             <button type="button" class="btn-close" id="logDetailClose" aria-label="关闭"></button>
@@ -208,13 +208,13 @@
 </div>
 
 <style>
-.table th { background:#fafafa; color:#595959; font-weight:600; white-space:nowrap; }
-.btn-restore { --bs-btn-color:#cf1322; --bs-btn-border-color:#ffa39e; }
-.btn-restore:hover { --bs-btn-color:#fff; --bs-btn-bg:#cf1322; --bs-btn-border-color:#cf1322; }
-#logTabs { margin-left:0; gap:0; border-bottom:1px solid #f0f0f0; }
-#logTabs .nav-link { border:none; border-bottom:2px solid transparent; background:none; color:#595959; padding:.5rem .1rem; margin-right:1.5rem; font-size:.85rem; }
-#logTabs .nav-link:hover { color:#1890ff; background:none; }
-#logTabs .nav-link.active { color:#1890ff; border-bottom-color:#1890ff; background:none; font-weight:500; }
+.table th { background:var(--c-surface-sunken); color:var(--c-text-secondary); font-weight:600; white-space:nowrap; }
+.btn-restore { --bs-btn-color:var(--c-danger); --bs-btn-border-color:var(--c-danger-line); }
+.btn-restore:hover { --bs-btn-color:var(--c-surface); --bs-btn-bg:var(--c-danger); --bs-btn-border-color:var(--c-danger); }
+#logTabs { margin-left:0; gap:0; border-bottom:1px solid var(--c-border); }
+#logTabs .nav-link { border:none; border-bottom:2px solid transparent; background:none; color:var(--c-text-secondary); padding:.5rem .1rem; margin-right:1.5rem; font-size:.85rem; }
+#logTabs .nav-link:hover { color:var(--c-primary); background:none; }
+#logTabs .nav-link.active { color:var(--c-primary); border-bottom-color:var(--c-primary); background:none; font-weight:500; }
 #logTabs .badge { margin-left:2px; font-weight:400; }
 </style>
 {% endblock %}
