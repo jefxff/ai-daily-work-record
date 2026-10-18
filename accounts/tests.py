@@ -414,6 +414,8 @@ class RbacAuthTests(TestCase):
         from samples import urls as samples_urls
         from ai_api import urls as api_urls
 
+        # home：按可见模块裁剪内容，不加单模块装饰器（否则只有档案权限的用户打不开首页）
+        # search：跨模块页面，用 @require_any_module（零权限 403）
         records_whitelist = {"home", "search", "test_view"}
         checked = 0
         for p in records_urls.urlpatterns:
@@ -421,6 +423,8 @@ class RbacAuthTests(TestCase):
                 continue
             self.assertTrue(getattr(p.callback, "rbac_permission", None), f"records:{p.name}")
             checked += 1
+        search_view = next(p.callback for p in records_urls.urlpatterns if p.name == "search")
+        self.assertTrue(getattr(search_view, "rbac_any_module", False), "search 必须有跨模块权限判定")
         for conf, label in ((kb_urls, "kb"), (samples_urls, "samples")):
             for p in conf.urlpatterns:
                 self.assertTrue(getattr(p.callback, "rbac_permission", None), f"{label}:{p.name}")
@@ -447,6 +451,14 @@ class RbacAuthTests(TestCase):
         ]
         for path in urls:
             self.assertNotEqual(cn.get(path).status_code, 200, path)
-        # 白名单：首页/搜索仍可访问
-        self.assertEqual(cn.get(reverse("home")).status_code, 200)
-        self.assertEqual(cn.get(reverse("search")).status_code, 200)
+        # 首页：可访问，但只应看到"无权限"空态，不能出现任何业务数据块
+        home_resp = cn.get(reverse("home"))
+        self.assertEqual(home_resp.status_code, 200)
+        home_html = home_resp.content.decode()
+        self.assertIn("还没有任何模块权限", home_html)
+        # 断言"数据块"而不是模块名：模板注释里仍有「客户账期卡片」这类字样
+        self.assertNotIn("card-value", home_html)
+        self.assertNotIn("总记录数", home_html)
+        self.assertNotIn("总客户数", home_html)
+        # 全站搜索：零权限直接 403（不再是"能打开但全空"）
+        self.assertEqual(cn.get(reverse("search")).status_code, 403)

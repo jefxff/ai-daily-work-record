@@ -650,7 +650,13 @@ class ScheduledTaskTests(TestCase):
         daily.run_time = (now - td(minutes=2)).time()
         self.assertTrue(scheduler.is_due(daily))
 
-        daily.last_run_at = now - td(hours=1)  # 今天已跑过
+        # 「今天已跑过」必须锚定到今天的 run_time，而不是 now-1h：
+        # 在 00:00~01:00 之间 now-1h 落在昨天，该断言会假失败（改造前实测过一次）。
+        from datetime import datetime
+
+        daily.last_run_at = timezone.make_aware(
+            datetime.combine(now.date(), daily.run_time)
+        )
         self.assertFalse(scheduler.is_due(daily))
 
         interval = ScheduledTask(
