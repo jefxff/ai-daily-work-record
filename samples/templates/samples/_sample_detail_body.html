@@ -12,7 +12,7 @@
     @media (max-width: 576px) { .info-grid { grid-template-columns: 1fr; } }
     .info-item { min-width: 0; }
     #supplierTypeSelect { border-radius: 6px; border: 1px solid var(--c-border-strong); color: var(--c-text); }
-    #supplierTypeSelect:focus { border-color: var(--c-primary); outline: none; box-shadow: 0 0 0 2px rgba(24,144,255,0.1); }
+    #supplierTypeSelect:focus { border-color: var(--c-primary); outline: none; box-shadow: 0 0 0 2px var(--c-primary-ring); }
     .info-label { color: var(--c-text-secondary); font-size: 0.76rem; margin-bottom: 0.2rem; }
     .info-value { color: var(--c-text); font-size: 0.875rem; word-break: break-all; line-height: 1.5; }
 
@@ -22,7 +22,7 @@
     .step-item:last-child { flex: 0 0 auto; }
     .step-dot { width: 32px; height: 32px; border-radius: 50%; background: var(--c-border); color: var(--c-text-secondary); display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 600; flex-shrink: 0; }
     .step-item.done .step-dot { background: var(--c-primary); color: var(--c-surface); }
-    .step-item.current .step-dot { background: var(--c-primary); color: var(--c-surface); box-shadow: 0 0 0 4px rgba(24,144,255,0.2); }
+    .step-item.current .step-dot { background: var(--c-primary); color: var(--c-surface); box-shadow: 0 0 0 4px var(--c-primary-ring); }
     .step-item.terminated .step-dot { background: var(--c-danger); color: var(--c-surface); }
     .step-label { margin-left: 0.5rem; font-size: 0.85rem; color: var(--c-text-secondary); white-space: nowrap; }
     .step-item.done .step-label, .step-item.current .step-label { color: var(--c-text); font-weight: 500; }
@@ -115,7 +115,7 @@
     .timeline { position: relative; padding-left: 28px; }
     .timeline::before { content: ''; position: absolute; left: 9px; top: 6px; bottom: 6px; width: 2px; background: var(--c-border); }
     .tl-event { position: relative; padding: 0 0 1.25rem 0.75rem; border-radius: 8px; transition: background 0.15s ease; }
-    .tl-event:hover { background: rgba(24, 144, 255, 0.04); }
+    .tl-event:hover { background: var(--c-primary-subtle); }
     .tl-event:last-child { padding-bottom: 0; }
     .tl-dot { position: absolute; left: -28px; top: 4px; width: 20px; height: 20px; border-radius: 50%; background: var(--c-surface); border: 2px solid var(--c-border-strong); display: flex; align-items: center; justify-content: center; font-size: 10px; }
     .tl-dot.c-info { border-color: var(--c-primary); }

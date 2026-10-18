@@ -5,7 +5,7 @@
 
 {% block extra_css %}
 <style>
-    .lic-sec-title { font-weight: 600; color: #1f1f1f; border-left: 3px solid #1677ff; padding-left: 0.6rem; margin-bottom: 0.85rem; }
+    .lic-sec-title { font-weight: 600; color: var(--c-text); border-left: 3px solid var(--c-primary); padding-left: 0.6rem; margin-bottom: 0.85rem; }
     .lic-detail-table { --bs-table-hover-bg: transparent; }
     .lic-detail-table td { text-align: left !important; padding: 0.6rem 0.75rem !important; border: none; border-bottom: 1px dashed var(--c-border); vertical-align: middle; }
     .lic-detail-table tr:last-child td { border-bottom: none; }
@@ -73,7 +73,7 @@
                     <div class="lic-file-panel mt-4">
                         <h6 class="lic-sec-title mb-2">证照扫描件</h6>
                         {% if license.scan_file %}
-                        <div style="font-weight:600;color:#1f1f1f;word-break:break-all;">{{ license.scan_basename }}</div>
+                        <div style="font-weight:600;color:var(--c-text);word-break:break-all;">{{ license.scan_basename }}</div>
                         <div class="mt-1 mb-2">
                             <span class="badge" style="background:#eef4ff;color:#2b5fd9;font-weight:500;">类型 {{ license.scan_ext }}</span>
                         </div>
