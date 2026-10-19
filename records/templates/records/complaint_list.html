@@ -151,7 +151,7 @@
                                 <a href="{% url 'complaint_edit' complaint.pk %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑诉讼">编辑</a>
                                 {% endcan %}
                                 {% can "complaint" "delete" %}
-                                <form method="post" action="{% url 'complaint_delete' complaint.pk %}" style="display:inline" onsubmit="return confirm('确定要删除这条记录吗？');">{% csrf_token %}<button type="submit" class="btn-transparent btn-sm btn-delete">删除</button></form>
+                                <form method="post" action="{% url 'complaint_delete' complaint.pk %}" style="display:inline" data-confirm="确定要删除这条记录吗？">{% csrf_token %}<button type="submit" class="btn-transparent btn-sm btn-delete">删除</button></form>
                                 {% endcan %}
                             </div>
                         </td>
@@ -188,7 +188,7 @@
         background: var(--c-surface) !important;
         z-index: 10;
         box-shadow: -3px 0 5px rgba(0,0,0,0.08);
-        border-left: 1px solid #e8e8e8;
+        border-left: 1px solid var(--c-border);
     }
     .table tbody tr:hover td.col-actions {
         background: var(--c-surface-sunken) !important;
@@ -224,7 +224,7 @@
     }
 
     .filter-dropdown h4 {
-        color: #333;
+        color: var(--c-text);
         margin: 0 0 1rem 0;
         font-size: 1rem;
         font-weight: 600;
@@ -276,7 +276,7 @@
 
     .filter-group label {
         display: block;
-        color: #666;
+        color: var(--c-text-secondary);
         font-size: 0.875rem;
         margin-bottom: 0.5rem;
         font-weight: 500;
@@ -286,11 +286,11 @@
     .filter-group input {
         width: 100%;
         padding: 0.5rem 0.75rem;
-        border: 1px solid #ddd;
+        border: 1px solid var(--c-border);
         border-radius: 6px;
         font-size: 0.875rem;
         background: white;
-        color: #333;
+        color: var(--c-text);
         cursor: pointer;
     }
 
@@ -301,7 +301,7 @@
     }
 
     .filter-group input::placeholder {
-        color: #999;
+        color: var(--c-text-tertiary);
     }
 
     .filter-actions {
@@ -309,7 +309,7 @@
         gap: 0.5rem;
         margin-top: 1rem;
         padding-top: 1rem;
-        border-top: 1px solid #eee;
+        border-top: 1px solid var(--c-border);
         grid-column: 1 / -1;
     }
 
@@ -336,12 +336,12 @@
 
     .filter-reset {
         background: var(--c-surface-sunken);
-        color: #666;
-        border: 1px solid #ddd;
+        color: var(--c-text-secondary);
+        border: 1px solid var(--c-border);
     }
 
     .filter-reset:hover {
-        background: #eee;
+        background: var(--c-border);
     }
 
     /* 加载状态 */

@@ -6,10 +6,12 @@ URL 名称与行为完全不变。
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from accounts.decorators import perm_required
+from records.crud import _per_page
 
 from .forms import CategoryForm
 from .models import Category
@@ -19,8 +21,13 @@ from .services.common import _is_ajax, _log
 @login_required
 @perm_required("archive", "read")
 def category_list(request):
-    categories = Category.objects.all().order_by("sort_order", "id")
-    return render(request, "archive/category_list.html", {"categories": categories})
+    qs = Category.objects.all().order_by("sort_order", "id")
+    # 后端分页（10/30/50）
+    per_page = _per_page(request)
+    page_obj = Paginator(qs, per_page).get_page(request.GET.get("page"))
+    return render(request, "archive/category_list.html", {
+        "categories": page_obj, "page_obj": page_obj, "per_page": per_page,
+    })
 
 
 @login_required

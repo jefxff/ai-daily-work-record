@@ -53,7 +53,7 @@
                                 <a href="{% url 'regulation_edit' regulation.id %}" class="btn-transparent btn-sm" aria-label="编辑制度" data-modal-edit data-modal-title="编辑制度">编辑</a>
                                 {% endcan %}
                                 {% can "regulation" "delete" %}
-                                <form method="post" action="{% url 'regulation_delete' regulation.id %}" style="display:inline" onsubmit="return confirm('确定要删除这条记录吗？');">{% csrf_token %}<button type="submit" class="btn-transparent btn-sm btn-delete" aria-label="删除制度">删除</button></form>
+                                <form method="post" action="{% url 'regulation_delete' regulation.id %}" style="display:inline" data-confirm="确定要删除这条记录吗？">{% csrf_token %}<button type="submit" class="btn-transparent btn-sm btn-delete" aria-label="删除制度">删除</button></form>
                                 {% endcan %}
                             </div>
                         </td>

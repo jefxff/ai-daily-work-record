@@ -9,12 +9,14 @@ from collections import defaultdict
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Count
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from accounts.decorators import perm_required
+from records.crud import _per_page
 
 from .forms import CabinetForm
 from .models import Archive, Cabinet, CabinetLayer
@@ -51,7 +53,12 @@ def cabinet_list(request):
             "free_cells": total - used,
             "archive_count": count_map.get(cab.pk, 0),
         })
-    return render(request, "archive/cabinet_list.html", {"rows": rows})
+    # 后端分页（10/30/50）：rows 为聚合后的内存列表，Paginator 同样适用
+    per_page = _per_page(request)
+    page_obj = Paginator(rows, per_page).get_page(request.GET.get("page"))
+    return render(request, "archive/cabinet_list.html", {
+        "rows": page_obj, "page_obj": page_obj, "per_page": per_page,
+    })
 
 
 def _parse_layer_cells(post, layers, instance=None):

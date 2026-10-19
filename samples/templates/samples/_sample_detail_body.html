@@ -472,18 +472,15 @@
             .then(function (data) {
                 if (data.ok) {
                     if (window.showToast) window.showToast('供应商类型已更新', 'success');
-                    else alert('供应商类型已更新');
                     setTimeout(function(){ window.location.reload(); }, 600);
                 }
                 else {
                     if (window.showToast) window.showToast(data.error || '更新失败', 'error');
-                    else alert(data.error || '更新失败');
                     sel.value = original;
                 }
             })
             .catch(function () {
                 if (window.showToast) window.showToast('网络错误，更新失败', 'error');
-                else alert('网络错误，更新失败');
                 sel.value = original;
             });
     });

@@ -110,23 +110,7 @@
         </tbody>
     </table>
 
-    {% if page.has_other_pages %}
-    <div class="pagination-info">
-        <span>共 {{ total }} 条 · 第 {{ page.number }} / {{ page.paginator.num_pages }} 页</span>
-        <ul class="pagination">
-            {% if page.has_previous %}
-            <li class="page-item"><a class="page-link" href="?q={{ f_q }}&role={{ f_role }}&status={{ f_status }}&page={{ page.previous_page_number }}">上一页</a></li>
-            {% else %}
-            <li class="page-item disabled"><span class="page-link">上一页</span></li>
-            {% endif %}
-            {% if page.has_next %}
-            <li class="page-item"><a class="page-link" href="?q={{ f_q }}&role={{ f_role }}&status={{ f_status }}&page={{ page.next_page_number }}">下一页</a></li>
-            {% else %}
-            <li class="page-item disabled"><span class="page-link">下一页</span></li>
-            {% endif %}
-        </ul>
-    </div>
-    {% endif %}
+    {% include 'records/_pagination.html' with page_obj=page %}
 </div>
 {% include "accounts/_messages_toast.html" %}
 {% endblock %}

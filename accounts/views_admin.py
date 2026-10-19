@@ -12,6 +12,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.views.decorators.http import require_http_methods
 
+from records.crud import _per_page
+
 from .decorators import perm_required
 from .forms import AdminCreateUserForm, AdminEditUserForm, AdminResetPasswordForm, RoleForm
 from .models import LoginLog, Permission, Role, UserProfile
@@ -56,7 +58,8 @@ def login_log_list_view(request):
     elif result == "failed":
         logs = logs.filter(success=False)
 
-    paginator = Paginator(logs, 20)
+    # 统一分页口径：每页 10/30/50，复用共享 _pagination.html 组件
+    paginator = Paginator(logs, _per_page(request))
     page = paginator.get_page(request.GET.get("page"))
     return render(request, "accounts/login_logs.html", {
         "page": page,
@@ -87,7 +90,8 @@ def user_list_view(request):
         users = users.filter(is_active=False)
 
     users = users.order_by("-is_superuser", "-id")
-    paginator = Paginator(users, 20)
+    # 统一分页口径：每页 10/30/50，复用共享 _pagination.html 组件
+    paginator = Paginator(users, _per_page(request))
     page = paginator.get_page(request.GET.get("page"))
     roles = Role.objects.filter(is_active=True)
     return render(request, "accounts/user_list.html", {

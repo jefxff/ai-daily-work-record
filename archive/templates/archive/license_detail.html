@@ -9,14 +9,14 @@
     .lic-detail-table { --bs-table-hover-bg: transparent; }
     .lic-detail-table td { text-align: left !important; padding: 0.6rem 0.75rem !important; border: none; border-bottom: 1px dashed var(--c-border); vertical-align: middle; }
     .lic-detail-table tr:last-child td { border-bottom: none; }
-    .lic-detail-table td.lic-label { font-weight: 600; color: var(--c-text); width: 110px; white-space: nowrap; background: #f5f7fa !important; border-radius: 6px; }
+    .lic-detail-table td.lic-label { font-weight: 600; color: var(--c-text); width: 110px; white-space: nowrap; background: var(--c-surface-sunken) !important; border-radius: 6px; }
     .lic-status-badge { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 0.78rem; font-weight: 500; }
     .lic-status-badge.normal { background: var(--c-success-bg); color: var(--c-success); border: 1px solid var(--c-success-line); }
-    .lic-status-badge.expiring { background: var(--c-warning-bg); color: var(--c-warning); border: 1px solid #ffd591; }
+    .lic-status-badge.expiring { background: var(--c-warning-bg); color: var(--c-warning); border: 1px solid var(--c-warning-line); }
     .lic-status-badge.expired { background: var(--c-danger-bg); color: var(--c-danger); border: 1px solid var(--c-danger-line); }
-    .lic-file-panel { border: 1px solid #eef0f3; border-radius: 10px; padding: 1rem 1.25rem; background: #fafbfc; }
-    .lic-preview-box img { max-width: 100%; max-height: 420px; border: 1px solid #eef0f3; border-radius: 8px; }
-    .lic-pdf-frame { width: 100%; height: 520px; border: 1px solid #eef0f3; border-radius: 8px; background: var(--c-surface); }
+    .lic-file-panel { border: 1px solid var(--c-border); border-radius: 10px; padding: 1rem 1.25rem; background: var(--c-surface-sunken); }
+    .lic-preview-box img { max-width: 100%; max-height: 420px; border: 1px solid var(--c-border); border-radius: 8px; }
+    .lic-pdf-frame { width: 100%; height: 520px; border: 1px solid var(--c-border); border-radius: 8px; background: var(--c-surface); }
 </style>
 {% endblock %}
 
@@ -56,7 +56,7 @@
                         <tr><td class="lic-label">有效期至</td>{% if license.expire_date %}<td>{{ license.expire_date }}{% if license.is_expiring or license.is_expired %} <span class="lic-status-badge {{ license.status }}">{{ license.status_display }}</span>{% endif %}</td>{% else %}<td>—</td>{% endif %}</tr>
                         <tr><td class="lic-label">年审周期</td><td>{% if license.review_cycle %}{{ license.review_cycle }} 个月{% else %}不需年审{% endif %}</td></tr>
                         <tr><td class="lic-label">下次年审日</td>{% if license.next_review_date %}<td>{{ license.next_review_date }}{% if license.is_expired %} <span class="lic-status-badge expired">已过期</span>{% elif license.is_expiring %} <span class="lic-status-badge expiring">即将到期</span>{% endif %}</td>{% else %}<td>—</td>{% endif %}</tr>
-                        <tr><td class="lic-label">状态</td><td><span class="lic-status-badge {{ license.status }}">{{ license.status_display }}</span>{% if license.is_borrowed %} <span class="lic-status-badge" style="background:#f9f0ff;color:#722ed1;border:1px solid #d3adf7;">借出中</span>{% endif %}</td></tr>
+                        <tr><td class="lic-label">状态</td><td><span class="lic-status-badge {{ license.status }}">{{ license.status_display }}</span>{% if license.is_borrowed %} <span class="lic-status-badge" style="background:var(--c-borrowed-bg);color:var(--c-borrowed);border:1px solid var(--c-borrowed-line);">借出中</span>{% endif %}</td></tr>
                         <tr><td class="lic-label">创建人</td><td>{{ license.creator|default:"—" }}</td></tr>
                         <tr><td class="lic-label">创建时间</td><td>{{ license.created_at|date:"Y-m-d H:i" }}</td></tr>
                     </table>
@@ -65,9 +65,9 @@
                 <div class="col-lg-5 d-flex flex-column">
                     <h6 class="lic-sec-title">备注</h6>
                     {% if license.remark %}
-                    <div style="background:#f5f7fa;border-radius:8px;padding:0.85rem 1rem;color:#555;white-space:pre-wrap;word-break:break-all;min-height:60px;">{{ license.remark }}</div>
+                    <div style="background:var(--c-surface-sunken);border-radius:8px;padding:0.85rem 1rem;color:var(--c-text-secondary);white-space:pre-wrap;word-break:break-all;min-height:60px;">{{ license.remark }}</div>
                     {% else %}
-                    <div style="background:#f5f7fa;border-radius:8px;padding:0.85rem 1rem;color:var(--c-text-secondary);min-height:60px;">（未填写备注）</div>
+                    <div style="background:var(--c-surface-sunken);border-radius:8px;padding:0.85rem 1rem;color:var(--c-text-secondary);min-height:60px;">（未填写备注）</div>
                     {% endif %}
 
                     <div class="lic-file-panel mt-4">
@@ -75,7 +75,7 @@
                         {% if license.scan_file %}
                         <div style="font-weight:600;color:var(--c-text);word-break:break-all;">{{ license.scan_basename }}</div>
                         <div class="mt-1 mb-2">
-                            <span class="badge" style="background:#eef4ff;color:#2b5fd9;font-weight:500;">类型 {{ license.scan_ext }}</span>
+                            <span class="badge" style="background:var(--c-primary-subtle);color:var(--c-primary-active);font-weight:500;">类型 {{ license.scan_ext }}</span>
                         </div>
                         <div class="d-flex gap-2 mb-2">
                             <a href="{{ license.scan_file.url }}" target="_blank" class="btn btn-sm btn-outline-primary">在线预览</a>

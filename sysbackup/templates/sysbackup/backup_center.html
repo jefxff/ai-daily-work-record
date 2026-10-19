@@ -257,7 +257,6 @@
     }
     function toast(msg, type) {
         if (window.showToast) window.showToast(msg, type || 'info');
-        else alert(msg);
     }
     function esc(s) {
         return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
@@ -355,7 +354,7 @@
         var dest = '';
         if ($('destCustom').checked) {
             dest = $('customDirInput').value.trim();
-            if (!dest) { alert('请填写自定义备份路径'); return; }
+            if (!dest) { toast('请填写自定义备份路径', 'error'); return; }
         }
         openTask('全量备份');
         api('/system/backup/start/', { dest_dir: dest }).then(function (d) {

@@ -10,7 +10,7 @@
     <a href="{% url 'insurance_edit' insurance.id %}" class="btn-transparent" data-modal-edit data-modal-title="编辑保险">编辑记录</a>
     {% endcan %}
     {% can "insurance" "delete" %}
-    <form method="post" action="{% url 'insurance_delete' insurance.id %}" style="display:inline" onsubmit="return confirm('确定要删除这条记录吗？');">{% csrf_token %}<button type="submit" class="btn-transparent btn-delete">删除记录</button></form>
+    <form method="post" action="{% url 'insurance_delete' insurance.id %}" style="display:inline" data-confirm="确定要删除这条记录吗？">{% csrf_token %}<button type="submit" class="btn-transparent btn-delete">删除记录</button></form>
     {% endcan %}
 {% endblock %}
 

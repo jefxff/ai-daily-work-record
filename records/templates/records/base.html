@@ -338,17 +338,15 @@
                             if (data && data.ok) {
                                 closeModal();
                                 if (window.showToast) window.showToast(data.message || '保存成功', 'success');
-                                else if (data.message) alert(data.message);
                                 if (data.redirect) { window.location.href = data.redirect; }
                                 else { window.location.reload(); }
                             } else {
                                 if (data && data.html) injectForm(data.html);
-                                else if (data && data.message) { if (window.showToast) window.showToast(data.message, 'error'); else alert(data.message); }
+                                else if (data && data.message) { if (window.showToast) window.showToast(data.message, 'error'); }
                                 else { if (window.showToast) window.showToast('保存失败', 'error'); }
                             }
                         }).catch(function () {
                             if (window.showToast) window.showToast('网络错误，请重试', 'error');
-                            else alert('网络错误，请重试');
                             if (btn) { btn.disabled = false; btn.textContent = btn.dataset.oldText || '保存'; }
                         });
                     });

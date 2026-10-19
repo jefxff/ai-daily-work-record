@@ -10,6 +10,7 @@ from datetime import date, datetime
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -17,6 +18,7 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 
 from accounts.decorators import perm_required
+from records.crud import _per_page
 from records.models import OperationLog
 
 from .forms import AnnualReviewForm, LicenseBorrowForm, LicenseForm
@@ -67,8 +69,14 @@ def license_list(request):
         # 状态筛选同样在数据库完成，不再把整表读进 Python
         qs = qs.filter(_status=status)
 
+    # 后端分页（10/30/50）：替代原先一次性把整表读进模板
+    per_page = _per_page(request)
+    page_obj = Paginator(qs, per_page).get_page(request.GET.get("page"))
+
     context = {
-        "licenses": list(qs),
+        "licenses": page_obj,
+        "page_obj": page_obj,
+        "per_page": per_page,
         "q": q,
         "status": status,
         "total": stats["total"],
@@ -219,7 +227,11 @@ def license_borrow_list(request):
             r.refresh_status()
             r.save(update_fields=["status"])
         qs = qs.filter(status=status)
-    return render(request, "archive/license_borrow_list.html", {"records": qs, "status": status})
+    per_page = _per_page(request)
+    page_obj = Paginator(qs, per_page).get_page(request.GET.get("page"))
+    return render(request, "archive/license_borrow_list.html", {
+        "records": page_obj, "page_obj": page_obj, "per_page": per_page, "status": status,
+    })
 
 
 @login_required

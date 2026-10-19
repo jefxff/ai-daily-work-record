@@ -325,7 +325,6 @@
         var checked = Array.prototype.slice.call(document.querySelectorAll('.lg-check:checked'));
         if (!checked.length) {
             if (window.showToast) window.showToast('请先勾选要导出的台账', 'error');
-            else alert('请先勾选要导出的台账');
             return;
         }
         form.querySelectorAll('input[name="ledgers"]').forEach(function (i) { i.remove(); });
@@ -376,7 +375,6 @@
     }
     function toast(msg, type) {
         if (window.showToast) window.showToast(msg, type);
-        else alert(msg);
     }
 
     openBtn.addEventListener('click', function () { backdrop.classList.add('show'); });

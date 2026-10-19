@@ -10,8 +10,8 @@
 
     /* === 信息卡片网格：紧凑双列键值对 === */
     .arc-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
-    .arc-info-item { display: flex; align-items: baseline; padding: 0.5rem 0.75rem; background: #fafbfc; border-radius: 6px; border: 1px solid var(--c-bg); transition: all 0.15s; }
-    .arc-info-item:hover { background: #f5f7fa; border-color: #e6e8eb; }
+    .arc-info-item { display: flex; align-items: baseline; padding: 0.5rem 0.75rem; background: var(--c-surface-sunken); border-radius: 6px; border: 1px solid var(--c-bg); transition: all 0.15s; }
+    .arc-info-item:hover { background: var(--c-surface-sunken); border-color: var(--c-border); }
     .arc-info-item.full { grid-column: 1 / -1; }
     .arc-info-label { font-size: 0.78rem; color: var(--c-text-secondary); font-weight: 500; min-width: 64px; max-width: 90px; white-space: nowrap; flex-shrink: 0; }
     .arc-info-value { font-size: 0.88rem; color: var(--c-text); font-weight: 500; word-break: break-all; line-height: 1.4; }
@@ -24,30 +24,30 @@
     .arc-status-badge.out { background: var(--c-danger-bg); color: var(--c-danger); border: 1px solid var(--c-danger-line); }
 
     /* 标签 */
-    .arc-tag { display: inline-block; padding: 1px 8px; background: #f0f5ff; color: #2b5fd9; border-radius: 4px; font-size: 0.76rem; margin-right: 4px; }
+    .arc-tag { display: inline-block; padding: 1px 8px; background: var(--c-primary-subtle); color: var(--c-primary-active); border-radius: 4px; font-size: 0.76rem; margin-right: 4px; }
 
     /* 描述框 */
-    .arc-desc-box { background: linear-gradient(135deg, #f5f7fa 0%, #eef2f7 100%); border-radius: 8px; padding: 0.85rem 1rem; color: #555; white-space: pre-wrap; word-break: break-all; min-height: 64px; border-left: 3px solid var(--c-primary); }
+    .arc-desc-box { background: linear-gradient(135deg, var(--c-surface-sunken) 0%, var(--c-divider) 100%); border-radius: 8px; padding: 0.85rem 1rem; color: var(--c-text-secondary); white-space: pre-wrap; word-break: break-all; min-height: 64px; border-left: 3px solid var(--c-primary); }
 
     /* 二维码容器 */
-    .arc-qrcode-box { display: inline-block; text-align: center; background: var(--c-surface); border: 1px solid #eef0f3; border-radius: 8px; padding: 10px 14px; }
+    .arc-qrcode-box { display: inline-block; text-align: center; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 8px; padding: 10px 14px; }
     .arc-qrcode-box img { width: 120px; height: 120px; display: block; }
 
     /* 电子档案面板 */
-    .arc-file-panel { border: 1px solid #eef0f3; border-radius: 10px; padding: 1rem 1.25rem; background: #fafbfc; }
+    .arc-file-panel { border: 1px solid var(--c-border); border-radius: 10px; padding: 1rem 1.25rem; background: var(--c-surface-sunken); }
     .arc-file-name { font-weight: 600; color: var(--c-text); word-break: break-all; }
-    .arc-file-badge { background: #eef4ff !important; color: #2b5fd9 !important; font-weight: 500; }
+    .arc-file-badge { background: var(--c-primary-subtle) !important; color: var(--c-primary-active) !important; font-weight: 500; }
     /* 附件行：缩略图 + 信息 + 操作 */
     .arc-attachment-row { display: flex; align-items: center; gap: 0.9rem; padding: 0.65rem 0.5rem; border-bottom: 1px solid var(--c-bg); }
     .arc-attachment-row:last-of-type { border-bottom: none; }
-    .arc-att-thumb { width: 64px; height: 64px; flex-shrink: 0; border: 1px solid #eef0f3; border-radius: 8px; background: var(--c-surface); overflow: hidden; display: flex; align-items: center; justify-content: center; }
+    .arc-att-thumb { width: 64px; height: 64px; flex-shrink: 0; border: 1px solid var(--c-border); border-radius: 8px; background: var(--c-surface); overflow: hidden; display: flex; align-items: center; justify-content: center; }
     .arc-att-thumb img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
-    .arc-att-icon { font-size: 0.72rem; font-weight: 700; color: #2b5fd9; background: #eef4ff; border-radius: 6px; padding: 6px 8px; max-width: 100%; text-align: center; }
+    .arc-att-icon { font-size: 0.72rem; font-weight: 700; color: var(--c-primary-active); background: var(--c-primary-subtle); border-radius: 6px; padding: 6px 8px; max-width: 100%; text-align: center; }
     .arc-att-info { flex: 1; min-width: 0; }
 
     /* 右列快速摘要卡片 */
     .arc-quick-stats { display: flex; flex-direction: column; gap: 0.6rem; flex: 1; min-width: 160px; }
-    .arc-quick-stat { background: #fafbfc; border: 1px solid var(--c-bg); border-radius: 6px; padding: 0.5rem 0.85rem; }
+    .arc-quick-stat { background: var(--c-surface-sunken); border: 1px solid var(--c-bg); border-radius: 6px; padding: 0.5rem 0.85rem; }
     .arc-quick-label { font-size: 0.74rem; color: var(--c-text-secondary); font-weight: 500; }
     .arc-quick-value { font-size: 0.88rem; color: var(--c-text); font-weight: 600; margin-top: 0.15rem; }
 
@@ -321,7 +321,6 @@
     btn.addEventListener('click', function () {
         if (!input.files.length) {
             if (window.showToast) window.showToast('请先选择要上传的文件', 'error');
-            else alert('请先选择要上传的文件');
             return;
         }
         var fd = new FormData();
@@ -335,7 +334,6 @@
           .then(function (res) {
               var j = res.j || {};
               if (window.showToast) window.showToast(j.message || (j.ok ? '上传成功' : '上传失败'), j.ok ? 'success' : 'error');
-              else alert(j.message || (j.ok ? '上传成功' : '上传失败'));
               if (j.ok) { setTimeout(function () { window.location.reload(); }, 600); }
               else { btn.disabled = false; }
           })

@@ -98,7 +98,7 @@
                 <td data-label="核减金额">¥{{ decoration.reduced_price|default:0|floatformat:2 }}</td>
                 <td data-label="操作">
                     <a href="{% url 'decoration_edit' decoration.id %}" class="btn-transparent" data-modal-edit data-modal-title="编辑装修">编辑</a>
-                    <form method="post" action="{% url 'decoration_delete' decoration.id %}" style="display:inline" onsubmit="return confirm('确定要删除这条记录吗？');">{% csrf_token %}<button type="submit" class="btn-transparent" style="background: rgba(245, 34, 45, 0.1); color: var(--c-danger); border-color: var(--c-danger-line); margin-left: 0.5rem;">删除</button></form>
+                    <form method="post" action="{% url 'decoration_delete' decoration.id %}" style="display:inline" data-confirm="确定要删除这条记录吗？">{% csrf_token %}<button type="submit" class="btn-transparent btn-delete" style="margin-left: 0.5rem;">删除</button></form>
                 </td>
             </tr>
             {% endfor %}
@@ -142,7 +142,7 @@
                 </td>
                 <td data-label="操作">
                     <a href="{% url 'customer_credit_edit' credit.id %}" class="btn-transparent" data-modal-edit data-modal-title="编辑客户账期">编辑</a>
-                    <form method="post" action="{% url 'customer_credit_delete' credit.id %}" style="display:inline" onsubmit="return confirm('确定要删除这条记录吗？');">{% csrf_token %}<button type="submit" class="btn-transparent" style="background: rgba(245, 34, 45, 0.1); color: var(--c-danger); border-color: var(--c-danger-line); margin-left: 0.5rem;">删除</button></form>
+                    <form method="post" action="{% url 'customer_credit_delete' credit.id %}" style="display:inline" data-confirm="确定要删除这条记录吗？">{% csrf_token %}<button type="submit" class="btn-transparent btn-delete" style="margin-left: 0.5rem;">删除</button></form>
                 </td>
             </tr>
             {% endfor %}
@@ -184,7 +184,7 @@
                 </td>
                 <td data-label="操作">
                     <a href="{% url 'customer_complaint_edit' complaint.id %}" class="btn-transparent" data-modal-edit data-modal-title="编辑客户客诉">编辑</a>
-                    <form method="post" action="{% url 'customer_complaint_delete' complaint.id %}" style="display:inline" onsubmit="return confirm('确定要删除这条记录吗？');">{% csrf_token %}<button type="submit" class="btn-transparent" style="background: rgba(245, 34, 45, 0.1); color: var(--c-danger); border-color: var(--c-danger-line); margin-left: 0.5rem;">删除</button></form>
+                    <form method="post" action="{% url 'customer_complaint_delete' complaint.id %}" style="display:inline" data-confirm="确定要删除这条记录吗？">{% csrf_token %}<button type="submit" class="btn-transparent btn-delete" style="margin-left: 0.5rem;">删除</button></form>
                 </td>
             </tr>
             {% endfor %}
@@ -216,7 +216,7 @@
                 <td data-label="文件编号">{{ regulation.doc_no }}</td>
                 <td data-label="操作">
                     <a href="{% url 'regulation_edit' regulation.id %}" class="btn-transparent" data-modal-edit data-modal-title="编辑制度">编辑</a>
-                    <form method="post" action="{% url 'regulation_delete' regulation.id %}" style="display:inline" onsubmit="return confirm('确定要删除这条记录吗？');">{% csrf_token %}<button type="submit" class="btn-transparent" style="background: rgba(245, 34, 45, 0.1); color: var(--c-danger); border-color: var(--c-danger-line); margin-left: 0.5rem;">删除</button></form>
+                    <form method="post" action="{% url 'regulation_delete' regulation.id %}" style="display:inline" data-confirm="确定要删除这条记录吗？">{% csrf_token %}<button type="submit" class="btn-transparent btn-delete" style="margin-left: 0.5rem;">删除</button></form>
                 </td>
             </tr>
             {% endfor %}
@@ -250,7 +250,7 @@
                 <td data-label="内控审核价">¥{{ evaluation.internal_control_price|floatformat:2 }}</td>
                 <td data-label="操作">
                     <a href="{% url 'price_evaluation_edit' evaluation.id %}" class="btn-transparent" data-modal-edit data-modal-title="编辑核价">编辑</a>
-                    <form method="post" action="{% url 'price_evaluation_delete' evaluation.id %}" style="display:inline" onsubmit="return confirm('确定要删除这条记录吗？');">{% csrf_token %}<button type="submit" class="btn-transparent" style="background: rgba(245, 34, 45, 0.1); color: var(--c-danger); border-color: var(--c-danger-line); margin-left: 0.5rem;">删除</button></form>
+                    <form method="post" action="{% url 'price_evaluation_delete' evaluation.id %}" style="display:inline" data-confirm="确定要删除这条记录吗？">{% csrf_token %}<button type="submit" class="btn-transparent btn-delete" style="margin-left: 0.5rem;">删除</button></form>
                 </td>
             </tr>
             {% endfor %}
@@ -292,7 +292,7 @@
                 <td data-label="工作进度">{{ record.progress }}%</td>
                 <td data-label="操作">
                     <a href="{% url 'daily_record_edit' record.id %}" class="btn-transparent" data-modal-edit data-modal-title="编辑每日记录">编辑</a>
-                    <form method="post" action="{% url 'daily_record_delete' record.id %}" style="display:inline" onsubmit="return confirm('确定要删除这条记录吗？');">{% csrf_token %}<button type="submit" class="btn-transparent" style="background: rgba(245, 34, 45, 0.1); color: var(--c-danger); border-color: var(--c-danger-line); margin-left: 0.5rem;">删除</button></form>
+                    <form method="post" action="{% url 'daily_record_delete' record.id %}" style="display:inline" data-confirm="确定要删除这条记录吗？">{% csrf_token %}<button type="submit" class="btn-transparent btn-delete" style="margin-left: 0.5rem;">删除</button></form>
                 </td>
             </tr>
             {% endfor %}
@@ -330,7 +330,7 @@
                 <td data-label="部门">{{ insurance.department }}</td>
                 <td data-label="操作">
                     <a href="{% url 'insurance_edit' insurance.id %}" class="btn-transparent" data-modal-edit data-modal-title="编辑保险">编辑</a>
-                    <form method="post" action="{% url 'insurance_delete' insurance.id %}" style="display:inline" onsubmit="return confirm('确定要删除这条记录吗？');">{% csrf_token %}<button type="submit" class="btn-transparent" style="background: rgba(245, 34, 45, 0.1); color: var(--c-danger); border-color: var(--c-danger-line); margin-left: 0.5rem;">删除</button></form>
+                    <form method="post" action="{% url 'insurance_delete' insurance.id %}" style="display:inline" data-confirm="确定要删除这条记录吗？">{% csrf_token %}<button type="submit" class="btn-transparent btn-delete" style="margin-left: 0.5rem;">删除</button></form>
                 </td>
             </tr>
             {% endfor %}
@@ -409,7 +409,7 @@
                 </td>
                 <td data-label="操作">
                     <a href="{% url 'complaint_edit' complaint.id %}" class="btn-transparent" data-modal-edit data-modal-title="编辑诉讼">编辑</a>
-                    <form method="post" action="{% url 'complaint_delete' complaint.id %}" style="display:inline" onsubmit="return confirm('确定要删除这条记录吗？');">{% csrf_token %}<button type="submit" class="btn-transparent" style="background: rgba(245, 34, 45, 0.1); color: var(--c-danger); border-color: var(--c-danger-line); margin-left: 0.5rem;">删除</button></form>
+                    <form method="post" action="{% url 'complaint_delete' complaint.id %}" style="display:inline" data-confirm="确定要删除这条记录吗？">{% csrf_token %}<button type="submit" class="btn-transparent btn-delete" style="margin-left: 0.5rem;">删除</button></form>
                 </td>
             </tr>
             {% endfor %}

@@ -80,7 +80,7 @@
                         <a href="{% url 'price_evaluation_edit' evaluation.id %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑核价">编辑</a>
                         {% endcan %}
                         {% can "price_evaluation" "delete" %}
-                        <form method="post" action="{% url 'price_evaluation_delete' evaluation.id %}" style="display:inline" onsubmit="return confirm('确定要删除这条记录吗？');">{% csrf_token %}<button type="submit" class="btn-transparent btn-sm btn-delete">删除</button></form>
+                        <form method="post" action="{% url 'price_evaluation_delete' evaluation.id %}" style="display:inline" data-confirm="确定要删除这条记录吗？">{% csrf_token %}<button type="submit" class="btn-transparent btn-sm btn-delete">删除</button></form>
                         {% endcan %}
                     </div>
                 </td>

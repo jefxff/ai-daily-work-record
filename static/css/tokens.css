@@ -72,6 +72,8 @@
   --c-success:          #389e0d;   --c-success-bg:  #f6ffed;  --c-success-line: #b7eb8f;
   --c-info:             #096dd9;   --c-info-bg:     #e6f7ff;  --c-info-line:    #91d5ff;
   --c-neutral:          #5c6370;   --c-neutral-bg:  #fafafa;  --c-neutral-line: #d9d9d9;
+  /* 借出中状态（档案证照借阅），全站唯一，只表示"证照处于借出"这一种业务语义 */
+  --c-borrowed:         #722ed1;   --c-borrowed-bg: #f9f0ff;  --c-borrowed-line: #d3adf7;
 
   /* ---------- 字体 ---------- */
   /* 标题走宋体：档案系统该有公文语感，也是与"通用后台"最直观的区分点 */
@@ -197,6 +199,7 @@
   --c-success:          #6cc56c;   --c-success-bg:  #14251a;  --c-success-line: #2c4a32;
   --c-info:             #a9b6c8;   --c-info-bg:     #212a36;  --c-info-line:    #39445a;
   --c-neutral:          #a6afbd;   --c-neutral-bg:  #1c232d;  --c-neutral-line: #2f3844;
+  --c-borrowed:         #b37feb;   --c-borrowed-bg: #1f1630;  --c-borrowed-line: #4a2d6b;
 
   --sh-1: 0 1px 2px rgba(0, 0, 0, 0.4);
   --sh-2: 0 4px 14px rgba(0, 0, 0, 0.5);

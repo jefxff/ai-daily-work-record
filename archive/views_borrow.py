@@ -6,11 +6,13 @@ URL 名称与行为完全不变。
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 
 from accounts.decorators import perm_required
+from records.crud import _per_page
 
 from .forms import BorrowForm
 from .models import Archive, BorrowRecord
@@ -28,7 +30,12 @@ def borrow_list(request):
             r.refresh_status()
             r.save(update_fields=["status"])
         qs = qs.filter(status=status)
-    return render(request, "archive/borrow_list.html", {"records": qs, "status": status})
+    # 后端分页（10/30/50）
+    per_page = _per_page(request)
+    page_obj = Paginator(qs, per_page).get_page(request.GET.get("page"))
+    return render(request, "archive/borrow_list.html", {
+        "records": page_obj, "page_obj": page_obj, "per_page": per_page, "status": status,
+    })
 
 
 @login_required

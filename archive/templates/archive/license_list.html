@@ -11,7 +11,7 @@
     .lic-stat-label { font-size: 0.8rem; color: var(--c-text-secondary); margin-top: 0.25rem; }
     .lic-stat-card.expiring .lic-stat-value { color: var(--c-warning); }
     .lic-stat-card.expired .lic-stat-value { color: var(--c-danger); }
-    .lic-stat-card.borrowed .lic-stat-value { color: #722ed1; }
+    .lic-stat-card.borrowed .lic-stat-value { color: var(--c-borrowed); }
 
     .lic-toolbar { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-bottom: 1.25rem; }
     .lic-toolbar .form-control { width: auto; min-width: 200px; }
@@ -22,14 +22,14 @@
     .lic-table table { margin: 0; }
     .lic-table th { background: var(--c-surface-sunken); font-weight: 600; color: var(--c-text-secondary); text-align: center; padding: 12px; white-space: nowrap; border-bottom: 1px solid var(--c-border); font-size: 14px; }
     .lic-table td { text-align: center; padding: 10px 12px; border-bottom: 1px solid var(--c-border); color: var(--c-text); font-size: 14px; }
-    .lic-table tr:hover { background: #f5f7fa; }
+    .lic-table tr:hover { background: var(--c-surface-sunken); }
     .lic-table .text-left { text-align: left; }
 
     .lic-status-badge { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 0.78rem; font-weight: 500; }
     .lic-status-badge.normal { background: var(--c-success-bg); color: var(--c-success); border: 1px solid var(--c-success-line); }
-    .lic-status-badge.expiring { background: var(--c-warning-bg); color: var(--c-warning); border: 1px solid #ffd591; }
+    .lic-status-badge.expiring { background: var(--c-warning-bg); color: var(--c-warning); border: 1px solid var(--c-warning-line); }
     .lic-status-badge.expired { background: var(--c-danger-bg); color: var(--c-danger); border: 1px solid var(--c-danger-line); }
-    .lic-borrowed-badge { background: #f9f0ff; color: #722ed1; border: 1px solid #d3adf7; }
+    .lic-borrowed-badge { background: var(--c-borrowed-bg); color: var(--c-borrowed); border: 1px solid var(--c-borrowed-line); }
 
     .lic-empty { text-align: center; padding: 3rem 1rem; color: var(--c-text-secondary); }
 </style>
@@ -129,5 +129,6 @@
             </tbody>
         </table>
     </div>
+    {% include 'records/_pagination.html' with page_obj=page_obj %}
 </div>
 {% endblock %}
