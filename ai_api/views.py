@@ -25,6 +25,31 @@ def _can(user, module, action):
     return has_perm(user, module, action)
 
 
+# AI 接口的「模型别名」→ RBAC 权限模块 key 的映射。
+# 别名是接口与返回分组使用的标识（如 sample / partner / license），而权限模块 key
+# 必须落在 accounts.registry 的合法集合内。二者混用会让 has_perm() 的
+# "module not in MODULE_MAP" 分支恒返回 False，导致非超管用户静默搜不到/建不了
+# 这些模块的数据（评审 R6；超管因 is_superuser 短路而看不出来）。
+_AI_PERM_MODULE = {
+    'partner': 'samples',
+    'sample': 'samples',
+    'test_record': 'samples',
+    'batch_record': 'samples',
+    'audit_record': 'samples',
+    'license': 'archive',
+    'cabinet': 'archive',
+    'archive_category': 'archive',
+    'ledger': 'archive',
+    'knowledge_document': 'knowledge',
+    'knowledge_category': 'knowledge',
+}
+
+
+def _ai_perm_module(name):
+    """模型别名 → 权限模块 key；未登记的别名本身即为合法模块 key。"""
+    return _AI_PERM_MODULE.get(name, name)
+
+
 class CustomPagination(PageNumberPagination):
     """自定义分页类"""
     page_size = 20
@@ -679,7 +704,7 @@ def ai_search(request):
 
     if model and model in models_to_search:
         # 指定模块但无 read 权限：403（不得借搜索通道越权读取）
-        if not _can(request.user, model, 'read'):
+        if not _can(request.user, _ai_perm_module(model), 'read'):
             return Response({'detail': f'无权访问模块 {model}'}, status=403)
         entry = models_to_search[model]
         model_class, serializer_class = entry[0], entry[1]
@@ -688,7 +713,7 @@ def ai_search(request):
     else:
         # 搜索所有有权限的模型
         for name, entry in models_to_search.items():
-            if not _can(request.user, name, 'read'):
+            if not _can(request.user, _ai_perm_module(name), 'read'):
                 continue
             model_class, serializer_class = entry[0], entry[1]
             base_queryset = entry[2] if len(entry) > 2 else model_class.objects.all()
@@ -774,7 +799,7 @@ def ai_query(request):
         model_name = info['model']
 
         # 无该模块 read 权限：不返回任何业务数据
-        if not _can(request.user, model_name, 'read'):
+        if not _can(request.user, _ai_perm_module(model_name), 'read'):
             response['答案'] = f'当前账号无权访问「{key}」模块数据，请联系管理员开通权限。'
             return Response(response)
 
@@ -980,7 +1005,7 @@ def model_list(request):
         },
     }
     # 仅返回当前用户有 read 权限的模块
-    return Response({k: v for k, v in models.items() if _can(request.user, k, 'read')})
+    return Response({k: v for k, v in models.items() if _can(request.user, _ai_perm_module(k), 'read')})
 
 
 @api_view(['POST'])
@@ -1022,7 +1047,7 @@ def ai_create(request):
         return Response({'error': '无效的模型类型'}, status=400)
 
     # RBAC：AI 通道与页面表单同一把锁，无对应模块 create 权限一律 403
-    if not _can(request.user, model_type, 'create'):
+    if not _can(request.user, _ai_perm_module(model_type), 'create'):
         return Response({'detail': f'无权在模块 {model_type} 新增数据'}, status=403)
 
     entry = models_map[model_type]

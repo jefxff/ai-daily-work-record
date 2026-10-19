@@ -325,10 +325,15 @@ def search(request):
         'partners': ('partner_results', partner_results),
         'archive': ('archive_results', archive_results),
     }
+    # 分组 key 多为权限模块 key；供应商档案归属 samples 模块（评审 R13(b)：
+    # 原先直接拿 'partners' 去比对 visible_modules，而 registry 中并无 'partners'，
+    # 导致拥有 samples 权限的用户搜索"供应商"结果永远为空）。
+    perm_of = {key: key for key in groups}
+    perm_of['partners'] = 'samples'
     context = {'search_term': search_term, 'empty_term': False}
     counts = {}
     for key, (var, qs) in groups.items():
-        if key in visible:
+        if perm_of[key] in visible:
             counts[key] = qs.count()
             context[var] = qs[:PER_GROUP_CAP]
         else:

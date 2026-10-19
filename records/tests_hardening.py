@@ -278,11 +278,43 @@ class LoggingTests(TestCase):
         self.assertNotIn("*", debug_off["hosts"])
 
     def test_internal_hosts_always_kept(self):
-        """内网固定地址始终保留，保证改配置后本机/局域网仍可访问。"""
+        """本机回环地址始终保留（运行时探测），保证本机/局域网仍可访问。"""
         for flag in ("0", "1"):
             hosts = self._load_hosts(flag)["hosts"]
-            for fixed in ("127.0.0.1", "localhost", "172.17.222.183"):
+            for fixed in ("127.0.0.1", "localhost"):
                 self.assertIn(fixed, hosts)
+
+    def test_stale_fixed_ip_is_not_baked_in(self):
+        """R4：不再把历史 IP 172.17.222.183 写死，改由运行时探测本机局域网 IP。"""
+        hosts = self._load_hosts("0")["hosts"]
+        self.assertNotIn("172.17.222.183", hosts)
+        self.assertTrue(
+            any(h.count(".") == 3 and not h.startswith("127.") for h in hosts),
+            f"未探测到任何局域网 IPv4 地址：{hosts}",
+        )
+
+    def test_production_wildcard_guard_raises(self):
+        """生产模式（DEBUG=0）配置通配符必须直接报错，不得让 Host 校验失效。"""
+        import subprocess
+        import sys as _sys
+
+        from django.conf import settings
+
+        env = os.environ.copy()
+        env["DJANGO_SETTINGS_MODULE"] = "work_record.settings"
+        env["DJANGO_DEBUG"] = "0"
+        env["DJANGO_ALLOWED_HOSTS"] = "*"
+        code = "import django; from django.conf import settings; print(settings.ALLOWED_HOSTS)"
+        out = subprocess.run(
+            [_sys.executable, "-c", code],
+            cwd=str(settings.BASE_DIR),
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        self.assertNotEqual(out.returncode, 0, "生产模式不应允许通配符")
+        self.assertIn("ImproperlyConfigured", out.stderr + out.stdout)
 
     def test_allowed_hosts_env_extends(self):
         """运维可通过 DJANGO_ALLOWED_HOSTS 追加域名，与旧行为兼容（只增不减）。"""
@@ -338,3 +370,37 @@ class FormulaInjectionTests(TestCase):
         sanitize_xlsx_formulas(wb)
         self.assertEqual(ws["A1"].value, "'=1+1")
         self.assertEqual(ws["A2"].value, "正常文本")
+
+
+class PartnerSearchPermissionTests(TestCase):
+    """R13(b)：供应商档案归 samples 模块。
+
+    改造前 records/views.py 直接用分组 key 'partners' 去比对 visible_modules，
+    而 registry 中并无 'partners' 模块，导致拥有 samples 权限的用户搜索供应商
+    恒为空（页面无报错、无结果，用户无从分辨是"没数据"还是"权限没生效"）。
+    """
+
+    def setUp(self):
+        call_command("sync_rbac", verbosity=0)
+        from samples.models import Partner
+
+        Partner.objects.create(partner_code="P-S1", name="洪兴五金")
+
+    def test_samples_perm_user_sees_partner(self):
+        user = User.objects.create_user("ps_hit", "ps@e.com", "x12345678")
+        grant("samples", ("read",), user)
+        self.client.force_login(user)
+        resp = self.client.get(reverse("search"), {"search": "洪兴"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.context["search_counts"]["partners"], 1)
+        self.assertIn("洪兴五金", resp.content.decode())
+
+    def test_user_without_samples_perm_sees_zero(self):
+        """该用户有其他模块权限（可打开搜索页），但没有 samples，看不到供应商。"""
+        user = User.objects.create_user("ps_none", "pn@e.com", "x12345678")
+        grant("decoration", ("read",), user)
+        self.client.force_login(user)
+        resp = self.client.get(reverse("search"), {"search": "洪兴"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.context["search_counts"]["partners"], 0)
+        self.assertNotIn("洪兴五金", resp.content.decode())

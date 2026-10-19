@@ -214,3 +214,87 @@ class RbacEnforcementTests(TestCase):
         client = APIClient()
         client.force_login(plain)
         self.assertIn(client.get("/api/regulation/").status_code, (401, 403))
+
+
+class AiSearchPermKeyTests(TestCase):
+    """R6：ai_search 的权限模块 key 必须映射到 registry 中的真实模块。
+
+    改造前直接用别名（partner / sample / test_record / batch_record / audit_record /
+    license / cabinet / knowledge_document 等）去调 _can()，而这些 key 不在账户模块表中，
+    _can() 恒为 False——拥有 samples 权限的用户搜索"供应商/样品"永远为空，
+    接口对合法调用方静默返回空结果（且无法从响应分辨是"没数据"还是"没权限"）。
+    修复后按模块归属显式映射（samples / archive / knowledge）。
+    """
+
+    @staticmethod
+    def _grant(module, actions, user):
+        from django.core.cache import cache
+
+        from accounts.models import Permission, Role
+
+        role, _ = Role.objects.get_or_create(
+            code=f"api_t_{module}", defaults={"name": f"测试-{module}", "is_active": True}
+        )
+        for action in actions:
+            perm, _ = Permission.objects.get_or_create(
+                module=module,
+                action=action,
+                defaults={"code": f"{module}:{action}", "name": f"{module}-{action}"},
+            )
+            role.permissions.add(perm)
+        role.users.add(user)
+        if hasattr(user, "_rbac_codes_cache"):
+            del user._rbac_codes_cache
+        cache.clear()
+
+    def setUp(self):
+        from django.core.management import call_command
+
+        call_command("sync_rbac", verbosity=0)
+        from samples.models import Partner, Sample
+
+        Partner.objects.create(partner_code="P-1", name="洪兴五金")
+        Sample.objects.create(
+            sample_no="S-X1", material_name="磷青铜", model="M-1", sample_date=date(2026, 1, 1)
+        )
+        self.samples_user = User.objects.create_user("ai_s_samples", "ss@e.com", "x12345678")
+        self._grant("samples", ("read",), self.samples_user)
+
+    def test_samples_perm_user_sees_partner(self):
+        """partner 归 samples 模块：修复前恒不可见，修复后能命中。"""
+        client = APIClient()
+        client.force_login(self.samples_user)
+        resp = client.get("/api/ai/search/", {"q": "洪兴"})
+        self.assertEqual(resp.status_code, 200, resp.content)
+        data = resp.json()
+        self.assertIn("partner", data, "拥有 samples 权限的用户应能搜到供应商档案")
+        self.assertEqual(data["partner"][0]["name"], "洪兴五金")
+
+    def test_no_perm_user_sees_nothing(self):
+        plain = User.objects.create_user("ai_s_plain", "sp@e.com", "x12345678")
+        client = APIClient()
+        client.force_login(plain)
+        resp = client.get("/api/ai/search/", {"q": "洪兴"})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertNotIn("partner", data)
+        self.assertNotIn("sample", data)
+
+    def test_archive_perm_does_not_leak_samples(self):
+        """权限隔离：archive 权限用户不得通过搜索越权读到 samples 模块数据。"""
+        archive_user = User.objects.create_user("ai_s_arch", "sa@e.com", "x12345678")
+        self._grant("archive", ("read",), archive_user)
+        client = APIClient()
+        client.force_login(archive_user)
+        resp = client.get("/api/ai/search/", {"q": "洪兴"})
+        data = resp.json()
+        self.assertNotIn("partner", data)
+        self.assertNotIn("sample", data)
+
+    def test_explicit_model_without_perm_is_403(self):
+        """指定 model=partner 但无 samples 权限时返回 403，不得借搜索通道越权。"""
+        plain = User.objects.create_user("ai_s_plain2", "sp2@e.com", "x12345678")
+        client = APIClient()
+        client.force_login(plain)
+        resp = client.get("/api/ai/search/", {"q": "洪兴", "model": "partner"})
+        self.assertEqual(resp.status_code, 403)
