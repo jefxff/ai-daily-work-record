@@ -10,6 +10,7 @@ import os
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
+from django.db import IntegrityError, transaction
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
@@ -27,13 +28,20 @@ from .services.common import _is_ajax, _log
 def archive_create(request):
     form = ArchiveForm(request.POST or None, request.FILES or None)
     if form.is_valid():
-        arc = form.save(commit=False)
-        arc.creator = request.user
-        arc.save()
-        _log(request, "新增", f"档案#{arc.id}", f"新增档案: {arc.code} - {arc.name}（{arc.location_path}）")
-        if _is_ajax(request):
-            return JsonResponse({"ok": True, "message": f"档案 {arc.code} 已录入"})
-        return redirect("archive:archive_detail", pk=arc.pk)
+        try:
+            # 柜/层/格唯一由 DB 兜底（评审 R1）：表单校验是"先查后写"，并发/双击时
+            # 两条请求都会通过 .exists() 检查，必须由事务 + 唯一约束最终把关。
+            with transaction.atomic():
+                arc = form.save(commit=False)
+                arc.creator = request.user
+                arc.save()
+        except IntegrityError:
+            form.add_error(None, "该存放位置（柜/层/格）已被占用，请重新选择")
+        else:
+            _log(request, "新增", f"档案#{arc.id}", f"新增档案: {arc.code} - {arc.name}（{arc.location_path}）")
+            if _is_ajax(request):
+                return JsonResponse({"ok": True, "message": f"档案 {arc.code} 已录入"})
+            return redirect("archive:archive_detail", pk=arc.pk)
     if _is_ajax(request) and request.method == "POST":
         html = render(request, "archive/_archive_form_modal.html", {"form": form, "mode": "create"}).content.decode()
         return JsonResponse({"ok": False, "html": html}, status=422)
@@ -81,11 +89,17 @@ def archive_edit(request, pk):
     arc = get_object_or_404(Archive, pk=pk)
     form = ArchiveForm(request.POST or None, request.FILES or None, instance=arc)
     if form.is_valid():
-        arc = form.save()
-        _log(request, "编辑", f"档案#{arc.id}", f"编辑档案: {arc.code} - {arc.name}")
-        if _is_ajax(request):
-            return JsonResponse({"ok": True, "message": "档案已更新"})
-        return redirect("archive:archive_detail", pk=arc.pk)
+        try:
+            # 同上：编辑也改柜/层/格，DB 唯一约束兜底并发占用
+            with transaction.atomic():
+                arc = form.save()
+        except IntegrityError:
+            form.add_error(None, "该存放位置（柜/层/格）已被占用，请重新选择")
+        else:
+            _log(request, "编辑", f"档案#{arc.id}", f"编辑档案: {arc.code} - {arc.name}")
+            if _is_ajax(request):
+                return JsonResponse({"ok": True, "message": "档案已更新"})
+            return redirect("archive:archive_detail", pk=arc.pk)
     if _is_ajax(request) and request.method == "POST":
         html = render(request, "archive/_archive_form_modal.html", {"form": form, "mode": "edit", "archive": arc}).content.decode()
         return JsonResponse({"ok": False, "html": html}, status=422)
@@ -102,11 +116,17 @@ def archive_move(request, pk):
     arc = get_object_or_404(Archive, pk=pk)
     form = ArchiveForm(request.POST or None, instance=arc, exclude_cell=False)
     if form.is_valid():
-        arc = form.save()
-        _log(request, "移动", f"档案#{arc.id}", f"移动档案: {arc.code} -> {arc.location_path}")
-        if _is_ajax(request):
-            return JsonResponse({"ok": True, "message": "档案已移动"})
-        return redirect("archive:archive_detail", pk=arc.pk)
+        try:
+            # 跨空位移动同属"先查后写"：事务 + DB 唯一约束兜底两个请求抢同一空位
+            with transaction.atomic():
+                arc = form.save()
+        except IntegrityError:
+            form.add_error(None, "该存放位置（柜/层/格）已被占用，请重新选择")
+        else:
+            _log(request, "移动", f"档案#{arc.id}", f"移动档案: {arc.code} -> {arc.location_path}")
+            if _is_ajax(request):
+                return JsonResponse({"ok": True, "message": "档案已移动"})
+            return redirect("archive:archive_detail", pk=arc.pk)
     return render(request, "archive/archive_move.html", {"form": form, "archive": arc})
 
 

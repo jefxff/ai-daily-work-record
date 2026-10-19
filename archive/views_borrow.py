@@ -7,6 +7,7 @@ URL 名称与行为完全不变。
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
+from django.db import IntegrityError, transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
@@ -49,9 +50,19 @@ def borrow_create(request, archive_pk):
         return redirect("archive:archive_detail", pk=arc.pk)
     form = BorrowForm(request.POST or None)
     if form.is_valid():
-        rec = form.save(commit=False)
-        rec.archive = arc
-        rec.save()
+        try:
+            # 借出是"先查后写"，双击/并发下两个请求都会读到 is_borrowed=False。
+            # 事务 + DB 唯一约束（uniq_open_borrow_per_archive）兜底防重复未归还记录。
+            with transaction.atomic():
+                rec = form.save(commit=False)
+                rec.archive = arc
+                rec.save()
+        except IntegrityError:
+            msg = f"档案 {arc.code} 已借出，无法再次借阅"
+            messages.error(request, msg)
+            if _is_ajax(request):
+                return JsonResponse({"ok": False, "message": msg}, status=422)
+            return redirect("archive:archive_detail", pk=arc.pk)
         _log(request, "借阅", f"档案#{arc.id}", f"借出档案: {arc.code} 给 {rec.borrower}，应还 {rec.due_time}")
         if _is_ajax(request):
             return JsonResponse({"ok": True, "message": "借阅登记成功"})

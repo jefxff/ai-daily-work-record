@@ -12,7 +12,7 @@ from datetime import datetime
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
@@ -206,6 +206,9 @@ def import_archives(request):
                     obj["source_sheet"] = sname[:100]
                     Archive.objects.create(**obj)
                     total_created += 1
+                except IntegrityError:
+                    # 同一柜/层/格重复写入：DB 唯一约束拦下（评审 R1）
+                    total_errors.append(f"[{sname}]第{i}行：该存放位置（柜/层/格）已被其他档案占用，已跳过")
                 except Exception as e:
                     total_errors.append(f"[{sname}]第{i}行：{e}")
         _log(request, "导入", "档案批量导入", f"成功 {total_created} 条，失败 {len(total_errors)} 条")
@@ -380,6 +383,9 @@ def table_import(request, table):
                         updated_n += 1
                     for col, reason in (field_errors or []):
                         skipped_cells.append(f"第{i}行[{key_raw or '空'}] {col}：{reason}")
+            except IntegrityError:
+                # 柜/层/格重复：唯一约束兜底（评审 R1），逐行回滚不影响其他行
+                errors.append(f"第{i}行[{key_raw or '空'}]：该存放位置（柜/层/格）已被其他档案占用，已跳过")
             except Exception as e:
                 errors.append(f"第{i}行[{key_raw or '空'}]：{e}")
         _log(request, "导入", f"{spec['label']}导入",

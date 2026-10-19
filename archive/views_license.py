@@ -11,6 +11,7 @@ from datetime import date, datetime
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
+from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -246,9 +247,19 @@ def license_borrow_create(request, license_pk):
         return redirect("archive:license_detail", pk=lic.pk)
     form = LicenseBorrowForm(request.POST or None)
     if form.is_valid():
-        rec = form.save(commit=False)
-        rec.license = lic
-        rec.save()
+        try:
+            # 与档案借阅同构的"先查后写"：事务 + DB 唯一约束
+            # （uniq_open_license_borrow_per_license）兜底并发/双击重复借出。
+            with transaction.atomic():
+                rec = form.save(commit=False)
+                rec.license = lic
+                rec.save()
+        except IntegrityError:
+            msg = f"证照 {lic.code} 已借出，无法再次借阅"
+            if _is_ajax(request):
+                return JsonResponse({"ok": False, "message": msg}, status=422)
+            messages.error(request, msg)
+            return redirect("archive:license_detail", pk=lic.pk)
         _license_log(request, "借阅", f"证照#{lic.id}", f"借出证照: {lic.code} 给 {rec.borrower}，应还 {rec.due_time}")
         if _is_ajax(request):
             return JsonResponse({"ok": True, "message": "借阅登记成功"})

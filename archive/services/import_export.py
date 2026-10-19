@@ -18,7 +18,7 @@ try:
 except ImportError:  # pragma: no cover - 仅在依赖缺失的环境触发
     xlrd = None
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.http import Http404, HttpResponse
 from django.utils import timezone
 from urllib.parse import quote
@@ -635,16 +635,20 @@ def _upsert_archive_row(row, ledger):
     """
     key_raw = str(row.get(_ARCHIVE_MATCH_HEADER, "") or "").strip()
     field_errors = []
-    with transaction.atomic():
-        obj = Archive.objects.filter(code=key_raw).first() if key_raw else None
-        created = obj is None
-        if created:
-            if not key_raw:
-                raise ValueError("「编号」为空，无法定位或新建")
-            obj = Archive(code=key_raw[:100], ledger=ledger)
-        _apply_columns(TABLE_SPECS["archives"], obj, row, is_created=created, field_errors=field_errors)
-        obj.ledger = ledger  # 归属以操作维度为准，不信任 Excel 中的台账列
-        if hasattr(obj, "refresh_status"):
-            obj.refresh_status()
-        obj.save()
+    try:
+        with transaction.atomic():
+            obj = Archive.objects.filter(code=key_raw).first() if key_raw else None
+            created = obj is None
+            if created:
+                if not key_raw:
+                    raise ValueError("「编号」为空，无法定位或新建")
+                obj = Archive(code=key_raw[:100], ledger=ledger)
+            _apply_columns(TABLE_SPECS["archives"], obj, row, is_created=created, field_errors=field_errors)
+            obj.ledger = ledger  # 归属以操作维度为准，不信任 Excel 中的台账列
+            if hasattr(obj, "refresh_status"):
+                obj.refresh_status()
+            obj.save()
+    except IntegrityError:
+        # 同一柜/层/格重复写入：DB 唯一约束兜底（评审 R1），逐行回滚不影响其他行
+        raise ValueError("该存放位置（柜/层/格）已被其他档案占用，已跳过")
     return created, field_errors

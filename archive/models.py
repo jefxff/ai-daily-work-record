@@ -343,7 +343,18 @@ class Archive(TimeStampedModel):
         verbose_name = "档案"
         verbose_name_plural = "档案"
         ordering = ["-created_at"]
-        # 柜层格唯一约束仅在三者均非空时生效（通过 DB partial index）
+        # 柜/层/格唯一约束：仅当三者均非空时生效（partial index）。
+        # 这是 DB 层兜底——表单校验（ArchiveForm.clean）与批量导入都是"先查后写"，
+        # 并发/双击下会出现静默的"一格两档"脏数据，必须由数据库最终把关。
+        constraints = [
+            models.UniqueConstraint(
+                fields=["cabinet", "layer", "cell"],
+                condition=models.Q(
+                    cabinet__isnull=False, layer__isnull=False, cell__isnull=False
+                ),
+                name="uniq_archive_cabinet_layer_cell",
+            )
+        ]
 
     def __str__(self):
         return f"{self.code} - {self.name}"
@@ -457,6 +468,15 @@ class BorrowRecord(models.Model):
         ordering = ["-borrow_time"]
         # 列表页与 is_borrowed 判定都按 return_time 过滤（审计 #20）
         indexes = [models.Index(fields=["return_time"], name="idx_borrow_return_time")]
+        # 同一档案同一时刻只允许一条未归还记录：借出视图是"先查后写"，
+        # 双击/并发会让两条借出请求都读到 is_borrowed=False 而生成重复记录。
+        constraints = [
+            models.UniqueConstraint(
+                fields=["archive"],
+                condition=models.Q(return_time__isnull=True),
+                name="uniq_open_borrow_per_archive",
+            )
+        ]
 
     def __str__(self):
         return f"{self.archive.code} - {self.borrower}"
@@ -662,6 +682,14 @@ class LicenseBorrowRecord(models.Model):
         verbose_name = "证照借阅记录"
         verbose_name_plural = "证照借阅记录"
         ordering = ["-borrow_time"]
+        # 与档案借阅同构：同一证照同时只允许一条未归还记录（并发/双击防护）
+        constraints = [
+            models.UniqueConstraint(
+                fields=["license"],
+                condition=models.Q(return_time__isnull=True),
+                name="uniq_open_license_borrow_per_license",
+            )
+        ]
 
     def __str__(self):
         return f"{self.license.code} - {self.borrower}"

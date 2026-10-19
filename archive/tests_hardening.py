@@ -17,7 +17,7 @@ from datetime import timedelta
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
-from django.db import connection
+from django.db import IntegrityError, connection, transaction
 from django.test import TestCase, override_settings
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
@@ -26,7 +26,7 @@ from django.utils import timezone
 from accounts.models import Permission, Role
 
 from .forms import CategoryForm
-from .models import Category, License, LicenseBorrowRecord
+from .models import Archive, BorrowRecord, Cabinet, Category, License, LicenseBorrowRecord
 from .services.license_query import annotate_status, status_aggregate
 
 User = get_user_model()
@@ -333,3 +333,156 @@ class ProtectedMediaTests(TestCase):
         user = User.objects.create_superuser("m_root2", "m4@e.com", "x12345678")
         self.client.force_login(user)
         self.assertEqual(self.client.get("/media/archives/nope.txt").status_code, 404)
+
+
+class ArchiveLocationUniqueTests(TestCase):
+    """R1：柜/层/格三非空时由数据库兜底唯一，堵住"先查后写"的并发/双击脏数据。
+
+    表单校验（ArchiveForm.clean）与批量导入都是"先查后写"，并发下会静默产生
+    "一格两档"。数据层约束是唯一可靠的最终防线。
+    """
+
+    def setUp(self):
+        self.cab = Cabinet.objects.create(code="C1")
+
+    def test_duplicate_full_location_raises_integrity_error(self):
+        Archive(code="A1", name="档案1", cabinet=self.cab, layer=1, cell=1).save()
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                Archive(code="A2", name="档案2", cabinet=self.cab, layer=1, cell=1).save()
+
+    def test_null_location_is_not_constrained(self):
+        """柜/层/格全空时不受约束，允许多条（历史数据大量为空）。"""
+        Archive(code="A1", name="档案1").save()
+        Archive(code="A2", name="档案2").save()
+        self.assertEqual(Archive.objects.filter(cabinet__isnull=True).count(), 2)
+
+    def test_partial_location_is_not_constrained(self):
+        """只填了一部分（缺层/格）时不参与唯一约束，避免误伤半填数据。"""
+        Archive(code="A1", name="档案1", cabinet=self.cab).save()
+        Archive(code="A2", name="档案2", cabinet=self.cab).save()
+        Archive(code="A3", name="档案3", cabinet=self.cab, layer=1).save()
+        Archive(code="A4", name="档案4", cabinet=self.cab, layer=1).save()
+        self.assertEqual(Archive.objects.count(), 4)
+
+    def test_move_to_occupied_cell_raises(self):
+        """移动档案到已占用格号时被数据库拦下（archive_move 的写入路径）。"""
+        a1 = Archive(code="A1", name="档案1", cabinet=self.cab, layer=1, cell=1)
+        a1.save()
+        a2 = Archive(code="A2", name="档案2", cabinet=self.cab, layer=2, cell=2)
+        a2.save()
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                a2.layer, a2.cell = 1, 1
+                a2.save(update_fields=["layer", "cell"])
+
+    def test_view_create_duplicate_location_reports_error(self):
+        """archive_create 捕获位置冲突后回填表单错误（422），不产生第二条记录。"""
+        root = User.objects.create_superuser("alu_root", "alu@e.com", "x12345678")
+        grant("archive", ("read", "create"), root)
+        Archive(code="A1", name="档案1", cabinet=self.cab, layer=1, cell=1).save()
+        self.client.force_login(root)
+        resp = self.client.post(
+            reverse("archive:archive_create"),
+            {"code": "A2", "name": "档案2", "cabinet": self.cab.pk, "layer": "1", "cell": "1"},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        self.assertEqual(resp.status_code, 422)
+        self.assertIn("已被占用", resp.json()["html"])
+        self.assertEqual(
+            Archive.objects.filter(cabinet=self.cab, layer=1, cell=1).count(), 1
+        )
+
+
+class BorrowUniqueTests(TestCase):
+    """R2：同一档案同一时刻只允许一条未归还记录。"""
+
+    def setUp(self):
+        self.arc = Archive.objects.create(code="B1", name="借阅档案")
+        self.user = User.objects.create_user("bo_user", "bo@e.com", "x12345678")
+        grant("archive", ("read", "create", "update"), self.user)
+
+    def _borrow(self, borrower="张三"):
+        return BorrowRecord.objects.create(
+            archive=self.arc,
+            borrower=borrower,
+            due_time=timezone.localdate() + timedelta(days=7),
+        )
+
+    def test_second_open_borrow_raises(self):
+        self._borrow()
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                self._borrow("李四")
+
+    def test_returned_record_allows_new_borrow(self):
+        """已归还后可以再次借出——约束只挡"未归还"。"""
+        first = self._borrow()
+        first.return_time = timezone.now()
+        first.refresh_status()
+        first.save(update_fields=["return_time", "status"])
+        self._borrow("李四")
+        self.assertEqual(BorrowRecord.objects.filter(archive=self.arc).count(), 2)
+
+    def test_view_duplicate_borrow_returns_422(self):
+        self.client.force_login(self.user)
+        self._borrow()
+        resp = self.client.post(
+            reverse("archive:borrow_create", args=[self.arc.pk]),
+            {
+                "borrower": "李四",
+                "due_time": (timezone.localdate() + timedelta(days=7)).isoformat(),
+                "remark": "",
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        self.assertEqual(resp.status_code, 422)
+        self.assertFalse(resp.json()["ok"])
+        self.assertEqual(
+            BorrowRecord.objects.filter(archive=self.arc, return_time__isnull=True).count(), 1
+        )
+
+
+class LicenseBorrowUniqueTests(TestCase):
+    """R2：证照借阅与档案借阅同构，同一证照同时只允许一条未归还记录。"""
+
+    def setUp(self):
+        self.lic = License.objects.create(name="营业执照", code="LX-1")
+        self.user = User.objects.create_user("lb_user", "lb@e.com", "x12345678")
+        grant("archive", ("read", "create", "update"), self.user)
+
+    def _borrow(self, borrower="张三"):
+        return LicenseBorrowRecord.objects.create(
+            license=self.lic,
+            borrower=borrower,
+            due_time=timezone.localdate() + timedelta(days=7),
+        )
+
+    def test_second_open_borrow_raises(self):
+        self._borrow()
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                self._borrow("李四")
+
+    def test_returned_record_allows_new_borrow(self):
+        first = self._borrow()
+        first.return_time = timezone.now()
+        first.refresh_status()
+        first.save(update_fields=["return_time", "status"])
+        self._borrow("李四")
+        self.assertEqual(LicenseBorrowRecord.objects.filter(license=self.lic).count(), 2)
+
+    def test_view_duplicate_license_borrow_returns_422(self):
+        self.client.force_login(self.user)
+        self._borrow()
+        resp = self.client.post(
+            reverse("archive:license_borrow_create", args=[self.lic.pk]),
+            {
+                "borrower": "李四",
+                "due_time": (timezone.localdate() + timedelta(days=7)).isoformat(),
+                "remark": "",
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        self.assertEqual(resp.status_code, 422)
+        self.assertFalse(resp.json()["ok"])
