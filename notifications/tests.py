@@ -2,7 +2,8 @@
 
 运行：python manage.py test notifications -v 2
 """
-from datetime import timedelta
+from datetime import datetime, time as dtime, timedelta
+from unittest import mock
 
 from django.contrib.auth import get_user_model
 from django.core import mail
@@ -253,17 +254,27 @@ class ChannelDispatchTests(TestCase):
         self.assertEqual(self.notif.status, Notification.Status.FAILED)
 
     def test_quiet_hours_skip_email_unless_high(self):
-        """免打扰时段邮件跳过；高优先级穿透。"""
-        now_local = timezone.localtime()
-        prefs = services.get_prefs(self.user)
-        prefs.quiet_start = (now_local - timedelta(minutes=30)).time()
-        prefs.quiet_end = (now_local + timedelta(minutes=30)).time()
-        prefs.save()
+        """免打扰时段邮件跳过；高优先级穿透。
+
+        免打扰区间用「现在 ± 30 分钟」构造。若直接取真实时间，在
+        00:00–00:30 与 23:30–24:00 运行会跨日，区间变成 start > end，
+        判断翻转导致假失败（CI 容器、新开机机器都会踩到）。
+        这里把「现在」固定到当天 12:00，与真实时刻解耦。
+        """
         from notifications.channels import allowed_channels
 
-        self.assertEqual(allowed_channels(self.notif), ["inapp"])
-        self.notif.priority = "high"
-        self.assertEqual(allowed_channels(self.notif), ["inapp", "email"])
+        # 注意：localdate() 内部也走 localtime()，必须在 patch 之前取到日期
+        fixed_now = datetime.combine(timezone.localdate(), dtime(12, 0))
+        with mock.patch("notifications.models.timezone.localtime") as fake_now:
+            fake_now.return_value = fixed_now
+            prefs = services.get_prefs(self.user)
+            prefs.quiet_start = dtime(11, 30)
+            prefs.quiet_end = dtime(12, 30)
+            prefs.save()
+
+            self.assertEqual(allowed_channels(self.notif), ["inapp"])
+            self.notif.priority = "high"
+            self.assertEqual(allowed_channels(self.notif), ["inapp", "email"])
 
     def test_template_without_email_support_skipped(self):
         """模板未配置邮件内容：邮件渠道被 allowed_channels 过滤。"""

@@ -2,6 +2,7 @@
 
 运行：python manage.py test notifications.tests_metrics -v 1
 """
+import time
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
@@ -95,7 +96,7 @@ class MetricsBufferTests(TestCase):
         RequestMetric.objects.filter(path="/old/").update(
             created_at=timezone.now() - timedelta(days=60)
         )
-        metrics._last_cleanup = 0  # 强制触发一次裁剪
+        metrics._last_cleanup = time.monotonic() - metrics._CLEANUP_INTERVAL - 1  # 强制触发一次裁剪
         metrics._maybe_cleanup()
         self.assertFalse(RequestMetric.objects.filter(path="/old/").exists())
 
