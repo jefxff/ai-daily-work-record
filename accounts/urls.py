@@ -2,7 +2,7 @@
 
 from django.urls import path
 
-from . import views_auth, views_self, views_admin
+from . import views_auth, views_self, views_admin, views_token
 
 app_name = "accounts"
 
@@ -19,6 +19,8 @@ urlpatterns = [
     path("sessions/revoke-others/", views_self.session_revoke_others_view, name="session_revoke_others"),
     # 系统管理
     path("login-logs/", views_admin.login_log_list_view, name="login_logs"),
+    # 长期 Token 管理（系统模块）
+    path("api-token/", views_token.token_page_view, name="api_token"),
     # 用户管理
     path("users/", views_admin.user_list_view, name="user_list"),
     path("users/new/", views_admin.user_create_view, name="user_create"),

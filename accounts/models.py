@@ -4,8 +4,16 @@
 用户可绑定多个启用中的角色，有效权限取并集；is_superuser 恒为全权限。
 """
 
+import secrets
+from datetime import timedelta
+
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
+
+# 长期 Token：随机串字节数与有效期（天）
+TOKEN_KEY_BYTES = 48
+TOKEN_TTL_DAYS = 365
 
 
 class Permission(models.Model):
@@ -119,3 +127,70 @@ class LoginLog(models.Model):
 
     def __str__(self):
         return f"{self.username} {'成功' if self.success else '失败'} {self.created_at:%Y-%m-%d %H:%M}"
+
+
+class ApiToken(models.Model):
+    """长期 Token：供外部 Agent 以请求头 ``Authorization: Token <key>`` 免交互校验身份。
+
+    与 DRF 内置 authtoken（每用户仅一枚、无过期、无历史）不同，本模型保留历史记录、
+    带过期时间，便于管理端审计。Token 值需在页面回显与复制，故以明文存储。
+    """
+
+    class Status(models.TextChoices):
+        ACTIVE = "active", "有效"
+        EXPIRED = "expired", "已过期"
+        REVOKED = "revoked", "已撤销"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="用户",
+        on_delete=models.CASCADE,
+        related_name="api_tokens",
+    )
+    key = models.CharField("Token", max_length=128, unique=True, db_index=True)
+    created_at = models.DateTimeField("创建时间", auto_now_add=True)
+    expires_at = models.DateTimeField("过期时间", null=True, blank=True)
+    is_active = models.BooleanField("启用", default=True, db_index=True)
+    created_ip = models.GenericIPAddressField("创建IP", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "长期 Token"
+        verbose_name_plural = verbose_name
+        ordering = ["-created_at", "-id"]
+        indexes = [
+            models.Index(fields=["user", "-created_at"], name="apitoken_user_created_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.user.get_username()} · {self.created_at:%Y-%m-%d %H:%M}"
+
+    @property
+    def is_expired(self):
+        return self.expires_at is not None and self.expires_at <= timezone.now()
+
+    @property
+    def is_valid(self):
+        """当前是否可用于鉴权（启用且未过期）。"""
+        return self.is_active and not self.is_expired
+
+    @property
+    def status_code(self):
+        if not self.is_active:
+            return self.Status.REVOKED
+        if self.is_expired:
+            return self.Status.EXPIRED
+        return self.Status.ACTIVE
+
+    @property
+    def status_text(self):
+        return self.Status(self.status_code).label
+
+    @classmethod
+    def issue(cls, user, *, ip=None, ttl_days=TOKEN_TTL_DAYS):
+        """为用户签发一枚新的长期 Token（不撤销既有 Token，保留完整历史）。"""
+        return cls.objects.create(
+            user=user,
+            key=secrets.token_urlsafe(TOKEN_KEY_BYTES),
+            expires_at=timezone.now() + timedelta(days=ttl_days),
+            created_ip=ip,
+        )

@@ -1,0 +1,244 @@
+{% extends "records/base.html" %}
+{% block page_title %}长期 Token · 系统管理{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h4 class="mb-0" style="font-weight:700;">长期 Token</h4>
+        <div class="text-muted" style="font-size:.82rem;">
+            供外部 Agent 以请求头 <code>Authorization: Token &lt;key&gt;</code> 免交互调用项目接口
+        </div>
+    </div>
+
+    <!-- 获取最新长期 Token -->
+    <div class="card mb-3 shadow-sm" style="border:none;border-radius:12px;">
+        <div class="card-body">
+            <h6 class="mb-2" style="font-weight:600;">获取最新长期 Token</h6>
+            <p class="text-muted mb-3" style="font-size:.85rem;">
+                点击下方按钮生成一枚新的长期 Token（有效期 {{ token_ttl_days }} 天）。
+                生成后请立即复制并妥善保管，切勿泄露给无关人员。
+            </p>
+            <button class="btn btn-primary" id="btnGenToken" type="button" style="min-width:180px;">
+                获取最新长期Token
+            </button>
+            <div class="alert alert-success mt-3 mb-0" id="newTokenBox" hidden>
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-1">
+                    <strong style="font-size:.9rem;">最新 Token（请立即复制保存）</strong>
+                    <button class="btn btn-sm btn-outline-primary" id="btnCopyNew" type="button">复制</button>
+                </div>
+                <div class="token-value" id="newTokenValue"></div>
+                <div class="text-muted mt-1" style="font-size:.78rem;">
+                    创建时间：<span id="newTokenCreated"></span> · 过期时间：<span id="newTokenExpires"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 历史 Token 记录 -->
+    <div class="card shadow-sm" style="border:none;border-radius:12px;">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                <h6 class="mb-0" style="font-weight:600;">历史 Token 记录</h6>
+                <span class="text-muted" style="font-size:.8rem;">共 {{ total }} 条</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table--cards table table-sm table-hover align-middle mb-0" style="font-size:.85rem;">
+                    <thead>
+                        <tr>
+                            <th scope="col" style="min-width:260px;">Token 值</th>
+                            <th scope="col">创建时间</th>
+                            <th scope="col">过期时间</th>
+                            <th scope="col">状态</th>
+                            <th scope="col" style="min-width:90px;">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tokenTbody">
+                        {% for t in page %}
+                        <tr>
+                            <td data-label="Token 值"><span class="token-value">{{ t.key }}</span></td>
+                            <td data-label="创建时间">{{ t.created_at|date:"Y-m-d H:i:s" }}</td>
+                            <td data-label="过期时间">{{ t.expires_at|date:"Y-m-d H:i:s"|default:"—" }}</td>
+                            <td data-label="状态">
+                                {% if t.status_code == 'active' %}<span class="status-badge success">{{ t.status_text }}</span>
+                                {% elif t.status_code == 'expired' %}<span class="status-badge warning">{{ t.status_text }}</span>
+                                {% else %}<span class="status-badge danger">{{ t.status_text }}</span>{% endif %}
+                            </td>
+                            <td data-label="操作">
+                                <button class="btn btn-sm btn-outline-secondary btn-copy-row" type="button" data-token="{{ t.key|escapejs }}">复制</button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr id="tokenEmptyRow"><td colspan="5" class="text-center text-muted py-4">暂无 Token 记录</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% include 'records/_pagination.html' with page_obj=page %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .token-value {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Courier New", monospace;
+        font-size: .8rem;
+        word-break: break-all;
+        background: rgba(0, 0, 0, .04);
+        padding: .25rem .5rem;
+        border-radius: 6px;
+        display: inline-block;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    var genUrl = "{% url 'api_token_auth' %}";
+    var csrf = "{{ csrf_token }}";
+
+    function getCookie(name) {
+        var v = null;
+        document.cookie.split(';').forEach(function (c) {
+            var p = c.trim().split('=');
+            if (p[0] === name) v = decodeURIComponent(p[1]);
+        });
+        return v;
+    }
+
+    function fallbackCopy(text, okMsg) {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+            document.execCommand('copy');
+            if (window.showToast) window.showToast(okMsg, 'success');
+        } catch (e) {
+            if (window.showToast) window.showToast('复制失败，请手动选择复制', 'error');
+        }
+        document.body.removeChild(ta);
+    }
+
+    function copyText(text, okMsg) {
+        if (!text) return;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(function () {
+                if (window.showToast) window.showToast(okMsg, 'success');
+            }).catch(function () {
+                fallbackCopy(text, okMsg);
+            });
+        } else {
+            fallbackCopy(text, okMsg);
+        }
+    }
+
+    // 历史行「复制」按钮
+    document.querySelectorAll('.btn-copy-row').forEach(function (b) {
+        b.addEventListener('click', function () {
+            copyText(b.getAttribute('data-token'), '已复制 Token');
+        });
+    });
+
+    // 生成新 Token
+    var btn = document.getElementById('btnGenToken');
+    var box = document.getElementById('newTokenBox');
+    var valEl = document.getElementById('newTokenValue');
+    var createdEl = document.getElementById('newTokenCreated');
+    var expiresEl = document.getElementById('newTokenExpires');
+    var lastToken = '';
+
+    document.getElementById('btnCopyNew').addEventListener('click', function () {
+        copyText(lastToken, '已复制 Token');
+    });
+
+    function makeCell(label, text) {
+        var td = document.createElement('td');
+        td.setAttribute('data-label', label);
+        td.textContent = text;
+        return td;
+    }
+
+    function prependRow(d) {
+        var tbody = document.getElementById('tokenTbody');
+        if (!tbody) return;
+        var emptyRow = document.getElementById('tokenEmptyRow');
+        if (emptyRow) emptyRow.remove();
+
+        var tr = document.createElement('tr');
+
+        var tdKey = document.createElement('td');
+        tdKey.setAttribute('data-label', 'Token 值');
+        var span = document.createElement('span');
+        span.className = 'token-value';
+        span.textContent = d.key;
+        tdKey.appendChild(span);
+        tr.appendChild(tdKey);
+
+        tr.appendChild(makeCell('创建时间', d.created_at || ''));
+        tr.appendChild(makeCell('过期时间', d.expires_at || '—'));
+
+        var tdStatus = document.createElement('td');
+        tdStatus.setAttribute('data-label', '状态');
+        var badge = document.createElement('span');
+        badge.className = 'status-badge ' + (d.status === 'active' ? 'success' : (d.status === 'expired' ? 'warning' : 'danger'));
+        badge.textContent = d.status_text || '';
+        tdStatus.appendChild(badge);
+        tr.appendChild(tdStatus);
+
+        var tdOp = document.createElement('td');
+        tdOp.setAttribute('data-label', '操作');
+        var copyBtn = document.createElement('button');
+        copyBtn.type = 'button';
+        copyBtn.className = 'btn btn-sm btn-outline-secondary';
+        copyBtn.textContent = '复制';
+        copyBtn.addEventListener('click', function () { copyText(d.key, '已复制 Token'); });
+        tdOp.appendChild(copyBtn);
+        tr.appendChild(tdOp);
+
+        tbody.insertBefore(tr, tbody.firstChild);
+    }
+
+    if (btn) {
+        btn.addEventListener('click', function () {
+            var oldText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '生成中…';
+            fetch(genUrl, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCookie('csrftoken') || csrf, 'X-Requested-With': 'XMLHttpRequest' },
+                body: new URLSearchParams({})
+            }).then(function (resp) {
+                return resp.text().then(function (txt) {
+                    var data = null;
+                    try { data = JSON.parse(txt); } catch (e) {}
+                    return { ok: resp.ok, data: data };
+                });
+            }).then(function (r) {
+                if (r.ok && r.data && r.data.key) {
+                    lastToken = r.data.key;
+                    valEl.textContent = r.data.key;
+                    createdEl.textContent = r.data.created_at || '';
+                    expiresEl.textContent = r.data.expires_at || '长期有效';
+                    box.hidden = false;
+                    prependRow(r.data);
+                    if (window.showToast) window.showToast('已生成新的长期 Token', 'success');
+                } else {
+                    var msg = (r.data && (r.data.detail || r.data.message)) || '生成失败，请稍后重试';
+                    if (window.showToast) window.showToast(msg, 'error');
+                }
+            }).catch(function () {
+                if (window.showToast) window.showToast('网络错误，请重试', 'error');
+            }).finally(function () {
+                btn.disabled = false;
+                btn.textContent = oldText;
+            });
+        });
+    }
+})();
+</script>
+{% endblock %}

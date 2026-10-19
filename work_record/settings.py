@@ -296,6 +296,9 @@ CORS_ALLOW_METHODS = [
 # REST Framework settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
+        # 长期 Token 优先：请求头 Authorization: Token <key> 时按 Token 认证，
+        # 供外部 Agent 免交互调用；未携带该头时回退到会话认证（页面请求不受影响）。
+        'accounts.authentication.ApiTokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [

@@ -2,6 +2,7 @@
 
 - @perm_required(module, action)：单模块动作权限（全站业务视图使用）
 - @require_any_module：只要求"至少有一个模块的可见权限"（首页/全局搜索使用）
+- @login_exempt：显式标记免登录（供 LoginRequiredMiddleware 识别）
 
 匿名用户：页面 302 到登录页（带 next），AJAX/API 返回 401 JSON；
 已登录无权限：页面渲染 403（HTTP 403），AJAX/API 返回 403 JSON；
@@ -16,6 +17,18 @@ from django.http import JsonResponse
 from django.shortcuts import redirect, render
 
 from .services import has_perm, visible_modules
+
+
+def login_exempt(view_func):
+    """标记视图可匿名访问。
+
+    LoginRequiredMiddleware 会通过 ``rbac_public`` 属性识别此标记（见
+    middleware._is_exempt）。仅用于必须匿名可达的接口（如 /api-token-auth/
+    供外部 Agent 用用户名口令换取长期 Token）。视图内部仍需自行鉴权。
+    """
+
+    view_func.rbac_public = True
+    return view_func
 
 
 def _is_json_request(request):

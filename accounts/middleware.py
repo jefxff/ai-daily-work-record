@@ -1,7 +1,9 @@
 """全站登录拦截中间件。
 
-白名单（可匿名访问）：登录/登出/注册、Django admin、静态资源、媒体文件。
-其余一切路径：未登录时页面 302 到登录页（带 next），/api/ 返回 401 JSON。
+白名单（可匿名访问）：登录/登出/注册、Django admin、静态资源、媒体文件、
+以及被 @login_exempt 显式标记的视图（如 /api-token-auth/）。
+其余一切路径：未登录时页面 302 到登录页（带 next），/api/ 返回 401 JSON；
+但 /api/ 下携带 Authorization 头（长期 Token）的请求会放行，由 DRF 处理认证。
 """
 
 from urllib.parse import quote
@@ -59,6 +61,11 @@ class LoginRequiredMiddleware:
             return self.get_response(request)
 
         if request.path.startswith("/api/"):
+            # 携带 Authorization 头（如长期 Token Authorization: Token <key>）的
+            # 请求在中间件层看不到会话用户，必须放行交由 DRF 认证/鉴权处理；
+            # 无该头时维持原有 401 行为（浏览器 AJAX 需先登录）。
+            if request.headers.get("Authorization"):
+                return self.get_response(request)
             return JsonResponse({"detail": "身份验证未通过，请先登录。"}, status=401)
 
         next_url = quote(request.get_full_path(), safe="/?&=")

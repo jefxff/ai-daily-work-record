@@ -24,6 +24,7 @@ import mimetypes
 from pathlib import Path
 
 from accounts.services import has_perm
+from accounts.views_token import obtain_api_token
 
 # 媒体文件一级目录 -> 所属业务模块（与 accounts/registry.py 的模块 key 对齐）。
 # 未登记的前缀一律拒绝：宁可让新目录"打不开"，也不能让它默认对所有登录用户开放。
@@ -72,6 +73,8 @@ def protected_media(request, path):
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    # 长期 Token 签发接口（供外部 Agent 免交互取用，视图内自行鉴权）
+    path('api-token-auth/', obtain_api_token, name='api_token_auth'),
     path('accounts/', include('accounts.urls')),
     path('', include('records.urls')),
     path('api/', include('ai_api.urls')),
