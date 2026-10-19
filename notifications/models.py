@@ -350,3 +350,36 @@ class NotificationDelivery(models.Model):
 
     def __str__(self):
         return f"#{self.notification_id} {self.channel} {self.status}"
+
+
+class RequestMetric(models.Model):
+    """请求性能指标：每次业务请求写一行（供「性能监控」页做请求量 / P95 / 慢查询分析）。
+
+    采集由 ``notifications.middleware.RequestMetricsMiddleware`` 完成：中间件包裹
+    请求全程，用 ``connection.execute_wrapper`` 逐条统计 SQL 耗时，落一行请求级指标。
+    静态资源 / 媒体 / 免登录探针等噪声路径不采集。数据按 ``RETENTION_DAYS`` 自动裁剪。
+    """
+
+    method = models.CharField("方法", max_length=10)
+    path = models.CharField("路径", max_length=255, db_index=True)
+    status_code = models.PositiveIntegerField("状态码")
+    duration_ms = models.PositiveIntegerField("总耗时(ms)", db_index=True)
+    db_count = models.PositiveIntegerField("SQL 条数", default=0)
+    db_time_ms = models.PositiveIntegerField("SQL 耗时(ms)", default=0)
+    slow_query = models.TextField("最慢 SQL", blank=True, default="")
+    user = models.CharField("用户", max_length=100, blank=True, default="")
+    created_at = models.DateTimeField("时间", auto_now_add=True, db_index=True)
+
+    SLOW_BADGE_MS = 1000  # 请求耗时超过该值在页面上标红（与 settings.REQUEST_METRICS_SLOW_MS 呼应）
+
+    class Meta:
+        verbose_name = "请求性能指标"
+        verbose_name_plural = verbose_name
+        ordering = ["-created_at", "-id"]
+
+    def __str__(self):
+        return f"{self.method} {self.path} {self.status_code} {self.duration_ms}ms"
+
+    @property
+    def is_slow(self):
+        return self.duration_ms >= self.SLOW_BADGE_MS

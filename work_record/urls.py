@@ -27,7 +27,7 @@ from accounts.services import has_perm
 from accounts.views_token import obtain_api_token
 from ai_api import views_config as ai_config_views
 from knowledge_base import views as kb_views
-from notifications import views_health, views_tasks
+from notifications import views_health, views_tasks, views_metrics
 
 # 媒体文件一级目录 -> 所属业务模块（与 accounts/registry.py 的模块 key 对齐）。
 # 未登记的前缀一律拒绝：宁可让新目录"打不开"，也不能让它默认对所有登录用户开放。
@@ -78,6 +78,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     # 长期 Token 签发接口（供外部 Agent 免交互取用，视图内自行鉴权）
     path('api-token-auth/', obtain_api_token, name='api_token_auth'),
+    # 外部独立存活探针（免登录、不访问数据库；供外部监控独立轮询）
+    path('probe/', views_metrics.probe, name='probe'),
     path('accounts/', include('accounts.urls')),
     path('', include('records.urls')),
     path('api/', include('ai_api.urls')),
@@ -88,6 +90,8 @@ urlpatterns = [
     path('system/backup/', include('sysbackup.urls')),
     # 系统健康面板（只读）：挂在 system/ 下，与「系统」侧栏组语义一致
     path('system/health/', views_health.system_health, name='system_health'),
+    # 性能监控（请求量 / P95 / 慢查询，system.read 只读）
+    path('system/perf/', views_metrics.perf_dashboard, name='perf_dashboard'),
     # 知识库阅读报告（system.read）：挂在 system/ 下，避免对普通知识库用户暴露他人阅读轨迹
     path('system/knowledge-report/', kb_views.knowledge_report, name='knowledge_report'),
     # 定时任务执行历史（system.read 只读）

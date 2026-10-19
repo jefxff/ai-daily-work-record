@@ -155,6 +155,8 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    # 请求性能采集（批次 C）：置于最外层以覆盖整条请求链路（会话/认证/视图）
+    'notifications.middleware.RequestMetricsMiddleware',
     'django.middleware.gzip.GZipMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -438,3 +440,15 @@ DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@localhost')
 NOTIFICATIONS_SCHEDULER_INPROCESS = os.environ.get(
     'DJANGO_SCHEDULER_INPROCESS', '1' if DEBUG else '0'
 ) == '1'
+
+# === 请求性能采集（批次 C）===
+# 中间件把每次业务请求（静态/媒体/探针除外）的路径、状态码、总耗时、SQL 条数与最慢 SQL
+# 落库到 RequestMetric，供「性能监控」页做请求量 / P95 / 慢查询分析。
+# 关闭开关后中间件零开销跳过；阈值与保留策略均可调，无需改代码。
+REQUEST_METRICS_ENABLED = os.environ.get('DJANGO_REQUEST_METRICS', '1') == '1'
+REQUEST_METRICS_SLOW_MS = int(os.environ.get('DJANGO_REQUEST_METRICS_SLOW_MS', '300'))
+REQUEST_METRICS_SLOW_QUERY_MS = int(os.environ.get('DJANGO_REQUEST_METRICS_SLOW_QUERY_MS', '200'))
+REQUEST_METRICS_FLUSH_SIZE = 50
+REQUEST_METRICS_FLUSH_INTERVAL = 5
+REQUEST_METRICS_RETENTION_DAYS = int(os.environ.get('DJANGO_REQUEST_METRICS_RETENTION_DAYS', '30'))
+REQUEST_METRICS_CLEANUP_INTERVAL = 3600

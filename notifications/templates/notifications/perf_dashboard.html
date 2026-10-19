@@ -1,0 +1,252 @@
+{% extends "records/base.html" %}
+{% load accounts_tags %}
+
+{% block page_title %}性能监控 - 每日工作记录管理网站{% endblock %}
+
+{% block top_nav_actions %}
+    <form method="get" class="perf-filter">
+        <label for="perfDays">统计窗口</label>
+        <select id="perfDays" name="days" class="form-select form-select-sm" onchange="this.form.submit()">
+            <option value="1" {% if days == 1 %}selected{% endif %}>近 1 天</option>
+            <option value="3" {% if days == 3 %}selected{% endif %}>近 3 天</option>
+            <option value="7" {% if days == 7 %}selected{% endif %}>近 7 天</option>
+            <option value="14" {% if days == 14 %}selected{% endif %}>近 14 天</option>
+            <option value="30" {% if days == 30 %}selected{% endif %}>近 30 天</option>
+            <option value="90" {% if days == 90 %}selected{% endif %}>近 90 天</option>
+        </select>
+        <a href="{% url 'system_health' %}" class="btn-transparent">系统健康</a>
+    </form>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .perf-filter {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    .perf-filter label { color: var(--c-text-secondary); font-size: 0.85rem; margin: 0; }
+    .perf-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.25rem;
+    }
+    .perf-card {
+        background: var(--c-surface);
+        border: 1px solid var(--c-border);
+        border-radius: var(--r-md);
+        padding: 16px 18px;
+    }
+    .perf-card-label { color: var(--c-text-secondary); font-size: 0.8rem; }
+    .perf-card-value {
+        color: var(--c-text);
+        font-size: var(--fs-lg);
+        font-weight: 600;
+        margin-top: 6px;
+        line-height: 1.2;
+    }
+    .perf-card-value.is-alert { color: var(--c-danger); }
+    .perf-section-title {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 14px 24px;
+        margin: 0;
+        font-size: var(--fs-md);
+        font-weight: 600;
+        color: var(--c-text);
+        border-bottom: 1px solid var(--c-border);
+    }
+    .perf-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    .perf-table th {
+        text-align: left; padding: 10px 12px; color: var(--c-text-secondary);
+        font-weight: 500; border-bottom: 1px solid var(--c-border); white-space: nowrap;
+    }
+    .perf-table td {
+        padding: 12px; border-bottom: 1px solid var(--c-divider);
+        color: var(--c-text-secondary); vertical-align: top;
+    }
+    .perf-table tr:last-child td { border-bottom: none; }
+    .perf-path { color: var(--c-text); font-weight: 500; word-break: break-all; }
+    .perf-sql {
+        max-width: 520px; white-space: pre-wrap; word-break: break-all;
+        font-size: 0.76rem; font-family: var(--ff-mono, monospace);
+    }
+    .perf-empty { text-align: center; }
+    .perf-note {
+        padding: 16px 24px; border-left: 3px solid var(--c-info);
+        background: var(--c-surface-sunken); border-radius: var(--r-md);
+        color: var(--c-text-secondary); font-size: 0.85rem;
+        line-height: var(--lh-base); margin-top: 1.25rem;
+    }
+    .perf-note code {
+        color: var(--c-text); background: var(--c-divider);
+        padding: 1px 6px; border-radius: var(--r-sm);
+    }
+    .table-container { margin-top: 1rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>性能监控</h2>
+</div>
+
+<!-- 摘要卡 -->
+<div class="perf-cards">
+    <div class="perf-card">
+        <div class="perf-card-label">请求总量</div>
+        <div class="perf-card-value">{{ summary.total }}</div>
+    </div>
+    <div class="perf-card">
+        <div class="perf-card-label">平均耗时</div>
+        <div class="perf-card-value">{{ summary.avg_ms }} ms</div>
+    </div>
+    <div class="perf-card">
+        <div class="perf-card-label">P95 延迟</div>
+        <div class="perf-card-value {% if summary.p95_ms > slow_ms %}is-alert{% endif %}">{{ summary.p95_ms }} ms</div>
+    </div>
+    <div class="perf-card">
+        <div class="perf-card-label">最大耗时</div>
+        <div class="perf-card-value">{{ summary.max_ms }} ms</div>
+    </div>
+    <div class="perf-card">
+        <div class="perf-card-label">慢请求（&gt;{{ slow_ms }}ms）</div>
+        <div class="perf-card-value {% if summary.slow_count %}is-alert{% endif %}">{{ summary.slow_count }}</div>
+    </div>
+    <div class="perf-card">
+        <div class="perf-card-label">5xx 响应</div>
+        <div class="perf-card-value {% if summary.error_count %}is-alert{% endif %}">{{ summary.error_count }}</div>
+    </div>
+    <div class="perf-card">
+        <div class="perf-card-label">含慢查询的请求</div>
+        <div class="perf-card-value {% if summary.slow_query_count %}is-alert{% endif %}">{{ summary.slow_query_count }}</div>
+    </div>
+    <div class="perf-card">
+        <div class="perf-card-label">SQL 总耗时 / 总条数</div>
+        <div class="perf-card-value">{{ summary.db_time_ms }} ms / {{ summary.db_count_total }}</div>
+    </div>
+</div>
+
+<!-- 每日趋势 -->
+<div class="table-container">
+    <h3 class="perf-section-title">📈 每日请求量</h3>
+    <table class="perf-table">
+        <thead>
+            <tr><th scope="col">日期</th><th scope="col">请求数</th><th scope="col">平均耗时</th></tr>
+        </thead>
+        <tbody>
+            {% for row in daily %}
+            <tr>
+                <td data-label="日期">{{ row.day|date:'Y-m-d' }}</td>
+                <td data-label="请求数">{{ row.cnt }}</td>
+                <td data-label="平均耗时">{{ row.avg_ms|floatformat:0 }} ms</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="perf-empty">窗口内暂无请求数据</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- 请求量 Top -->
+<div class="table-container">
+    <h3 class="perf-section-title">🔥 请求量 Top {{ top_paths|length }}</h3>
+    <table class="perf-table">
+        <thead>
+            <tr><th scope="col">端点</th><th scope="col">方法</th><th scope="col">请求数</th><th scope="col">平均耗时</th><th scope="col">最大耗时</th></tr>
+        </thead>
+        <tbody>
+            {% for row in top_paths %}
+            <tr>
+                <td data-label="端点"><span class="perf-path">{{ row.path }}</span></td>
+                <td data-label="方法">{{ row.method }}</td>
+                <td data-label="请求数">{{ row.cnt }}</td>
+                <td data-label="平均耗时">{{ row.avg_ms|floatformat:0 }} ms</td>
+                <td data-label="最大耗时">{{ row.max_ms }} ms</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="perf-empty">窗口内暂无请求数据</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- 慢端点 Top -->
+<div class="table-container">
+    <h3 class="perf-section-title">🐢 最慢端点 Top {{ slow_paths|length }}（按平均耗时）</h3>
+    <table class="perf-table">
+        <thead>
+            <tr><th scope="col">端点</th><th scope="col">方法</th><th scope="col">请求数</th><th scope="col">平均耗时</th><th scope="col">最大耗时</th></tr>
+        </thead>
+        <tbody>
+            {% for row in slow_paths %}
+            <tr>
+                <td data-label="端点"><span class="perf-path">{{ row.path }}</span></td>
+                <td data-label="方法">{{ row.method }}</td>
+                <td data-label="请求数">{{ row.cnt }}</td>
+                <td data-label="平均耗时"><span class="status-badge {% if row.avg_ms > slow_ms %}danger{% else %}success{% endif %}">{{ row.avg_ms|floatformat:0 }} ms</span></td>
+                <td data-label="最大耗时">{{ row.max_ms }} ms</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="perf-empty">窗口内暂无请求数据</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- 最近慢查询 -->
+<div class="table-container">
+    <h3 class="perf-section-title">🔍 最近慢查询（Top {{ recent_slow_queries|length }}）</h3>
+    <table class="perf-table">
+        <thead>
+            <tr><th scope="col">时间</th><th scope="col">端点</th><th scope="col">最慢 SQL</th></tr>
+        </thead>
+        <tbody>
+            {% for m in recent_slow_queries %}
+            <tr>
+                <td data-label="时间">{{ m.created_at|date:'m-d H:i' }}</td>
+                <td data-label="端点"><span class="perf-path">{{ m.method }} {{ m.path }}</span></td>
+                <td data-label="最慢 SQL"><div class="perf-sql" title="{{ m.slow_query }}">{{ m.slow_query|truncatechars:160 }}</div></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="perf-empty">窗口内暂无慢查询</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- 最近慢请求 -->
+<div class="table-container">
+    <h3 class="perf-section-title">⏱️ 最近慢请求（Top {{ recent_slow|length }}）</h3>
+    <table class="perf-table">
+        <thead>
+            <tr><th scope="col">时间</th><th scope="col">端点</th><th scope="col">用户</th><th scope="col">状态</th><th scope="col">耗时</th><th scope="col">SQL 条数</th></tr>
+        </thead>
+        <tbody>
+            {% for m in recent_slow %}
+            <tr>
+                <td data-label="时间">{{ m.created_at|date:'m-d H:i' }}</td>
+                <td data-label="端点"><span class="perf-path">{{ m.method }} {{ m.path }}</span></td>
+                <td data-label="用户">{{ m.user|default:"—" }}</td>
+                <td data-label="状态">
+                    <span class="status-badge {% if m.status_code >= 500 %}danger{% elif m.status_code >= 400 %}warning{% else %}success{% endif %}">{{ m.status_code }}</span>
+                </td>
+                <td data-label="耗时">{{ m.duration_ms }} ms</td>
+                <td data-label="SQL 条数">{{ m.db_count }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="perf-empty">窗口内暂无慢请求</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- 说明 -->
+<div class="perf-note">
+    由请求性能采集中间件（批次 C）自动记录：每个业务请求落一行指标，静态资源 / 媒体 / 探针不采集，
+    数据默认保留最近 30 天并自动裁剪。外部独立探针：<code>{{ probe_url }}</code>（免登录，仅返回进程存活 JSON，不访问数据库）。
+</div>
+{% endblock %}

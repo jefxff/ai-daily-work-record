@@ -451,6 +451,7 @@ class RbacAuthTests(TestCase):
             reverse("expiry_calendar"), reverse("expiry_export"),
             reverse("weekly_report"), reverse("annual_summary"),
             reverse("audit_anomalies"), reverse("system_health"),
+            reverse("perf_dashboard"), reverse("task_run_history"),
         ]
         for path in urls:
             self.assertNotEqual(cn.get(path).status_code, 200, path)

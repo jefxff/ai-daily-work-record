@@ -283,9 +283,10 @@
     </div>
 </div>
 
-<!-- 非目标提示区 -->
+<!-- 批 C 已落地：请求量 / P95 / 慢查询见「性能监控」页 -->
 <div class="health-note">
-    <span class="health-note-title">非目标提示（批 C 待做）</span>
-    请求量、P95 延迟、慢查询 Top 10 需要采集中间件，属批次 C 范围，本页暂不提供。
+    <span class="health-note-title">请求量 / P95 / 慢查询（批次 C 已落地）</span>
+    已由请求性能采集中间件采集，详见 <a href="{% url 'perf_dashboard' %}">性能监控</a> 页；
+    外部独立探针：<code>/probe/</code>（免登录，仅返回进程存活 JSON，不访问数据库）。
 </div>
 {% endblock %}
