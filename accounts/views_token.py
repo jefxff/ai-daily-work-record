@@ -7,8 +7,10 @@
 
 from django.contrib.auth import authenticate
 from django.core.paginator import Paginator
-from django.shortcuts import render
+from django.http import Http404
+from django.shortcuts import redirect, render
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -35,7 +37,12 @@ def _fmt(dt):
 @perm_required(MODULE, ACTION)
 def token_page_view(request):
     """长期 Token 管理页：签发入口 + 当前用户历史记录（分页）。"""
-    queryset = ApiToken.objects.filter(user=request.user).order_by("-created_at", "-id")
+    # select_related("user")：状态列要读 user.password 判定"改密失效"，避免逐行 N+1
+    queryset = (
+        ApiToken.objects.filter(user=request.user)
+        .select_related("user")
+        .order_by("-created_at", "-id")
+    )
     paginator = Paginator(queryset, _per_page(request))
     page = paginator.get_page(request.GET.get("page"))
     return render(request, "accounts/api_token.html", {
@@ -43,6 +50,36 @@ def token_page_view(request):
         "total": paginator.count,
         "token_ttl_days": TOKEN_TTL_DAYS,
     })
+
+
+@perm_required(MODULE, ACTION)
+@require_POST
+def revoke_api_token(request, token_id):
+    """撤销当前用户自己的一枚 Token（仅 POST，且仅限本人）。
+
+    撤销后 is_active 置否，该 Token 立即失效，使用它的 Agent 调用将被 401。
+    只按 (pk, user) 过滤，越权撤销他人 Token 一律落到 404（不泄露存在性）。
+    """
+    token = (
+        ApiToken.objects.select_related("user")
+        .filter(pk=token_id, user=request.user)
+        .first()
+    )
+    if token is None:
+        raise Http404("Token 不存在")
+    if token.is_active:
+        token.is_active = False
+        token.save(update_fields=["is_active"])
+        try:
+            log_operation(
+                request, "系统管理", "删除", f"长期Token#{token.pk}",
+                f"撤销用户 {request.user.get_username()} 的长期 Token",
+            )
+        except Exception:  # 留痕失败不影响撤销主流程
+            import logging
+
+            logging.getLogger(__name__).exception("长期 Token 撤销留痕写入失败")
+    return redirect("accounts:api_token")
 
 
 @login_exempt
@@ -99,6 +136,7 @@ def obtain_api_token(request):
         logging.getLogger(__name__).exception("长期 Token 操作留痕写入失败")
 
     return Response({
+        "id": token.pk,
         "key": token.key,
         "created_at": _fmt(token.created_at),
         "expires_at": _fmt(token.expires_at),

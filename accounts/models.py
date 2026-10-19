@@ -152,6 +152,13 @@ class ApiToken(models.Model):
     expires_at = models.DateTimeField("过期时间", null=True, blank=True)
     is_active = models.BooleanField("启用", default=True, db_index=True)
     created_ip = models.GenericIPAddressField("创建IP", null=True, blank=True)
+    password_fingerprint = models.CharField(
+        "签发时密码指纹",
+        max_length=128,
+        blank=True,
+        default="",
+        help_text="签发时的 user.password 哈希；改密或管理员重置后指纹不一致即视为失效",
+    )
 
     class Meta:
         verbose_name = "长期 Token"
@@ -169,13 +176,25 @@ class ApiToken(models.Model):
         return self.expires_at is not None and self.expires_at <= timezone.now()
 
     @property
+    def password_changed(self):
+        """签发后用户密码是否已变更（自助改密或管理员重置）。
+
+        指纹在签发时写入；与当前密码哈希不一致，说明密码已变，该 Token 应随旧密码
+        一并失效。空指纹视为未绑定（兼容历史数据），不据此判失效。
+        """
+        fp = self.password_fingerprint
+        return bool(fp) and fp != self.user.password
+
+    @property
     def is_valid(self):
-        """当前是否可用于鉴权（启用且未过期）。"""
-        return self.is_active and not self.is_expired
+        """当前是否可用于鉴权（启用、未过期、且密码未被改动）。"""
+        return self.is_active and not self.is_expired and not self.password_changed
 
     @property
     def status_code(self):
         if not self.is_active:
+            return self.Status.REVOKED
+        if self.password_changed:
             return self.Status.REVOKED
         if self.is_expired:
             return self.Status.EXPIRED
@@ -193,4 +212,6 @@ class ApiToken(models.Model):
             key=secrets.token_urlsafe(TOKEN_KEY_BYTES),
             expires_at=timezone.now() + timedelta(days=ttl_days),
             created_ip=ip,
+            # 记录签发时的密码指纹：改密/重置后据此令本 Token 失效
+            password_fingerprint=user.password or "",
         )

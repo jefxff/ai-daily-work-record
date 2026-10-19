@@ -5,7 +5,9 @@
 1. 页面权限控制（匿名 302 / 非管理员 403 / 管理员 200 / 侧栏入口显隐）；
 2. 签发接口 /api-token-auth/（会话换取、口令换取、越权、口令爆破锁定）；
 3. DRF 全局 Token 认证（有效 / 无效 / 过期 / 撤销 Token，且仍受 RBAC 约束）；
-4. 历史记录列表的分页与按用户隔离。
+4. 历史记录列表的分页与按用户隔离；
+5. 撤销入口（仅 POST、仅本人，越权落 404，撤销后立即失效）；
+6. 改密 / 管理员重置后 Token 失效联动。
 """
 
 from datetime import timedelta
@@ -166,6 +168,13 @@ class ApiTokenFeatureTests(TestCase):
         )
         self.assertEqual(resp.status_code, 403)
 
+    def test_token_invalidated_by_password_change(self):
+        """改密后既有 Token 失效：指纹与当前密码不一致即拒绝。"""
+        token = ApiToken.issue(self.admin)
+        self.admin.set_password("BrandNewPwd456")
+        self.admin.save()
+        self.assertEqual(self._token_client(token.key).get(DECORATION_API).status_code, 401)
+
     # ---------- 4. 历史记录 ----------
     def test_history_pagination(self):
         for _ in range(12):
@@ -186,3 +195,66 @@ class ApiTokenFeatureTests(TestCase):
         resp = c.get(reverse("accounts:api_token"))
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.context["total"], 0)
+
+    def test_page_marks_password_changed_as_revoked(self):
+        """改密后历史列表该行状态应显示「已撤销」，并撤下撤销按钮。"""
+        token = ApiToken.issue(self.admin)
+        self.admin.set_password("AnotherPwd789")
+        self.admin.save()
+        c = self._session_client(self.admin)
+        resp = c.get(reverse("accounts:api_token"))
+        self.assertContains(resp, "已撤销")
+        self.assertNotContains(resp, reverse("accounts:api_token_revoke", args=[token.pk]))
+
+    # ---------- 5. 撤销入口 ----------
+    def _revoke_url(self, token):
+        return reverse("accounts:api_token_revoke", args=[token.pk])
+
+    def test_revoke_own_token(self):
+        c = self._session_client(self.admin)
+        token = ApiToken.issue(self.admin)
+        resp = self._post_session(c, self._revoke_url(token))
+        self.assertEqual(resp.status_code, 302)
+        token.refresh_from_db()
+        self.assertFalse(token.is_active)
+        # 撤销后该 Token 调用立即失败
+        self.assertEqual(self._token_client(token.key).get(DECORATION_API).status_code, 401)
+
+    def test_revoke_page_shows_button_for_active_only(self):
+        c = self._session_client(self.admin)
+        active = ApiToken.issue(self.admin)
+        revoked = ApiToken.issue(self.admin)
+        revoked.is_active = False
+        revoked.save(update_fields=["is_active"])
+        resp = c.get(reverse("accounts:api_token"))
+        self.assertContains(resp, self._revoke_url(active))
+        self.assertNotContains(resp, self._revoke_url(revoked))
+
+    def test_revoke_other_users_token_not_allowed(self):
+        """越权撤销他人 Token：即使是超管也按本人隔离，落到 404，Token 保持不变。"""
+        c = self._session_client(self.superuser)
+        token = ApiToken.issue(self.admin)
+        resp = self._post_session(c, self._revoke_url(token))
+        self.assertEqual(resp.status_code, 404)
+        token.refresh_from_db()
+        self.assertTrue(token.is_active)
+
+    def test_revoke_requires_post(self):
+        c = self._session_client(self.admin)
+        token = ApiToken.issue(self.admin)
+        self.assertEqual(c.get(self._revoke_url(token)).status_code, 405)
+
+    def test_revoke_anonymous_redirects_to_login(self):
+        token = ApiToken.issue(self.admin)
+        resp = Client().post(self._revoke_url(token))
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn("/accounts/login/", resp["Location"])
+        token.refresh_from_db()
+        self.assertTrue(token.is_active)
+
+    def test_revoke_forbidden_for_non_admin(self):
+        c = self._session_client(self.staff)
+        token = ApiToken.issue(self.admin)
+        self.assertEqual(self._post_session(c, self._revoke_url(token)).status_code, 403)
+        token.refresh_from_db()
+        self.assertTrue(token.is_active)

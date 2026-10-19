@@ -65,6 +65,12 @@
                             </td>
                             <td data-label="操作">
                                 <button class="btn btn-sm btn-outline-secondary btn-copy-row" type="button" data-token="{{ t.key|escapejs }}">复制</button>
+                                {% if t.status_code == 'active' %}
+                                <form method="post" action="{% url 'accounts:api_token_revoke' t.id %}" class="d-inline" data-confirm="确定撤销该 Token 吗？撤销后使用它的调用将立即失败，且不可恢复。">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">撤销</button>
+                                </form>
+                                {% endif %}
                             </td>
                         </tr>
                         {% empty %}
@@ -97,6 +103,8 @@
 <script>
 (function () {
     var genUrl = "{% url 'api_token_auth' %}";
+    // 撤销接口模板：把 /0/ 段替换为实际 Token id
+    var revokeUrlTpl = "{% url 'accounts:api_token_revoke' 0 %}";
     var csrf = "{{ csrf_token }}";
 
     function getCookie(name) {
@@ -198,6 +206,27 @@
         copyBtn.textContent = '复制';
         copyBtn.addEventListener('click', function () { copyText(d.key, '已复制 Token'); });
         tdOp.appendChild(copyBtn);
+
+        // 撤销表单（与后端表单同构；点击由全局 data-confirm 确认弹窗接管）
+        if (d.id) {
+            var revokeForm = document.createElement('form');
+            revokeForm.method = 'post';
+            revokeForm.action = revokeUrlTpl.replace('/0/', '/' + d.id + '/');
+            revokeForm.className = 'd-inline';
+            revokeForm.setAttribute('data-confirm', '确定撤销该 Token 吗？撤销后使用它的调用将立即失败，且不可恢复。');
+            var csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrfmiddlewaretoken';
+            csrfInput.value = csrf;
+            revokeForm.appendChild(csrfInput);
+            var revokeBtn = document.createElement('button');
+            revokeBtn.type = 'submit';
+            revokeBtn.className = 'btn btn-sm btn-outline-danger';
+            revokeBtn.textContent = '撤销';
+            revokeForm.appendChild(revokeBtn);
+            tdOp.appendChild(revokeForm);
+        }
+
         tr.appendChild(tdOp);
 
         tbody.insertBefore(tr, tbody.firstChild);

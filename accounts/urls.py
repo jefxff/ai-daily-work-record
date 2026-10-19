@@ -21,6 +21,7 @@ urlpatterns = [
     path("login-logs/", views_admin.login_log_list_view, name="login_logs"),
     # 长期 Token 管理（系统模块）
     path("api-token/", views_token.token_page_view, name="api_token"),
+    path("api-token/<int:token_id>/revoke/", views_token.revoke_api_token, name="api_token_revoke"),
     # 用户管理
     path("users/", views_admin.user_list_view, name="user_list"),
     path("users/new/", views_admin.user_create_view, name="user_create"),
