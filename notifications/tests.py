@@ -1,4 +1,4 @@
-"""通知模块测试：模型约束 / emit 幂等聚合 / 渠道派发 / worker 生命周期 / 用户隔离 / RBAC。
+﻿"""通知模块测试：模型约束 / emit 幂等聚合 / 渠道派发 / worker 生命周期 / 用户隔离 / RBAC。
 
 运行：python manage.py test notifications -v 2
 """
@@ -16,6 +16,7 @@ from notifications.models import (
     NotificationDelivery,
     NotificationPreference,
     NotificationTemplate,
+    ScheduledTask,
 )
 
 User = get_user_model()
@@ -671,3 +672,143 @@ class ScheduledTaskTests(TestCase):
         # 停用任务永不到期
         interval.enabled = False
         self.assertFalse(scheduler.is_due(interval))
+
+
+class TaskRunLogTests(TestCase):
+    """批次B：定时任务执行历史表（TaskRunLog）写入与裁剪。"""
+
+    def setUp(self):
+        self.task = ScheduledTask.objects.get(code="notify_expire")
+
+    def test_run_task_writes_run_log(self):
+        """每次执行落一行历史：来源 / 结果 / 耗时 / 起止时间。"""
+        from notifications import scheduler
+        from notifications.models import TaskRunLog
+
+        executed, _ok, _message = scheduler.run_task(self.task, source="manual")
+        self.assertTrue(executed)
+
+        log = TaskRunLog.objects.get(task=self.task)
+        self.assertEqual(log.code, "notify_expire")
+        self.assertEqual(log.source, TaskRunLog.Source.MANUAL)
+        self.assertIn(log.status, ("success", "fail"))
+        self.assertIsNotNone(log.duration_ms)
+        self.assertNotEqual(log.message, "")
+        self.assertLessEqual(log.started_at, log.finished_at)
+
+    def test_run_log_source_defaults_to_schedule(self):
+        """调度线程触发（未传 source）默认记为自动调度。"""
+        from notifications import scheduler
+        from notifications.models import TaskRunLog
+
+        scheduler.run_task(self.task)
+        self.assertEqual(TaskRunLog.objects.get().source, TaskRunLog.Source.SCHEDULE)
+
+    def test_prune_keeps_latest_per_task(self):
+        """历史裁剪：仅保留最近 RUN_LOG_KEEP_PER_TASK 条，更早的被删除。"""
+        from datetime import timedelta as td
+
+        from notifications import scheduler
+        from notifications.models import TaskRunLog
+
+        keep = scheduler.RUN_LOG_KEEP_PER_TASK
+        base = timezone.now() - td(days=30)
+        TaskRunLog.objects.bulk_create([
+            TaskRunLog(
+                task=self.task, code="notify_expire", source="schedule", status="success",
+                duration_ms=1, message="x", started_at=base,
+                finished_at=base + td(minutes=i),
+            )
+            for i in range(keep + 5)
+        ])
+        self.assertEqual(TaskRunLog.objects.filter(task=self.task).count(), keep + 5)
+
+        scheduler._prune_run_logs(self.task.pk)
+
+        remaining = TaskRunLog.objects.filter(task=self.task)
+        self.assertEqual(remaining.count(), keep)
+        # 保留的是最近的一批：最早的 5 条已删除
+        self.assertEqual(remaining.order_by("finished_at").first().finished_at,
+                         base + td(minutes=5))
+
+    def test_prune_is_scoped_per_task(self):
+        """裁剪只影响目标任务，其他任务的历史不受影响。"""
+        from datetime import timedelta as td
+
+        from notifications import scheduler
+        from notifications.models import TaskRunLog
+
+        other = ScheduledTask.objects.get(code="notify_stats")
+        keep = scheduler.RUN_LOG_KEEP_PER_TASK
+        now = timezone.now()
+        TaskRunLog.objects.bulk_create([
+            TaskRunLog(
+                task=other, code="notify_stats", source="schedule", status="success",
+                duration_ms=1, message="x", started_at=now, finished_at=now + td(minutes=i),
+            )
+            for i in range(3)
+        ])
+        TaskRunLog.objects.bulk_create([
+            TaskRunLog(
+                task=self.task, code="notify_expire", source="schedule", status="success",
+                duration_ms=1, message="x", started_at=now, finished_at=now + td(minutes=i),
+            )
+            for i in range(keep + 2)
+        ])
+
+        scheduler._prune_run_logs(self.task.pk)
+
+        self.assertEqual(TaskRunLog.objects.filter(task=self.task).count(), keep)
+        self.assertEqual(TaskRunLog.objects.filter(task=other).count(), 3)
+
+    def test_history_page_requires_system_read(self):
+        """执行历史页面：仅 system.read 可访问，无权限 403，匿名 302。"""
+        from notifications.models import TaskRunLog
+
+        now = timezone.now()
+        TaskRunLog.objects.create(
+            task=self.task, code="notify_expire", source="schedule", status="success",
+            duration_ms=5, message="执行成功", started_at=now, finished_at=now,
+        )
+
+        allowed = User.objects.create_user("th_ok", "th@e.com", "x12345678")
+        grant_perms(allowed, "system.read")
+        c = Client()
+        c.force_login(allowed)
+        resp = c.get(reverse("task_run_history"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.context["page_obj"].paginator.count, 1)
+
+        denied = User.objects.create_user("th_no", "tn@e.com", "x12345678")
+        c2 = Client()
+        c2.force_login(denied)
+        self.assertEqual(c2.get(reverse("task_run_history")).status_code, 403)
+
+        self.assertEqual(Client().get(reverse("task_run_history")).status_code, 302)
+
+    def test_history_page_filters(self):
+        """结果筛选：status=fail 只返回失败记录。"""
+        from notifications.models import TaskRunLog
+
+        now = timezone.now()
+        TaskRunLog.objects.create(
+            task=self.task, code="notify_expire", source="schedule", status="fail",
+            duration_ms=1, message="失败", started_at=now, finished_at=now,
+        )
+        TaskRunLog.objects.create(
+            task=self.task, code="notify_expire", source="manual", status="success",
+            duration_ms=1, message="成功", started_at=now, finished_at=now,
+        )
+
+        allowed = User.objects.create_user("th_flt", "tf@e.com", "x12345678")
+        grant_perms(allowed, "system.read")
+        c = Client()
+        c.force_login(allowed)
+
+        resp = c.get(reverse("task_run_history"), {"status": "fail"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.context["page_obj"].paginator.count, 1)
+
+        resp = c.get(reverse("task_run_history"), {"task": str(self.task.pk)})
+        self.assertEqual(resp.context["page_obj"].paginator.count, 2)
+

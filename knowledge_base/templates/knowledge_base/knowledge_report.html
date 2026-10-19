@@ -1,0 +1,202 @@
+{% extends 'knowledge_base/base.html' %}
+{% load static %}
+
+{% block page_title %}知识库阅读报告 - 每日工作记录管理网站{% endblock %}
+
+{% block top_nav_actions %}
+    <form class="d-flex gap-2" method="GET">
+        <input type="hidden" name="days" value="{{ days }}">
+        <a href="{% url 'knowledge_base:document_list' %}" class="btn-transparent">返回知识库</a>
+    </form>
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h2>知识库阅读报告<span class="total-hint">近 {{ days }} 天 · 自 {{ since|date:'Y-m-d' }} 起</span></h2>
+    </div>
+
+    <form class="table-container report-filter" method="GET">
+        <div class="report-filter-row">
+            <label>统计窗口（天）
+                <input type="number" name="days" min="1" max="365" value="{{ days }}">
+            </label>
+            <button type="submit" class="btn-transparent">应用</button>
+        </div>
+    </form>
+
+    <div class="report-summary">
+        <span class="status-badge info">阅读次数 {{ total_views }}</span>
+        <span class="status-badge success">独立阅读人 {{ unique_viewers }}</span>
+        <span class="status-badge warning">被读文档 {{ viewed_docs }}</span>
+        <span class="status-badge default">未读文档 {{ unread_docs }}</span>
+    </div>
+
+    <div class="report-grid">
+        <div class="table-container">
+            <h3 class="report-block-title">热门文档 Top {{ top_documents|length }}</h3>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th scope="col">#</th>
+                            <th scope="col">文档</th>
+                            <th scope="col">阅读次数</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in top_documents %}
+                        <tr>
+                            <td data-label="#">{{ forloop.counter }}</td>
+                            <td data-label="文档">{{ item.document__title|default:'（已删除文档）' }}</td>
+                            <td data-label="阅读次数">{{ item.cnt }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="3" class="empty-cell">📭 窗口内暂无阅读记录</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <h3 class="report-block-title">活跃阅读人 Top {{ top_readers|length }}</h3>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th scope="col">#</th>
+                            <th scope="col">阅读人</th>
+                            <th scope="col">阅读次数</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in top_readers %}
+                        <tr>
+                            <td data-label="#">{{ forloop.counter }}</td>
+                            <td data-label="阅读人">{{ item.viewer }}</td>
+                            <td data-label="阅读次数">{{ item.cnt }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="3" class="empty-cell">📭 窗口内暂无阅读记录</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <h3 class="report-block-title">每日阅读趋势</h3>
+        <div class="report-trend">
+            {% for d in daily %}
+            <div class="trend-bar-wrap" title="{{ d.day|date:'Y-m-d' }}：{{ d.cnt }} 次">
+                <span class="trend-count">{{ d.cnt }}</span>
+                <span class="trend-bar" style="--bar-h: {{ d.cnt }}px;"></span>
+                <span class="trend-day">{{ d.day|date:'m-d' }}</span>
+            </div>
+            {% empty %}
+            <div class="empty-cell">📭 窗口内暂无阅读记录</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="table-container">
+        <h3 class="report-block-title">阅读明细<span class="total-hint">共 {{ page_obj.paginator.count }} 条</span></h3>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th scope="col">阅读时间</th>
+                        <th scope="col">阅读人</th>
+                        <th scope="col">文档</th>
+                        <th scope="col">来源IP</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for v in page_obj %}
+                    <tr>
+                        <td data-label="阅读时间">{{ v.viewed_at|date:'Y-m-d H:i:s' }}</td>
+                        <td data-label="阅读人">{{ v.viewer|default:'—' }}</td>
+                        <td data-label="文档">{{ v.document.title }}</td>
+                        <td data-label="来源IP">{{ v.ip|default:'—' }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="empty-cell">📭 窗口内暂无阅读记录</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% include 'records/_pagination.html' with page_obj=page_obj %}
+    </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .report-filter { padding: 1rem 1.25rem; }
+    .report-filter-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: flex-end;
+    }
+    .report-filter-row label {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        font-size: 0.8125rem;
+        color: var(--c-text-muted, #666);
+    }
+    .report-filter-row input {
+        width: 7rem;
+        padding: 0.4rem 0.6rem;
+        border: 1px solid var(--c-border, rgba(0,0,0,0.1));
+        border-radius: 6px;
+        background: var(--c-surface, #fff);
+        color: var(--c-text, #333);
+    }
+    .report-summary {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin: 1rem 0;
+    }
+    .report-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 1rem;
+    }
+    .report-grid .table-container { margin-top: 0; }
+    .report-block-title {
+        font-size: 1rem;
+        font-weight: 600;
+        padding: 0.75rem 1rem;
+        margin: 0;
+        border-bottom: 1px solid var(--c-border, rgba(0,0,0,0.08));
+        background: var(--c-surface-sunken, #f7f8fa);
+    }
+    .report-trend {
+        display: flex;
+        align-items: flex-end;
+        gap: 0.75rem;
+        padding: 1rem;
+        overflow-x: auto;
+    }
+    .trend-bar-wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.25rem;
+        min-width: 2.5rem;
+    }
+    .trend-bar {
+        display: block;
+        width: 1.25rem;
+        height: var(--bar-h, 2px);
+        min-height: 2px;
+        background: var(--c-primary, #1890ff);
+        border-radius: 3px;
+    }
+    .trend-count { font-size: 0.75rem; color: var(--c-text-muted, #666); }
+    .trend-day { font-size: 0.75rem; color: var(--c-text-muted, #666); }
+</style>
+{% endblock %}

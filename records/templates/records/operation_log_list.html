@@ -67,6 +67,7 @@
                     <th scope="col">类型</th>
                     <th scope="col">对象标识</th>
                     <th scope="col">变更摘要</th>
+                    <th scope="col">变更详情</th>
                 </tr>
             </thead>
             <tbody>
@@ -84,16 +85,39 @@
                             <span class="status-badge danger">{{ log.operation_type }}</span>
                         {% elif log.operation_type == '编辑' %}
                             <span class="status-badge warning">{{ log.operation_type }}</span>
+                        {% elif log.operation_type == '导出' %}
+                            <span class="status-badge default">{{ log.operation_type }}</span>
                         {% else %}
                             <span class="status-badge default">{{ log.operation_type }}</span>
                         {% endif %}
                     </td>
                     <td data-label="对象标识">{{ log.object_identifier }}</td>
                     <td data-label="变更摘要" class="summary-cell" title="{{ log.change_summary|default:'' }}">{{ log.change_summary|default:"—" }}</td>
+                    <td data-label="变更详情" class="diff-cell">
+                        {% with diff=log.change_diff %}
+                            {% if diff %}
+                            <details class="diff-details">
+                                <summary>{{ diff|length }} 项变更</summary>
+                                <ul class="diff-list">
+                                    {% for field, old, new in diff %}
+                                    <li>
+                                        <span class="diff-field">{{ field }}</span>：
+                                        <span class="diff-old">{% if old is None %}（空）{% else %}{{ old }}{% endif %}</span>
+                                        <span class="diff-arrow">→</span>
+                                        <span class="diff-new">{% if new is None %}（空）{% else %}{{ new }}{% endif %}</span>
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                            </details>
+                            {% else %}
+                            <span class="diff-empty">—</span>
+                            {% endif %}
+                        {% endwith %}
+                    </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="6" class="empty-cell">📭 暂无数据</td>
+                    <td colspan="7" class="empty-cell">📭 暂无数据</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -106,7 +130,7 @@
 {% block extra_css %}
 <style>
     /* 模板特定样式：表格宽度/单元格内边距覆盖、筛选下拉、空状态、操作徽章、摘要单元格 */
-    .table { min-width: 1000px; }
+    .table { min-width: 1120px; }
     .table td { padding: 0.875rem 1rem; }
     .filter-container { position: relative; display: inline-block; }
     .filter-dropdown { position: absolute; top: calc(100% + 0.5rem); right: 0; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 12px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15); padding: 1.25rem; min-width: 320px; max-width: 90vw; z-index: var(--z-dropdown); display: none; }
@@ -125,6 +149,15 @@
     .badge-delete { background: rgba(239, 68, 68, 0.3); color: rgba(255, 255, 255, 0.95); }
     .badge-edit { background: rgba(245, 158, 11, 0.3); color: rgba(255, 255, 255, 0.95); }
     .summary-cell { text-align: left; max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    /* 变更详情：折叠展示字段级 before → after */
+    .diff-cell { text-align: left; max-width: 340px; }
+    .diff-details summary { cursor: pointer; color: var(--c-primary); font-size: 0.8125rem; }
+    .diff-list { margin: 0.5rem 0 0 0; padding-left: 1.1rem; font-size: 0.78rem; color: var(--c-text-secondary); line-height: 1.6; }
+    .diff-field { font-weight: 600; color: var(--c-text); }
+    .diff-old { color: var(--c-danger); text-decoration: line-through; word-break: break-all; }
+    .diff-arrow { color: var(--c-text-disabled); margin: 0 0.25rem; }
+    .diff-new { color: var(--c-success); word-break: break-all; }
+    .diff-empty { color: var(--c-text-disabled); }
 </style>
 {% endblock %}
 

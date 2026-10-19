@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 
@@ -60,3 +61,37 @@ class KnowledgeDocument(models.Model):
         if self.tags:
             return [tag.strip() for tag in self.tags.split(',') if tag.strip()]
         return []
+
+
+class KnowledgeView(models.Model):
+    """知识文档阅读记录：每次打开详情页写一行。
+
+    与 ``KnowledgeDocument.view_count``（仅累计总次数）互补：本表保留
+    阅读人 / 阅读时间 / 来源 IP 的完整轨迹，供「阅读报告」按人、按文档、按时间聚合。
+    用户删除后轨迹不丢（user 用 SET_NULL，viewer 存用户名快照便于事后追溯）。
+    """
+
+    document = models.ForeignKey(
+        KnowledgeDocument, on_delete=models.CASCADE,
+        related_name='view_records', verbose_name='文档',
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='knowledge_view_records',
+        verbose_name='阅读用户',
+    )
+    viewer = models.CharField('阅读人', max_length=100, blank=True, default='')
+    ip = models.CharField('来源IP', max_length=64, blank=True, default='')
+    viewed_at = models.DateTimeField('阅读时间', auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = '知识阅读记录'
+        verbose_name_plural = verbose_name
+        ordering = ['-viewed_at']
+        indexes = [
+            models.Index(fields=['document', '-viewed_at'], name='idx_kview_doc_time'),
+            models.Index(fields=['user', '-viewed_at'], name='idx_kview_user_time'),
+        ]
+
+    def __str__(self):
+        return f"{self.viewer or '匿名'} → 文档#{self.document_id}"

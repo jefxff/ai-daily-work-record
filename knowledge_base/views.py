@@ -1,13 +1,17 @@
 import markdown
+from datetime import timedelta
 from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.core.paginator import Paginator
-from django.db.models import F, Q, Sum
+from django.db.models import Count, F, Q, Sum
+from django.db.models.functions import TruncDate
 from django.template.loader import render_to_string
+from django.utils import timezone
 from records.crud import _per_page
-from .models import KnowledgeDocument, KnowledgeCategory
+from .models import KnowledgeDocument, KnowledgeCategory, KnowledgeView
 from .forms import KnowledgeDocumentForm, KnowledgeCategoryForm
 from accounts.decorators import perm_required
+from accounts.security import client_ip
 
 
 def _is_ajax(request):
@@ -141,6 +145,13 @@ def document_detail(request, pk):
         KnowledgeDocument.objects.filter(pk=document.pk).update(
             view_count=F('view_count') + 1)
         document.refresh_from_db(fields=['view_count'])
+        # 阅读明细表：每次打开详情页写一行（弹窗预览不计入，避免重复计数）
+        KnowledgeView.objects.create(
+            document=document,
+            user=request.user if request.user.is_authenticated else None,
+            viewer=request.user.get_username() if request.user.is_authenticated else '',
+            ip=client_ip(request),
+        )
 
     # 将Markdown内容转换为HTML，并过滤 script/iframe/事件属性等危险内容
     document.content_html = _sanitize_html(markdown.markdown(
@@ -340,3 +351,77 @@ def category_delete(request, pk):
         'document_count': category.documents.count(),
     }
     return render(request, 'knowledge_base/category_delete.html', context)
+
+
+# —— 阅读报告（系统级统计页：知识库模块的读取分析，仅 system.read 可访问）——
+
+REPORT_DEFAULT_DAYS = 30
+REPORT_MIN_DAYS = 1
+REPORT_MAX_DAYS = 365
+REPORT_TOP_N = 10
+
+
+def _clamp_report_days(raw):
+    """解析 GET ``days``，非法值回退默认、越界夹取到 [MIN, MAX]。"""
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        return REPORT_DEFAULT_DAYS
+    return max(REPORT_MIN_DAYS, min(REPORT_MAX_DAYS, value))
+
+
+@perm_required("system", "read")
+def knowledge_report(request):
+    """知识库阅读报告：窗口内的阅读总量 / 独立阅读人 / 覆盖文档 / 榜单 / 明细。
+
+    数据源为 ``KnowledgeView``（每次详情页浏览一行）。页面本身不写阅读记录。
+    """
+    days = _clamp_report_days(request.GET.get('days'))
+    since = timezone.now() - timedelta(days=days)
+    qs = KnowledgeView.objects.filter(viewed_at__gte=since)
+
+    total_views = qs.count()
+    unique_viewers = qs.exclude(viewer='').values('viewer').distinct().count()
+    viewed_docs = qs.values('document_id').distinct().count()
+    published_docs = KnowledgeDocument.objects.filter(status='published').count()
+    unread_docs = max(published_docs - viewed_docs, 0)
+
+    # 榜单：阅读次数最多的文档 / 阅读最活跃的人
+    top_documents = list(
+        qs.values('document_id', 'document__title')
+        .annotate(cnt=Count('id'))
+        .order_by('-cnt')[:REPORT_TOP_N]
+    )
+    top_readers = list(
+        qs.exclude(viewer='').values('viewer')
+        .annotate(cnt=Count('id'))
+        .order_by('-cnt')[:REPORT_TOP_N]
+    )
+    # 每日趋势（仅返回窗口内有阅读的日期）
+    daily = list(
+        qs.annotate(day=TruncDate('viewed_at'))
+        .values('day')
+        .annotate(cnt=Count('id'))
+        .order_by('day')
+    )
+
+    per_page = _per_page(request)
+    page_obj = Paginator(
+        qs.select_related('document'), per_page
+    ).get_page(request.GET.get('page'))
+
+    context = {
+        'days': days,
+        'since': since,
+        'total_views': total_views,
+        'unique_viewers': unique_viewers,
+        'viewed_docs': viewed_docs,
+        'published_docs': published_docs,
+        'unread_docs': unread_docs,
+        'top_documents': top_documents,
+        'top_readers': top_readers,
+        'daily': daily,
+        'page_obj': page_obj,
+        'per_page': per_page,
+    }
+    return render(request, 'knowledge_base/knowledge_report.html', context)

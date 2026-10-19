@@ -14,8 +14,9 @@
    >= ``OFF_HOURS_BATCH_THRESHOLD``；
 3. **单小时高频操作**：同一操作人 1 小时内操作总数 > ``HIGH_FREQ_THRESHOLD``。
 
-「导出/下载行为专项追踪」不在本页：现有留痕的 ``operation_type`` 仅有
-新增/更新/删除/编辑，无「导出」类型，补齐写入点属批 B。
+「导出/下载行为专项追踪」：批 B 已补齐各导出入口的 ``operation_type='导出'``
+写点（records 标准导出 / 到期清单 / archive 表格与台账 / samples），本页据此
+新增第 4 项检测（同一操作人 1 小时内导出条数超阈）。
 """
 from datetime import timedelta
 
@@ -32,6 +33,7 @@ from .models import OperationLog
 DELETE_BURST_THRESHOLD = 20      # 同一操作人 1 小时内删除条数上限
 OFF_HOURS_BATCH_THRESHOLD = 10   # 同一操作人同一天（非工作时间）删除/编辑条数下限
 HIGH_FREQ_THRESHOLD = 50         # 同一操作人 1 小时内操作总数上限
+EXPORT_BURST_THRESHOLD = 10      # 同一操作人 1 小时内导出条数上限
 
 DEFAULT_DAYS = 7
 MIN_DAYS = 1
@@ -89,14 +91,26 @@ def audit_anomalies(request):
         .order_by("-cnt")
     )
 
+    # 4. 导出爆发：同一操作人 1 小时内导出条数 > 阈值
+    export_bursts = list(
+        base.filter(operation_type="导出")
+        .annotate(hour=TruncHour("operation_time"))
+        .values("operator", "hour")
+        .annotate(cnt=Count("id"))
+        .filter(cnt__gt=EXPORT_BURST_THRESHOLD)
+        .order_by("-cnt")
+    )
+
     return render(request, "records/audit_anomalies.html", {
         "days": days,
         "since": since,
         "delete_bursts": delete_bursts,
         "off_hours": off_hours,
         "high_freq": high_freq,
-        "empty_all": not (delete_bursts or off_hours or high_freq),
+        "export_bursts": export_bursts,
+        "empty_all": not (delete_bursts or off_hours or high_freq or export_bursts),
         "delete_burst_threshold": DELETE_BURST_THRESHOLD,
         "off_hours_batch_threshold": OFF_HOURS_BATCH_THRESHOLD,
         "high_freq_threshold": HIGH_FREQ_THRESHOLD,
+        "export_burst_threshold": EXPORT_BURST_THRESHOLD,
     })

@@ -3,6 +3,10 @@
 
 {% block page_title %}系统健康 - 每日工作记录管理网站{% endblock %}
 
+{% block top_nav_actions %}
+    <a href="{% url 'task_run_history' %}" class="btn-transparent">任务执行历史</a>
+{% endblock %}
+
 {% block extra_css %}
 <style>
     .health-header {

@@ -1289,4 +1289,10 @@ log_list = make_list_view(
 @perm_required("samples", "read")
 def export_samples(request):
     flt = SampleFilter(request.GET)
-    return export_samples_xlsx(flt.apply())
+    qs = flt.apply()
+    response = export_samples_xlsx(qs)
+    # 导出行为留痕（写入 records.OperationLog，供审计异常检测统一读取）
+    from records.audit import log_operation
+    log_operation(request, "试样管理", "导出", "[试样管理]下的导出",
+                  f"导出试样清单: {qs.count()} 条")
+    return response

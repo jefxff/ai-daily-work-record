@@ -1,0 +1,101 @@
+{% extends "records/base.html" %}
+{% load accounts_tags %}
+
+{% block page_title %}任务执行历史 - 每日工作记录管理网站{% endblock %}
+
+{% block top_nav_actions %}
+    <a href="{% url 'system_health' %}" class="btn-transparent">系统健康</a>
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h2>任务执行历史<span class="total-hint">共 {{ page_obj.paginator.count }} 条 · 每任务保留最近 200 条</span></h2>
+    </div>
+
+    <form class="table-container task-filter" method="GET">
+        <div class="task-filter-row">
+            <label>任务
+                <select name="task">
+                    <option value="">全部任务</option>
+                    {% for t in tasks %}
+                    <option value="{{ t.pk }}" {% if task_filter == t.pk|stringformat:'s' %}selected{% endif %}>{{ t.name }}（{{ t.code }}）</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>结果
+                <select name="status">
+                    <option value="">全部</option>
+                    <option value="success" {% if status_filter == 'success' %}selected{% endif %}>成功</option>
+                    <option value="fail" {% if status_filter == 'fail' %}selected{% endif %}>失败</option>
+                </select>
+            </label>
+            <button type="submit" class="btn-transparent">应用</button>
+        </div>
+    </form>
+
+    <div class="table-container">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th scope="col">开始时间</th>
+                        <th scope="col">结束时间</th>
+                        <th scope="col">任务</th>
+                        <th scope="col">来源</th>
+                        <th scope="col">结果</th>
+                        <th scope="col">耗时</th>
+                        <th scope="col">输出摘要</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in page_obj %}
+                    <tr>
+                        <td data-label="开始时间">{{ log.started_at|date:'Y-m-d H:i:s' }}</td>
+                        <td data-label="结束时间">{{ log.finished_at|date:'Y-m-d H:i:s' }}</td>
+                        <td data-label="任务">{{ log.task.name|default:log.code }}</td>
+                        <td data-label="来源">{{ log.get_source_display }}</td>
+                        <td data-label="结果">
+                            <span class="status-badge {{ log.status_badge_class }}">
+                                {% if log.status == 'success' %}成功{% else %}失败{% endif %}
+                            </span>
+                        </td>
+                        <td data-label="耗时">{{ log.duration_ms|default:'—' }} ms</td>
+                        <td data-label="输出摘要" class="summary-cell" title="{{ log.message }}">{{ log.message|default:'—'|truncatechars:120 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="empty-cell">📭 暂无执行历史</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% include 'records/_pagination.html' with page_obj=page_obj %}
+    </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .task-filter { padding: 1rem 1.25rem; }
+    .task-filter-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: flex-end;
+    }
+    .task-filter-row label {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        font-size: 0.8125rem;
+        color: var(--c-text-muted, #666);
+    }
+    .task-filter-row select {
+        min-width: 12rem;
+        padding: 0.4rem 0.6rem;
+        border: 1px solid var(--c-border, rgba(0,0,0,0.1));
+        border-radius: 6px;
+        background: var(--c-surface, #fff);
+        color: var(--c-text, #333);
+    }
+    .summary-cell { max-width: 360px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+</style>
+{% endblock %}

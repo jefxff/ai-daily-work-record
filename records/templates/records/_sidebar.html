@@ -118,6 +118,8 @@
                 <a href="{% url 'audit_anomalies' %}" class="{% if '/operation_log/anomalies' in request.path %}active{% endif %}">异常检测</a>
                 <a href="{% url 'sysbackup:center' %}" class="{% if '/system/backup' in request.path %}active{% endif %}">数据备份</a>
                 <a href="{% url 'system_health' %}" class="{% if '/system/health' in request.path %}active{% endif %}">系统健康</a>
+                <a href="{% url 'task_run_history' %}" class="{% if '/system/tasks' in request.path %}active{% endif %}">任务历史</a>
+                <a href="{% url 'knowledge_report' %}" class="{% if '/system/knowledge-report' in request.path %}active{% endif %}">阅读报告</a>
                 {% endcan_view %}
                 {% can_view_any "insurance" "archive" %}
                 <a href="{% url 'expiry_calendar' %}" class="{% if '/expiry' in request.path %}active{% endif %}">到期预警</a>

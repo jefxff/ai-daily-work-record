@@ -18,7 +18,7 @@
         <h2>异常检测<span class="total-hint">近 {{ days }} 天 · 自 {{ since|date:'Y-m-d H:i' }}</span></h2>
     </div>
 
-    <p class="anomaly-note">导出/下载行为的专项追踪属于批 B（现有留痕无「导出」类型），本页不含。</p>
+    <p class="anomaly-note">检测窗口内操作留痕的异常模式：删除爆发、非工作时间批量操作、单小时高频操作、导出爆发。</p>
 
     {% if empty_all %}
     <div class="table-container">
@@ -115,6 +115,38 @@
                     {% empty %}
                     <tr>
                         <td colspan="3" class="empty-cell">窗口内未发现单小时高频操作</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 4. 导出爆发 -->
+    <div class="table-container">
+        <div class="anomaly-section-head">
+            <span class="anomaly-section-title">导出爆发</span>
+            <span class="total-hint">同一操作人 1 小时内导出 &gt; {{ export_burst_threshold }} 次</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th scope="col">操作人</th>
+                        <th scope="col">小时</th>
+                        <th scope="col">导出次数</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in export_bursts %}
+                    <tr>
+                        <td data-label="操作人">{{ row.operator }}</td>
+                        <td data-label="小时">{{ row.hour|date:'Y-m-d H:00' }}</td>
+                        <td data-label="导出次数"><span class="status-badge warning">{{ row.cnt }}</span></td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3" class="empty-cell">窗口内未发现导出爆发</td>
                     </tr>
                     {% endfor %}
                 </tbody>

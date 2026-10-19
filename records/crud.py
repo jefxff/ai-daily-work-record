@@ -20,7 +20,7 @@ from openpyxl.utils import get_column_letter
 
 from accounts.decorators import perm_required
 
-from .audit import log_operation
+from .audit import log_operation, snapshot
 
 
 def _sanitize_xlsx_formulas(wb):
@@ -65,7 +65,8 @@ def make_form_view(*, model, form_class, perm_module, log_label, display_field,
             if form.is_valid():
                 obj = form.save()
                 log_operation(request, log_label, '新增', f'[{log_label}]下的记录#{obj.id}',
-                              f'新增{label}: {getattr(obj, display_field)}')
+                              f'新增{label}: {getattr(obj, display_field)}',
+                              after=snapshot(obj))
                 if is_ajax:
                     return JsonResponse({'ok': True, 'message': '新增成功'})
                 return redirect(redirect_name)
@@ -80,13 +81,16 @@ def make_form_view(*, model, form_class, perm_module, log_label, display_field,
     @perm_required(perm_module, "update")
     def _edit_view(request, pk):
         obj = get_object_or_404(model, pk=pk)
+        # 快照须在绑定表单前拍：ModelForm.is_valid() 的 _post_clean 会就地改写实例
+        before_snap = snapshot(obj)
         is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
         if request.method == 'POST':
             form = form_class(request.POST, instance=obj)
             if form.is_valid():
                 form.save()
                 log_operation(request, log_label, '更新', f'[{log_label}]下的记录#{obj.id}',
-                              f'编辑{label}: {getattr(obj, display_field)}')
+                              f'编辑{label}: {getattr(obj, display_field)}',
+                              before=before_snap, after=snapshot(obj))
                 if is_ajax:
                     return JsonResponse({'ok': True, 'message': '保存成功'})
                 return redirect(redirect_name)
@@ -119,8 +123,10 @@ def make_delete_view(*, model=None, perm_module, label, display_field,
         obj = getter(request, pk) if getter else get_object_or_404(model, pk=pk)
         info = f'删除{label}: {getattr(obj, display_field)}'
         obj_id = obj.pk  # delete() 会将实例 pk 置 None，须先取出再删除
+        before_snap = snapshot(obj)
         obj.delete()
-        log_operation(request, label, '删除', f'[{label}]下的记录#{obj_id}', info)
+        log_operation(request, label, '删除', f'[{label}]下的记录#{obj_id}', info,
+                      before=before_snap)
         return redirect(redirect_name)
 
     return _delete_view
@@ -128,7 +134,7 @@ def make_delete_view(*, model=None, perm_module, label, display_field,
 
 def make_export_view(*, model=None, perm_module, sheet_title, filename_base,
                      headers, row_values, queryset=None, column_width=20,
-                     empty_text):
+                     empty_text, log_label=None):
     """生成标准 Excel 导出视图：空数据提示 + 列宽 + 公式注入防护。
 
     - model:        数据模型；queryset 未提供时按 model.objects.all() 导出；
@@ -139,8 +145,10 @@ def make_export_view(*, model=None, perm_module, sheet_title, filename_base,
     - queryset:     自定义取数 (request) -> QuerySet，用于数据隔离/排序
                     （如每日记录仅导出当前用户的记录）；
     - column_width: 数据列宽（默认 20，个别模块为 30）；
-    - empty_text:   空数据提示完整文案（逐字传入，避免拼接歧义）。
+    - empty_text:   空数据提示完整文案（逐字传入，避免拼接歧义）；
+    - log_label:    导出留痕的模块名（默认取 sheet_title），写入 operation_type='导出'。
     """
+    audit_label = log_label or sheet_title
 
     @perm_required(perm_module, "read")
     def _export_view(request):
@@ -174,6 +182,9 @@ def make_export_view(*, model=None, perm_module, sheet_title, filename_base,
         response['Content-Disposition'] = content_disposition(filename)
         _sanitize_xlsx_formulas(wb)
         wb.save(response)
+        # 导出行为留痕（operation_type='导出'）：供审计异常检测识别批量导出
+        log_operation(request, audit_label, '导出', f'[{audit_label}]下的导出',
+                      f'导出{audit_label}: {objs.count()} 条')
         return response
 
     return _export_view

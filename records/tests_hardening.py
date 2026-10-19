@@ -354,6 +354,28 @@ class ExportFilenameTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertIn("filename*=UTF-8''", resp["Content-Disposition"])
 
+    def test_export_writes_operation_log(self):
+        """批次B：导出动作落一条 operation_type='导出' 留痕（供异常检测识别批量导出）。"""
+        from .models import OperationLog
+
+        call_command("sync_rbac", verbosity=0)
+        user = User.objects.create_superuser("e_log", "el@e.com", "x12345678")
+        Decoration.objects.create(
+            project_name="留痕测试", constructor="乙", start_date=date(2026, 1, 1), final_price=20
+        )
+        self.client.force_login(user)
+
+        resp = self.client.get(reverse("decoration_export"))
+        self.assertEqual(resp.status_code, 200)
+
+        log = OperationLog.objects.get(operation_type="导出")
+        self.assertEqual(log.module_type, "装修")
+        self.assertEqual(log.object_identifier, "[装修]下的导出")
+        self.assertEqual(log.operator, "e_log")
+        # 导出无实体变更 → 不落快照
+        self.assertIsNone(log.before_json)
+        self.assertIsNone(log.after_json)
+
 
 class FormulaInjectionTests(TestCase):
     """#27：导出内容中的 '=' 开头字符串不能变成公式。"""

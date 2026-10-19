@@ -24,7 +24,7 @@ from django.db import close_old_connections
 from django.db.models import Q
 from django.utils import timezone
 
-from notifications.models import ScheduledTask
+from notifications.models import ScheduledTask, TaskRunLog
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +32,7 @@ SCAN_INTERVAL_SECONDS = 30
 RUNNING_STALE_MINUTES = 30      # running 超过该时长视为僵死，允许重新领取
 ALIVE_WINDOW_SECONDS = 90       # 心跳超过该时长无更新视为线程不存活
 MESSAGE_MAX_CHARS = 2000
+RUN_LOG_KEEP_PER_TASK = 200     # 每任务保留的执行历史条数（超出自动裁剪最早的）
 
 HEARTBEATS = {"worker": None, "scheduler": None}
 _run_lock = threading.Lock()    # 串行执行任务，避免多任务并发压垮 SQLite
@@ -170,6 +171,22 @@ def _handle_task_result(task, ok, message):
         logger.exception("定时任务连续失败告警发送失败（不影响任务主流程）")
 
 
+def _prune_run_logs(task_pk):
+    """按任务裁剪执行历史：仅保留最近 RUN_LOG_KEEP_PER_TASK 条。
+
+    裁剪失败仅记日志：执行历史是审计辅助数据，不得影响任务主流程。
+    """
+    try:
+        keep_ids = list(
+            TaskRunLog.objects.filter(task_id=task_pk)
+            .order_by("-finished_at", "-id")
+            .values_list("id", flat=True)[:RUN_LOG_KEEP_PER_TASK]
+        )
+        TaskRunLog.objects.filter(task_id=task_pk).exclude(id__in=keep_ids).delete()
+    except Exception:
+        logger.exception("定时任务执行历史裁剪失败（task=%s）", task_pk)
+
+
 def run_task(task, source="schedule"):
     """原子领取并同步执行一次任务；返回 (是否执行, 是否成功, 结果摘要)。
 
@@ -184,6 +201,7 @@ def run_task(task, source="schedule"):
     task.refresh_from_db()
 
     started = time.monotonic()
+    started_at = timezone.now()
     buf = io.StringIO()
     ok = True
     try:
@@ -201,13 +219,22 @@ def run_task(task, source="schedule"):
         duration_ms = int((time.monotonic() - started) * 1000)
         output = buf.getvalue().strip()
         message = output[-MESSAGE_MAX_CHARS:] or ("执行成功" if ok else "执行失败（无输出）")
+        finished_at = timezone.now()
         ScheduledTask.objects.filter(pk=task.pk).update(
             last_status="success" if ok else "fail",
             last_message=message,
             last_duration_ms=duration_ms,
-            last_run_at=timezone.now(),
-            updated_at=timezone.now(),
+            last_run_at=finished_at,
+            updated_at=finished_at,
         )
+        # 执行历史留痕（每条一次），随后按任务裁剪至最近 N 条
+        TaskRunLog.objects.create(
+            task=task, code=task.code, source=source,
+            status="success" if ok else "fail",
+            duration_ms=duration_ms, message=message,
+            started_at=started_at, finished_at=finished_at,
+        )
+        _prune_run_logs(task.pk)
         _handle_task_result(task, ok, message)
         close_old_connections()
     return True, ok, message

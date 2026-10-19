@@ -15,6 +15,7 @@ from accounts.decorators import perm_required_any
 from accounts.services import has_perm
 
 from . import expiry
+from .audit import log_operation
 
 # GET 提前天数参数 -> 来源 kind
 LEAD_PARAM_MAP = {
@@ -130,4 +131,7 @@ def expiry_export(request):
         filename, ascii_fallback="expiry-this-month.xlsx"
     )
     wb.save(response)
+    # 导出行为留痕：供审计异常检测识别批量导出
+    log_operation(request, "到期预警", "导出", "[到期预警]下的导出",
+                  f"导出本月到期清单: {len(rows)} 条")
     return response

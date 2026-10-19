@@ -11,7 +11,7 @@ import logging
 import os
 
 from accounts.services import has_perm
-from records.audit import log_operation
+from records.audit import log_operation, snapshot
 from samples.services import (
     create_partner, create_sample, create_test_record, create_batch_record,
     BusinessError, client_ip,
@@ -99,8 +99,12 @@ class EnhancedModelViewSet(viewsets.ModelViewSet):
             return xff.split(',')[0].strip()
         return self.request.META.get('REMOTE_ADDR', '未知')
 
-    def _write_audit(self, op_type, obj_id, summary):
-        """写入操作留痕；留痕失败仅记日志，不影响 API 主流程。"""
+    def _write_audit(self, op_type, obj_id, summary, before=None, after=None):
+        """写入操作留痕；留痕失败仅记日志，不影响 API 主流程。
+
+        before/after 为 records.audit.snapshot 归一后的字典；samples 独立留痕表
+        无对应字段，仅 records.OperationLog 通道落库快照。
+        """
         try:
             label = self._audit_label()
             obj_name = self.audit_object_name or label
@@ -133,7 +137,8 @@ class EnhancedModelViewSet(viewsets.ModelViewSet):
                     identifier = f'{obj_name}#{obj_id}'
                 else:
                     identifier = f'[{label}]下的记录#{obj_id}'
-                log_operation(self.request, label, op_type, identifier, summary)
+                log_operation(self.request, label, op_type, identifier, summary,
+                              before=before, after=after)
         except Exception:
             logger.exception('AI API 操作留痕写入失败（%s %s#%s）',
                              op_type, self.audit_label or self.perm_module, obj_id)
@@ -147,21 +152,26 @@ class EnhancedModelViewSet(viewsets.ModelViewSet):
         obj = serializer.save()
         label = self._audit_label()
         display = self._audit_display(obj)
-        self._write_audit('新增', obj.pk, f'新增{label}: {display}')
+        self._write_audit('新增', obj.pk, f'新增{label}: {display}',
+                          after=snapshot(obj))
 
     def perform_update(self, serializer):
+        # 快照须在 save 前拍：save 会就地改写实例
+        before_snap = snapshot(serializer.instance)
         obj = serializer.save()
         label = self._audit_label()
         display = self._audit_display(obj)
-        self._write_audit('更新', obj.pk, f'编辑{label}: {display}')
+        self._write_audit('更新', obj.pk, f'编辑{label}: {display}',
+                          before=before_snap, after=snapshot(obj))
 
     def perform_destroy(self, instance):
         # delete() 会将实例 pk 置 None，须先取出再删除（与页面端删除留痕一致）
         obj_id = instance.pk
+        before_snap = snapshot(instance)
         display = self._audit_display(instance)
         label = self._audit_label()
         instance.delete()
-        self._write_audit('删除', obj_id, f'删除{label}: {display}')
+        self._write_audit('删除', obj_id, f'删除{label}: {display}', before=before_snap)
 
     def get_queryset(self):
         """重写查询集以支持过滤"""

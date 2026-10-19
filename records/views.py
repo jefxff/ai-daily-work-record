@@ -6,7 +6,7 @@ from django.db.models.functions import TruncDate
 from datetime import date, datetime, timedelta
 from .models import Decoration, CustomerCredit, CustomerComplaint, Regulation, PriceEvaluation, DailyRecord, MetalPrice, Insurance, Complaint, OperationLog
 from .forms import DecorationForm, CustomerCreditForm, CustomerComplaintForm, RegulationForm, PriceEvaluationForm, InsuranceForm, ComplaintForm
-from .audit import log_operation
+from .audit import log_operation, snapshot
 from .crud import make_delete_view, make_export_view, make_form_view, make_list_view
 from django.utils import timezone
 from accounts.decorators import perm_required, require_any_module
@@ -363,7 +363,7 @@ decoration_add, decoration_edit = make_form_view(
 )
 
 decoration_export = make_export_view(
-    model=Decoration, perm_module='decoration', sheet_title='装修记录',
+    model=Decoration, perm_module='decoration', sheet_title='装修记录', log_label='装修',
     filename_base='装修记录', empty_text='当前无装修记录，无法导出Excel',
     headers=['项目名称', '施工方', '项目地址', '开工日期', '原价', '核后价', '核减金额'],
     row_values=lambda obj, serial: [
@@ -402,7 +402,7 @@ customer_credit_add, customer_credit_edit = make_form_view(
 )
 
 customer_credit_export = make_export_view(
-    model=CustomerCredit, perm_module='customer_credit', sheet_title='客户账期',
+    model=CustomerCredit, perm_module='customer_credit', sheet_title='客户账期', log_label='客户账期',
     filename_base='客户账期', empty_text='当前无客户账期记录，无法导出Excel',
     headers=['提出日期', '现场日期', '客户名称', '客户类型', '业务员', '工作内容', '具体内容', '前期调查表', '工作方式', '结果', '备注', '是否有业绩考核期', '考核期开始日期', '考核期结束日期', '考核内容'],
     row_values=lambda obj, serial: [
@@ -443,7 +443,7 @@ customer_complaint_add, customer_complaint_edit = make_form_view(
 )
 
 customer_complaint_export = make_export_view(
-    model=CustomerComplaint, perm_module='customer_complaint', sheet_title='客户客诉',
+    model=CustomerComplaint, perm_module='customer_complaint', sheet_title='客户客诉', log_label='客户客诉',
     filename_base='客户客诉', empty_text='当前无客户客诉记录，无法导出Excel',
     headers=['客户名称', '责任业务员', '客诉申请日期', '终端客户', '产品型号', '我司出货量', '客户出货量', '客诉现象及客户诉求描述', '客户诉求（赔偿金额）', '是否报保险', '工程报告', '工程部分析原因报告', '欠缺材料', '客诉状态', '跟进情况', '备注'],
     row_values=lambda obj, serial: [
@@ -492,7 +492,7 @@ regulation_add, regulation_edit = make_form_view(
 )
 
 regulation_export = make_export_view(
-    model=Regulation, perm_module='regulation', sheet_title='制度及处罚',
+    model=Regulation, perm_module='regulation', sheet_title='制度及处罚', log_label='制度及处罚',
     filename_base='制度及处罚', empty_text='当前无制度及处罚记录，无法导出Excel', column_width=30,
     headers=['出文日期', '标题', '主要内容', '文件编号'],
     row_values=lambda obj, serial: [
@@ -529,7 +529,7 @@ price_evaluation_add, price_evaluation_edit = make_form_view(
 )
 
 price_evaluation_export = make_export_view(
-    model=PriceEvaluation, perm_module='price_evaluation', sheet_title='核价',
+    model=PriceEvaluation, perm_module='price_evaluation', sheet_title='核价', log_label='核价',
     filename_base='核价', empty_text='当前无核价记录，无法导出Excel',
     headers=['项目分类', '项目提出部门', '提出人', '核价内容', '供应商1名称', '供应商1报价', '供应商2名称', '供应商2报价', '供应商3名称', '供应商3报价', '内控审核供应商', '内控审核价'],
     row_values=lambda obj, serial: [
@@ -592,7 +592,7 @@ def daily_record_add(request):
             return render(request, 'records/daily_record_form.html', {'errors': errors})
 
         # 创建并保存记录（归属绑定当前用户，服务端强制，忽略前端提交的归属字段）
-        DailyRecord.objects.create(
+        record = DailyRecord.objects.create(
             user=request.user,
             department=department,
             work_content=work_content,
@@ -600,7 +600,8 @@ def daily_record_add(request):
             status=status,
             progress=progress
         )
-        log_operation(request, '每日记录', '新增', '[每日记录]下的新记录', f'新增每日记录: {work_content}')
+        log_operation(request, '每日记录', '新增', '[每日记录]下的新记录',
+                      f'新增每日记录: {work_content}', after=snapshot(record))
         # 通知触发：保存为「未完成」时提醒本人（同记录幂等，编辑改回未完成不会重复提醒）
         if status == '未完成':
             try:
@@ -689,13 +690,16 @@ def daily_record_edit(request, pk):
             return render(request, 'records/daily_record_form.html', {'record': record, 'errors': errors})
 
         # 写入
+        before_snap = snapshot(record)
         record.department = department
         record.work_content = work_content
         record.status = status
         record.progress = progress
         record.due_date = due_date
         record.save()
-        log_operation(request, '每日记录', '更新', f'[每日记录]下的记录#{record.id}', f'编辑每日记录: {record.work_content}')
+        log_operation(request, '每日记录', '更新', f'[每日记录]下的记录#{record.id}',
+                      f'编辑每日记录: {record.work_content}',
+                      before=before_snap, after=snapshot(record))
         if is_ajax:
             return JsonResponse({'ok': True, 'message': '保存成功'})
         return redirect('daily_record_list')
@@ -717,7 +721,7 @@ def daily_record_detail(request, pk):
     return render(request, 'records/daily_record_detail.html', {'record': record})
 
 daily_record_export = make_export_view(
-    perm_module='daily_record', sheet_title='每日记录',
+    perm_module='daily_record', sheet_title='每日记录', log_label='每日记录',
     filename_base='每日记录', empty_text='当前无每日记录，无法导出Excel',
     queryset=lambda request: _my_daily_records(request.user).order_by('-record_date'),
     headers=['序号', '日期及时间', '提出部门', '工作内容', '工作状态', '工作进度'],
@@ -800,7 +804,7 @@ insurance_delete = make_delete_view(
 )
 
 insurance_export = make_export_view(
-    model=Insurance, perm_module='insurance', sheet_title='保险记录',
+    model=Insurance, perm_module='insurance', sheet_title='保险记录', log_label='保险',
     filename_base='保险记录', empty_text='当前无保险记录，无法导出Excel',
     headers=['序号', '公司名称', '标题', '单号', '保费', '签发日期', '截止日期', '是否已经到期', '部门', '备注'],
     row_values=lambda obj, serial: [
@@ -1151,7 +1155,7 @@ complaint_delete = make_delete_view(
 )
 
 complaint_export = make_export_view(
-    model=Complaint, perm_module='complaint', sheet_title='客诉记录',
+    model=Complaint, perm_module='complaint', sheet_title='客诉记录', log_label='诉讼',
     filename_base='客诉记录', empty_text='当前无客诉记录，无法导出Excel',
     headers=['序号', '纠纷类型', '被告', '案号', '涉案金额（元）', '受理法院', '代理律师', '进度', '详细进度', '备注'],
     row_values=lambda obj, serial: [
@@ -1199,8 +1203,10 @@ operation_log_list = make_list_view(
     ],
     extra_context={
         'module_choices': ['每日记录', '装修', '客户账期', '客户客诉', '诉讼',
-                           '制度及处罚', '核价', '保险', '金属价格', '数据展示', '数据下载', '知识库'],
-        'operation_choices': ['新增', '更新', '删除', '编辑'],
+                           '制度及处罚', '核价', '保险', '金属价格', '数据展示', '数据下载', '知识库',
+                           '档案管理', '证照管理', '试样管理', '到期预警', '系统管理'],
+        'operation_choices': ['新增', '更新', '删除', '编辑', '导入', '导出',
+                              '下载', '备份', '恢复', '借阅', '归还', '移动', '年审'],
     },
 )
 

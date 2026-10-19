@@ -229,6 +229,33 @@ class OperationLog(models.Model):
     operation_type = models.CharField(max_length=20, verbose_name='操作类型')
     object_identifier = models.CharField(max_length=200, verbose_name='对象标识')
     change_summary = models.TextField(verbose_name='变更摘要', null=True, blank=True)
+    # 变更前/后字段快照（records.audit.snapshot 归一后的 JSON 安全字典）：
+    # 新增仅 after、删除仅 before、编辑两者皆有；导出等无实体变更的动作为空。
+    before_json = models.JSONField(verbose_name='变更前', null=True, blank=True)
+    after_json = models.JSONField(verbose_name='变更后', null=True, blank=True)
+
+    # 单条留痕最多展示的字段级变更项，避免大对象撑爆列表页
+    MAX_DIFF_ITEMS = 50
+
+    @property
+    def change_diff(self):
+        """字段级变更明细：[(字段名, 变更前, 变更后), ...]，仅含前后不一致的字段。
+
+        新增（无 before）与删除（无 after）时，缺失的一侧为 None。
+        无快照（导出等动作）返回空列表。
+        """
+        before = self.before_json or {}
+        after = self.after_json or {}
+        if not before and not after:
+            return []
+        diff = []
+        for key in dict.fromkeys(list(before) + list(after)):
+            old, new = before.get(key), after.get(key)
+            if old != new:
+                diff.append((key, old, new))
+                if len(diff) >= self.MAX_DIFF_ITEMS:
+                    break
+        return diff
 
     class Meta:
         verbose_name = '操作留痕'

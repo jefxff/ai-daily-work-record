@@ -269,6 +269,50 @@ class ScheduledTask(models.Model):
         return "，".join(f"{k}={v}" for k, v in self.params.items())
 
 
+class TaskRunLog(models.Model):
+    """定时任务执行历史：每次执行（自动调度 / 手动立即执行）写一行。
+
+    「上次执行结果」只保留最近一次（ScheduledTask.last_*），本表补全历史轨迹：
+    供系统页面查看某任务在时间轴上的成功/失败分布与输出摘要。
+    写入时按任务裁剪至最近 ``KEEP_PER_TASK`` 条，避免无界增长。
+    """
+
+    class Source(models.TextChoices):
+        SCHEDULE = "schedule", "自动调度"
+        MANUAL = "manual", "手动执行"
+
+    task = models.ForeignKey(
+        ScheduledTask, on_delete=models.CASCADE,
+        related_name="run_logs", verbose_name="任务",
+    )
+    code = models.CharField("命令编码", max_length=50)
+    source = models.CharField(
+        "触发来源", max_length=20, choices=Source.choices, default=Source.SCHEDULE,
+    )
+    status = models.CharField("执行结果", max_length=10)  # success / fail
+    duration_ms = models.IntegerField("耗时(ms)", null=True, blank=True)
+    message = models.TextField("执行输出摘要", blank=True, default="")
+    started_at = models.DateTimeField("开始时间")
+    finished_at = models.DateTimeField("结束时间", db_index=True)
+
+    class Meta:
+        verbose_name = "任务执行历史"
+        verbose_name_plural = verbose_name
+        ordering = ["-finished_at", "-id"]
+        indexes = [
+            models.Index(fields=["task", "-finished_at"], name="idx_taskrun_task_time"),
+        ]
+
+    STATUS_BADGES = {"success": "success", "fail": "danger"}
+
+    def __str__(self):
+        return f"{self.code} [{self.status}] @ {self.finished_at:%Y-%m-%d %H:%M}"
+
+    @property
+    def status_badge_class(self):
+        return self.STATUS_BADGES.get(self.status, "default")
+
+
 class NotificationDelivery(models.Model):
     """发送渠道日志：一条通知 × 一个渠道一行（重试时累计 attempts）。"""
 

@@ -10,18 +10,19 @@
 ``OperationLog.objects.filter(pk=...).update(operation_time=...)`` 绕过它写入历史时间。
 """
 
-from datetime import timedelta
+from datetime import date, timedelta
+from decimal import Decimal
 
 from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.core.management import call_command
-from django.test import Client, TestCase
+from django.test import Client, RequestFactory, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
 from accounts.models import Permission, Role
 
-from .models import OperationLog
+from .models import Decoration, OperationLog
 
 PWD = "X12345678"
 
@@ -58,12 +59,16 @@ class AuditAnomaliesTests(TestCase):
     # ---------- 辅助 ----------
     def _seed_deletes(self, operator, count, when):
         """构造 count 条删除留痕，并把 operation_time 回写为指定时间（绕过 auto_now_add）。"""
+        self._seed_logs(operator, "删除", count, when)
+
+    def _seed_logs(self, operator, op_type, count, when):
+        """构造 count 条指定类型的留痕，并把 operation_time 回写为指定时间。"""
         pks = []
         for i in range(count):
             log = OperationLog.objects.create(
                 operator=operator,
                 module_type="测试",
-                operation_type="删除",
+                operation_type=op_type,
                 object_identifier=f"obj-{i}",
                 change_summary="x",
             )
@@ -94,6 +99,22 @@ class AuditAnomaliesTests(TestCase):
         resp = self._login(self.allowed).get(url)
         self.assertEqual(resp.status_code, 200)
         self.assertFalse(self._hits_operator(resp.context["delete_bursts"], "suspect5"))
+
+    # ---------- 批次B：导出爆发 ----------
+    def test_export_burst_hit_and_miss(self):
+        """同一操作人 1 小时内导出 11 次 → 命中；5 次 → 不命中。"""
+        url = reverse("audit_anomalies")
+        when = timezone.now() - timedelta(minutes=5)
+
+        self._seed_logs("exporter11", "导出", 11, when)
+        resp = self._login(self.allowed).get(url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(self._hits_operator(resp.context["export_bursts"], "exporter11"))
+
+        self._seed_logs("exporter5", "导出", 5, when)
+        resp = self._login(self.allowed).get(url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(self._hits_operator(resp.context["export_bursts"], "exporter5"))
 
     # ---------- 2. 权限 ----------
     def test_forbidden_without_system_read(self):
@@ -126,3 +147,80 @@ class AuditAnomaliesTests(TestCase):
         resp = self._login(self.allowed).get(reverse("audit_anomalies"))
         self.assertEqual(resp.status_code, 200)
         self.assertTrue(resp.context["empty_all"])
+
+
+class OperationSnapshotTests(TestCase):
+    """批次B：OperationLog.before_json/after_json 快照落库与字段级变更明细。"""
+
+    def setUp(self):
+        call_command("sync_rbac", verbosity=0)
+        self.operator = User.objects.create_user("snap_user", "s@e.com", PWD, is_active=True)
+
+    def _request(self):
+        request = RequestFactory().post("/")
+        request.user = self.operator
+        return request
+
+    def test_snapshot_none_returns_none(self):
+        from .audit import snapshot
+
+        self.assertIsNone(snapshot(None))
+
+    def test_snapshot_is_json_safe_and_truncates(self):
+        from .audit import MAX_SNAPSHOT_CHARS, snapshot
+
+        long_text = "字" * (MAX_SNAPSHOT_CHARS + 50)
+        obj = Decoration.objects.create(
+            project_name="快照测试", constructor="甲", start_date=date(2026, 1, 1),
+            project_address=long_text, final_price=Decimal("10.00"),
+        )
+        snap = snapshot(obj)
+        self.assertIsInstance(snap, dict)
+        self.assertEqual(snap["project_name"], "快照测试")
+        self.assertEqual(snap["start_date"], "2026-01-01")   # date → isoformat
+        self.assertEqual(snap["final_price"], "10.00")        # Decimal → str
+        self.assertEqual(len(snap["project_address"]), MAX_SNAPSHOT_CHARS + 1)
+        self.assertTrue(snap["project_address"].endswith("…"))
+
+    def test_log_operation_persists_before_after(self):
+        from .audit import log_operation
+
+        log_operation(
+            self._request(), "装修", "更新", "装修#1", "改动",
+            before={"project_name": "旧名", "final_price": "10"},
+            after={"project_name": "新名", "final_price": "10"},
+        )
+        log = OperationLog.objects.get()
+        self.assertEqual(log.before_json["project_name"], "旧名")
+        self.assertEqual(log.after_json["project_name"], "新名")
+        # 仅前后不一致的字段进入变更明细
+        self.assertEqual(log.change_diff, [("project_name", "旧名", "新名")])
+
+    def test_change_diff_empty_without_snapshot(self):
+        from .audit import log_operation
+
+        log_operation(self._request(), "到期预警", "导出", "[到期预警]下的导出", "导出 3 条")
+        self.assertEqual(OperationLog.objects.get().change_diff, [])
+
+    def test_change_diff_caps_items(self):
+        from .audit import log_operation
+
+        limit = OperationLog.MAX_DIFF_ITEMS
+        before = {f"f{i}": 0 for i in range(limit + 10)}
+        after = {f"f{i}": 1 for i in range(limit + 10)}
+        log_operation(self._request(), "测试", "更新", "测试#1", "全字段变更",
+                      before=before, after=after)
+        self.assertEqual(len(OperationLog.objects.get().change_diff), limit)
+
+    def test_change_diff_marks_create_and_delete_side(self):
+        from .audit import log_operation
+
+        log_operation(self._request(), "每日记录", "新增", "每日记录#1", "新增",
+                      before=None, after={"work_content": "内容"})
+        self.assertEqual(OperationLog.objects.get().change_diff,
+                         [("work_content", None, "内容")])
+
+        log_operation(self._request(), "每日记录", "删除", "每日记录#2", "删除",
+                      before={"work_content": "内容"}, after=None)
+        log = OperationLog.objects.filter(operation_type="删除").get()
+        self.assertEqual(log.change_diff, [("work_content", "内容", None)])
