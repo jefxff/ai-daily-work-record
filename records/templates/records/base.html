@@ -21,7 +21,7 @@
     <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
     <!-- 设计令牌 + 外壳 + 组件：外置后可被浏览器缓存；版本号用于发布瞬间避免「新 HTML + 旧 CSS」 -->
     <link href="{% static 'css/tokens.css' %}?v=20261019c" rel="stylesheet">
-    <link href="{% static 'css/app.css' %}?v=20261019g" rel="stylesheet">
+    <link href="{% static 'css/app.css' %}?v=20261020b" rel="stylesheet">
     <link href="{% static 'css/components.css' %}?v=20261019e" rel="stylesheet">
     {% block extra_css %}{% endblock %}
 </head>
@@ -49,9 +49,6 @@
                     <input type="search" placeholder="搜索模块、记录或报表" name="search" class="nav-search-input" aria-label="全站搜索">
                     <button type="submit" style="display:none;">搜索</button>
                 </form>
-            </div>
-            <div class="top-nav-actions">
-                {% block top_nav_actions %}{% endblock %}
             </div>
             {% can_view "notifications" %}
             <div class="nav-notify" id="navNotifyArea">
@@ -109,6 +106,13 @@
     <div class="sidebar-scrim" id="sidebarScrim" hidden></div>
     <div class="main-content">
         <main id="main" class="container" tabindex="-1">
+            {% comment %}
+            页面级操作区：原先挂在顶栏（33 个页面共用 top_nav_actions），导致顶栏
+            既放全局导航又放页面按钮，宽度不够时把全站搜索挤掉。
+            现下沉到内容区顶部：顶栏只保留全局能力，页面操作与内容同宽。
+            page_actions 为阶段二预留的新钩子，逐页迁移时可先用它、再清空旧块。
+            {% endcomment %}
+            <div class="page-actions">{% block page_actions %}{% endblock %}{% block top_nav_actions %}{% endblock %}</div>
             {% block content %}{% endblock %}
         </main>
     </div>
@@ -116,11 +120,9 @@
     <!-- 侧边栏交互 -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // 页面顶部操作区自带搜索框时，隐藏全局搜索框，避免出现两个搜索框
-            if (document.querySelector('.top-nav-actions input[type="search"]')) {
-                const globalSearchBox = document.querySelector('.nav-search-box');
-                if (globalSearchBox) globalSearchBox.style.display = 'none';
-            }
+            // 顶栏的全站搜索与内容区首页内搜索职责不同，二者可以共存：
+            // 页面操作区已下沉到 .page-actions（2026-10 阶段一），顶栏不再承载页面按钮，
+            // 原先"检测到页面搜索框就隐藏全站搜索"的逻辑随之移除。
             const mobileMenuToggle = document.getElementById('mobileMenuToggle');
             const sidebar = document.getElementById('sidebar');
             const sidebarScrim = document.getElementById('sidebarScrim');
