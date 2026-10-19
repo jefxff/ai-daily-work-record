@@ -27,6 +27,8 @@
         flex-wrap: wrap;
     }
     .perf-filter label { color: var(--c-text-secondary); font-size: 0.85rem; margin: 0; }
+    /* Bootstrap 的 .form-select 自带 width:100%，在 flex 行内会独占整行撑破 56px 头部，这里改回内容宽度 */
+    .perf-filter .form-select { width: auto; }
     .perf-cards {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -133,7 +135,7 @@
 <!-- 每日趋势 -->
 <div class="table-container">
     <h3 class="perf-section-title">📈 每日请求量</h3>
-    <table class="perf-table">
+    <table class="table--cards perf-table">
         <thead>
             <tr><th scope="col">日期</th><th scope="col">请求数</th><th scope="col">平均耗时</th></tr>
         </thead>
@@ -154,7 +156,7 @@
 <!-- 请求量 Top -->
 <div class="table-container">
     <h3 class="perf-section-title">🔥 请求量 Top {{ top_paths|length }}</h3>
-    <table class="perf-table">
+    <table class="table--cards perf-table">
         <thead>
             <tr><th scope="col">端点</th><th scope="col">方法</th><th scope="col">请求数</th><th scope="col">平均耗时</th><th scope="col">最大耗时</th></tr>
         </thead>
@@ -177,7 +179,7 @@
 <!-- 慢端点 Top -->
 <div class="table-container">
     <h3 class="perf-section-title">🐢 最慢端点 Top {{ slow_paths|length }}（按平均耗时）</h3>
-    <table class="perf-table">
+    <table class="table--cards perf-table">
         <thead>
             <tr><th scope="col">端点</th><th scope="col">方法</th><th scope="col">请求数</th><th scope="col">平均耗时</th><th scope="col">最大耗时</th></tr>
         </thead>
@@ -200,7 +202,7 @@
 <!-- 最近慢查询 -->
 <div class="table-container">
     <h3 class="perf-section-title">🔍 最近慢查询（Top {{ recent_slow_queries|length }}）</h3>
-    <table class="perf-table">
+    <table class="table--cards perf-table">
         <thead>
             <tr><th scope="col">时间</th><th scope="col">端点</th><th scope="col">最慢 SQL</th></tr>
         </thead>
@@ -221,7 +223,7 @@
 <!-- 最近慢请求 -->
 <div class="table-container">
     <h3 class="perf-section-title">⏱️ 最近慢请求（Top {{ recent_slow|length }}）</h3>
-    <table class="perf-table">
+    <table class="table--cards perf-table">
         <thead>
             <tr><th scope="col">时间</th><th scope="col">端点</th><th scope="col">用户</th><th scope="col">状态</th><th scope="col">耗时</th><th scope="col">SQL 条数</th></tr>
         </thead>

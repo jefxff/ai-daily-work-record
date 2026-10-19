@@ -6,7 +6,7 @@
 {% block extra_css %}
 <style>
     .lg-dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
-    .lg-stat-card { background: rgba(255,255,255,0.95); border-radius: 12px; padding: 1.25rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .lg-stat-card { background: var(--c-surface); border-radius: 12px; padding: 1.25rem; box-shadow: var(--sh-1); }
     .lg-stat-value { font-size: 1.8rem; font-weight: 700; color: var(--c-text); }
     .lg-stat-label { font-size: 0.8rem; color: var(--c-text-secondary); margin-top: 0.25rem; }
     .lg-stat-card.borrowed .lg-stat-value { color: var(--c-danger); }
@@ -18,16 +18,16 @@
     .lg-toolbar .lg-actions { display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0; }
 
     .lg-search-banner { padding: 0.65rem 1rem; border-radius: 8px; font-size: 0.88rem; margin-bottom: 1rem; }
-    .lg-search-banner.has-hit { background: var(--c-warning-bg); border: 1px solid #ffd591; color: var(--c-warning); }
+    .lg-search-banner.has-hit { background: var(--c-warning-bg); border: 1px solid var(--c-warning-line); color: var(--c-warning); }
     .lg-search-banner.no-hit { background: var(--c-danger-bg); border: 1px solid var(--c-danger-line); color: var(--c-danger); }
 
     /* 台账卡片：对应一份 Excel 台账 */
-    .lg-card { background: rgba(255,255,255,0.95); border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .lg-card { background: var(--c-surface); border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; box-shadow: var(--sh-1); }
     .lg-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.9rem; flex-wrap: wrap; gap: 0.5rem; }
     .lg-card-title { font-size: 1.1rem; font-weight: 600; color: var(--c-text); }
     .lg-card-meta { font-size: 0.8rem; color: var(--c-text-secondary); margin-top: 0.15rem; }
     .lg-badge { display: inline-block; font-size: 0.72rem; padding: 1px 8px; border-radius: 10px; margin-left: 6px; vertical-align: 1px; }
-    .lg-badge.expiring { background: var(--c-warning-bg); color: var(--c-warning); border: 1px solid #ffd591; }
+    .lg-badge.expiring { background: var(--c-warning-bg); color: var(--c-warning); border: 1px solid var(--c-warning-line); }
     .lg-badge.borrowed { background: var(--c-danger-bg); color: var(--c-danger); border: 1px solid var(--c-danger-line); }
 
     /* 宽表：横向滚动 + 截断 + 紧凑字号，操作按钮横排 */
@@ -36,7 +36,7 @@
     .lg-table th { background: var(--c-surface-sunken); color: var(--c-text-secondary); font-weight: 600; padding: 9px 12px; text-align: left; white-space: nowrap; border-bottom: 1px solid var(--c-border); }
     .lg-table td { padding: 9px 12px; color: var(--c-text); border-bottom: 1px solid var(--c-surface-sunken); white-space: nowrap; }
     .lg-table td.lg-ellipsis { max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
-    .lg-table tbody tr:hover { background: #f5faff; }
+    .lg-table tbody tr:hover { background: var(--c-primary-subtle); }
     .lg-row-actions { display: flex; gap: 6px; flex-wrap: nowrap; }
     .lg-empty { text-align: center; color: var(--c-text-secondary); padding: 1.6rem 0; }
     .lg-more { display: inline-block; margin-top: 0.7rem; font-size: 0.85rem; }

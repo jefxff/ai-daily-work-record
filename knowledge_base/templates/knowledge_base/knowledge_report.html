@@ -35,7 +35,7 @@
         <div class="table-container">
             <h3 class="report-block-title">热门文档 Top {{ top_documents|length }}</h3>
             <div class="table-responsive">
-                <table class="table">
+                <table class="table--cards table">
                     <thead>
                         <tr>
                             <th scope="col">#</th>
@@ -61,7 +61,7 @@
         <div class="table-container">
             <h3 class="report-block-title">活跃阅读人 Top {{ top_readers|length }}</h3>
             <div class="table-responsive">
-                <table class="table">
+                <table class="table--cards table">
                     <thead>
                         <tr>
                             <th scope="col">#</th>
@@ -103,7 +103,7 @@
     <div class="table-container">
         <h3 class="report-block-title">阅读明细<span class="total-hint">共 {{ page_obj.paginator.count }} 条</span></h3>
         <div class="table-responsive">
-            <table class="table">
+            <table class="table--cards table">
                 <thead>
                     <tr>
                         <th scope="col">阅读时间</th>

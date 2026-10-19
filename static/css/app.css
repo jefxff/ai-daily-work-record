@@ -843,7 +843,9 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
         /* 移动端触控目标 */
         @media (hover: none) and (pointer: coarse) {
             .btn-transparent, .btn-sm, .filter-btn { padding: 10px 16px; min-height: 44px; }
-            .table tbody tr { height: 48px; }
+            /* 触屏下为宽表格行保证 48px 点击区域；卡片模式（.table--cards）的 tr 是多行
+               堆叠容器，固定 height 会让内容溢出并与后续卡片重叠，故排除。 */
+            .table:not(.table--cards) tbody tr { height: 48px; }
         }
 
         /* 页面淡入 + 动效偏好 */

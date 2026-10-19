@@ -121,6 +121,26 @@
     word-break: break-word;
   }
   .table--cards td:last-child { border-bottom: 0; }
+  /* app.css 的 `.table tbody td`（padding 12px 24px / max-width 300px / 居中）以及各页面
+     {% block extra_css %} 里的 `.xxx td { max-width: 240px; white-space: nowrap; overflow:
+     hidden; text-overflow: ellipsis }`、`.xxx td.yyy { max-width: 200px }` 等窄屏约束，
+     会压窄卡片、把值截断或居中。extra_css 在组件层之后渲染，同特异度下会覆盖组件层，
+     故这里用 (0,2,2) 的 `td[data-label]` 选择器统一复位——卡片模式本就以 data-label
+     作为标签来源，可精确命中所有卡片单元格，且不受各表格自有类名影响。
+     另有一批模板在 td 上直接写了内联 style（如 samples/log_list.html 的
+     `max-width:220px; white-space:nowrap; overflow:hidden`、import_step2.html 的
+     `max-width:300px` + .text-truncate），内联样式只有 !important 能压过，
+     故这里对复位属性统一加 !important——它们是卡片模式下的"最终复位层"，
+     仅在 ≤640px 生效，不影响任何桌面端表现。 */
+  .table--cards tbody td[data-label] {
+    max-width: none !important;
+    padding: var(--sp-2) var(--sp-3) !important;
+    text-align: right !important;
+    font-size: var(--fs-sm) !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+  }
   .table--cards td::before {
     content: attr(data-label);
     flex: 0 0 38%;

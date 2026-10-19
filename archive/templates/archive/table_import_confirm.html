@@ -58,17 +58,17 @@
             <h5 class="mb-0" style="color: var(--c-warning);">⚠️ 将忽略的无效单元格（共 {{ bad_cells|length }} 个，导入时该单元格保留原值，其余数据正常写入）</h5>
         </div>
         <div class="card-body p-0" style="max-height: 260px; overflow-y: auto;">
-            <table class="table table-sm mb-0">
+            <table class="table--cards table table-sm mb-0">
                 <thead>
                 <tr><th scope="col" style="width:70px;">行号</th><th scope="col" style="width:160px;">{{ match_header }}</th><th scope="col" style="width:110px;">列</th><th scope="col">原因</th></tr>
                 </thead>
                 <tbody>
                 {% for b in bad_cells %}
                 <tr>
-                    <td>{{ b.line }}</td>
-                    <td>{{ b.key }}</td>
-                    <td><span class="status-badge warning">{{ b.col }}</span></td>
-                    <td>{{ b.reason }}</td>
+                    <td data-label="行号">{{ b.line }}</td>
+                    <td data-label="{{ match_header }}">{{ b.key }}</td>
+                    <td data-label="列"><span class="status-badge warning">{{ b.col }}</span></td>
+                    <td data-label="原因">{{ b.reason }}</td>
                 </tr>
                 {% endfor %}
                 </tbody>
@@ -83,6 +83,7 @@
     <div class="card mb-4">
         <div class="card-header"><h5 class="mb-0">预览（前 {{ preview|length }} 行）</h5></div>
         <div class="card-body p-0">
+            <div class="table-responsive">
             <table class="table mb-0">
                 <thead>
                 <tr>
@@ -106,6 +107,7 @@
                 {% endfor %}
                 </tbody>
             </table>
+            </div>
         </div>
     </div>
 
