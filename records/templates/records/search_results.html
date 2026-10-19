@@ -14,6 +14,12 @@
         font-weight: 600;
     }
 
+    /* 本页是唯一把多张结果卡片纵向堆叠的页面：全局 .table-container 无外边距，
+       相邻卡片会贴在一起，这里补上卡片之间的间距（不影响分页/末尾"返回首页"的既有间距） */
+    .table-container + .table-container {
+        margin-top: 1.5rem;
+    }
+
     .no-results {
         color: var(--c-text-secondary);
         text-align: center;
@@ -67,7 +73,6 @@
     <div class="state__actions"><a class="btn-transparent btn-sm" href="{% url 'search' %}">重新搜索</a></div>
 </div>
 {% endif %}
-<h1 class="page-title">搜索结果 - 关键词: <span class="search-term">{{ search_term }}</span></h1>
 
 <!-- 装修记录结果 -->
 {% if decoration_results %}
