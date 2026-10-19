@@ -1083,44 +1083,13 @@ def health_check(request):
     改造前固定返回 {'status': 'ok', 'ai_ready': True}——一个永远绿的检查等于
     没有检查（审计 #23）。现在逐项探测：数据库、未应用迁移、日志目录可写。
     任一项不通过 => status=degraded + HTTP 503（便于探针直接判死）。
+
+    探测逻辑已迁移至 work_record.health.probe_health()，供系统健康面板共用；
+    本视图只负责组装 payload 与状态码，对外契约保持完全不变。
     """
-    from django.conf import settings
-    from django.db import connection
-    from django.db.migrations.executor import MigrationExecutor
+    from work_record.health import probe_health
 
-    checks = {}
-
-    # 1) 数据库连接（SELECT 1）
-    try:
-        with connection.cursor() as cur:
-            cur.execute('SELECT 1')
-            cur.fetchone()
-        checks['database'] = 'ok'
-    except Exception as exc:  # 探针本身不能抛异常
-        logger.exception('健康检查：数据库不可用')
-        checks['database'] = f'error: {exc.__class__.__name__}'
-
-    # 2) 是否有未应用的迁移
-    try:
-        executor = MigrationExecutor(connection)
-        pending = executor.migration_plan(executor.loader.graph.leaf_nodes())
-        checks['migrations'] = 'ok' if not pending else f'pending: {len(pending)}'
-    except Exception:
-        logger.exception('健康检查：迁移状态不可读')
-        checks['migrations'] = 'unknown'
-
-    # 3) 日志目录可写（日志写不进去时排障会完全失明）
-    try:
-        log_dir = os.path.join(str(settings.BASE_DIR), 'logs')
-        probe = os.path.join(log_dir, '.health_probe')
-        with open(probe, 'w', encoding='utf-8') as fh:
-            fh.write('ok')
-        os.remove(probe)
-        checks['log_dir'] = 'ok'
-    except Exception:
-        checks['log_dir'] = 'error'
-
-    healthy = checks['database'] == 'ok' and checks['log_dir'] == 'ok'
+    checks, healthy = probe_health()
     payload = {
         'status': 'ok' if healthy else 'degraded',
         'service': 'AI_daily_work_record',

@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import views_expiry, views_reports, views_audit
 
 urlpatterns = [
     # 首页
@@ -85,4 +86,15 @@ urlpatterns = [
 
     # 操作留痕
     path('operation_log/', views.operation_log_list, name='operation_log_list'),
+
+    # 到期预警（日历 + 本月到期清单导出）
+    path('expiry/calendar/', views_expiry.expiry_calendar, name='expiry_calendar'),
+    path('expiry/export/', views_expiry.expiry_export, name='expiry_export'),
+
+    # 每日记录：周报生成 / 年度个人总结
+    path('daily_record/weekly_report/', views_reports.weekly_report, name='weekly_report'),
+    path('daily_record/annual_summary/', views_reports.annual_summary, name='annual_summary'),
+
+    # 审计异常行为检测（读取层）
+    path('operation_log/anomalies/', views_audit.audit_anomalies, name='audit_anomalies'),
 ]

@@ -1,0 +1,218 @@
+{% extends 'records/base.html' %}
+{% load static %}
+
+{% block page_title %}年度总结 - 每日工作记录管理网站{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h2>年度总结<span class="total-hint">统计范围：仅本人的每日记录</span></h2>
+    </div>
+
+    <form class="table-container annual-year-form" method="GET">
+        <label for="yearSelect" class="annual-year-label">年份</label>
+        <select id="yearSelect" name="year" class="annual-year-select">
+            {% for y in years %}
+            <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }} 年</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="btn-transparent">查看</button>
+    </form>
+
+    <div class="table-container annual-card">
+        <div class="annual-card-head">
+            <span class="annual-avatar" aria-hidden="true">{{ initial }}</span>
+            <div>
+                <div class="annual-year-title">{{ year }} 年度</div>
+                <div class="annual-year-sub">个人工作总结</div>
+            </div>
+        </div>
+
+        <div class="annual-metrics">
+            <div class="annual-metric">
+                <span class="annual-metric-num">{{ total }}</span>
+                <span class="annual-metric-label">记录条数</span>
+            </div>
+            <div class="annual-metric">
+                <span class="annual-metric-num">{{ done }}</span>
+                <span class="annual-metric-label">完成（完成率 {{ done_rate }}%）</span>
+            </div>
+            <div class="annual-metric">
+                <span class="annual-metric-num">{{ avg_progress }}%</span>
+                <span class="annual-metric-label">平均进度</span>
+            </div>
+            <div class="annual-metric">
+                <span class="annual-metric-num">{{ department_count }}</span>
+                <span class="annual-metric-label">涉及部门（个）</span>
+            </div>
+            <div class="annual-metric">
+                <span class="annual-metric-num">{{ active_months }}</span>
+                <span class="annual-metric-label">覆盖月份（个）</span>
+            </div>
+            <div class="annual-metric">
+                <span class="annual-metric-num">{{ max_streak }}</span>
+                <span class="annual-metric-label">最长连续记录（天）</span>
+            </div>
+        </div>
+
+        {% if top_departments %}
+        <div class="annual-section-title">涉及部门 TOP</div>
+        <ul class="annual-dept-list">
+            {% for row in top_departments %}
+            <li>
+                <span class="annual-dept-name">{{ row.department }}</span>
+                <span class="annual-dept-count">{{ row.c }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+
+        {% if first_date %}
+        <div class="annual-range">记录跨度：{{ first_date|date:'Y-m-d' }} ~ {{ last_date|date:'Y-m-d' }}</div>
+        {% endif %}
+    </div>
+
+    <div class="table-container annual-share">
+        <div class="annual-share-head">
+            <span>分享文本</span>
+            <button type="button" class="btn-transparent btn-sm" id="copyShareText">复制文本</button>
+        </div>
+        <pre class="annual-share-pre" id="shareText">{{ share_text }}</pre>
+    </div>
+
+    <p class="annual-note">统计范围：仅本人的每日记录。{% if ai_enabled %}已启用 AI 润色（配置入口：系统 → AI 配置）。{% endif %}</p>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .annual-year-form {
+        display: flex;
+        align-items: center;
+        gap: var(--sp-4);
+        flex-wrap: wrap;
+        padding: var(--sp-4) var(--sp-5);
+        margin-bottom: var(--sp-4);
+    }
+    .annual-year-label { color: var(--c-text-secondary); font-size: var(--fs-sm); }
+    .annual-year-select {
+        padding: 0.4rem 0.6rem;
+        border: 1px solid var(--c-border-strong);
+        border-radius: var(--r-sm);
+        background: var(--c-surface);
+        color: var(--c-text);
+        font-size: var(--fs-sm);
+    }
+
+    .annual-card { padding: var(--sp-6); margin-bottom: var(--sp-4); }
+    .annual-card-head { display: flex; align-items: center; gap: var(--sp-4); }
+    .annual-avatar {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 56px;
+        height: 56px;
+        border-radius: var(--r-full);
+        background: var(--c-primary);
+        color: var(--c-surface);
+        font-size: var(--fs-xl);
+        font-weight: 600;
+    }
+    .annual-year-title { font-size: var(--fs-xl); font-weight: 600; color: var(--c-text); }
+    .annual-year-sub { color: var(--c-text-secondary); font-size: var(--fs-sm); }
+
+    .annual-metrics {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+        gap: var(--sp-3);
+        margin-top: var(--sp-5);
+    }
+    .annual-metric {
+        display: flex;
+        flex-direction: column;
+        gap: var(--sp-1);
+        padding: var(--sp-4);
+        background: var(--c-surface-sunken);
+        border: 1px solid var(--c-border);
+        border-radius: var(--r-md);
+    }
+    .annual-metric-num {
+        font-size: var(--fs-2xl);
+        font-weight: 600;
+        color: var(--c-text);
+        font-variant-numeric: tabular-nums;
+    }
+    .annual-metric-label { font-size: var(--fs-xs); color: var(--c-text-secondary); }
+
+    .annual-section-title {
+        margin-top: var(--sp-5);
+        font-size: var(--fs-sm);
+        font-weight: 600;
+        color: var(--c-text-secondary);
+        letter-spacing: var(--ls-wide);
+    }
+    .annual-dept-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--sp-2);
+        list-style: none;
+        margin: var(--sp-3) 0 0;
+        padding: 0;
+    }
+    .annual-dept-list li {
+        display: flex;
+        align-items: center;
+        gap: var(--sp-2);
+        padding: var(--sp-1) var(--sp-3);
+        background: var(--c-surface-sunken);
+        border: 1px solid var(--c-border);
+        border-radius: var(--r-full);
+        font-size: var(--fs-sm);
+        color: var(--c-text);
+    }
+    .annual-dept-count { color: var(--c-primary); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+    .annual-range { margin-top: var(--sp-5); color: var(--c-text-secondary); font-size: var(--fs-sm); }
+
+    .annual-share-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: var(--sp-3) var(--sp-4);
+        border-bottom: 1px solid var(--c-border);
+        background: var(--c-surface-sunken);
+    }
+    .annual-share-pre {
+        margin: 0;
+        padding: var(--sp-4) var(--sp-5);
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-family: var(--font-mono);
+        font-size: var(--fs-sm);
+        line-height: var(--lh-loose);
+        color: var(--c-text);
+    }
+
+    .annual-note { margin-top: var(--sp-3); color: var(--c-text-secondary); font-size: var(--fs-xs); }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var btn = document.getElementById('copyShareText');
+        var pre = document.getElementById('shareText');
+        if (!btn || !pre) { return; }
+        btn.addEventListener('click', function () {
+            var text = pre.textContent;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(function () {
+                    window.showToast('已复制', 'success');
+                }, function () {
+                    window.showToast('复制失败，请手动选择文本', 'error');
+                });
+            } else {
+                window.showToast('当前浏览器不支持自动复制，请手动选择文本', 'error');
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -45,6 +45,8 @@
     {% can "daily_record" "create" %}
     <a href="{% url 'daily_record_add' %}" class="btn-transparent" data-modal-add data-modal-title="新增每日记录">新增记录</a>
     {% endcan %}
+    <a href="{% url 'weekly_report' %}" class="btn-transparent">生成周报</a>
+    <a href="{% url 'annual_summary' %}" class="btn-transparent">年度总结</a>
 {% endblock %}
 
 {% block content %}

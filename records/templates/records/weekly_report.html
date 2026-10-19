@@ -1,0 +1,88 @@
+{% extends 'records/base.html' %}
+{% load static %}
+
+{% block page_title %}周报生成 - 每日工作记录管理网站{% endblock %}
+
+{% block top_nav_actions %}
+    <a href="{% url 'weekly_report' %}" class="btn-transparent">本周</a>
+    <a href="?start={{ prev_start|date:'Y-m-d' }}" class="btn-transparent">上一周</a>
+    <a href="?start={{ next_start|date:'Y-m-d' }}" class="btn-transparent">下一周</a>
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h2>周报生成<span class="total-hint">{{ week_start|date:'Y-m-d' }} ~ {{ week_end|date:'Y-m-d' }}</span></h2>
+    </div>
+
+    <div class="weekly-stats">
+        <div class="weekly-stat-card"><span class="weekly-stat-num">{{ stats.total }}</span><span class="weekly-stat-label">记录总数</span></div>
+        <div class="weekly-stat-card"><span class="weekly-stat-num">{{ stats.completed }}</span><span class="weekly-stat-label">已完成</span></div>
+        <div class="weekly-stat-card"><span class="weekly-stat-num">{{ stats.ongoing }}</span><span class="weekly-stat-label">进行中</span></div>
+        <div class="weekly-stat-card"><span class="weekly-stat-num">{{ stats.not_started }}</span><span class="weekly-stat-label">未完成</span></div>
+    </div>
+
+    <div class="table-container">
+        <div class="weekly-report-head">
+            <span>Markdown 预览</span>
+            <button type="button" class="btn-transparent btn-sm" id="copyReport">复制到剪贴板</button>
+        </div>
+        <pre class="weekly-report-pre" id="reportMd">{{ report_md }}</pre>
+    </div>
+
+    {% if ai_enabled %}
+    <p class="total-hint">已启用 AI 润色（配置入口：系统 → AI 配置）。</p>
+    {% else %}
+    <p class="total-hint">当前为模板生成；如需 AI 润色，请在「系统 → AI 配置」中开启。</p>
+    {% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .weekly-stats { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem; }
+    .weekly-stat-card {
+        flex: 1 1 8rem;
+        display: flex; flex-direction: column; gap: 0.25rem;
+        padding: 1rem 1.25rem;
+        background: var(--c-surface, #fff);
+        border: 1px solid var(--c-border, rgba(0,0,0,0.08));
+        border-radius: 12px;
+    }
+    .weekly-stat-num { font-size: 1.5rem; font-weight: 600; }
+    .weekly-stat-label { font-size: 0.8125rem; color: var(--c-text-muted, #666); }
+    .weekly-report-head {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--c-border, rgba(0,0,0,0.08));
+        background: var(--c-surface-sunken, #f7f8fa);
+    }
+    .weekly-report-pre {
+        margin: 0; padding: 1rem 1.25rem;
+        white-space: pre-wrap; word-break: break-word;
+        font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+        font-size: 0.875rem; line-height: 1.7;
+        color: var(--c-text, #333);
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var btn = document.getElementById('copyReport');
+        var pre = document.getElementById('reportMd');
+        if (!btn || !pre) { return; }
+        btn.addEventListener('click', function () {
+            var text = pre.textContent;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(function () {
+                    window.showToast('已复制到剪贴板', 'success');
+                }, function () {
+                    window.showToast('复制失败，请手动选择文本', 'error');
+                });
+            } else {
+                window.showToast('当前浏览器不支持自动复制，请手动选择文本', 'error');
+            }
+        });
+    });
+</script>
+{% endblock %}

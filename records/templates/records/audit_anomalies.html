@@ -1,0 +1,164 @@
+{% extends 'records/base.html' %}
+{% load static %}
+
+{% block page_title %}异常检测 - 每日工作记录管理网站{% endblock %}
+
+{% block top_nav_actions %}
+    <form class="anomaly-window-form" method="GET">
+        <label class="anomaly-window-label">检测窗口（天）
+            <input type="number" name="days" min="1" max="90" value="{{ days }}" inputmode="numeric">
+        </label>
+        <button type="submit" class="btn-transparent">应用</button>
+    </form>
+    <a href="{% url 'operation_log_list' %}" class="btn-transparent">操作留痕</a>
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h2>异常检测<span class="total-hint">近 {{ days }} 天 · 自 {{ since|date:'Y-m-d H:i' }}</span></h2>
+    </div>
+
+    <p class="anomaly-note">导出/下载行为的专项追踪属于批 B（现有留痕无「导出」类型），本页不含。</p>
+
+    {% if empty_all %}
+    <div class="table-container">
+        <div class="empty-cell">📭 窗口内未发现异常</div>
+    </div>
+    {% endif %}
+
+    <!-- 1. 删除爆发 -->
+    <div class="table-container">
+        <div class="anomaly-section-head">
+            <span class="anomaly-section-title">删除爆发</span>
+            <span class="total-hint">同一操作人 1 小时内删除 &gt; {{ delete_burst_threshold }} 条</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th scope="col">操作人</th>
+                        <th scope="col">小时</th>
+                        <th scope="col">删除条数</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in delete_bursts %}
+                    <tr>
+                        <td data-label="操作人">{{ row.operator }}</td>
+                        <td data-label="小时">{{ row.hour|date:'Y-m-d H:00' }}</td>
+                        <td data-label="删除条数"><span class="status-badge danger">{{ row.cnt }}</span></td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3" class="empty-cell">窗口内未发现删除爆发</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 2. 非工作时间批量操作 -->
+    <div class="table-container">
+        <div class="anomaly-section-head">
+            <span class="anomaly-section-title">非工作时间批量操作</span>
+            <span class="total-hint">同一操作人同一天 ≥ {{ off_hours_batch_threshold }} 条删除或编辑</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th scope="col">操作人</th>
+                        <th scope="col">日期</th>
+                        <th scope="col">条数</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in off_hours %}
+                    <tr>
+                        <td data-label="操作人">{{ row.operator }}</td>
+                        <td data-label="日期">{{ row.day|date:'Y-m-d' }}</td>
+                        <td data-label="条数"><span class="status-badge warning">{{ row.cnt }}</span></td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3" class="empty-cell">窗口内未发现非工作时间批量操作</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 3. 单小时高频操作 -->
+    <div class="table-container">
+        <div class="anomaly-section-head">
+            <span class="anomaly-section-title">单小时高频操作</span>
+            <span class="total-hint">同一操作人 1 小时内 &gt; {{ high_freq_threshold }} 条</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th scope="col">操作人</th>
+                        <th scope="col">小时</th>
+                        <th scope="col">条数</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in high_freq %}
+                    <tr>
+                        <td data-label="操作人">{{ row.operator }}</td>
+                        <td data-label="小时">{{ row.hour|date:'Y-m-d H:00' }}</td>
+                        <td data-label="条数"><span class="status-badge info">{{ row.cnt }}</span></td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3" class="empty-cell">窗口内未发现单小时高频操作</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .anomaly-window-form {
+        display: flex;
+        align-items: flex-end;
+        gap: 0.5rem;
+    }
+    .anomaly-window-label {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        font-size: 0.8125rem;
+        color: var(--c-text-secondary);
+    }
+    .anomaly-window-label input {
+        width: 6rem;
+        padding: 0.4rem 0.6rem;
+        border: 1px solid var(--c-border);
+        border-radius: 6px;
+        background: var(--c-surface);
+        color: var(--c-text);
+    }
+    .anomaly-note {
+        color: var(--c-text-secondary);
+        font-size: 0.875rem;
+        margin: 0.5rem 0 1rem 0;
+    }
+    .table-container { margin-top: 1rem; }
+    .anomaly-section-head {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--c-border);
+        background: var(--c-surface-sunken);
+    }
+    .anomaly-section-title { font-weight: 600; color: var(--c-text); }
+</style>
+{% endblock %}

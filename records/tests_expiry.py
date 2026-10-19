@@ -1,0 +1,120 @@
+"""到期预警（批次 A1）定向验收测试。
+
+覆盖：跨模块页权限判定（403）、按来源模块过滤（仅 archive 时不含保险）、
+严重度分档、导出空态。
+权限构造复用 records/tests_hardening.py 的 grant() 模式。
+"""
+
+from datetime import timedelta
+
+from django.contrib.auth import get_user_model
+from django.core.cache import cache
+from django.core.management import call_command
+from django.test import TestCase
+from django.urls import reverse
+from django.utils import timezone
+
+from accounts.models import Permission, Role
+
+from . import expiry
+from .models import Insurance
+
+User = get_user_model()
+
+
+def grant(module, actions=("read",), user=None):
+    """给用户授予某模块的动作权限（按需建角色）。"""
+    role, _ = Role.objects.get_or_create(
+        code=f"t_{module}", defaults={"name": f"测试-{module}", "is_active": True}
+    )
+    for action in actions:
+        perm, _ = Permission.objects.get_or_create(
+            module=module,
+            action=action,
+            defaults={"code": f"{module}:{action}", "name": f"{module}-{action}"},
+        )
+        role.permissions.add(perm)
+    if user is not None:
+        role.users.add(user)
+        # _codes() 会缓存到 user 实例上，切换用户后必须清缓存
+        if hasattr(user, "_rbac_codes_cache"):
+            del user._rbac_codes_cache
+    cache.clear()
+    return role
+
+
+def _item_kinds(response):
+    """把 by_day 分组里的事项 kind 拉平成列表。"""
+    kinds = []
+    for group in response.context["by_day"]:
+        for item in group["items"]:
+            kinds.append(item["kind"])
+    return kinds
+
+
+class ExpiryCalendarPermissionTests(TestCase):
+    """跨模块页：无 insurance/archive read 权限 → 403。"""
+
+    def setUp(self):
+        call_command("sync_rbac", verbosity=0)
+        self.norole = User.objects.create_user("exp_norole", "n@e.com", "x12345678")
+
+    def test_no_source_permission_forbidden(self):
+        self.client.force_login(self.norole)
+        resp = self.client.get(reverse("expiry_calendar"))
+        self.assertEqual(resp.status_code, 403)
+        # 403 页由 accounts/403.html 渲染
+        self.assertContains(resp, "没有访问该内容的权限", status_code=403)
+
+
+class ExpiryCalendarSourceFilterTests(TestCase):
+    """仅有 archive read 权限：返回 200，且不含保险来源条目。"""
+
+    def setUp(self):
+        call_command("sync_rbac", verbosity=0)
+        self.archive_only = User.objects.create_user("exp_arch", "a@e.com", "x12345678")
+        grant("archive", ("read",), self.archive_only)
+
+        today = timezone.localdate()
+        Insurance.objects.create(
+            company_name="测试保险公司", title="财产险", premium=100,
+            issue_date=today - timedelta(days=30), end_date=today + timedelta(days=10),
+            department="行政部",
+        )
+        from archive.models import Archive
+
+        Archive.objects.create(code="A-EXP-1", name="测试合同", expire_date=today + timedelta(days=10))
+
+    def test_archive_only_sees_no_insurance_items(self):
+        self.client.force_login(self.archive_only)
+        resp = self.client.get(reverse("expiry_calendar"))
+        self.assertEqual(resp.status_code, 200)
+        kinds = _item_kinds(resp)
+        self.assertIn("archive_contract", kinds, "archive read 用户应能看到合同到期项")
+        self.assertNotIn("insurance", kinds, "无 insurance read 权限不应看到保险来源")
+
+
+class SeverityTests(TestCase):
+    """直接单测 records.expiry._severity 的分档边界。"""
+
+    def test_severity_bands(self):
+        lead_days = 30
+        self.assertEqual(expiry._severity(-1, lead_days), "danger")
+        self.assertEqual(expiry._severity(3, lead_days), "danger")
+        self.assertEqual(expiry._severity(lead_days, lead_days), "warning")
+        self.assertEqual(expiry._severity(lead_days + 1, lead_days), "success")
+
+
+class ExpiryExportEmptyStateTests(TestCase):
+    """当月无数据时导出返回空态文案。"""
+
+    def setUp(self):
+        call_command("sync_rbac", verbosity=0)
+        self.user = User.objects.create_user("exp_export", "e@e.com", "x12345678")
+        grant("archive", ("read",), self.user)
+
+    def test_export_empty_returns_placeholder(self):
+        self.client.force_login(self.user)
+        resp = self.client.get(reverse("expiry_export"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.content.decode(), "本月暂无到期事项")

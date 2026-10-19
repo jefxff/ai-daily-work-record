@@ -1,6 +1,7 @@
 """函数视图权限装饰器。
 
 - @perm_required(module, action)：单模块动作权限（全站业务视图使用）
+- @perm_required_any(*perms)：多个 (module, action) 中任一满足即放行（跨模块页面使用）
 - @require_any_module：只要求"至少有一个模块的可见权限"（首页/全局搜索使用）
 - @login_exempt：显式标记免登录（供 LoginRequiredMiddleware 识别）
 
@@ -67,6 +68,49 @@ def perm_required(module, action):
 
         # 供静态检查/中间件识别（全站权限覆盖审计用）
         _wrapped.rbac_permission = (module, action)
+        return _wrapped
+
+    return decorator
+
+
+def perm_required_any(*perms):
+    """任一 (module, action) 满足即放行，用于跨模块页面。
+
+    典型场景：到期预警页面（insurance.read 或 archive.read 任一即可）。
+    匿名/无权限的处理分支与 @perm_required 完全一致；标记 rbac_permission
+    供静态权限覆盖审计识别，并标记 rbac_any_module 表明跨模块语义。
+    """
+
+    def decorator(view_func):
+        @functools.wraps(view_func)
+        def _wrapped(request, *args, **kwargs):
+            user = getattr(request, "user", None)
+            if not getattr(user, "is_authenticated", False):
+                if _is_json_request(request):
+                    return JsonResponse(
+                        {"detail": "身份验证未通过，请先登录。"}, status=401
+                    )
+                next_url = quote(request.get_full_path(), safe="/?&=")
+                return redirect(f"{settings.LOGIN_URL}?next={next_url}")
+            if not any(has_perm(user, module, action) for module, action in perms):
+                if _is_json_request(request):
+                    return JsonResponse(
+                        {"detail": "权限不足，无法执行该操作。"}, status=403
+                    )
+                return render(
+                    request,
+                    "accounts/403.html",
+                    {
+                        "required_module": " / ".join(m for m, _ in perms),
+                        "required_action": perms[0][1],
+                    },
+                    status=403,
+                )
+            return view_func(request, *args, **kwargs)
+
+        # 供静态检查/中间件识别（全站权限覆盖审计用）
+        _wrapped.rbac_permission = perms[0]
+        _wrapped.rbac_any_module = True
         return _wrapped
 
     return decorator

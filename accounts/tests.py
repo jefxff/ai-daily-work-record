@@ -448,6 +448,9 @@ class RbacAuthTests(TestCase):
             reverse("samples:partner_list"), reverse("samples:log_list"),
             reverse("accounts:user_list"), reverse("accounts:role_list"),
             reverse("accounts:login_logs"),
+            reverse("expiry_calendar"), reverse("expiry_export"),
+            reverse("weekly_report"), reverse("annual_summary"),
+            reverse("audit_anomalies"), reverse("system_health"),
         ]
         for path in urls:
             self.assertNotEqual(cn.get(path).status_code, 200, path)

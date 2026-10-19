@@ -7,6 +7,10 @@
 - 执行结果（状态/耗时/输出摘要）持久化到 ScheduledTask，通知中心页面直接展示。
 
 心跳：HEARTBEATS 供视图判断 worker / scheduler 线程是否存活（90s 内有活动视为存活）。
+
+连续失败告警：同一任务连续失败达到 FAIL_STREAK_THRESHOLD 时通知 system.update 管理员。
+计数采用**_模块级进程内计数** `_FAIL_STREAK`（键为 task.pk）——零 DB schema 约束下的
+取舍：进程/服务重启后计数清零，语义为「**本次运行内**连续失败」，而非跨重启累计。
 """
 import io
 import logging
@@ -31,6 +35,11 @@ MESSAGE_MAX_CHARS = 2000
 
 HEARTBEATS = {"worker": None, "scheduler": None}
 _run_lock = threading.Lock()    # 串行执行任务，避免多任务并发压垮 SQLite
+
+# 连续失败告警阈值：同一任务在本次运行内连续失败达到该次数即通知管理员。
+FAIL_STREAK_THRESHOLD = 3
+# 进程内连续失败计数（task.pk → 计数）。限制见模块 docstring：重启清零、仅本次运行语义。
+_FAIL_STREAK = {}
 
 # 各命令允许的参数白名单（任务 code → 参数键）
 COMMAND_PARAMS = {
@@ -122,6 +131,45 @@ def _command_kwargs(task):
     return kwargs
 
 
+def _handle_task_result(task, ok, message):
+    """维护进程内连续失败计数，达阈值时通知 system.update 管理员。
+
+    - ok=True：清零该任务的连续失败计数并返回；
+    - ok=False：计数 +1；达到 FAIL_STREAK_THRESHOLD 时向管理员逐个发通知。
+      同一自然日同一任务只告警一次（靠 dedup_context 幂等）。
+
+    通知发送整体容错：任何异常仅记日志，绝不影响任务主流程。
+    """
+    if ok:
+        _FAIL_STREAK.pop(task.pk, None)
+        return
+    count = _FAIL_STREAK.get(task.pk, 0) + 1
+    _FAIL_STREAK[task.pk] = count
+    if count < FAIL_STREAK_THRESHOLD:
+        return
+    try:
+        from . import services
+
+        recipients = list(services.users_with_perm("system", "update"))
+        context = {
+            "task_name": task.name,
+            "code": task.code,
+            "fail_count": count,
+            "last_message": (message or "")[:200],
+        }
+        dedup_context = f"task:{task.pk}:{timezone.localdate().isoformat()}"
+        for user in recipients:
+            services.emit(
+                "scheduled_task_failure",
+                recipient=user,
+                context=context,
+                dedup_context=dedup_context,
+                link="/system/health/",
+            )
+    except Exception:
+        logger.exception("定时任务连续失败告警发送失败（不影响任务主流程）")
+
+
 def run_task(task, source="schedule"):
     """原子领取并同步执行一次任务；返回 (是否执行, 是否成功, 结果摘要)。
 
@@ -160,6 +208,7 @@ def run_task(task, source="schedule"):
             last_run_at=timezone.now(),
             updated_at=timezone.now(),
         )
+        _handle_task_result(task, ok, message)
         close_old_connections()
     return True, ok, message
 

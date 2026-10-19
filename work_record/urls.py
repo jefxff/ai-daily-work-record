@@ -25,6 +25,8 @@ from pathlib import Path
 
 from accounts.services import has_perm
 from accounts.views_token import obtain_api_token
+from ai_api import views_config as ai_config_views
+from notifications import views_health
 
 # 媒体文件一级目录 -> 所属业务模块（与 accounts/registry.py 的模块 key 对齐）。
 # 未登记的前缀一律拒绝：宁可让新目录"打不开"，也不能让它默认对所有登录用户开放。
@@ -83,6 +85,13 @@ urlpatterns = [
     path('archive/', include('archive.urls')),
     path('notifications/', include('notifications.urls')),
     path('system/backup/', include('sysbackup.urls')),
+    # 系统健康面板（只读）：挂在 system/ 下，与「系统」侧栏组语义一致
+    path('system/health/', views_health.system_health, name='system_health'),
+    # AI 配置页（周报 / 年度总结的 AI 润色接入，system.update 权限）
+    path('system/ai-config/', ai_config_views.ai_config_view, name='ai_config'),
+    path('system/ai-config/save/', ai_config_views.ai_config_save, name='ai_config_save'),
+    path('system/ai-config/reset/', ai_config_views.ai_config_reset, name='ai_config_reset'),
+    path('system/ai-config/test/', ai_config_views.ai_config_test, name='ai_config_test'),
     # 用户上传文件：必须登录后访问（替代原先 DEBUG 下的 static() 匿名直出）
     re_path(r'^media/(?P<path>.*)$', protected_media),
 ]

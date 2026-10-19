@@ -35,8 +35,13 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
 .sidebar-menu-item .dropdown-toggle svg { flex-shrink: 0; opacity: 0.8; }
 .sidebar-menu-item .dropdown-toggle:hover { color: rgba(255, 255, 255, 0.95); background-color: rgba(255, 255, 255, 0.1); }
 .sidebar-menu-item .dropdown-toggle.active { color: var(--c-primary); background: var(--c-primary-subtle); }
-.sidebar-dropdown { background: rgba(255, 255, 255, 0.05); display: none; margin: 0; border-radius: 0; }
-.sidebar-dropdown.show { display: block; }
+/* 折叠箭头：展开时旋转 180°；试样管理 / 档案管理 / 系统三组行为一致 */
+.sidebar-menu-item .dropdown-toggle > svg:last-child { transition: transform 0.28s ease; }
+.sidebar-menu-item .dropdown-toggle[aria-expanded="true"] > svg:last-child { transform: rotate(180deg); }
+/* 折叠子菜单：max-height 过渡实现统一展开/收起动画（display:none 无法过渡）。
+   三组共用同一规则，保证动画效果完全一致；max-height 上限远大于最长子菜单高度。 */
+.sidebar-dropdown { background: rgba(255, 255, 255, 0.05); margin: 0; border-radius: 0; max-height: 0; overflow: hidden; transition: max-height 0.28s ease; }
+.sidebar-dropdown.show { max-height: 32rem; }
 .sidebar-dropdown a { padding-left: 3rem; font-size: 0.8rem; margin: 0; border-radius: 0; }
 
 /* 主内容区域 */

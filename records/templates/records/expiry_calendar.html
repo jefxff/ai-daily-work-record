@@ -1,0 +1,143 @@
+{% extends 'records/base.html' %}
+{% load static %}
+
+{% block page_title %}到期预警 - 每日工作记录管理网站{% endblock %}
+
+{% block top_nav_actions %}
+    <a href="{% url 'expiry_export' %}" class="btn-transparent">导出本月到期清单</a>
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h2>到期预警<span class="total-hint">未来 {{ days }} 天内 · 截至 {{ horizon_end|date:'Y-m-d' }}</span></h2>
+    </div>
+
+    <form class="table-container expiry-filter" method="GET">
+        <div class="expiry-filter-row">
+            <label>展望窗口（天）
+                <input type="number" name="days" min="30" max="365" value="{{ days }}">
+            </label>
+            <label>保险提前（天）
+                <input type="number" name="lead_insurance" min="1" max="180" value="{{ lead_form.lead_insurance }}">
+            </label>
+            <label>合同提前（天）
+                <input type="number" name="lead_contract" min="1" max="180" value="{{ lead_form.lead_contract }}">
+            </label>
+            <label>证照有效期提前（天）
+                <input type="number" name="lead_license" min="1" max="180" value="{{ lead_form.lead_license }}">
+            </label>
+            <label>证照年审提前（天）
+                <input type="number" name="lead_review" min="1" max="180" value="{{ lead_form.lead_review }}">
+            </label>
+            <button type="submit" class="btn-transparent">应用</button>
+        </div>
+    </form>
+
+    <div class="expiry-summary">
+        <span class="status-badge danger">已过期 {{ summary.expired }}</span>
+        <span class="status-badge danger">紧急 {{ summary.urgent }}</span>
+        <span class="status-badge warning">临近 {{ summary.warning }}</span>
+        <span class="status-badge success">正常 {{ summary.normal }}</span>
+        <span class="status-badge info">合计 {{ summary.total }}</span>
+    </div>
+
+    {% for group in by_day %}
+    <div class="table-container">
+        <div class="expiry-day-head">
+            <span class="expiry-day-date">{{ group.date|date:'Y-m-d' }}</span>
+            <span class="expiry-day-weekday">{{ group.weekday }}</span>
+            <span class="total-hint">{{ group.items|length }} 项</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th scope="col">类型</th>
+                        <th scope="col">名称</th>
+                        <th scope="col">说明</th>
+                        <th scope="col">到期日期</th>
+                        <th scope="col">剩余天数</th>
+                        <th scope="col">状态</th>
+                        <th scope="col" class="col-actions">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in group.items %}
+                    <tr>
+                        <td data-label="类型">{{ item.kind_label }}</td>
+                        <td data-label="名称">{{ item.title }}</td>
+                        <td data-label="说明">{{ item.subtitle|default:'' }}</td>
+                        <td data-label="到期日期">{{ item.date|date:'Y-m-d' }}</td>
+                        <td data-label="剩余天数">
+                            {% if item.days_left < 0 %}已过 {{ item.days_left }} 天{% else %}{{ item.days_left }} 天{% endif %}
+                        </td>
+                        <td data-label="状态">
+                            {% if item.days_left < 0 %}
+                            <span class="status-badge danger">已过期</span>
+                            {% elif item.severity == 'danger' %}
+                            <span class="status-badge danger">紧急</span>
+                            {% elif item.severity == 'warning' %}
+                            <span class="status-badge warning">临近</span>
+                            {% else %}
+                            <span class="status-badge success">正常</span>
+                            {% endif %}
+                        </td>
+                        <td data-label="操作" class="col-actions">
+                            <a href="{{ item.link }}" class="btn-transparent btn-sm">查看</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% empty %}
+    <div class="table-container">
+        <div class="empty-cell">📭 展望窗口内暂无到期事项</div>
+    </div>
+    {% endfor %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .expiry-filter { padding: 1rem 1.25rem; }
+    .expiry-filter-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: flex-end;
+    }
+    .expiry-filter-row label {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        font-size: 0.8125rem;
+        color: var(--c-text-muted, #666);
+    }
+    .expiry-filter-row input {
+        width: 7rem;
+        padding: 0.4rem 0.6rem;
+        border: 1px solid var(--c-border, rgba(0,0,0,0.1));
+        border-radius: 6px;
+        background: var(--c-surface, #fff);
+        color: var(--c-text, #333);
+    }
+    .expiry-summary {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin: 1rem 0;
+    }
+    .expiry-day-head {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--c-border, rgba(0,0,0,0.08));
+        background: var(--c-surface-sunken, #f7f8fa);
+    }
+    .expiry-day-date { font-weight: 600; }
+    .expiry-day-weekday { color: var(--c-text-muted, #666); }
+    .table-container { margin-top: 1rem; }
+</style>
+{% endblock %}

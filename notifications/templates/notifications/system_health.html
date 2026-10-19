@@ -1,0 +1,287 @@
+{% extends "records/base.html" %}
+{% load accounts_tags %}
+
+{% block page_title %}系统健康 - 每日工作记录管理网站{% endblock %}
+
+{% block extra_css %}
+<style>
+    .health-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+    .status-badge-lg {
+        font-size: var(--fs-sm);
+        font-weight: 600;
+        padding: 4px 14px;
+    }
+    .health-section-title {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 14px 24px;
+        margin: 0;
+        font-size: var(--fs-md);
+        font-weight: 600;
+        color: var(--c-text);
+        border-bottom: 1px solid var(--c-border);
+    }
+    .health-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.875rem;
+    }
+    .health-table th {
+        text-align: left;
+        padding: 10px 12px;
+        color: var(--c-text-secondary);
+        font-weight: 500;
+        border-bottom: 1px solid var(--c-border);
+        white-space: nowrap;
+    }
+    .health-table td {
+        padding: 12px;
+        border-bottom: 1px solid var(--c-divider);
+        color: var(--c-text-secondary);
+        vertical-align: top;
+    }
+    .health-table tr:last-child td { border-bottom: none; }
+    .health-name { font-weight: 600; color: var(--c-text); }
+    .health-sub { color: var(--c-text-secondary); font-size: 0.78rem; margin-top: 2px; }
+    .health-msg {
+        max-width: 360px;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-size: 0.78rem;
+    }
+    .health-cards { margin-bottom: 1.25rem; }
+    .health-heartbeats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem 1.5rem;
+        padding: 14px 24px;
+    }
+    .health-heartbeat { display: flex; align-items: center; gap: 0.5rem; }
+    .health-heartbeat-time { color: var(--c-text-secondary); font-size: 0.8rem; }
+    .disk-progress {
+        width: 100%;
+        height: 10px;
+        margin-top: 0.5rem;
+        appearance: none;
+        border: none;
+        border-radius: var(--r-full);
+        overflow: hidden;
+    }
+    .disk-progress::-webkit-progress-bar { background: var(--c-surface-sunken); }
+    .disk-progress::-webkit-progress-value { background: var(--c-primary); }
+    .disk-progress::-moz-progress-bar { background: var(--c-primary); }
+    .health-note {
+        padding: 16px 24px;
+        border-left: 3px solid var(--c-warning);
+        background: var(--c-warning-bg);
+        border-radius: var(--r-md);
+        color: var(--c-text-secondary);
+        font-size: 0.85rem;
+        line-height: var(--lh-base);
+        margin-top: 1.25rem;
+    }
+    .health-note-title {
+        display: block;
+        margin-bottom: 0.35rem;
+        font-weight: 600;
+        color: var(--c-text);
+    }
+    .table-container { margin-top: 1rem; }
+    .health-empty { text-align: center; }
+    .disk-progress-wrap { padding: 0 12px 14px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header health-header">
+    <h2>系统健康</h2>
+    <span class="status-badge status-badge-lg {{ healthy|yesno:'success,danger' }}">
+        整体状态：{{ healthy|yesno:'健康,异常' }}
+    </span>
+</div>
+
+<!-- ① 健康探测 -->
+<div class="table-container">
+    <h3 class="health-section-title">🩺 健康探测</h3>
+    <table class="health-table">
+        <thead>
+            <tr>
+                <th scope="col">探测项</th>
+                <th scope="col">结果</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in check_items %}
+            <tr>
+                <td data-label="探测项"><span class="health-name">{{ item.label }}</span></td>
+                <td data-label="结果">
+                    {% if item.value == 'ok' %}
+                    <span class="status-badge success">正常</span>
+                    {% elif 'pending' in item.value %}
+                    <span class="status-badge warning">{{ item.value }}</span>
+                    {% elif item.value == 'unknown' %}
+                    <span class="status-badge default">{{ item.value }}</span>
+                    {% else %}
+                    <span class="status-badge danger">{{ item.value }}</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- ② 调度心跳 -->
+<div class="table-container health-cards">
+    <h3 class="health-section-title">💓 调度心跳</h3>
+    <div class="health-heartbeats">
+        {% for hb in heartbeats %}
+        <div class="health-heartbeat">
+            <span class="status-badge {{ hb.alive|yesno:'success,danger' }}">{{ hb.alive|yesno:'运行中,未运行' }}</span>
+            <span class="health-name">{{ hb.label }}</span>
+            <span class="health-heartbeat-time">心跳时间：{{ hb.time }}</span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- ③ 定时任务 -->
+<div class="table-container">
+    <h3 class="health-section-title">⏰ 定时任务</h3>
+    <table class="health-table">
+        <thead>
+            <tr>
+                <th scope="col">任务</th>
+                <th scope="col">触发方式</th>
+                <th scope="col">启用</th>
+                <th scope="col">上次状态</th>
+                <th scope="col">上次执行</th>
+                <th scope="col">耗时</th>
+                <th scope="col">结果摘要</th>
+                <th scope="col">下次预计</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in tasks %}
+            <tr>
+                <td data-label="任务">
+                    <div class="health-name">{{ item.task.name }}</div>
+                    <div class="health-sub">{{ item.task.code }}</div>
+                </td>
+                <td data-label="触发方式">{{ item.task.trigger_display }}</td>
+                <td data-label="启用">
+                    <span class="status-badge {{ item.task.enabled|yesno:'success,default' }}">{{ item.task.enabled|yesno:'已启用,已停用' }}</span>
+                </td>
+                <td data-label="上次状态">
+                    <span class="status-badge {{ item.task.status_badge_class }}">{{ item.task.get_last_status_display }}</span>
+                </td>
+                <td data-label="上次执行">
+                    {% if item.task.last_run_at %}{{ item.task.last_run_at|date:'Y-m-d H:i' }}{% else %}<span class="health-sub">从未执行</span>{% endif %}
+                </td>
+                <td data-label="耗时">
+                    {% if item.task.last_duration_ms %}{{ item.task.last_duration_ms }} ms{% else %}—{% endif %}
+                </td>
+                <td data-label="结果摘要">
+                    <div class="health-msg" {% if item.task.last_message %}title="{{ item.task.last_message }}"{% endif %}>{{ item.task.last_message|truncatechars:80|default:"—" }}</div>
+                </td>
+                <td data-label="下次预计">
+                    {% if item.next_run_at and item.next_run_at <= now %}
+                    <span class="status-badge warning">即将执行</span>
+                    {% elif item.next_run_at %}
+                    {{ item.next_run_at|date:'Y-m-d H:i' }}
+                    {% else %}—{% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="8" class="health-empty">暂无定时任务</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- ④ 备份操作历史 -->
+<div class="table-container">
+    <h3 class="health-section-title">💾 备份操作历史（最近 20 条）</h3>
+    <table class="health-table">
+        <thead>
+            <tr>
+                <th scope="col">操作类型</th>
+                <th scope="col">操作人</th>
+                <th scope="col">文件标识</th>
+                <th scope="col">结果</th>
+                <th scope="col">操作时间</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in backups %}
+            <tr>
+                <td data-label="操作类型">{{ log.get_op_type_display }}</td>
+                <td data-label="操作人">{{ log.operator }}</td>
+                <td data-label="文件标识">
+                    <div class="health-msg">{{ log.file_name|default:"—" }}</div>
+                </td>
+                <td data-label="结果">
+                    <span class="status-badge {{ log.success|yesno:'success,danger' }}">{{ log.success|yesno:'成功,失败' }}</span>
+                </td>
+                <td data-label="操作时间">{{ log.created_at|date:'Y-m-d H:i' }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="health-empty">暂无备份操作记录</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- ⑤ 磁盘占用 -->
+<div class="table-container">
+    <h3 class="health-section-title">🗄️ 磁盘占用</h3>
+    <table class="health-table">
+        <tbody>
+            <tr>
+                <td data-label="磁盘总量"><span class="health-name">磁盘总量</span></td>
+                <td data-label="值">{{ disk.total }}</td>
+            </tr>
+            <tr>
+                <td data-label="已用"><span class="health-name">已用</span></td>
+                <td data-label="值">{{ disk.used }}</td>
+            </tr>
+            <tr>
+                <td data-label="可用"><span class="health-name">可用</span></td>
+                <td data-label="值">{{ disk.free }}</td>
+            </tr>
+            <tr>
+                <td data-label="使用率"><span class="health-name">使用率</span></td>
+                <td data-label="值">{{ disk.percent }}%</td>
+            </tr>
+            <tr>
+                <td data-label="数据库文件"><span class="health-name">db.sqlite3</span></td>
+                <td data-label="值">{{ db_size }}</td>
+            </tr>
+            <tr>
+                <td data-label="备份目录"><span class="health-name">备份目录</span><div class="health-sub">{{ backups_dir }}</div></td>
+                <td data-label="值">{{ backups_dir_size }}</td>
+            </tr>
+            <tr>
+                <td data-label="媒体目录"><span class="health-name">媒体目录</span><div class="health-sub">{{ media_root }}</div></td>
+                <td data-label="值">{{ media_root_size }}</td>
+            </tr>
+        </tbody>
+    </table>
+    <div class="disk-progress-wrap">
+        <progress class="disk-progress" value="{{ disk.percent }}" max="100"></progress>
+    </div>
+</div>
+
+<!-- 非目标提示区 -->
+<div class="health-note">
+    <span class="health-note-title">非目标提示（批 C 待做）</span>
+    请求量、P95 延迟、慢查询 Top 10 需要采集中间件，属批次 C 范围，本页暂不提供。
+</div>
+{% endblock %}
