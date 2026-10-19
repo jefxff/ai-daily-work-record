@@ -9,6 +9,15 @@
     .samples-table td, .samples-table th { white-space: nowrap; }
     .samples-table td.td-ellipsis { max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
     .samples-table td.actions-cell, .samples-table th.actions-cell { white-space: nowrap; }
+    /* 操作列：表头居中，按钮组也要居中，否则视觉中轴线错位（"不对称"） */
+    .samples-table td.actions-cell > div { justify-content: center; }
+    /* 9 列在 1440 下必然横向溢出，把操作列固定在右侧，滚动时始终可见、不被裁切 */
+    .samples-table th.actions-cell, .samples-table td.actions-cell {
+        position: sticky; right: 0; background: var(--c-surface);
+        box-shadow: -3px 0 8px rgba(0,0,0,0.05); z-index: 2;
+    }
+    .samples-table tbody tr:hover td.actions-cell { background: var(--c-surface-sunken); }
+    .samples-table tbody tr.row-deleted td.actions-cell { background: var(--c-surface-sunken); }
     .samples-table thead th { background: var(--c-surface); color: var(--c-text); font-weight: 600; font-size: 0.82rem; border-bottom: 2px solid #e8e8e8; padding: 10px 12px; }
     .samples-table td { padding: 11px 12px; border-bottom: 1px solid var(--c-border); vertical-align: middle; }
     .samples-table tbody tr:hover { background: var(--c-surface-sunken); }
@@ -21,13 +30,14 @@
     .progress-cell .p-divider { width: 1px; height: 14px; background: #e8e8e8; flex-shrink: 0; }
     .btn-detail { color: var(--c-primary) !important; border-color: var(--c-border-hover) !important; background: var(--c-primary-subtle) !important; }
     .btn-detail:hover { background: var(--c-primary-subtle) !important; }
-    .filter-bar { background: var(--c-surface); border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 1rem 1.25rem; margin-bottom: 1.25rem; }
+    /* 筛选栏：作为表格卡片头部，与下方表格拼成一张卡（与全站列表页一致） */
+    .filter-bar { background: var(--c-surface); border: 1px solid var(--c-border); border-bottom: none; border-radius: 10px 10px 0 0; box-shadow: none; padding: 12px 16px; margin-bottom: 0; }
     .filter-row { display: flex; flex-wrap: nowrap; gap: 0.5rem 0.7rem; align-items: center; }
     @media (max-width: 1080px) { .filter-row { flex-wrap: wrap; } }
     /* 操作按钮：置于 chips 行右侧，规避日期控件重排导致的错位 */
     .chip-actions { margin-left: auto; display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
     .chip-actions .btn-primary, .chip-actions .btn-secondary {
-        height: 30px; padding: 0 14px !important; line-height: 1; margin: 0;
+        height: 34px; padding: 0 14px !important; line-height: 1; margin: 0;
         display: inline-flex; align-items: center; box-sizing: border-box; font-size: 0.8rem;
     }
     .filter-form label { font-size: 0.85rem; color: var(--c-text-secondary); white-space: nowrap; }
@@ -50,11 +60,17 @@
     .f-capsule input[type="date"]::-webkit-date-and-time-value { min-height: 30px; }
     .f-capsule input[type="date"]::-webkit-calendar-picker-indicator { margin: 0; padding: 0; }
     .form-actions { display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0; }
-    /* 状态快捷筛选 */
-    .quick-chips { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.85rem; padding-bottom: 0.85rem; border-bottom: 1px dashed var(--c-border); }
-    .q-chip { font-size: 0.8rem; color: var(--c-text-secondary); background: var(--c-surface-sunken); border-radius: 999px; padding: 3px 14px; text-decoration: none; transition: all 0.15s ease; }
-    .q-chip:hover { color: var(--c-primary); background: var(--c-primary-subtle); }
-    .q-chip.active { color: var(--c-surface); background: var(--c-primary); font-weight: 500; }
+    /* 状态快捷筛选：与下拉、按钮统一为 34px 高 / 6px 圆角 / 1px 描边，
+       不再用「999px 胶囊 + 浅灰底」这套与下拉格格不入的语言 */
+    .quick-chips { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 10px; }
+    .q-chip {
+        height: 34px; display: inline-flex; align-items: center; padding: 0 14px;
+        font-size: 0.82rem; color: var(--c-text-secondary);
+        background: var(--c-surface); border: 1px solid var(--c-border-strong); border-radius: 6px;
+        text-decoration: none; transition: color .15s ease, border-color .15s ease, background-color .15s ease;
+    }
+    .q-chip:hover { color: var(--c-primary); border-color: var(--c-primary); background: var(--c-primary-subtle); }
+    .q-chip.active { color: var(--c-surface); background: var(--c-primary); border-color: var(--c-primary); font-weight: 500; }
     /* 已删除行 */
     .row-deleted td { color: var(--c-text-tertiary) !important; background: var(--c-surface-sunken) !important; }
 </style>
@@ -63,12 +79,6 @@
 {% block content %}
 <div class="page-header">
     <h2>样品台账<span class="total-hint">共 {{ page_obj.paginator.count }} 条</span></h2>
-    <div class="filter-chips">
-        <a class="btn-transparent" href="{% url 'samples:export' %}{% if query_string %}?{{ query_string }}{% endif %}">⬇ 导出 Excel</a>
-        {% can "samples" "create" %}
-        <a class="btn-primary" href="{% url 'samples:create' %}" data-modal-add data-modal-title="送样登记">＋ 送样登记</a>
-        {% endcan %}
-    </div>
 </div>
 
 <!-- 筛选栏 -->
@@ -81,12 +91,12 @@
             {% for key, label in status_choices %}
             <a class="q-chip {% if flt.status == key %}active{% endif %}" href="?{% for k, v in request.GET.items %}{% if k != 'status' and k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}status={{ key }}">{{ label }}</a>
             {% endfor %}
+            {# 页面主操作与状态快捷筛选同排，右端对齐 #}
             <div class="chip-actions">
-                <label class="del-toggle">
-                    <input type="checkbox" name="show_deleted" value="1" {% if flt.show_deleted %}checked{% endif %}>含已删除
-                </label>
-                <button type="submit" class="btn-primary">查询</button>
-                <a class="btn-secondary" href="{% url 'samples:list' %}">重置</a>
+                <a class="btn-secondary" href="{% url 'samples:export' %}{% if query_string %}?{{ query_string }}{% endif %}">导出 Excel</a>
+                {% can "samples" "create" %}
+                <a class="btn-primary" href="{% url 'samples:create' %}" data-modal-add data-modal-title="送样登记">＋ 送样登记</a>
+                {% endcan %}
             </div>
         </div>
         <div class="filter-row">
@@ -113,19 +123,18 @@
                 </select>
             </div>
             <div class="f-capsule">
-                <span class="cap-label">登记人</span>
-                <select id="fltRegistrar" name="registrar" class="form-select" style="width:88px;">
-                    <option value="">全部</option>
-                    {% for r in registrars %}
-                    <option value="{{ r }}" {% if flt.registrar == r %}selected{% endif %}>{{ r }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="f-capsule">
                 <span class="cap-label">送样时间</span>
                 <input type="date" name="date_from" value="{{ flt.date_from|date:'Y-m-d' }}" class="form-control cap-date" title="送样开始日期">
                 <span class="range-sep">至</span>
                 <input type="date" name="date_to" value="{{ flt.date_to|date:'Y-m-d' }}" class="form-control cap-date" title="送样结束日期">
+            </div>
+            {# 含已删除 + 查询 + 重置统一放在筛选条件这一行的右端 #}
+            <div class="chip-actions">
+                <label class="del-toggle">
+                    <input type="checkbox" name="show_deleted" value="1" {% if flt.show_deleted %}checked{% endif %}>含已删除
+                </label>
+                <button type="submit" class="btn-secondary">查询</button>
+                <a class="btn-secondary" href="{% url 'samples:list' %}">重置</a>
             </div>
         </div>
     </form>

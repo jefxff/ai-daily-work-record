@@ -5,17 +5,52 @@
 
 {% block extra_css %}
 <style>
-    .lg-dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
-    .lg-stat-card { background: var(--c-surface); border-radius: 12px; padding: 1.25rem; box-shadow: var(--sh-1); }
-    .lg-stat-value { font-size: 1.8rem; font-weight: 700; color: var(--c-text); }
-    .lg-stat-label { font-size: 0.8rem; color: var(--c-text-secondary); margin-top: 0.25rem; }
+    /* === 指标卡：左侧细色条区分状态，数字等宽，去掉重阴影 === */
+    .lg-dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(158px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .lg-stat-card { position: relative; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 10px; padding: 14px 16px 14px 18px; box-shadow: none; }
+    .lg-stat-card::before { content: ""; position: absolute; left: 0; top: 14px; bottom: 14px; width: 3px; border-radius: 0 2px 2px 0; background: var(--c-border-strong); }
+    .lg-stat-value { font-size: 1.6rem; font-weight: 700; line-height: 1.1; color: var(--c-text); font-variant-numeric: tabular-nums; }
+    .lg-stat-label { font-size: 0.75rem; color: var(--c-text-secondary); margin-top: 5px; white-space: nowrap; }
+    .lg-stat-card.borrowed::before { background: var(--c-danger); }
     .lg-stat-card.borrowed .lg-stat-value { color: var(--c-danger); }
+    .lg-stat-card.expiring::before { background: var(--c-warning); }
     .lg-stat-card.expiring .lg-stat-value { color: var(--c-warning); }
 
-    .lg-toolbar { display: flex; flex-wrap: nowrap; gap: 0.75rem; align-items: center; margin-bottom: 1.25rem; overflow-x: auto; }
-    .lg-toolbar .form-control, .lg-toolbar .form-select { width: auto; min-width: 140px; }
-    .lg-toolbar form { flex-wrap: nowrap !important; }
-    .lg-toolbar .lg-actions { display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0; }
+    /* === 工具栏：搜索 / 筛选 / 操作三段，控件统一 34px 高、6px 圆角 === */
+    /* === 工具栏：一行排布（搜索筛选在左、操作在右），宽度不足时自动换行 === */
+    .lg-toolbar {
+        display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+        background: var(--c-surface); border: 1px solid var(--c-border);
+        border-radius: 10px; padding: 10px 14px; margin-bottom: 16px;
+    }
+    .lg-toolbar form { display: flex; flex-wrap: nowrap; gap: 6px; align-items: center; flex: 0 1 auto; min-width: 0; order: 1; }
+    .lg-toolbar .form-control, .lg-toolbar .form-select {
+        height: 34px; font-size: 13px; border-radius: 6px; border-color: var(--c-border-strong);
+    }
+    /* 搜索框收窄到 180px，给右侧按钮让出空间 */
+    .lg-toolbar .form-control { flex: 0 0 180px; width: 180px; min-width: 0; }
+    .lg-toolbar .form-select { flex: 0 0 auto; width: auto; min-width: 116px; max-width: 150px; }
+    .lg-toolbar .lg-actions { display: flex; gap: 6px; align-items: center; flex-shrink: 0; flex-wrap: nowrap; margin-left: auto; order: 2; }
+    /* 按钮顺序：次要操作 → 录入档案 → 新建台账（最右） */
+    .lg-toolbar .lg-actions .btn-outline-primary,
+    .lg-toolbar .lg-actions .btn-outline-secondary { order: 1; }
+    .lg-toolbar .lg-actions .btn-success { order: 2; }
+    .lg-toolbar .lg-actions .btn-primary { order: 3; }
+    /* 全站统一的按钮规格：34px / 6px 圆角 / 不换行（原先被挤到「搜索档\n案」） */
+    .lg-toolbar .btn, .lg-toolbar .lg-actions .btn {
+        height: 34px; padding: 0 10px; font-size: 12.5px; font-weight: 500; border-radius: 6px;
+        display: inline-flex; align-items: center; gap: 5px;
+        white-space: nowrap; box-shadow: none; line-height: 1;
+    }
+    /* 一页只留一个实心蓝主操作（新建台账）；录入档案用绿色语义、其余一律白底次级 */
+    .lg-toolbar .btn-success { background: var(--c-success-bg); color: var(--c-success); border: 1px solid var(--c-success-line); }
+    .lg-toolbar .btn-success:hover { background: var(--c-success); color: var(--c-surface); border-color: var(--c-success); }
+    .lg-toolbar .btn-outline-primary, .lg-toolbar .btn-outline-secondary {
+        background: var(--c-surface); color: var(--c-text-secondary); border: 1px solid var(--c-border-strong);
+    }
+    .lg-toolbar .btn-outline-primary:hover, .lg-toolbar .btn-outline-secondary:hover {
+        background: var(--c-primary-subtle); color: var(--c-primary); border-color: var(--c-primary);
+    }
 
     .lg-search-banner { padding: 0.65rem 1rem; border-radius: 8px; font-size: 0.88rem; margin-bottom: 1rem; }
     .lg-search-banner.has-hit { background: var(--c-warning-bg); border: 1px solid var(--c-warning-line); color: var(--c-warning); }
@@ -86,8 +121,8 @@
     <!-- 工具栏 -->
     <div class="lg-toolbar">
         <form method="get" class="d-flex flex-wrap gap-2">
-            <input type="text" name="aq" value="{{ aq }}" class="form-control" placeholder="搜索档案：名称 / 编号 / 相对方 / 合同号 / 部门 / 位置编码 / 标签 / 经办人 / 描述" style="min-width:280px">
-            <button class="btn btn-primary btn-sm" type="submit">搜索档案</button>
+            <input type="text" name="aq" value="{{ aq }}" class="form-control" placeholder="搜索编号 / 名称" aria-label="搜索档案">
+            <button class="btn btn-outline-secondary btn-sm" type="submit">搜索档案</button>
             <select name="category" class="form-select">
                 <option value="">全部类别</option>
                 {% for c in categories %}
@@ -99,7 +134,8 @@
                 <option value="expiring" {% if status == "expiring" %}selected{% endif %}>即将到期</option>
                 <option value="borrowed" {% if status == "borrowed" %}selected{% endif %}>借出中</option>
             </select>
-            <button class="btn btn-primary btn-sm" type="submit">筛选</button>
+            <button class="btn btn-outline-secondary btn-sm" type="submit">筛选</button>
+            <a href="{% url 'archive:overview' %}" class="btn btn-outline-secondary btn-sm" title="清空搜索与筛选条件">重置</a>
         </form>
         <div class="ms-auto lg-actions">
             {% can "archive" "create" %}
@@ -109,10 +145,10 @@
             <a href="{% url 'archive:archive_create' %}" class="btn btn-success btn-sm" data-modal-add data-modal-title="录入档案">＋ 录入档案</a>
             {% endcan %}
             {% can "archive" "read" %}
-            <button type="button" class="btn btn-outline-primary btn-sm" id="btnBatchExport" title="勾选台账后批量导出（每个台账一个工作表）；未勾选时请先勾选">导出所选</button>
+            <button type="button" class="btn btn-outline-primary btn-sm" id="btnBatchExport" title="勾选台账后批量导出（每个台账一个工作表）；未勾选时请先勾选">导出</button>
             {% endcan %}
             {% can "archive" "update" %}
-            <a href="{% url 'archive:ledger_batch_import' %}" class="btn btn-outline-primary btn-sm" title="上传多工作表 Excel，按工作表名匹配台账批量导入更新">批量导入更新</a>
+            <a href="{% url 'archive:ledger_batch_import' %}" class="btn btn-outline-primary btn-sm" title="上传多工作表 Excel，按工作表名匹配台账批量导入更新">批量导入</a>
             {% endcan %}
             {% can "archive" "update" %}
             <button type="button" class="btn btn-outline-secondary btn-sm" id="btnLedgerSort" title="调整台账在总览页的显示顺序">台账排序</button>

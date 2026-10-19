@@ -5,13 +5,18 @@
 
 {% block extra_css %}
 <style>
-    .lic-dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
-    .lic-stat-card { background: rgba(255,255,255,0.95); border-radius: 12px; padding: 1.25rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-    .lic-stat-value { font-size: 1.8rem; font-weight: 700; color: var(--c-text); }
-    .lic-stat-label { font-size: 0.8rem; color: var(--c-text-secondary); margin-top: 0.25rem; }
+    /* 指标卡与「档案总览」统一：1px 边框 + 左侧状态色条 + 等宽数字 */
+    .lic-dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(158px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .lic-stat-card { position: relative; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 10px; padding: 14px 16px 14px 18px; box-shadow: none; }
+    .lic-stat-card::before { content: ""; position: absolute; left: 0; top: 14px; bottom: 14px; width: 3px; border-radius: 0 2px 2px 0; background: var(--c-border-strong); }
+    .lic-stat-value { font-size: 1.6rem; font-weight: 700; line-height: 1.1; color: var(--c-text); font-variant-numeric: tabular-nums; }
+    .lic-stat-label { font-size: 0.75rem; color: var(--c-text-secondary); margin-top: 5px; white-space: nowrap; }
+    .lic-stat-card.expiring::before { background: var(--c-warning); }
     .lic-stat-card.expiring .lic-stat-value { color: var(--c-warning); }
+    .lic-stat-card.expired::before { background: var(--c-danger); }
     .lic-stat-card.expired .lic-stat-value { color: var(--c-danger); }
-    .lic-stat-card.borrowed .lic-stat-value { color: var(--c-borrowed); }
+    .lic-stat-card.borrowed::before { background: var(--c-primary); }
+    .lic-stat-card.borrowed .lic-stat-value { color: var(--c-primary); }
 
     .lic-toolbar { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-bottom: 1.25rem; }
     .lic-toolbar .form-control { width: auto; min-width: 200px; }
@@ -36,20 +41,8 @@
 {% endblock %}
 
 {% block content %}
-<div class="container">
-    <div class="page-header d-flex justify-content-between align-items-center mb-3">
-        <h3 class="page-title">证照管理</h3>
-        <div class="d-flex gap-2">
-            {% can "archive" "create" %}
-            <a href="{% url 'archive:license_import' %}" class="btn btn-outline-primary btn-sm">导入台账</a>
-            <a href="{% url 'archive:table_export' 'licenses' %}" class="btn btn-outline-primary btn-sm">导出 Excel</a>
-            {% can "archive" "update" %}
-            <a href="{% url 'archive:table_import' 'licenses' %}" class="btn btn-outline-secondary btn-sm">导入/更新</a>
-            {% endcan %}
-            <a href="{% url 'archive:license_create' %}" class="btn btn-primary btn-sm" data-modal-add data-modal-title="新增证照">+ 新增证照</a>
-            {% endcan %}
-        </div>
-    </div>
+<div class="container arc-page">
+    <div class="page-header"><h2 class="page-title">证照管理</h2></div>
 
     <!-- 仪表盘 -->
     <div class="lic-dashboard">
@@ -71,8 +64,9 @@
         </div>
     </div>
 
-    <!-- 工具栏：搜索 + 状态筛选 -->
-    <form class="lic-toolbar" method="GET">
+    <!-- 操作条：搜索 / 筛选 / 导入导出，一行放在列表上方 -->
+    <div class="page-actions">
+    <form method="GET">
         <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="搜索证照名称/编号/持证单位/发证机关">
         <select name="status" class="form-select" onchange="this.form.submit()">
             <option value="">全部状态</option>
@@ -80,9 +74,20 @@
             <option value="expiring" {% if status == 'expiring' %}selected{% endif %}>即将到期</option>
             <option value="expired" {% if status == 'expired' %}selected{% endif %}>已过期</option>
         </select>
-        <button type="submit" class="btn btn-primary btn-sm">筛选</button>
+        <button type="submit" class="btn btn-outline-secondary btn-sm">筛选</button>
         <a href="{% url 'archive:license_list' %}" class="btn btn-outline-secondary btn-sm">重置</a>
     </form>
+        <div class="d-flex gap-2">
+            {% can "archive" "create" %}
+            <a href="{% url 'archive:license_import' %}" class="btn btn-outline-primary btn-sm">导入台账</a>
+            <a href="{% url 'archive:table_export' 'licenses' %}" class="btn btn-outline-primary btn-sm">导出 Excel</a>
+            {% can "archive" "update" %}
+            <a href="{% url 'archive:table_import' 'licenses' %}" class="btn btn-outline-secondary btn-sm">导入/更新</a>
+            {% endcan %}
+            <a href="{% url 'archive:license_create' %}" class="btn btn-primary btn-sm" data-modal-add data-modal-title="新增证照">+ 新增证照</a>
+            {% endcan %}
+        </div>
+    </div>
 
     <!-- 列表 -->
     <div class="lic-table">

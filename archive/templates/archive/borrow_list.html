@@ -4,9 +4,9 @@
 {% block page_title %}借阅记录 - 档案管理{% endblock %}
 
 {% block content %}
-<div class="container">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="page-title">借阅记录</h1>
+<div class="container arc-page">
+    <div class="page-header"><h2 class="page-title">借阅记录</h2></div>
+    <div class="page-actions">
         <div class="d-flex gap-2">
             <a href="{% url 'archive:borrow_list' %}" class="btn btn-sm {% if not status %}btn-primary{% else %}btn-outline-secondary{% endif %}">全部</a>
             <a href="?status=borrowed" class="btn btn-sm {% if status == 'borrowed' %}btn-primary{% else %}btn-outline-secondary{% endif %}">借出中</a>

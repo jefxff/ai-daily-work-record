@@ -16,27 +16,24 @@
 {% endblock %}
 
 {% block content %}
-<div class="container">
-    <div class="page-header d-flex justify-content-between align-items-center mb-3">
-        <h3 class="page-title">证照借阅记录</h3>
-        <div class="d-flex gap-2">
-            {% can "archive" "read" %}
-            <a href="{% url 'archive:table_export' 'license_borrows' %}" class="btn btn-outline-primary btn-sm">导出 Excel</a>
-            {% endcan %}
-            {% can "archive" "update" %}
-            <a href="{% url 'archive:table_import' 'license_borrows' %}" class="btn btn-outline-secondary btn-sm">导入/更新</a>
-            {% endcan %}
-        </div>
+<div class="container arc-page">
+    <div class="page-header"><h2 class="page-title">证照借阅记录</h2></div>
+    <div class="page-actions">
+        <form method="GET">
+            <select name="status" class="form-select" onchange="this.form.submit()">
+                <option value="">全部状态</option>
+                <option value="borrowed" {% if status == 'borrowed' %}selected{% endif %}>借出中</option>
+                <option value="returned" {% if status == 'returned' %}selected{% endif %}>已归还</option>
+                <option value="overdue" {% if status == 'overdue' %}selected{% endif %}>已逾期</option>
+            </select>
+        </form>
+        {% can "archive" "read" %}
+        <a href="{% url 'archive:table_export' 'license_borrows' %}" class="btn btn-outline-primary btn-sm">导出 Excel</a>
+        {% endcan %}
+        {% can "archive" "update" %}
+        <a href="{% url 'archive:table_import' 'license_borrows' %}" class="btn btn-outline-secondary btn-sm">导入/更新</a>
+        {% endcan %}
     </div>
-
-    <form class="mb-3" method="GET">
-        <select name="status" class="form-select" style="width:auto;" onchange="this.form.submit()">
-            <option value="">全部状态</option>
-            <option value="borrowed" {% if status == 'borrowed' %}selected{% endif %}>借出中</option>
-            <option value="returned" {% if status == 'returned' %}selected{% endif %}>已归还</option>
-            <option value="overdue" {% if status == 'overdue' %}selected{% endif %}>已逾期</option>
-        </select>
-    </form>
 
     <div class="lic-table">
         <table class="table--cards table">

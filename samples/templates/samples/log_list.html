@@ -4,7 +4,8 @@
 
 {% block extra_css %}
 <style>
-    .filter-bar { background: var(--c-surface); border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 1rem 1.25rem; margin-bottom: 1.25rem; }
+    /* 筛选栏：作为表格卡片头部，与下方表格拼成一张卡（与全站列表页一致） */
+    .filter-bar { background: var(--c-surface); border: 1px solid var(--c-border); border-bottom: none; border-radius: 10px 10px 0 0; box-shadow: none; padding: 1rem 1.25rem; margin-bottom: 0; }
     .filter-form { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; }
 </style>
 {% endblock %}
@@ -12,7 +13,11 @@
 {% block content %}
 <div class="page-header">
     <h2>操作留痕<span class="total-hint">共 {{ page_obj.paginator.count }} 条</span></h2>
-    <div class="filter-chips">
+</div>
+
+<div class="filter-bar">
+    {% if keyword or action or target_type %}
+    <div class="filter-chips" style="margin: 0 0 10px;">
         {% if keyword %}
         <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'keyword' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">关键字：{{ keyword }} ✕</a>
         {% endif %}
@@ -23,9 +28,7 @@
         <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'target_type' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">对象：{{ target_type }} ✕</a>
         {% endif %}
     </div>
-</div>
-
-<div class="filter-bar">
+    {% endif %}
     <form method="GET" class="filter-form">
         <input type="text" class="form-control search-input" style="width:240px;" name="keyword" value="{{ keyword }}" placeholder="对象标识 / 操作摘要">
         <select name="action" class="form-select" style="width:140px;">
@@ -41,7 +44,8 @@
             <option value="小批量记录" {% if target_type == '小批量记录' %}selected{% endif %}>小批量记录</option>
             <option value="供应商档案" {% if target_type == '供应商档案' %}selected{% endif %}>供应商档案</option>
         </select>
-        <button type="submit" class="btn-primary">查询</button>
+        {# 查询是筛选动作，降为次级：整页只留一个实心蓝主操作 #}
+                <button type="submit" class="btn-secondary">查询</button>
         <a class="btn-secondary" href="{% url 'samples:log_list' %}">重置</a>
     </form>
 </div>

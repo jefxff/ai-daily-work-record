@@ -4,10 +4,9 @@
 {% block page_title %}档案柜管理 - 档案管理{% endblock %}
 
 {% block content %}
-<div class="container">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="page-title">档案柜</h1>
-        <div class="d-flex gap-2">
+<div class="container arc-page">
+    <div class="page-header"><h2 class="page-title">档案柜</h2></div>
+    <div class="page-actions">
             {% can "archive" "read" %}
             <a href="{% url 'archive:table_export' 'cabinets' %}" class="btn btn-outline-primary btn-sm">导出 Excel</a>
             {% endcan %}
@@ -17,7 +16,6 @@
             {% can "archive" "create" %}
             <a href="{% url 'archive:cabinet_create' %}" class="btn btn-primary" data-modal-add data-modal-title="新建档案柜">＋ 新建档案柜</a>
             {% endcan %}
-        </div>
     </div>
 
     <div class="card">

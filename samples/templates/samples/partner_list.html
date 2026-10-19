@@ -5,7 +5,8 @@
 
 {% block extra_css %}
 <style>
-    .filter-bar { background: var(--c-surface); border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 1rem 1.25rem; margin-bottom: 1.25rem; }
+    /* 筛选栏：作为表格卡片头部，与下方表格拼成一张卡（与全站列表页一致） */
+    .filter-bar { background: var(--c-surface); border: 1px solid var(--c-border); border-bottom: none; border-radius: 10px 10px 0 0; box-shadow: none; padding: 1rem 1.25rem; margin-bottom: 0; }
     .filter-form { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; }
 </style>
 {% endblock %}
@@ -13,11 +14,6 @@
 {% block content %}
 <div class="page-header">
     <h2>供应商档案<span class="total-hint">共 {{ page_obj.paginator.count }} 条</span></h2>
-    <div class="filter-chips">
-        {% can "samples" "create" %}
-        <a class="btn-primary" href="{% url 'samples:partner_create' %}" data-modal-add data-modal-title="新增供应商档案">＋ 新增供应商</a>
-        {% endcan %}
-    </div>
 </div>
 
 <div class="filter-bar">
@@ -29,8 +25,13 @@
             <option value="{{ key }}" {% if status == key %}selected{% endif %}>{{ label }}</option>
             {% endfor %}
         </select>
-        <button type="submit" class="btn-primary">查询</button>
+        {# 查询是筛选动作，降为次级：整页只留一个实心蓝主操作 #}
+        <button type="submit" class="btn-secondary">查询</button>
         <a class="btn-secondary" href="{% url 'samples:partner_list' %}">重置</a>
+        {# 主操作固定在最右，与全站列表页一致 #}
+        {% can "samples" "create" %}
+        <a class="btn-primary" href="{% url 'samples:partner_create' %}" data-modal-add data-modal-title="新增供应商档案" style="margin-left:auto;">＋ 新增供应商</a>
+        {% endcan %}
     </form>
 </div>
 
@@ -58,7 +59,7 @@
                     <td data-label="合作状态"><span class="status-badge {{ partner.status_badge }}">{{ partner.get_status_display }}</span></td>
                     <td data-label="创建时间">{{ partner.created_at|date:'Y-m-d' }}</td>
                     <td data-label="操作">
-                        <div style="display:flex; gap:0.25rem; align-items:center; flex-wrap:nowrap;">
+                        <div style="display:flex; gap:0.25rem; align-items:center; justify-content:center;">
                             <a href="{% url 'samples:partner_detail' partner.pk %}" class="btn-transparent btn-sm" data-modal-detail data-modal-title="{{ partner.name }} 档案">详细</a>
                             {% can "samples" "update" %}
                             <a href="{% url 'samples:partner_edit' partner.pk %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑供应商档案">编辑</a>
