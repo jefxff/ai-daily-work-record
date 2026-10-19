@@ -211,10 +211,10 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
         .nav-user-menu-header { padding: 0.6rem 1rem 0.75rem; border-bottom: 1px solid var(--c-border); margin-bottom: 0.375rem; display: flex; flex-direction: column; gap: 2px; }
         .nav-user-menu-name { font-size: 0.9rem; font-weight: 600; color: var(--c-text); }
         .nav-user-menu-sub { font-size: 0.75rem; color: var(--c-text-secondary); }
-        .nav-user-menu a, .nav-user-menu-item-danger { display: flex; align-items: center; gap: 0.6rem; width: 100%; text-align: left; padding: 0.55rem 1rem; font-size: 0.85rem; color: var(--c-text-secondary); background: none; border: none; cursor: pointer; text-decoration: none; transition: background 0.15s ease; }
-        .nav-user-menu a:hover, .nav-user-menu-item-danger:hover { background: var(--c-surface-sunken); color: var(--c-primary); }
+        .nav-user-menu a, .nav-user-menu-item, .nav-user-menu-item-danger { display: flex; align-items: center; gap: 0.6rem; width: 100%; text-align: left; padding: 0.55rem 1rem; font-size: 0.85rem; color: var(--c-text-secondary); background: none; border: none; cursor: pointer; text-decoration: none; transition: background 0.15s ease; }
+        .nav-user-menu a:hover, .nav-user-menu-item:hover, .nav-user-menu-item-danger:hover { background: var(--c-surface-sunken); color: var(--c-primary); }
         .nav-user-menu-item-danger:hover { color: var(--c-danger); background: var(--c-danger-bg); }
-        .nav-user-menu a svg, .nav-user-menu-item-danger svg { color: var(--c-text-secondary); }
+        .nav-user-menu a svg, .nav-user-menu-item svg, .nav-user-menu-item-danger svg { color: var(--c-text-secondary); }
         .nav-user-menu-divider { height: 1px; background: var(--c-border); margin: 0.375rem 0; }
         .top-nav-actions { display: flex; align-items: center; gap: 0.5rem; margin-left: 1rem; flex-shrink: 0; }
 
