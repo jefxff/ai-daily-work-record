@@ -59,7 +59,7 @@
         </div>
     </div>
     {% can "insurance" "create" %}
-    <a href="{% url 'insurance_add' %}" class="btn-transparent" data-modal-add data-modal-title="新增保险">新增保险</a>
+    <a href="{% url 'insurance_add' %}" class="btn-primary" data-modal-add data-modal-title="新增保险">新增保险</a>
     {% endcan %}
     <a href="{% url 'insurance_export' %}" class="btn-transparent">下载Excel</a>
 {% endblock %}

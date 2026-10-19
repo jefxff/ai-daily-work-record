@@ -157,25 +157,31 @@
 
 {% block extra_css %}
 <style>
+    /* 操作条：标签与输入横排一行，控件统一 34px，避免竖排把行高撑成两行 */
     .anomaly-window-form {
         display: flex;
-        align-items: flex-end;
-        gap: 0.5rem;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin: 0;
     }
     .anomaly-window-label {
-        display: flex;
-        flex-direction: column;
-        gap: 0.35rem;
-        font-size: 0.8125rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
         color: var(--c-text-secondary);
+        white-space: nowrap;
     }
     .anomaly-window-label input {
-        width: 6rem;
-        padding: 0.4rem 0.6rem;
-        border: 1px solid var(--c-border);
+        width: 72px;
+        height: 34px;
+        padding: 0 10px;
+        border: 1px solid var(--c-border-strong);
         border-radius: 6px;
         background: var(--c-surface);
         color: var(--c-text);
+        font-size: 13px;
     }
     .anomaly-note {
         color: var(--c-text-secondary);

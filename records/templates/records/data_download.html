@@ -3,10 +3,6 @@
 
 {% block page_title %}数据下载{% endblock %}
 
-{% block top_nav_actions %}
-    <a href="{% url 'home' %}" class="btn-transparent">返回首页</a>
-{% endblock %}
-
 {% block extra_css %}
 <style>
     /* 数据下载页面特定样式（Ant Design 风格） */
@@ -157,10 +153,13 @@
 {% endblock %}
 
 {% block content %}
+<div class="page-header">
+    <h2 class="download-title">数据导出中心</h2>
+    <a href="{% url 'home' %}" class="btn-transparent">返回首页</a>
+</div>
 <div class="download-container">
     <!-- 页面头部 -->
     <div class="download-header">
-        <h2 class="download-title">数据导出中心</h2>
         <p class="download-description">
             从以下模块导出Excel格式的数据，方便您进行数据分析和备份。
             所有数据均来源于系统数据库，确保数据的准确性和完整性。

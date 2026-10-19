@@ -71,7 +71,7 @@
         </div>
     </div>
     {% can "customer_complaint" "create" %}
-    <a href="{% url 'customer_complaint_add' %}" class="btn-transparent" data-modal-add data-modal-title="新增客户客诉">新增客户客诉</a>
+    <a href="{% url 'customer_complaint_add' %}" class="btn-primary" data-modal-add data-modal-title="新增客户客诉">新增客户客诉</a>
     {% endcan %}
     <a href="{% url 'customer_complaint_export' %}" class="btn-transparent">下载Excel</a>
 {% endblock %}

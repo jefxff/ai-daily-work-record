@@ -10,7 +10,7 @@
         <button class="btn-transparent" type="submit">搜索</button>
     </form>
     {% can "regulation" "create" %}
-    <a href="{% url 'regulation_add' %}" class="btn-transparent" data-modal-add data-modal-title="新增制度">新增制度</a>
+    <a href="{% url 'regulation_add' %}" class="btn-primary" data-modal-add data-modal-title="新增制度">新增制度</a>
     {% endcan %}
     <a href="{% url 'regulation_export' %}" class="btn-transparent">下载Excel</a>
 {% endblock %}

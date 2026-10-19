@@ -10,7 +10,7 @@
         <button class="btn-transparent" type="submit">搜索</button>
     </form>
     {% can "price_evaluation" "create" %}
-    <a href="{% url 'price_evaluation_add' %}" class="btn-transparent" data-modal-add data-modal-title="新增核价">新增核价</a>
+    <a href="{% url 'price_evaluation_add' %}" class="btn-primary" data-modal-add data-modal-title="新增核价">新增核价</a>
     {% endcan %}
     <a href="{% url 'price_evaluation_export' %}" class="btn-transparent">下载Excel</a>
 {% endblock %}

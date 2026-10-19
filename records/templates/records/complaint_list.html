@@ -70,7 +70,7 @@
         </div>
     </div>
     {% can "complaint" "create" %}
-    <a href="{% url 'complaint_add' %}" class="btn-transparent" data-modal-add data-modal-title="新增诉讼">新增诉讼</a>
+    <a href="{% url 'complaint_add' %}" class="btn-primary" data-modal-add data-modal-title="新增诉讼">新增诉讼</a>
     {% endcan %}
     <a href="{% url 'complaint_export' %}" class="btn-transparent">下载Excel</a>
 {% endblock %}

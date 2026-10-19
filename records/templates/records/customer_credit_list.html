@@ -66,7 +66,7 @@
         </div>
     </div>
     {% can "customer_credit" "create" %}
-    <a href="{% url 'customer_credit_add' %}" class="btn-transparent" data-modal-add data-modal-title="新增客户账期">新增客户账期</a>
+    <a href="{% url 'customer_credit_add' %}" class="btn-primary" data-modal-add data-modal-title="新增客户账期">新增客户账期</a>
     {% endcan %}
     <a href="{% url 'customer_credit_export' %}" class="btn-transparent">下载Excel</a>
 {% endblock %}

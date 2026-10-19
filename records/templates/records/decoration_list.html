@@ -34,7 +34,7 @@
         </div>
     </div>
     {% can "decoration" "create" %}
-    <a href="{% url 'decoration_add' %}" class="btn-transparent" data-modal-add data-modal-title="新增装修">新增装修</a>
+    <a href="{% url 'decoration_add' %}" class="btn-primary" data-modal-add data-modal-title="新增装修">新增装修</a>
     {% endcan %}
     <a href="{% url 'decoration_export' %}" class="btn-transparent">下载Excel</a>
 {% endblock %}

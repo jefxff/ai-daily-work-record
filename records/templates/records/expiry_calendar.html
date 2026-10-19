@@ -3,15 +3,12 @@
 
 {% block page_title %}到期预警 - 每日工作记录管理网站{% endblock %}
 
-{% block top_nav_actions %}
-    <a href="{% url 'expiry_export' %}" class="btn-transparent">导出本月到期清单</a>
-{% endblock %}
-
 {% block content %}
     <div class="page-header">
         <h2>到期预警<span class="total-hint">未来 {{ days }} 天内 · 截至 {{ horizon_end|date:'Y-m-d' }}</span></h2>
     </div>
 
+    {# 参数与导出合并进同一行：左边调参数，右边导出，不再分成两块 #}
     <form class="table-container expiry-filter" method="GET">
         <div class="expiry-filter-row">
             <label>展望窗口（天）
@@ -30,6 +27,7 @@
                 <input type="number" name="lead_review" min="1" max="180" value="{{ lead_form.lead_review }}">
             </label>
             <button type="submit" class="btn-transparent">应用</button>
+            <a href="{% url 'expiry_export' %}" class="btn-transparent expiry-export">导出本月到期清单</a>
         </div>
     </form>
 
@@ -100,28 +98,33 @@
 
 {% block extra_css %}
 <style>
-    .expiry-filter { padding: 1rem 1.25rem; }
+    .expiry-filter { padding: 12px 16px; }
     .expiry-filter-row {
         display: flex;
         flex-wrap: wrap;
-        gap: 1rem;
+        gap: 12px;
         align-items: flex-end;
     }
     .expiry-filter-row label {
         display: flex;
         flex-direction: column;
-        gap: 0.35rem;
-        font-size: 0.8125rem;
-        color: var(--c-text-muted, #666);
+        gap: 5px;
+        font-size: 12px;
+        color: var(--c-text-secondary);
+        white-space: nowrap;
     }
     .expiry-filter-row input {
-        width: 7rem;
-        padding: 0.4rem 0.6rem;
-        border: 1px solid var(--c-border, rgba(0,0,0,0.1));
+        width: 96px;
+        height: 34px;
+        padding: 0 10px;
+        border: 1px solid var(--c-border-strong);
         border-radius: 6px;
-        background: var(--c-surface, #fff);
-        color: var(--c-text, #333);
+        background: var(--c-surface);
+        color: var(--c-text);
+        font-size: 13px;
     }
+    /* 导出推到最右：左侧调参数、右侧执行动作，一行两端对齐 */
+    .expiry-export { margin-left: auto; }
     .expiry-summary {
         display: flex;
         flex-wrap: wrap;
