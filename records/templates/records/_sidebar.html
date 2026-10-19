@@ -53,6 +53,10 @@
         {% can_view "knowledge" %}
         <li><a href="{% url 'knowledge_base:document_list' %}" class="{% if 'knowledge' in request.path %}active{% endif %}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 5v14a9 3 0 0 1-18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg><span>知识库</span></a></li>
         {% endcan_view %}
+        {# 到期预警：顶层独立入口，紧跟知识库之后（原在「系统」折叠下拉里，容易被忽略） #}
+        {% can_view_any "insurance" "archive" %}
+        <li><a href="{% url 'expiry_calendar' %}" class="{% if '/expiry' in request.path %}active{% endif %}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>到期预警</span></a></li>
+        {% endcan_view_any %}
     </ul>
     {% endcan_view_any %}
 
@@ -100,8 +104,10 @@
     </ul>
     {% endcan_view %}
 
-    {% can_view_any "system" "insurance" "archive" %}
-    <!-- 分组：系统（折叠子菜单；交互/动画/状态存储与档案管理完全一致） -->
+    {% can_view_any "system" "insurance" "archive" "notifications" %}
+    <!-- 分组：系统（折叠子菜单；交互/动画/状态存储与档案管理完全一致）
+         条件里带上 notifications：只给了通知权限的账号也能看到本分组（组内只剩通知一项），
+         否则会因 system/archive/insurance 全无而整组隐藏，通知入口再次消失。 -->
     <ul class="sidebar-menu-item">
         <li>
             <button class="dropdown-toggle {% if '/system' in request.path or '/accounts/' in request.path or '/operation_log' in request.path %}active{% endif %}" id="systemsDropdown" aria-expanded="false" aria-controls="systemsDropdownMenu">
@@ -120,11 +126,7 @@
                 <a href="{% url 'system_health' %}" class="{% if '/system/health' in request.path %}active{% endif %}">系统健康</a>
                 <a href="{% url 'perf_dashboard' %}" class="{% if '/system/perf' in request.path %}active{% endif %}">性能监控</a>
                 <a href="{% url 'task_run_history' %}" class="{% if '/system/tasks' in request.path %}active{% endif %}">任务历史</a>
-                <a href="{% url 'knowledge_report' %}" class="{% if '/system/knowledge-report' in request.path %}active{% endif %}">阅读报告</a>
                 {% endcan_view %}
-                {% can_view_any "insurance" "archive" %}
-                <a href="{% url 'expiry_calendar' %}" class="{% if '/expiry' in request.path %}active{% endif %}">到期预警</a>
-                {% endcan_view_any %}
                 {% can "system" "update" %}
                 <a href="{% url 'accounts:api_token' %}" class="{% if '/accounts/api-token' in request.path %}active{% endif %}">长期Token</a>
                 <a href="{% url 'ai_config' %}" class="{% if '/ai-config' in request.path %}active{% endif %}">AI 配置</a>

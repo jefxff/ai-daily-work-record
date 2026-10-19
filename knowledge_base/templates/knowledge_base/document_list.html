@@ -55,6 +55,18 @@
     </div>
 </div>
 
+<!-- 阅读分析：入口由「系统」下拉移入右栏，紧邻统计（数字 → 深入分析）。
+     权限条件与 knowledge_report 视图保持一致（system read），避免"看得到入口、点开 403"。 -->
+{% can "system" "read" %}
+<div class="kb-side-section">
+    <div class="kb-side-title">阅读分析</div>
+    <a href="{% url 'knowledge_report' %}" class="kb-side-list-item">
+        <span><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="margin-right:7px;vertical-align:-2px"><line x1="3" y1="21" x2="21" y2="21"/><rect x="5" y="11" width="3.5" height="7" rx="1"/><rect x="10.25" y="6" width="3.5" height="12" rx="1"/><rect x="15.5" y="14" width="3.5" height="4" rx="1"/></svg>阅读报告</span>
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><polyline points="9 18 15 12 9 6"/></svg>
+    </a>
+</div>
+{% endcan %}
+
 <!-- 分类管理 -->
 <div class="kb-side-section">
     <div class="kb-side-title">分类管理</div>
