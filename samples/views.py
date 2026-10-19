@@ -959,11 +959,16 @@ def audit_create(request, pk):
         if form.is_valid():
             record = form.save(commit=False)
             record.partner = partner
-            next_round = (partner.audit_records.first().round_no if partner.audit_records.exists() else 0) + 1
-            record.round_no = next_round
             record.auditor = auditor
-            record.audit_no = f"A{partner.partner_code}-{next_round:02d}" if partner.partner_code else ""
-            record.save()
+
+            def _assign_and_save():
+                next_round = (partner.audit_records.first().round_no if partner.audit_records.exists() else 0) + 1
+                record.round_no = next_round
+                record.audit_no = f"A{partner.partner_code}-{next_round:02d}" if partner.partner_code else ""
+                record.save()
+                return next_round
+
+            next_round = services.save_with_retry(_assign_and_save)
             OperationLog.objects.create(
                 action=OperationLog.Action.CREATE,
                 target_type="AuditRecord",
@@ -989,7 +994,8 @@ def audit_create(request, pk):
                         link=f"/samples/partners/{partner.pk}/",
                     )
             except Exception:
-                pass  # 通知失败不影响业务主流程
+                # 通知失败不影响业务主流程，但必须留痕以便事后排查
+                logger.exception("审厂记录保存后发送通知失败")
             messages.success(request, f"第{next_round}轮审厂记录已保存。")
             if is_ajax:
                 return JsonResponse({"ok": True, "message": f"第{next_round}轮审厂记录已保存"})

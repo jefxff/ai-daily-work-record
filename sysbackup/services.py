@@ -415,7 +415,8 @@ def _write_oplog(operator, op_type, target, summary):
             change_summary=summary,
         )
     except Exception:
-        pass
+        # 留痕失败不影响备份/恢复主流程，但必须留痕以便事后审计
+        logger.exception("写入操作留痕（records.OperationLog）失败：op_type=%s target=%s", op_type, target)
 
 
 # ---------- 备份/恢复操作记录（独立留痕，含失败记录） ----------
@@ -465,7 +466,8 @@ def _log_operation(op_type, operator, file_name="", file_path="",
             created_at=datetime.fromisoformat(entry["created_at"]),
         )
     except Exception:
-        pass
+        # 表写入失败不影响主流程（JSONL 仍会落盘，恢复后可回填），但需留痕
+        logger.exception("备份/恢复操作记录写库失败：op_type=%s file=%s", op_type, file_name)
     try:
         OPLOG_FILE.parent.mkdir(parents=True, exist_ok=True)
         with _OPLOG_LOCK:
@@ -513,6 +515,8 @@ def sync_logs_from_file():
             )
             restored += 1
         except Exception:
+            # 单行回填失败不阻断整体回填，但需留痕定位坏数据
+            logger.exception("回填操作记录失败，跳过该行：%s", line[:120])
             continue
     return restored
 
@@ -727,14 +731,6 @@ def delete_backup(zip_path):
     ensure_path_allowed(p)
     p.unlink()
     return p.name
-
-
-def read_meta(zip_path):
-    p = Path(zip_path)
-    if not p.is_file():
-        raise ValueError("备份包不存在")
-    with zipfile.ZipFile(p) as zf:
-        return json.loads(zf.read(META_ENTRY).decode("utf-8"))
 
 
 def wait_task(task_id, timeout=300):

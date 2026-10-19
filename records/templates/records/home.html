@@ -26,7 +26,7 @@
     <!-- 每日记录卡片 -->
     {% can_view "daily_record" %}
     <div class="col-md-6 col-lg-4">
-        <div class="card" data-url="{% url 'daily_record_list' %}">
+        <a class="card" href="{% url 'daily_record_list' %}">
             <div class="card-body card-daily">
                 <h5 class="card-title">每日记录</h5>
                 <div class="card-content">
@@ -50,14 +50,14 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </a>
     </div>
     {% endcan_view %}
 
     <!-- 客户账期卡片 -->
     {% can_view "customer_credit" %}
     <div class="col-md-6 col-lg-4">
-        <div class="card" data-url="{% url 'customer_credit_list' %}">
+        <a class="card" href="{% url 'customer_credit_list' %}">
             <div class="card-body card-credit">
                 <h5 class="card-title">客户账期</h5>
                 <div class="card-content">
@@ -73,14 +73,14 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </a>
     </div>
     {% endcan_view %}
 
     <!-- 客户客诉卡片 -->
     {% can_view "customer_complaint" %}
     <div class="col-md-6 col-lg-4">
-        <div class="card" data-url="{% url 'customer_complaint_list' %}">
+        <a class="card" href="{% url 'customer_complaint_list' %}">
             <div class="card-body card-complaint">
                 <h5 class="card-title">客户客诉</h5>
                 <div class="card-content">
@@ -96,14 +96,14 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </a>
     </div>
     {% endcan_view %}
 
     <!-- 制度及处罚卡片 -->
     {% can_view "regulation" %}
     <div class="col-md-6 col-lg-4">
-        <div class="card" data-url="{% url 'regulation_list' %}">
+        <a class="card" href="{% url 'regulation_list' %}">
             <div class="card-body card-regulation">
                 <h5 class="card-title">制度及处罚</h5>
                 <div class="card-content">
@@ -113,14 +113,14 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </a>
     </div>
     {% endcan_view %}
 
     <!-- 核价卡片 -->
     {% can_view "price_evaluation" %}
     <div class="col-md-6 col-lg-4">
-        <div class="card" data-url="{% url 'price_evaluation_list' %}">
+        <a class="card" href="{% url 'price_evaluation_list' %}">
             <div class="card-body card-price">
                 <h5 class="card-title">核价</h5>
                 <div class="card-content">
@@ -136,14 +136,14 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </a>
     </div>
     {% endcan_view %}
 
     <!-- 装修卡片 -->
     {% can_view "decoration" %}
     <div class="col-md-6 col-lg-4">
-        <div class="card" data-url="{% url 'decoration_list' %}">
+        <a class="card" href="{% url 'decoration_list' %}">
             <div class="card-body card-decoration">
                 <h5 class="card-title">装修</h5>
                 <div class="card-content">
@@ -159,7 +159,7 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </a>
     </div>
     {% endcan_view %}
 </div>
@@ -490,20 +490,12 @@
         {% endcan_view %}
     });
 
-    // 设置进度条宽度和卡片点击事件
+    // 设置进度条宽度
     window.addEventListener('load', function() {
         const progressBars = document.querySelectorAll('.progress-bar');
         progressBars.forEach(bar => {
             const progress = bar.getAttribute('data-progress');
             if (progress) { bar.style.width = progress + '%'; }
-        });
-        const cards = document.querySelectorAll('.card[data-url]');
-        cards.forEach(card => {
-            card.addEventListener('click', function() {
-                const url = this.getAttribute('data-url');
-                if (url) { window.location.href = url; }
-            });
-            card.style.cursor = 'pointer';
         });
     });
 </script>

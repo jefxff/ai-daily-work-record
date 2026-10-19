@@ -606,7 +606,8 @@ def daily_record_add(request):
                      dedup_context=f'incomplete-new:{request.user.pk}:{timezone.localdate()}',
                      link='/daily_record/')
             except Exception:
-                pass  # 通知失败不影响业务主流程
+                # 通知失败不影响业务主流程，但必须留痕以便事后排查
+                logger.exception("每日记录新增后触发「未完成」通知失败")
         if is_ajax:
             return JsonResponse({'ok': True, 'message': '新增成功'})
         return redirect('home')

@@ -20,18 +20,18 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
 .stat-value, .num, code, kbd, pre, samp { font-family: var(--font-mono); }
 
 /* 左侧导航栏 */
-.sidebar { position: fixed; top: 56px; left: 0; width: 250px; height: calc(100vh - 56px); background: rgba(255, 255, 255, 0.2); border-right: 1px solid rgba(255, 255, 255, 0.15); box-shadow: 2px 0 8px rgba(0, 0, 0, 0.04); z-index: var(--z-sidebar); padding: 0.5rem 0 1rem; overflow-y: auto; transition: all 0.3s ease; margin: 0; border-radius: 0; }
+.sidebar { position: fixed; top: 56px; left: 0; width: 250px; height: calc(100vh - 56px); background: rgba(255, 255, 255, 0.2); border-right: 1px solid rgba(255, 255, 255, 0.15); box-shadow: 2px 0 8px rgba(0, 0, 0, 0.04); z-index: var(--z-sidebar); padding: 0.5rem 0 1rem; overflow-y: auto; transition: transform 0.3s ease; margin: 0; border-radius: 0; }
 .sidebar-header { padding: 0 1.5rem 1rem; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
 .sidebar-logo { font-size: 1.5rem; font-weight: 700; color: rgba(255, 255, 255, 0.95); text-decoration: none; display: block; }
 .sidebar-section-title { padding: 0.75rem 1.5rem 0.375rem; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(255, 255, 255, 0.5); }
 .sidebar-menu-item { list-style: none; margin: 0; padding: 0; }
 .sidebar-menu-item li { margin: 0; padding: 0; }
-.sidebar-menu-item a { display: flex; align-items: center; gap: 0.625rem; padding: 0.625rem 1.5rem; color: rgba(255, 255, 255, 0.8); text-decoration: none; transition: all 0.2s ease; font-size: 0.875rem; font-weight: 500; border-radius: 0; margin: 0; position: relative; }
+.sidebar-menu-item a { display: flex; align-items: center; gap: 0.625rem; padding: 0.625rem 1.5rem; color: rgba(255, 255, 255, 0.8); text-decoration: none; transition: color 0.2s ease, background-color 0.2s ease; font-size: 0.875rem; font-weight: 500; border-radius: 0; margin: 0; position: relative; }
 .sidebar-menu-item a svg { flex-shrink: 0; opacity: 0.8; }
 .sidebar-menu-item a:hover, .sidebar-menu-item a.active { color: rgba(255, 255, 255, 0.95); background-color: rgba(255, 255, 255, 0.1); }
 .sidebar-menu-item a.active { font-weight: 600; }
 .sidebar-menu-item a.active::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 3px; height: 60%; background: rgba(255, 255, 255, 0.9); border-radius: 0; }
-.sidebar-menu-item .dropdown-toggle { display: flex; align-items: center; gap: 0.625rem; width: 100%; text-align: left; background: none; border: none; padding: 0.625rem 1.5rem; color: rgba(255, 255, 255, 0.8); font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s ease; border-radius: 0; margin: 0; }
+.sidebar-menu-item .dropdown-toggle { display: flex; align-items: center; gap: 0.625rem; width: 100%; text-align: left; background: none; border: none; padding: 0.625rem 1.5rem; color: rgba(255, 255, 255, 0.8); font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: color 0.2s ease, background-color 0.2s ease; border-radius: 0; margin: 0; }
 .sidebar-menu-item .dropdown-toggle svg { flex-shrink: 0; opacity: 0.8; }
 .sidebar-menu-item .dropdown-toggle:hover { color: rgba(255, 255, 255, 0.95); background-color: rgba(255, 255, 255, 0.1); }
 .sidebar-menu-item .dropdown-toggle.active { color: var(--c-primary); background: var(--c-primary-subtle); }
@@ -40,12 +40,12 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
 .sidebar-dropdown a { padding-left: 3rem; font-size: 0.8rem; margin: 0; border-radius: 0; }
 
 /* 主内容区域 */
-.main-content { margin-left: 250px; min-height: 100vh; padding: 1.5rem; transition: all 0.3s ease; display: flex; justify-content: center; margin-top: 56px; }
+.main-content { margin-left: 250px; min-height: 100vh; padding: 1.5rem; transition: margin-left 0.3s ease; display: flex; justify-content: center; margin-top: 56px; }
 .container { background: transparent; border-radius: 0; padding: 0; margin: 0; max-width: none; width: 100%; }
 .mobile-menu-toggle { display: none; position: fixed; top: 0.75rem; left: 0.75rem; z-index: var(--z-dropdown); background: rgba(255, 255, 255, 0.9); border: none; border-radius: 0; padding: 0.5rem; cursor: pointer; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); }
 
 /* 顶部导航栏 */
-.top-nav { position: fixed; top: 0; left: 0; right: 0; height: 56px; background: rgba(255, 255, 255, 0.2); border-bottom: 1px solid rgba(255, 255, 255, 0.15); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); z-index: var(--z-topbar); transition: all 0.3s ease; margin: 0; border-radius: 0; max-width: 100%; width: 100%; }
+.top-nav { position: fixed; top: 0; left: 0; right: 0; height: 56px; background: rgba(255, 255, 255, 0.2); border-bottom: 1px solid rgba(255, 255, 255, 0.15); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); z-index: var(--z-topbar); transition: background-color 0.3s ease, box-shadow 0.3s ease; margin: 0; border-radius: 0; max-width: 100%; width: 100%; }
 .top-nav-container { padding: 0.875rem 1.5rem; height: 100%; display: flex; align-items: center; }
 .top-nav-title { font-size: 1.25rem; font-weight: 700; color: rgba(255, 255, 255, 0.95); margin: 0; }
 
@@ -68,10 +68,10 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
 /* 通用组件 */
 .page-title { font-size: 1.8rem; font-weight: 700; color: rgba(255, 255, 255, 0.95); margin: 0; text-decoration: none; }
 .page-title:hover { color: rgba(255, 255, 255, 0.95); text-decoration: none; }
-.btn-transparent { background: rgba(255, 255, 255, 0.2); color: rgba(255, 255, 255, 0.95); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 8px; padding: 0.75rem 1.25rem; font-weight: 500; transition: all 0.3s ease; text-decoration: none; display: inline-block; }
+.btn-transparent { background: rgba(255, 255, 255, 0.2); color: rgba(255, 255, 255, 0.95); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 8px; padding: 0.75rem 1.25rem; font-weight: 500; transition: background-color 0.3s ease, color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease; text-decoration: none; display: inline-block; }
 .btn-transparent:hover { background: rgba(255, 255, 255, 0.3); color: rgba(255, 255, 255, 0.95); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); }
 .btn-sm { padding: 0.5rem 1rem; font-size: 0.875rem; border-radius: 6px; }
-.search-input { background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 8px; padding: 0.5rem 1rem; color: rgba(255, 255, 255, 0.95); transition: all 0.3s ease; }
+.search-input { background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 8px; padding: 0.5rem 1rem; color: rgba(255, 255, 255, 0.95); transition: background-color 0.3s ease, border-color 0.3s ease; }
 .search-input::placeholder { color: rgba(255, 255, 255, 0.7); }
 .search-input:focus { background: rgba(255, 255, 255, 0.3); border-color: rgba(255, 255, 255, 0.5); outline: none; color: rgba(255, 255, 255, 0.95); }
 
@@ -84,7 +84,7 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
 
 /* 分页 */
 .pagination { margin-top: 2rem; }
-.pagination .page-item .page-link { border-radius: 8px; margin: 0 0.25rem; border: 1px solid rgba(255, 255, 255, 0.3); background: rgba(255, 255, 255, 0.2); color: rgba(255, 255, 255, 0.95); transition: all 0.3s ease; }
+.pagination .page-item .page-link { border-radius: 8px; margin: 0 0.25rem; border: 1px solid rgba(255, 255, 255, 0.3); background: rgba(255, 255, 255, 0.2); color: rgba(255, 255, 255, 0.95); transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease; }
 .pagination .page-item .page-link:hover { background: rgba(255, 255, 255, 0.3); color: rgba(255, 255, 255, 0.95); }
 .pagination .page-item.active .page-link { background: rgba(255, 255, 255, 0.4); border: 1px solid rgba(255, 255, 255, 0.5); color: rgba(255, 255, 255, 0.95); }
 .pagination .page-item.disabled .page-link { opacity: 0.5; background: rgba(255, 255, 255, 0.1); }
@@ -163,11 +163,11 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
         .top-nav-left { display: flex; align-items: center; gap: 1.25rem; flex: 1; min-width: 0; }
         .brand-logo { width: 32px; height: 32px; background: var(--c-primary); border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         .nav-tabs { display: flex; gap: 1.25rem; margin-left: 0.5rem; }
-        .nav-tab { font-size: 0.875rem; color: var(--c-text-secondary); text-decoration: none; padding: 0.5rem 0; border-bottom: 2px solid transparent; transition: all 0.2s ease; font-weight: 500; white-space: nowrap; }
+        .nav-tab { font-size: 0.875rem; color: var(--c-text-secondary); text-decoration: none; padding: 0.5rem 0; border-bottom: 2px solid transparent; transition: color 0.2s ease, border-bottom-color 0.2s ease; font-weight: 500; white-space: nowrap; }
         .nav-tab:hover { color: var(--c-text); }
         .nav-tab.active { color: var(--c-primary); border-bottom-color: var(--c-primary); }
         .top-nav-right { display: flex; align-items: center; gap: 0.75rem; height: 100%; }
-        .nav-search-box { display: flex; align-items: center; gap: 0.5rem; background: var(--c-surface-sunken); border: 1px solid var(--c-border); border-radius: 6px; padding: 0.375rem 0.75rem; width: 240px; height: 36px; transition: all 0.2s ease; }
+        .nav-search-box { display: flex; align-items: center; gap: 0.5rem; background: var(--c-surface-sunken); border: 1px solid var(--c-border); border-radius: 6px; padding: 0.375rem 0.75rem; width: 240px; height: 36px; transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease; }
         .nav-search-box:focus-within { border-color: var(--c-primary); background: var(--c-surface); box-shadow: 0 0 0 2px var(--c-primary-ring); }
         .nav-search-box svg { color: var(--c-text-tertiary); flex-shrink: 0; }
         .nav-search-input { border: none; background: none; outline: none; flex: 1; font-size: 0.85rem; color: var(--c-text); min-width: 0; }
@@ -255,7 +255,7 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
 
         /* === 卡片（Ant Design） === */
         .card {
-            transition: all 0.25s ease;
+            transition: box-shadow 0.25s ease, transform 0.25s ease;
             border: none;
             border-radius: 8px;
             overflow: hidden;
@@ -359,7 +359,7 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
             border-radius: 4px;
             padding: 0.375rem 0.875rem;
             font-weight: 400;
-            transition: all 0.2s ease;
+            transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
             text-decoration: none;
             display: inline-block;
             font-size: 0.85rem;
@@ -389,7 +389,7 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
             border-radius: 4px;
             padding: 0.375rem 0.875rem;
             font-size: 0.85rem;
-            transition: all 0.2s ease;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
         }
         .btn-primary:hover {
             background: var(--c-primary-hover);
@@ -402,7 +402,7 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
             border-radius: 4px;
             padding: 0.375rem 0.875rem;
             font-size: 0.85rem;
-            transition: all 0.2s ease;
+            transition: color 0.2s ease, border-color 0.2s ease;
         }
         .btn-secondary:hover {
             color: var(--c-primary);
@@ -415,7 +415,7 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
             border-radius: 4px;
             padding: 0.375rem 0.875rem;
             font-size: 0.85rem;
-            transition: all 0.2s ease;
+            transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
         }
         .btn-outline-dark:hover {
             color: var(--c-primary);
@@ -431,7 +431,7 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
             padding: 0.375rem 0.75rem;
             color: var(--c-text);
             font-size: 0.85rem;
-            transition: all 0.2s ease;
+            transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
         }
         .search-input:focus {
             border-color: var(--c-primary);
@@ -447,7 +447,7 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
             padding: 0.375rem 0.75rem;
             color: var(--c-text);
             font-size: 0.875rem;
-            transition: all 0.2s ease;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, color 0.2s ease;
         }
         .form-control:focus {
             border-color: var(--c-primary);
@@ -464,7 +464,7 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
             padding: 0.375rem 0.75rem;
             color: var(--c-text);
             font-size: 0.875rem;
-            transition: all 0.2s ease;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
         .form-select:focus {
             border-color: var(--c-primary);
@@ -618,7 +618,7 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
             border: 1px solid var(--c-border-strong);
             background: var(--c-surface);
             color: var(--c-text-secondary);
-            transition: all 0.2s ease;
+            transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
             min-width: 32px;
             text-align: center;
         }
@@ -652,7 +652,7 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
             padding: 16px;
             border: none;
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            transition: all 0.25s ease;
+            transition: box-shadow 0.25s ease, transform 0.25s ease;
             width: 200px;
             flex-shrink: 0;
         }
@@ -881,6 +881,6 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
         .form-modal-loading { text-align: center; padding: 2rem; color: var(--c-text-secondary); }
         .form-modal-actions { padding: 0.875rem 1.25rem; border-top: 1px solid var(--c-border); display: flex; gap: 0.75rem; justify-content: flex-end; flex-shrink: 0; background: var(--c-surface-sunken); border-radius: 0 0 8px 8px; }
     
-/* 仅"整卡可跳转"的卡片给手型指针：全局 .card{cursor:pointer} 会让纯展示卡片
-   也显示可点击，属误导（前端方案 F3-1 ⑤）。 */
-.card[data-url] { cursor: pointer; }
+/* 仅"整卡可跳转"的卡片（<a class="card">）给手型指针并抑制链接默认下划线：
+   全局 .card{cursor:pointer} 会让纯展示卡片也显示可点击，属误导（前端方案 F3-1 ⑤）。 */
+a.card { cursor: pointer; text-decoration: none; color: inherit; }

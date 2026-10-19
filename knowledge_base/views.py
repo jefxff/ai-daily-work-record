@@ -1,8 +1,10 @@
 import markdown
 from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
-from django.db.models import Q
+from django.core.paginator import Paginator
+from django.db.models import F, Q, Sum
 from django.template.loader import render_to_string
+from records.crud import _per_page
 from .models import KnowledgeDocument, KnowledgeCategory
 from .forms import KnowledgeDocumentForm, KnowledgeCategoryForm
 from accounts.decorators import perm_required
@@ -33,19 +35,20 @@ def document_list(request):
     
     categories = KnowledgeCategory.objects.all()
     
-    # 统计数据
+    # 统计数据（聚合下推到数据库，避免把整表对象加载进 Python 求和）
     total_documents = KnowledgeDocument.objects.filter(status='published').count()
     total_categories = KnowledgeCategory.objects.count()
-    total_views = sum(doc.view_count for doc in KnowledgeDocument.objects.all())
+    total_views = KnowledgeDocument.objects.aggregate(total=Sum('view_count'))['total'] or 0
     avg_views = total_views // total_documents if total_documents > 0 else 0
     
     # 获取所有标签并统计数量（支持中文逗号和英文逗号分隔）
+    # 仅取 tags 单列（values_list），避免全表对象实例化
     all_tags = {}
-    for doc in KnowledgeDocument.objects.filter(status='published'):
-        if doc.tags:
+    for tags_text in KnowledgeDocument.objects.filter(status='published').values_list('tags', flat=True):
+        if tags_text:
             # 先按中文逗号拆分，再按英文逗号拆分
             tags = []
-            parts = doc.tags.split('、')  # 中文逗号
+            parts = tags_text.split('、')  # 中文逗号
             for part in parts:
                 sub_tags = [t.strip() for t in part.split(',') if t.strip()]
                 tags.extend(sub_tags)
@@ -84,8 +87,14 @@ def document_list(request):
             'font_size': font_size,
         })
     
+    # 后端分页（沿用 records.crud._per_page：10/30/50）
+    per_page = _per_page(request)
+    page_obj = Paginator(documents, per_page).get_page(request.GET.get('page'))
+
     context = {
-        'documents': documents,
+        'documents': page_obj,
+        'page_obj': page_obj,
+        'per_page': per_page,
         'categories': categories,
         'selected_category': category_id,
         'selected_tag': tag_filter,
@@ -128,8 +137,10 @@ def document_detail(request, pk):
     document = get_object_or_404(KnowledgeDocument, pk=pk)
     is_ajax = _is_ajax(request)
     if not is_ajax:
-        document.view_count += 1
-        document.save()
+        # 原子自增（F 表达式），避免并发浏览时的读-改-写覆盖导致计数丢失
+        KnowledgeDocument.objects.filter(pk=document.pk).update(
+            view_count=F('view_count') + 1)
+        document.refresh_from_db(fields=['view_count'])
 
     # 将Markdown内容转换为HTML，并过滤 script/iframe/事件属性等危险内容
     document.content_html = _sanitize_html(markdown.markdown(
@@ -229,17 +240,22 @@ def document_delete(request, pk):
 def document_search(request):
     """文档搜索"""
     keyword = request.GET.get('keyword', '')
-    documents = []
-    
     if keyword:
         documents = KnowledgeDocument.objects.filter(
             Q(title__icontains=keyword) |
             Q(content__icontains=keyword) |
             Q(tags__icontains=keyword)
         ).filter(status='published')
-    
+    else:
+        documents = KnowledgeDocument.objects.none()
+
+    per_page = _per_page(request)
+    page_obj = Paginator(documents, per_page).get_page(request.GET.get('page'))
+
     context = {
-        'documents': documents,
+        'documents': page_obj,
+        'page_obj': page_obj,
+        'per_page': per_page,
         'keyword': keyword,
     }
     return render(request, 'knowledge_base/document_search.html', context)

@@ -9,19 +9,44 @@
 operator 参数为开放填写的操作人姓名文本（本站无登录体系），可为 None。
 """
 
-from django.db import transaction
+import logging
+import random
+import time
+
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from . import serialno
 from .models import BatchRecord, OperationLog, Partner, ProofAttachment, Sample, TestRecord
-
-import logging
 
 logger = logging.getLogger(__name__)
 
 
 class BusinessError(Exception):
     """业务规则校验错误，视图层捕获后以页面错误提示展示。"""
+
+
+def save_with_retry(assign_and_save, *, retries=3):
+    """在独立 savepoint 内执行「重新取号/取轮次 → 保存」，命中唯一约束冲突时重试。
+
+    sample_no/test_no/batch_no/audit_no/partner_code 与 (sample|partner, round_no)
+    均已声明 unique 约束，是并发撞号的最终兜底；但「取号 → 保存」之间存在竞态窗口，
+    局域网两人同时新建时可能抛 IntegrityError 造成 500。这里把整段操作放入独立
+    savepoint 重试，命中冲突时重新取号，最多 3 次（随机退避），与数据库唯一约束
+    形成闭环。重试耗尽仍抛出原始异常，不改变对外错误语义。
+
+    注：AuditRecord 的附加文件由 Django 在保存时才落盘并带 _committed 标记，
+    重试不会重复写入（仅三次全失败时可能残留一个孤立文件）。
+    """
+    for attempt in range(retries):
+        try:
+            with transaction.atomic():
+                return assign_and_save()
+        except IntegrityError:
+            if attempt == retries - 1:
+                logger.exception("编号/轮次并发冲突，重试 %s 次后仍失败", retries)
+                raise
+            time.sleep(random.uniform(0.05, 0.15) * (attempt + 1))
 
 
 def client_ip(request):
@@ -159,9 +184,13 @@ def _resync_sample_status(sample, operator, ip=None, context=""):
 
 @transaction.atomic
 def create_partner(partner, operator=None, ip=None):
-    partner.partner_code = serialno.next_yearly_serial(Partner, "partner_code")
-    partner.full_clean()
-    partner.save()
+    def _assign_and_save():
+        partner.partner_code = serialno.next_yearly_serial(Partner, "partner_code")
+        partner.full_clean()
+        partner.save()
+        return partner
+
+    save_with_retry(_assign_and_save)
     _log(
         operator,
         OperationLog.Action.CREATE,
@@ -238,11 +267,16 @@ def delete_partner(partner, operator=None, ip=None):
 
 @transaction.atomic
 def create_sample(sample, operator=None, ip=None):
-    sample.sample_no = serialno.next_daily_serial(Sample, "sample_no", "S")
     sample.status = Sample.Status.PENDING
     sample.registered_at = timezone.now()
-    sample.full_clean()
-    sample.save()
+
+    def _assign_and_save():
+        sample.sample_no = serialno.next_daily_serial(Sample, "sample_no", "S")
+        sample.full_clean()
+        sample.save()
+        return sample
+
+    save_with_retry(_assign_and_save)
     _log(
         operator,
         OperationLog.Action.CREATE,
@@ -375,8 +409,6 @@ def create_test_record(record, operator=None, ip=None, terminate_reason=""):
         )
 
     record.sample = sample
-    record.round_no = serialno.next_round(TestRecord, sample)
-    record.test_no = serialno.next_daily_serial(TestRecord, "test_no", "T")
     record.operated_at = timezone.now()
 
     old_status_text = sample.get_status_display()
@@ -394,9 +426,15 @@ def create_test_record(record, operator=None, ip=None, terminate_reason=""):
     else:  # 待改进：保持/进入试样中
         sample.status = Sample.Status.TESTING
 
-    record.full_clean()
-    sample.save()
-    record.save()
+    def _assign_and_save():
+        record.round_no = serialno.next_round(TestRecord, sample)
+        record.test_no = serialno.next_daily_serial(TestRecord, "test_no", "T")
+        record.full_clean()
+        sample.save()
+        record.save()
+        return record
+
+    save_with_retry(_assign_and_save)
 
     _log(
         operator,
@@ -488,8 +526,6 @@ def create_batch_record(record, operator=None, ip=None, terminate_reason=""):
         )
 
     record.sample = sample
-    record.round_no = serialno.next_round(BatchRecord, sample)
-    record.batch_no = serialno.next_daily_serial(BatchRecord, "batch_no", "B")
     record.operated_at = timezone.now()
 
     old_status_text = sample.get_status_display()
@@ -508,9 +544,15 @@ def create_batch_record(record, operator=None, ip=None, terminate_reason=""):
         sample.terminated_at = timezone.now()
     # 进行中：保持小批量中
 
-    record.full_clean()
-    sample.save()
-    record.save()
+    def _assign_and_save():
+        record.round_no = serialno.next_round(BatchRecord, sample)
+        record.batch_no = serialno.next_daily_serial(BatchRecord, "batch_no", "B")
+        record.full_clean()
+        sample.save()
+        record.save()
+        return record
+
+    save_with_retry(_assign_and_save)
 
     _log(
         operator,
@@ -637,8 +679,9 @@ def delete_proof(attachment, operator=None, ip=None):
     try:
         if file_path and storage.exists(file_path):
             storage.delete(file_path)
-    except Exception:  # 文件系统异常不应阻断删除流程
-        pass
+    except Exception:
+        # 文件系统异常不应阻断删除流程，但必须留痕以便排查残留文件
+        logger.exception("删除证明材料时清理存储文件失败：%s", file_path)
     _log(
         operator,
         OperationLog.Action.DELETE,

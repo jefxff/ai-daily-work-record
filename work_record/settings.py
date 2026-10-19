@@ -142,6 +142,24 @@ SESSION_SAVE_EVERY_REQUEST = True
 LOGIN_FAILURE_LIMIT = 5
 LOGIN_LOCKOUT_SECONDS = 15 * 60
 
+# === 缓存 ===
+# 登录失败锁定计数（accounts.security）依赖 django.core.cache。为避免失败计数
+# 随进程重启清零、被"重启绕过"（评审 H1），改用持久化的 DatabaseCache：
+# 计数落库、跨重启留存，且天然在多进程间共享，无需引入 Redis。
+# 首次部署须执行一次：python manage.py createcachetable
+# 缓存表位于默认 SQLite 库内（表名 = LOCATION），与业务表互不干扰。
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'django_cache_table',
+    }
+}
+
+# === 部署形态：单进程 runserver ===
+# 备份/恢复任务状态（sysbackup._TASKS）与消息通知进程内调度线程均为进程级实现，
+# 因此本项目必须以单进程方式运行；启动多 worker（gunicorn/uwsgi）会导致任务
+# 状态互不可见、同一时刻仅一个任务的互斥失效（评审 M4）。详见 README「部署」。
+
 ROOT_URLCONF = 'work_record.urls'
 
 TEMPLATES = [
@@ -296,6 +314,9 @@ REST_FRAMEWORK = {
 # 没有 root handler 时 Python 回退到 lastResort —— 只输出 WARNING 以上到 stderr，
 # INFO 全部丢失。这就是"写了日志却看不见"的根因。
 _LOG_DIR = os.path.join(BASE_DIR, 'logs')
+# 保证日志目录存在：全新检出（如 CI）时 logs/ 被 .gitignore 忽略，缺失会让
+# RotatingFileHandler 打不开文件、dictConfig 抛错导致启动失败。
+os.makedirs(_LOG_DIR, exist_ok=True)
 
 LOGGING = {
     'version': 1,
@@ -356,19 +377,17 @@ except OSError:
 #   EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
 #   EMAIL_HOST=smtp.example.com  EMAIL_PORT=465  EMAIL_USE_SSL=True
 #   EMAIL_HOST_USER=...  EMAIL_HOST_PASSWORD=...  DEFAULT_FROM_EMAIL=...
-import os as _os
-
 if DEBUG:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 else:
-    EMAIL_BACKEND = _os.environ.get(
+    EMAIL_BACKEND = os.environ.get(
         'EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
-    EMAIL_HOST = _os.environ.get('EMAIL_HOST', '')
-    EMAIL_PORT = int(_os.environ.get('EMAIL_PORT', '465'))
-    EMAIL_USE_SSL = _os.environ.get('EMAIL_USE_SSL', 'True') == 'True'
-    EMAIL_HOST_USER = _os.environ.get('EMAIL_HOST_USER', '')
-    EMAIL_HOST_PASSWORD = _os.environ.get('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL = _os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@localhost')
+    EMAIL_HOST = os.environ.get('EMAIL_HOST', '')
+    EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '465'))
+    EMAIL_USE_SSL = os.environ.get('EMAIL_USE_SSL', 'True') == 'True'
+    EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+    EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@localhost')
 
 # === 通知调度器 ===
 # 是否在 web 进程内起后台线程（发送 worker + 定时任务调度）。
@@ -376,6 +395,6 @@ DEFAULT_FROM_EMAIL = _os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@localhost')
 # False：由独立进程 `manage.py run_scheduler` 承担（gunicorn/uwsgi 等多 worker
 #        部署必须用这种方式，否则每个 worker 都会起一份调度器）。
 # 默认跟 DEBUG 走，保证本机启动行为与改造前完全一致。
-NOTIFICATIONS_SCHEDULER_INPROCESS = _os.environ.get(
+NOTIFICATIONS_SCHEDULER_INPROCESS = os.environ.get(
     'DJANGO_SCHEDULER_INPROCESS', '1' if DEBUG else '0'
 ) == '1'

@@ -4,7 +4,7 @@
 这是一个基于Django的每日工作记录管理系统，包含装修管理、客户账期、客户客诉、制度及处罚、核价管理等功能。
 
 ## 技术栈
-- **后端**: Django 4.2.10
+- **后端**: Django 4.2.24
 - **前端**: Bootstrap 5 + Chart.js
 - **数据库**: SQLite
 - **API**: Django REST Framework
@@ -22,6 +22,7 @@
 ├── samples/           # 试样管理模块
 ├── archive/           # 档案管理模块（柜/层/格定位、借阅、二维码）
 ├── ai_api/            # AI API模块
+├── sysbackup/         # 数据备份与恢复模块（系统管理员专属）
 ├── static/            # 静态资源
 └── media/             # 用户上传文件
 ```
@@ -30,7 +31,7 @@
 
 ### 环境要求
 - Python 3.8+
-- Django 4.2.10
+- Django 4.2.24
 - 其他依赖见 requirements.txt
 
 ### 安装依赖
@@ -45,10 +46,13 @@ pip install -r requirements.txt
 
 ### RBAC 验收账号
 项目内置 4 个验收账号（密码均为 `X12345678`）：
-- `rbac_root` — 超级管理员（47 权限）
-- `rbac_admin` — 管理员（33 权限，无删除/系统）
-- `rbac_staff` — 普通员工（33 权限）
-- `rbac_viewer` — 只读用户（12 权限）
+- `rbac_root` — 超级管理员（`is_superuser`，恒为全权限）
+- `rbac_admin` — 管理员（绑定内置角色 `admin`）
+- `rbac_staff` — 普通员工（绑定内置角色 `staff`）
+- `rbac_viewer` — 只读用户（绑定内置角色 `viewer`）
+
+角色权限以 `accounts/registry.py` 为唯一事实源；权限条数会随模块增删而变化，
+请以 `python manage.py sync_rbac` 输出的实测值为准，本文档不再硬编码具体数字。
 
 注册账号默认 `is_active=False`，需管理员在 /accounts/users/ 审核激活。
 
@@ -92,19 +96,26 @@ pip install -r requirements.txt
 
 ### 部署
 
-**本地启动**
+本项目按**单进程**形态部署（Windows 常驻进程直接跑 `runserver`）。
+
+**启动步骤**
 ```bash
 pip install -r requirements.txt
 python manage.py migrate
+python manage.py createcachetable   # 登录失败锁定使用 DatabaseCache，需先建缓存表
 python manage.py runserver 0.0.0.0:8080
 ```
 
-**Docker 一键启动**
-```bash
-docker-compose up --build
-# 访问 http://localhost:8080/
-```
-`docker-compose.yml` 包含 web + redis（Celery 异步任务预留）。
+**部署形态说明**
+- **必须单进程运行**：备份/恢复任务状态（`sysbackup`）与消息通知调度线程均为进程内实现，
+  启动多 worker（gunicorn/uwsgi）会导致任务状态互不可见、同一时刻仅一个任务的互斥失效。
+- 登录失败计数使用 DatabaseCache 落库，跨服务重启仍生效，无法通过"重启"绕过锁定。
+- 数据库为 SQLite（已开启 WAL），仅适合局域网单机中小并发；如需横向扩展须先改造任务状态存储。
+- 如需关闭 DEBUG：设 `DJANGO_DEBUG=0`，并显式提供 `DJANGO_ALLOWED_HOSTS`（详见 `work_record/settings.py`）。
+
+**自动化校验（CI）**
+`.github/workflows/ci.yml` 在 push / PR 到 `main` 时执行：
+`pip install -r requirements.txt` → `python manage.py check` → `python manage.py test`。
 
 **档案管理验收后开放普通角色权限**
 ```bash
@@ -126,5 +137,5 @@ python manage.py sync_rbac
 
 ---
 **项目版本**: 1.0.0  
-**最后更新**: 2026-04-29  
+**最后更新**: 2026-10-19  
 **维护团队**: 开发团队

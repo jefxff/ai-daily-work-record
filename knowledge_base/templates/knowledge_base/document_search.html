@@ -17,7 +17,7 @@
         </form>
         
         {% if documents %}
-        <p class="text-muted mb-4">共找到 <strong>{{ documents|length }}</strong> 条结果</p>
+        <p class="text-muted mb-4">共找到 <strong>{{ page_obj.paginator.count }}</strong> 条结果</p>
         <div class="list-group">
             {% for document in documents %}
             <a href="{% url 'knowledge_base:document_detail' document.pk %}" class="list-group-item list-group-item-action" data-modal-detail data-modal-title="{{ document.title }}">
@@ -34,6 +34,7 @@
             </a>
             {% endfor %}
         </div>
+        {% include 'records/_pagination.html' with page_obj=page_obj %}
         {% else %}
         <div class="text-center py-8">
             <svg class="icon text-gray-400 icon--xl" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="font-size: 4rem;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>

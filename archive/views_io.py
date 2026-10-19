@@ -184,7 +184,9 @@ def import_archives(request):
                                         except ValueError:
                                             continue
                                 except Exception:
-                                    pass
+                                    logger.exception(
+                                        "导入台账：解析日期字段失败，跳过该值 field=%s value=%s",
+                                        field, raw_val)
                             elif field == "copies" and raw_val:
                                 try:
                                     obj[field] = int(float(raw_val))
