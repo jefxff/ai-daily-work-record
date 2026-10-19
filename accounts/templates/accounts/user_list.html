@@ -6,8 +6,11 @@
 {% block content %}
 <div class="page-header">
     <h2>用户管理<span class="total-hint">共 {{ total }} 个用户</span></h2>
-    <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
-        <form method="GET" style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+</div>
+{# 操作条：与下方列表拼成一张卡，标题独占一行 #}
+<div class="page-actions">
+    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; flex:1 1 auto; min-width:0;">
+        <form method="GET" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
             <input class="search-input" type="search" placeholder="搜索用户名/姓名" name="q" value="{{ f_q }}">
             <select class="search-input" name="role" style="width:auto;">
                 <option value="">全部角色</option>
@@ -24,7 +27,7 @@
             <a class="btn-transparent" href="{% url 'accounts:user_list' %}" style="text-decoration:none; display:inline-flex; align-items:center;">重置</a>
         </form>
         {% can "system" "create" %}
-        <a class="btn-primary btn-sm" href="{% url 'accounts:user_create' %}" data-modal-add data-modal-title="新建用户">+ 新建用户</a>
+        <a class="btn-primary" href="{% url 'accounts:user_create' %}" data-modal-add data-modal-title="新建用户">+ 新建用户</a>
         {% endcan %}
     </div>
 </div>

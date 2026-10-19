@@ -4,8 +4,12 @@
 {% block page_title %}知识库阅读报告 - 每日工作记录管理网站{% endblock %}
 
 {% block top_nav_actions %}
-    <form class="d-flex gap-2" method="GET">
-        <input type="hidden" name="days" value="{{ days }}">
+    {# 统计窗口与返回按钮同处一条操作栏，不再单独占一张筛选卡 #}
+    <form class="report-toolbar" method="GET">
+        <label class="report-toolbar-label">统计窗口
+            <input type="number" name="days" min="1" max="365" value="{{ days }}" class="search-input" style="width:80px; min-width:0;">
+        </label>
+        <button type="submit" class="btn-transparent">应用</button>
         <a href="{% url 'knowledge_base:document_list' %}" class="btn-transparent">返回知识库</a>
     </form>
 {% endblock %}
@@ -14,15 +18,6 @@
     <div class="page-header">
         <h2>知识库阅读报告<span class="total-hint">近 {{ days }} 天 · 自 {{ since|date:'Y-m-d' }} 起</span></h2>
     </div>
-
-    <form class="table-container report-filter" method="GET">
-        <div class="report-filter-row">
-            <label>统计窗口（天）
-                <input type="number" name="days" min="1" max="365" value="{{ days }}">
-            </label>
-            <button type="submit" class="btn-transparent">应用</button>
-        </div>
-    </form>
 
     <div class="report-summary">
         <span class="status-badge info">阅读次数 {{ total_views }}</span>
@@ -132,27 +127,11 @@
 
 {% block extra_css %}
 <style>
-    .report-filter { padding: 1rem 1.25rem; }
-    .report-filter-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 1rem;
-        align-items: flex-end;
-    }
-    .report-filter-row label {
-        display: flex;
-        flex-direction: column;
-        gap: 0.35rem;
-        font-size: 0.8125rem;
-        color: var(--c-text-muted, #666);
-    }
-    .report-filter-row input {
-        width: 7rem;
-        padding: 0.4rem 0.6rem;
-        border: 1px solid var(--c-border, rgba(0,0,0,0.1));
-        border-radius: 6px;
-        background: var(--c-surface, #fff);
-        color: var(--c-text, #333);
+    /* 操作栏：统计窗口 + 应用 + 返回，与标题同处一页但独占一行 */
+    .report-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0; }
+    .report-toolbar-label {
+        display: inline-flex; align-items: center; gap: 6px;
+        font-size: 13px; color: var(--c-text-secondary); white-space: nowrap;
     }
     .report-summary {
         display: flex;

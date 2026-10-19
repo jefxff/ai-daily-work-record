@@ -72,17 +72,18 @@
 {% block content %}
 <div class="page-header">
     <h2>消息通知<span class="total-hint">共 {{ total }} 条 · 未读 {{ unread_count }} 条</span></h2>
-    <div class="filter-chips">
-        {% can_view "system" %}
-        <a href="{% url 'notifications:announce' %}" class="btn-transparent">推送系统公告</a>
-        <a href="{% url 'notifications:revoke_log' %}" class="btn-transparent">撤回记录</a>
-        {% endcan_view %}
-        <a href="{% url 'notifications:preferences' %}" class="btn-secondary">通知偏好</a>
-        <form method="post" action="{% url 'notifications:read_all' %}" style="display:inline;">
-            {% csrf_token %}
-            <button type="submit" class="btn-transparent" {% if unread_count == 0 %}disabled style="opacity:.5;"{% endif %}>全部已读</button>
-        </form>
-    </div>
+</div>
+{# 操作条：标题独占一行，操作统一进入下方工具条 #}
+<div class="page-actions">
+    {% can_view "system" %}
+    <a href="{% url 'notifications:announce' %}" class="btn-transparent">推送系统公告</a>
+    <a href="{% url 'notifications:revoke_log' %}" class="btn-transparent">撤回记录</a>
+    {% endcan_view %}
+    <a href="{% url 'notifications:preferences' %}" class="btn-transparent">通知偏好</a>
+    <form method="post" action="{% url 'notifications:read_all' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn-transparent" {% if unread_count == 0 %}disabled style="opacity:.5;"{% endif %}>全部已读</button>
+    </form>
 </div>
 
 <!-- 定时任务展示区 -->

@@ -3,19 +3,17 @@
 
 {% block page_title %}任务执行历史 - 每日工作记录管理网站{% endblock %}
 
-{% block top_nav_actions %}
-    <a href="{% url 'system_health' %}" class="btn-transparent">系统健康</a>
-{% endblock %}
-
 {% block content %}
     <div class="page-header">
         <h2>任务执行历史<span class="total-hint">共 {{ page_obj.paginator.count }} 条 · 每任务保留最近 200 条</span></h2>
     </div>
 
-    <form class="table-container task-filter" method="GET">
-        <div class="task-filter-row">
+    {# 操作条：入口与筛选同处一行，并与下方列表拼成一张卡 #}
+    <div class="page-actions">
+        <a href="{% url 'system_health' %}" class="btn-transparent">系统健康</a>
+        <form method="GET" class="task-filter-inline">
             <label>任务
-                <select name="task">
+                <select name="task" class="search-input" style="width:auto; min-width:190px;">
                     <option value="">全部任务</option>
                     {% for t in tasks %}
                     <option value="{{ t.pk }}" {% if task_filter == t.pk|stringformat:'s' %}selected{% endif %}>{{ t.name }}（{{ t.code }}）</option>
@@ -23,15 +21,15 @@
                 </select>
             </label>
             <label>结果
-                <select name="status">
+                <select name="status" class="search-input" style="width:auto; min-width:110px;">
                     <option value="">全部</option>
                     <option value="success" {% if status_filter == 'success' %}selected{% endif %}>成功</option>
                     <option value="fail" {% if status_filter == 'fail' %}selected{% endif %}>失败</option>
                 </select>
             </label>
             <button type="submit" class="btn-transparent">应用</button>
-        </div>
-    </form>
+        </form>
+    </div>
 
     <div class="table-container">
         <div class="table-responsive">
@@ -74,27 +72,11 @@
 
 {% block extra_css %}
 <style>
-    .task-filter { padding: 1rem 1.25rem; }
-    .task-filter-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 1rem;
-        align-items: flex-end;
-    }
-    .task-filter-row label {
-        display: flex;
-        flex-direction: column;
-        gap: 0.35rem;
-        font-size: 0.8125rem;
-        color: var(--c-text-muted, #666);
-    }
-    .task-filter-row select {
-        min-width: 12rem;
-        padding: 0.4rem 0.6rem;
-        border: 1px solid var(--c-border, rgba(0,0,0,0.1));
-        border-radius: 6px;
-        background: var(--c-surface, #fff);
-        color: var(--c-text, #333);
+    /* 筛选控件并入操作条：一行横排，标签在左、下拉在右 */
+    .task-filter-inline { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0; }
+    .task-filter-inline label {
+        display: inline-flex; align-items: center; gap: 6px;
+        font-size: 13px; color: var(--c-text-secondary); white-space: nowrap;
     }
     .summary-cell { max-width: 360px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 </style>

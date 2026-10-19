@@ -6,8 +6,11 @@
 {% block content %}
 <div class="page-header">
     <h2>角色管理<span class="total-hint">共 {{ roles|length }} 个角色</span></h2>
+</div>
+{# 操作条：与下方列表拼成一张卡，标题独占一行 #}
+<div class="page-actions">
     {% can "system" "create" %}
-    <a class="btn-primary btn-sm" href="{% url 'accounts:role_create' %}" data-modal-add data-modal-title="新建角色">+ 新建角色</a>
+    <a class="btn-primary" href="{% url 'accounts:role_create' %}" data-modal-add data-modal-title="新建角色">+ 新建角色</a>
     {% endcan %}
 </div>
 <div class="table-container">

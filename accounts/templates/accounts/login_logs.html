@@ -5,7 +5,10 @@
 {% block content %}
 <div class="page-header">
     <h2>登录日志<span class="total-hint">共 {{ total }} 条记录</span></h2>
-    <form method="GET" class="d-flex gap-2" style="gap:0.5rem; display:flex;">
+</div>
+{# 操作条：与下方列表拼成一张卡，标题独占一行 #}
+<div class="page-actions">
+    <form method="GET">
         <input class="search-input" type="search" placeholder="按用户名搜索" name="username" value="{{ f_username }}">
         <select name="result" class="search-input" style="width:auto;">
             <option value="">全部结果</option>
@@ -13,7 +16,7 @@
             <option value="failed" {% if f_result == 'failed' %}selected{% endif %}>失败</option>
         </select>
         <button class="btn-transparent" type="submit">筛选</button>
-        <a class="btn-transparent" href="{% url 'accounts:login_logs' %}" style="text-decoration:none; display:inline-flex; align-items:center;">重置</a>
+        <a class="btn-transparent" href="{% url 'accounts:login_logs' %}">重置</a>
     </form>
 </div>
 <div class="table-container">

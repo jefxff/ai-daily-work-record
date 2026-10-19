@@ -4,50 +4,69 @@
 {% block page_title %}性能监控 - 每日工作记录管理网站{% endblock %}
 
 {% block top_nav_actions %}
-    <form method="get" class="perf-filter">
-        <label for="perfDays">统计窗口</label>
-        <select id="perfDays" name="days" class="form-select form-select-sm" onchange="this.form.submit()">
-            <option value="1" {% if days == 1 %}selected{% endif %}>近 1 天</option>
-            <option value="3" {% if days == 3 %}selected{% endif %}>近 3 天</option>
-            <option value="7" {% if days == 7 %}selected{% endif %}>近 7 天</option>
-            <option value="14" {% if days == 14 %}selected{% endif %}>近 14 天</option>
-            <option value="30" {% if days == 30 %}selected{% endif %}>近 30 天</option>
-            <option value="90" {% if days == 90 %}selected{% endif %}>近 90 天</option>
-        </select>
-        <a href="{% url 'system_health' %}" class="btn-transparent">系统健康</a>
-    </form>
+    {# 统计窗口改成 6 档分段控件：比下拉更直观，也把操作条填满、两端有落点 #}
+    <div class="perf-seg" role="group" aria-label="统计窗口">
+        <a href="?days=1" class="{% if days == 1 %}active{% endif %}">近 1 天</a>
+        <a href="?days=3" class="{% if days == 3 %}active{% endif %}">近 3 天</a>
+        <a href="?days=7" class="{% if days == 7 %}active{% endif %}">近 7 天</a>
+        <a href="?days=14" class="{% if days == 14 %}active{% endif %}">近 14 天</a>
+        <a href="?days=30" class="{% if days == 30 %}active{% endif %}">近 30 天</a>
+        <a href="?days=90" class="{% if days == 90 %}active{% endif %}">近 90 天</a>
+    </div>
+    <a href="{% url 'system_health' %}" class="btn-transparent perf-health">系统健康</a>
 {% endblock %}
 
 {% block extra_css %}
 <style>
-    .perf-filter {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        flex-wrap: wrap;
+    /* 分段控件：与操作条其他控件同高（32 + 上下边框 1 = 34） */
+    .perf-seg {
+        display: inline-flex;
+        border: 1px solid var(--c-border-strong);
+        border-radius: 6px;
+        overflow: hidden;
     }
-    .perf-filter label { color: var(--c-text-secondary); font-size: 0.85rem; margin: 0; }
-    /* Bootstrap 的 .form-select 自带 width:100%，在 flex 行内会独占整行撑破 56px 头部，这里改回内容宽度 */
-    .perf-filter .form-select { width: auto; }
+    .perf-seg a {
+        display: inline-flex;
+        align-items: center;
+        height: 32px;
+        padding: 0 12px;
+        font-size: 13px;
+        color: var(--c-text-secondary);
+        text-decoration: none;
+        border-right: 1px solid var(--c-border);
+        transition: background-color 0.15s ease, color 0.15s ease;
+    }
+    .perf-seg a:last-child { border-right: 0; }
+    .perf-seg a:hover { background: var(--c-primary-subtle); color: var(--c-primary); text-decoration: none; }
+    .perf-seg a.active { background: var(--c-primary); color: var(--c-surface); }
+    .perf-seg a.active:hover { background: var(--c-primary-hover); color: var(--c-surface); }
+    .perf-health { margin-left: auto; }
     .perf-cards {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-        gap: 1rem;
-        margin-bottom: 1.25rem;
+        /* 8 张卡固定 4 列：auto-fit 在 1440 下会排成 7+1，最后一张变成窄条 */
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 16px;
     }
+    @media (max-width: 1100px) { .perf-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 640px) { .perf-cards { grid-template-columns: minmax(0, 1fr); } }
     .perf-card {
         background: var(--c-surface);
         border: 1px solid var(--c-border);
         border-radius: var(--r-md);
-        padding: 16px 18px;
+        padding: 14px 16px;
     }
-    .perf-card-label { color: var(--c-text-secondary); font-size: 0.8rem; }
+    .perf-card-label { color: var(--c-text-secondary); font-size: 0.78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .perf-card-value {
         color: var(--c-text);
         font-size: var(--fs-lg);
         font-weight: 600;
         margin-top: 6px;
         line-height: 1.2;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     .perf-card-value.is-alert { color: var(--c-danger); }
     .perf-section-title {
