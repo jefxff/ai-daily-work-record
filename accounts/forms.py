@@ -10,19 +10,20 @@ BOOTSTRAP_SELECT = {"class": "form-select"}
 
 
 class LoginForm(forms.Form):
+    # autocomplete 提示密码管理器正确填充，替代原先的 autocomplete="off" 反模式（不影响任何提交数据）
     username = forms.CharField(label="用户名", max_length=150, widget=forms.TextInput(
-        attrs={**BOOTSTRAP_INPUT, "placeholder": "请输入用户名", "autofocus": True}))
+        attrs={**BOOTSTRAP_INPUT, "placeholder": "请输入用户名", "autofocus": True, "autocomplete": "username"}))
     password = forms.CharField(label="密码", widget=forms.PasswordInput(
-        attrs={**BOOTSTRAP_INPUT, "placeholder": "请输入密码"}))
+        attrs={**BOOTSTRAP_INPUT, "placeholder": "请输入密码", "autocomplete": "current-password"}))
 
 
 class RegisterForm(forms.Form):
     username = forms.CharField(label="用户名", max_length=150, widget=forms.TextInput(
-        attrs={**BOOTSTRAP_INPUT, "placeholder": "登录用户名（不可更改）"}))
+        attrs={**BOOTSTRAP_INPUT, "placeholder": "登录用户名（不可更改）", "autocomplete": "username"}))
     password = forms.CharField(label="密码", widget=forms.PasswordInput(
-        attrs={**BOOTSTRAP_INPUT, "placeholder": "至少 8 位"}))
+        attrs={**BOOTSTRAP_INPUT, "placeholder": "至少 8 位", "autocomplete": "new-password"}))
     confirm = forms.CharField(label="确认密码", widget=forms.PasswordInput(
-        attrs={**BOOTSTRAP_INPUT, "placeholder": "再次输入密码"}))
+        attrs={**BOOTSTRAP_INPUT, "placeholder": "再次输入密码", "autocomplete": "new-password"}))
     real_name = forms.CharField(label="姓名", max_length=50, widget=forms.TextInput(
         attrs={**BOOTSTRAP_INPUT, "placeholder": "真实姓名"}))
     department = forms.CharField(label="部门", max_length=100, required=False, widget=forms.TextInput(

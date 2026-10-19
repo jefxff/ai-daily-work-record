@@ -15,11 +15,11 @@
 {% if form.non_field_errors %}
 <div class="auth-alert auth-alert-error">{{ form.non_field_errors|join:'；' }}</div>
 {% endif %}
-<form method="post" autocomplete="off">
+<form method="post">
     {% csrf_token %}
     {% for field in form %}
     <div class="mb-3">
-        <label class="form-label">{{ field.label }}{% if field.field.required %}<span style="color:var(--c-danger);"> *</span>{% endif %}</label>
+        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %}<span style="color:var(--c-danger);"> *</span>{% endif %}</label>
         {{ field }}
         {% if field.errors %}<div style="color:var(--c-danger); font-size:0.78rem; margin-top:2px;">{{ field.errors|join:'；' }}</div>{% endif %}
     </div>

@@ -152,6 +152,19 @@ body { min-height: 100vh; margin: 0; padding: 0; }
         .sidebar-cta-card .cta-btn { background: var(--c-primary); color: var(--c-surface); border-radius: 4px; }
         .sidebar-cta-card .cta-btn:hover { background: var(--c-primary-hover); }
 
+        /* 无可用模块提示：侧栏为白色面板，须用深色文字 + 淡色底，避免白字白底不可见 */
+        .sidebar-empty-hint {
+            margin: 1rem 1.25rem;
+            padding: 1rem;
+            background: var(--c-warning-bg);
+            border: 1px solid var(--c-warning-line);
+            border-radius: 8px;
+            color: var(--c-warning);
+            font-size: 0.8rem;
+            line-height: 1.6;
+            text-align: center;
+        }
+
         /* === 顶部导航栏（完整 Ant Design 风格） === */
         .top-nav {
             background: var(--c-surface);

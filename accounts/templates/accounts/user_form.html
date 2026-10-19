@@ -16,18 +16,18 @@
         {{ form.non_field_errors|join:'；' }}
     </div>
     {% endif %}
-    <form method="post" autocomplete="off">
+    <form method="post">
         {% csrf_token %}
 
         {% if mode == 'create' %}
         <div class="mb-3">
-            <label class="form-label" style="font-size:0.875rem; color:var(--c-text-secondary); font-weight:500;">用户名 <span style="color:var(--c-danger);">*</span></label>
-            <input type="text" name="username" class="form-control" value="{{ form.username.value|default:'' }}" maxlength="150" required>
+            <label class="form-label" for="id_username" style="font-size:0.875rem; color:var(--c-text-secondary); font-weight:500;">用户名 <span style="color:var(--c-danger);">*</span></label>
+            <input type="text" id="id_username" name="username" class="form-control" value="{{ form.username.value|default:'' }}" maxlength="150" autocomplete="username" required>
             {% if form.username.errors %}<div style="color:var(--c-danger); font-size:0.78rem; margin-top:2px;">{{ form.username.errors|join:'；' }}</div>{% endif %}
         </div>
         <div class="mb-3">
-            <label class="form-label" style="font-size:0.875rem; color:var(--c-text-secondary); font-weight:500;">初始密码 <span style="color:var(--c-danger);">*</span></label>
-            <input type="password" name="password" class="form-control" autocomplete="new-password" required>
+            <label class="form-label" for="id_password" style="font-size:0.875rem; color:var(--c-text-secondary); font-weight:500;">初始密码 <span style="color:var(--c-danger);">*</span></label>
+            <input type="password" id="id_password" name="password" class="form-control" autocomplete="new-password" required>
             {% if form.password.errors %}<div style="color:var(--c-danger); font-size:0.78rem; margin-top:2px;">{{ form.password.errors|join:'；' }}</div>{% endif %}
         </div>
         {% else %}
@@ -37,18 +37,18 @@
         {% endif %}
 
         <div class="mb-3">
-            <label class="form-label" style="font-size:0.875rem; color:var(--c-text-secondary); font-weight:500;">姓名</label>
-            <input type="text" name="real_name" class="form-control" value="{{ form.real_name.value|default:'' }}" maxlength="50">
+            <label class="form-label" for="id_real_name" style="font-size:0.875rem; color:var(--c-text-secondary); font-weight:500;">姓名</label>
+            <input type="text" id="id_real_name" name="real_name" class="form-control" value="{{ form.real_name.value|default:'' }}" maxlength="50">
             {% if form.real_name.errors %}<div style="color:var(--c-danger); font-size:0.78rem; margin-top:2px;">{{ form.real_name.errors|join:'；' }}</div>{% endif %}
         </div>
         <div class="mb-3">
-            <label class="form-label" style="font-size:0.875rem; color:var(--c-text-secondary); font-weight:500;">部门</label>
-            <input type="text" name="department" class="form-control" value="{{ form.department.value|default:'' }}" maxlength="100">
+            <label class="form-label" for="id_department" style="font-size:0.875rem; color:var(--c-text-secondary); font-weight:500;">部门</label>
+            <input type="text" id="id_department" name="department" class="form-control" value="{{ form.department.value|default:'' }}" maxlength="100">
             {% if form.department.errors %}<div style="color:var(--c-danger); font-size:0.78rem; margin-top:2px;">{{ form.department.errors|join:'；' }}</div>{% endif %}
         </div>
         <div class="mb-3">
-            <label class="form-label" style="font-size:0.875rem; color:var(--c-text-secondary); font-weight:500;">岗位</label>
-            <input type="text" name="position" class="form-control" value="{{ form.position.value|default:'' }}" maxlength="100">
+            <label class="form-label" for="id_position" style="font-size:0.875rem; color:var(--c-text-secondary); font-weight:500;">岗位</label>
+            <input type="text" id="id_position" name="position" class="form-control" value="{{ form.position.value|default:'' }}" maxlength="100">
             {% if form.position.errors %}<div style="color:var(--c-danger); font-size:0.78rem; margin-top:2px;">{{ form.position.errors|join:'；' }}</div>{% endif %}
         </div>
 

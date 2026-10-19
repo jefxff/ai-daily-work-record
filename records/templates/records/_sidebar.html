@@ -116,7 +116,7 @@
     {% endcan_view %}
 
     {% if request.user.is_authenticated and request.user|visible_count == 0 %}
-    <div style="margin:1rem 1.25rem; padding:1rem; background:rgba(255,255,255,0.08); border-radius:8px; color:rgba(255,255,255,0.7); font-size:0.8rem; line-height:1.6; text-align:center;">
+    <div class="sidebar-empty-hint" role="status">
         暂无可用模块<br>请联系管理员为您分配角色
     </div>
     {% endif %}

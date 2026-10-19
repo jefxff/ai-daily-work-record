@@ -9,9 +9,9 @@
     <!-- Bootstrap 5 CSS -->
     <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
     <!-- 设计令牌 + 外壳 + 组件：外置后可被浏览器缓存；版本号用于发布瞬间避免「新 HTML + 旧 CSS」 -->
-    <link href="{% static 'css/tokens.css' %}?v=20261019b" rel="stylesheet">
-    <link href="{% static 'css/app.css' %}?v=20261019b" rel="stylesheet">
-    <link href="{% static 'css/components.css' %}?v=20261019b" rel="stylesheet">
+    <link href="{% static 'css/tokens.css' %}?v=20261019c" rel="stylesheet">
+    <link href="{% static 'css/app.css' %}?v=20261019c" rel="stylesheet">
+    <link href="{% static 'css/components.css' %}?v=20261019c" rel="stylesheet">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -180,30 +180,63 @@
                 });
             });
 
+            // 焦点陷阱：模态打开期间 Tab 在弹窗内循环，避免焦点逃逸到背景页面
+            function trapFocus(container, isOpen) {
+                container.addEventListener('keydown', function (e) {
+                    if (e.key !== 'Tab' || !isOpen()) return;
+                    var nodes = container.querySelectorAll(
+                        'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+                    );
+                    var focusables = Array.prototype.filter.call(nodes, function (n) {
+                        return n.offsetParent !== null;
+                    });
+                    if (!focusables.length) return;
+                    var first = focusables[0];
+                    var last = focusables[focusables.length - 1];
+                    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+                    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+                });
+            }
+
             // 2) 全局确认模态：替代原生 confirm（元素加 data-confirm="提示文案"）
             (function () {
                 var backdrop = document.getElementById('confirmBackdrop');
                 if (!backdrop) return;
                 var pendingEl = null;
+                var lastFocused = null;
+                var confirmOk = document.getElementById('confirmOk');
+                var isOpen = function () { return backdrop.classList.contains('show'); };
+                trapFocus(backdrop, isOpen);
+                var close = function () {
+                    backdrop.classList.remove('show');
+                    pendingEl = null;
+                    // 焦点归还触发元素，避免键盘用户丢失位置
+                    if (lastFocused && lastFocused.focus) lastFocused.focus();
+                    lastFocused = null;
+                };
                 document.addEventListener('click', function (e) {
                     var el = e.target.closest('[data-confirm]');
                     if (!el) return;
                     e.preventDefault();
+                    lastFocused = document.activeElement;
                     pendingEl = el;
                     document.getElementById('confirmMessage').textContent = el.getAttribute('data-confirm');
                     backdrop.classList.add('show');
+                    confirmOk.focus();
                 });
-                document.getElementById('confirmCancel').addEventListener('click', function () {
-                    backdrop.classList.remove('show'); pendingEl = null;
-                });
+                document.getElementById('confirmCancel').addEventListener('click', close);
                 backdrop.addEventListener('click', function (e) {
-                    if (e.target === backdrop) { backdrop.classList.remove('show'); pendingEl = null; }
+                    if (e.target === backdrop) close();
                 });
-                document.getElementById('confirmOk').addEventListener('click', function () {
-                    backdrop.classList.remove('show');
-                    if (!pendingEl) return;
+                document.addEventListener('keydown', function (e) {
+                    if (e.key === 'Escape' && isOpen()) { e.preventDefault(); close(); }
+                });
+                confirmOk.addEventListener('click', function () {
                     var el = pendingEl;
+                    backdrop.classList.remove('show');
                     pendingEl = null;
+                    lastFocused = null;
+                    if (!el) return;
                     if (el.tagName === 'FORM') { el.submit(); return; }
                     // 表单内的按钮（如列表行撤回按钮）：提交所属表单
                     if (el.tagName === 'BUTTON' && el.form) { el.form.submit(); return; }
@@ -219,6 +252,9 @@
                 var bodyEl = document.getElementById('formModalBody');
                 if (!backdrop || !modal || !titleEl || !bodyEl) return;
 
+                var lastFocused = null;
+                trapFocus(backdrop, function () { return backdrop.classList.contains('show'); });
+
                 function getCookie(name) {
                     var v = null;
                     document.cookie.split(';').forEach(function (c) {
@@ -229,13 +265,19 @@
                 }
 
                 function openModal(title) {
+                    lastFocused = document.activeElement;
                     titleEl.textContent = title || '编辑';
                     bodyEl.innerHTML = '<div class="form-modal-loading">加载中…</div>';
                     backdrop.classList.add('show');
+                    var closeBtn = modal.querySelector('.form-modal-close');
+                    if (closeBtn) closeBtn.focus();
                 }
                 function closeModal() {
                     backdrop.classList.remove('show');
                     bodyEl.innerHTML = '<div class="form-modal-loading">加载中…</div>';
+                    // 焦点归还触发按钮（如行内「编辑」按钮），避免键盘用户丢失位置
+                    if (lastFocused && lastFocused.focus) lastFocused.focus();
+                    lastFocused = null;
                 }
 
                 backdrop.addEventListener('click', function (e) {
@@ -273,6 +315,9 @@
                         else { s.textContent = old.textContent; }
                         old.parentNode.replaceChild(s, old);
                     });
+                    // 焦点移入弹窗内首个可交互字段，键盘用户无需手动 Tab（详情弹窗无字段时保持关闭按钮焦点）
+                    var firstField = bodyEl.querySelector('input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled])');
+                    if (firstField) firstField.focus();
                 }
 
                 function wireFormSubmit(form) {
@@ -373,9 +418,14 @@
                 var csrf = '{{ csrf_token }}';
 
                 function escapeHtml(s) {
-                    var d = document.createElement('div');
-                    d.textContent = s == null ? '' : String(s);
-                    return d.innerHTML;
+                    // 显式转义 5 个字符：textContent→innerHTML 不处理引号，
+                    // 而下列取值会拼进 data-* 属性，未转义引号可导致属性逃逸
+                    var str = s == null ? '' : String(s);
+                    return str.replace(/&/g, '&amp;')
+                              .replace(/</g, '&lt;')
+                              .replace(/>/g, '&gt;')
+                              .replace(/"/g, '&quot;')
+                              .replace(/'/g, '&#39;');
                 }
 
                 function renderBadge(count) {
@@ -419,7 +469,10 @@
                     }).then(function (r) { return r.json(); }).then(function (data) {
                         if (!data || !data.ok) return;
                         renderBadge(data.count);
-                        renderList(data.items || []);
+                        // 下拉未展开时只更新徽标数，避免 30s 轮询无条件重绘整份列表
+                        if (menu.classList.contains('show')) {
+                            renderList(data.items || []);
+                        }
                     }).catch(function () {});
                 }
 
@@ -439,14 +492,14 @@
     </script>
     {% block extra_js %}{% endblock %}
 
-    <!-- 全局 Toast 容器 -->
-    <div class="toast-container" id="toastContainer"></div>
+    <!-- 全局 Toast 容器（role=status + aria-live：屏幕阅读器自动播报提示） -->
+    <div class="toast-container" id="toastContainer" role="status" aria-live="polite"></div>
     {% include "accounts/_messages_toast.html" %}
 
     <!-- 全局确认模态 -->
     <div class="confirm-modal-backdrop" id="confirmBackdrop">
-        <div class="confirm-modal">
-            <div class="confirm-icon">⚠️</div>
+        <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirmMessage">
+            <div class="confirm-icon" aria-hidden="true">⚠️</div>
             <div class="confirm-message" id="confirmMessage">确定要执行该操作吗？</div>
             <div class="confirm-actions">
                 <button class="btn-transparent" id="confirmCancel">取消</button>
@@ -457,7 +510,7 @@
 
     <!-- 通用表单弹窗（编辑/新增走 AJAX） -->
     <div class="form-modal-backdrop" id="formModalBackdrop">
-        <div class="form-modal" id="formModal">
+        <div class="form-modal" id="formModal" role="dialog" aria-modal="true" aria-labelledby="formModalTitle">
             <div class="form-modal-header">
                 <h3 class="form-modal-title" id="formModalTitle">编辑</h3>
                 <button type="button" class="form-modal-close" data-modal-close aria-label="关闭">&times;</button>
