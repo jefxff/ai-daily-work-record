@@ -11,7 +11,10 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 import os
+import socket
 from pathlib import Path
+
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -47,24 +50,58 @@ def _load_secret_key():
 
 SECRET_KEY = _load_secret_key()
 
-# DEBUG 由环境变量控制：默认 1 = 保持本机 runserver 的现状（静态文件、详细报错）。
-# 需要关闭时显式设 DJANGO_DEBUG=0。注意：DEBUG=0 时 runserver 不再自动服务
-# /static/，必须先把 STATIC_ROOT 收集好并由前置代理托管。
-DEBUG = os.environ.get('DJANGO_DEBUG', '1') == '1'
+# DEBUG 由环境变量控制，默认关闭（安全默认值，评审 R4）。
+# - 本机/内网日常运行：使用 scripts/windows/start_windows.bat 或 start.sh，
+#   两者会显式设置 DJANGO_DEBUG=1，保持 runserver 自动服务静态文件与详细报错；
+# - 加固/对外运行：保持默认 DJANGO_DEBUG=0，此时用 DJANGO_ALLOWED_HOSTS 显式列主机。
+# 注意：DEBUG=0 时 runserver 不再自动服务 /static/。为不让内网用户看到无样式的页面，
+# work_record/urls.py 在 DEBUG=0 下会显式挂载 /static/ 路由（详见该文件）。
+DEBUG = os.environ.get('DJANGO_DEBUG', '0') == '1'
 
-# 允许访问的主机。
-# - 默认值保留局域网访问能力（127.0.0.1 / localhost / 本机固定 IP）；
-# - '*' 仅在 DEBUG 下追加，用于 DHCP 换 IP 后仍可访问；
-# - DJANGO_DEBUG=0 时必须显式给出 DJANGO_ALLOWED_HOSTS，否则 Host 头校验会拦住
-#   所有非本地请求（这是刻意的：通配符会让 Host 校验完全失效）。
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '172.17.222.183']
+
+def _detect_allowed_hosts():
+    """探测本机主机名与局域网 IP，作为默认的可访问主机（运行时跟随网段变化）。
+
+    历史默认值把 IP 写死为 172.17.222.183，换网段后内网用户会被 Host 头校验拦住
+    （评审 R4）。改为运行时探测，并保留 DJANGO_ALLOWED_HOSTS 覆盖能力。
+    """
+    hosts = {"127.0.0.1", "localhost"}
+    try:
+        hostname = socket.gethostname()
+        hosts.add(hostname)
+        for info in socket.getaddrinfo(hostname, None, socket.AF_INET):
+            hosts.add(info[4][0])
+    except OSError:
+        pass
+    # 默认出口网卡的地址（UDP connect 不实际发包），覆盖 DHCP 分配的内网 IP
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            sock.connect(("8.8.8.8", 80))
+            hosts.add(sock.getsockname()[0])
+        finally:
+            sock.close()
+    except OSError:
+        pass
+    return sorted(hosts)
+
+
+# 允许访问的主机：默认探测值 + 环境变量追加。
+ALLOWED_HOSTS = _detect_allowed_hosts()
 ALLOWED_HOSTS += [
     h.strip()
     for h in os.environ.get('DJANGO_ALLOWED_HOSTS', '').split(',')
     if h.strip()
 ]
 if DEBUG and '*' not in ALLOWED_HOSTS:
+    # 开发模式：DHCP 换 IP 后无需改配置即可访问
     ALLOWED_HOSTS.append('*')
+elif not DEBUG and '*' in ALLOWED_HOSTS:
+    # 生产模式绝不允许通配符（会让 Host 校验完全失效）
+    raise ImproperlyConfigured(
+        "生产模式（DJANGO_DEBUG=0）不允许 ALLOWED_HOSTS 含通配符 '*'，"
+        "请用 DJANGO_ALLOWED_HOSTS 显式列出可访问的主机/域名。"
+    )
 
 # 反向代理场景（可选）：只有显式配置才启用，避免内网直连时误判协议
 if os.environ.get('DJANGO_BEHIND_HTTPS_PROXY', '0') == '1':

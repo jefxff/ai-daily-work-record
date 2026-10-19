@@ -33,6 +33,9 @@ echo ========================================
 echo 启动Django开发服务器...
 echo 访问地址: http://127.0.0.1:8080/
 echo ========================================
+REM settings.py 默认 DEBUG=0（安全默认值）。本机/内网运行显式开启 DEBUG=1，
+REM 以保留 runserver 自动服务静态文件与详细报错页。
+set DJANGO_DEBUG=1
 python manage.py runserver 0.0.0.0:8080
 
 pause

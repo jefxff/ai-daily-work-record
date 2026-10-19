@@ -103,15 +103,23 @@ pip install -r requirements.txt
 pip install -r requirements.txt
 python manage.py migrate
 python manage.py createcachetable   # 登录失败锁定使用 DatabaseCache，需先建缓存表
+# 本机/内网运行：显式开启调试模式（保留静态文件自动服务与详细报错）
+set DJANGO_DEBUG=1                  # Windows；Linux/macOS 用 export DJANGO_DEBUG=1
 python manage.py runserver 0.0.0.0:8080
 ```
+（直接运行 `scripts/windows/start_windows.bat` 或 `./start.sh` 时，脚本已自动设置 `DJANGO_DEBUG=1`。）
 
 **部署形态说明**
 - **必须单进程运行**：备份/恢复任务状态（`sysbackup`）与消息通知调度线程均为进程内实现，
   启动多 worker（gunicorn/uwsgi）会导致任务状态互不可见、同一时刻仅一个任务的互斥失效。
 - 登录失败计数使用 DatabaseCache 落库，跨服务重启仍生效，无法通过"重启"绕过锁定。
 - 数据库为 SQLite（已开启 WAL），仅适合局域网单机中小并发；如需横向扩展须先改造任务状态存储。
-- 如需关闭 DEBUG：设 `DJANGO_DEBUG=0`，并显式提供 `DJANGO_ALLOWED_HOSTS`（详见 `work_record/settings.py`）。
+- **DEBUG 默认关闭（0）**：未设置 `DJANGO_DEBUG` 时即为 `0`，避免未捕获异常把含 `SECRET_KEY`
+  的配置快照打到 500 页；本机/内网运行请显式设 `DJANGO_DEBUG=1`。
+- **ALLOWED_HOSTS 自动探测**：默认取本机主机名与局域网 IP（换网段自动跟随），
+  可用 `DJANGO_ALLOWED_HOSTS`（逗号分隔）追加；`DJANGO_DEBUG=0` 时禁止通配符 `*`（启动即报错）。
+- `DJANGO_DEBUG=0` 时 runserver 不再自动服务 `/static/`，项目已在 `work_record/urls.py`
+  显式挂载静态文件路由，内网用户页面样式不受影响。
 
 **自动化校验（CI）**
 `.github/workflows/ci.yml` 在 push / PR 到 `main` 时执行：

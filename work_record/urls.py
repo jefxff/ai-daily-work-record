@@ -86,3 +86,14 @@ urlpatterns = [
     # 用户上传文件：必须登录后访问（替代原先 DEBUG 下的 static() 匿名直出）
     re_path(r'^media/(?P<path>.*)$', protected_media),
 ]
+
+if not settings.DEBUG:
+    # DEBUG=0 时 runserver 不再自动服务 /static/。本项目为单进程内网部署，无
+    # whitenoise / 前置代理；若不显式挂载，内网用户会看到丢失全部 CSS/JS 的页面
+    # （评审 R4 把默认值翻转为 0 时必须同时消除的样式回归）。这里交给 staticfiles
+    # 的 finders 直接服务（insecure=True），无需先执行 collectstatic。
+    from django.contrib.staticfiles.views import serve as staticfiles_serve
+
+    urlpatterns += [
+        re_path(r'^static/(?P<path>.*)$', staticfiles_serve, {'insecure': True}),
+    ]
