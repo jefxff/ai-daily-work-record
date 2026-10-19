@@ -61,7 +61,7 @@
     <div class="sidebar-section-title">业务模块</div>
     <ul class="sidebar-menu-item">
         <li>
-            <button class="dropdown-toggle {% if '/samples' in request.path %}active{% endif %}" id="samplesDropdown">
+            <button class="dropdown-toggle {% if '/samples' in request.path %}active{% endif %}" id="samplesDropdown" aria-expanded="{% if '/samples' in request.path %}true{% else %}false{% endif %}" aria-controls="samplesDropdownMenu">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/><line x1="8.5" y1="2" x2="15.5" y2="2"/><line x1="7" y1="16" x2="17" y2="16"/></svg>
                 <span>试样管理</span>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto"><polyline points="6 9 12 15 18 9"></polyline></svg>
@@ -82,7 +82,7 @@
     <!-- 分组：档案管理 -->
     <ul class="sidebar-menu-item">
         <li>
-            <button class="dropdown-toggle {% if '/archive' in request.path %}active{% endif %}" id="archiveDropdown">
+            <button class="dropdown-toggle {% if '/archive' in request.path %}active{% endif %}" id="archiveDropdown" aria-expanded="{% if '/archive' in request.path %}true{% else %}false{% endif %}" aria-controls="archiveDropdownMenu">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
                 <span>档案管理</span>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto"><polyline points="6 9 12 15 18 9"></polyline></svg>
@@ -128,13 +128,17 @@
     var btn = document.getElementById('samplesDropdown');
     var menu = document.getElementById('samplesDropdownMenu');
     if (btn && menu) {
-        btn.addEventListener('click', function () { menu.classList.toggle('show'); });
+        btn.addEventListener('click', function () {
+            btn.setAttribute('aria-expanded', menu.classList.toggle('show') ? 'true' : 'false');
+        });
     }
     var aBtn = document.getElementById('archiveDropdown');
     var aMenu = document.getElementById('archiveDropdownMenu');
     if (aBtn && aMenu) {
-        if (window.location.pathname.indexOf('/archive') === 0) { aMenu.classList.add('show'); }
-        aBtn.addEventListener('click', function () { aMenu.classList.toggle('show'); });
+        if (window.location.pathname.indexOf('/archive') === 0) { aMenu.classList.add('show'); aBtn.setAttribute('aria-expanded', 'true'); }
+        aBtn.addEventListener('click', function () {
+            aBtn.setAttribute('aria-expanded', aMenu.classList.toggle('show') ? 'true' : 'false');
+        });
     }
 })();
 </script>

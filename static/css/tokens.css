@@ -130,7 +130,6 @@
   --w-sidebar:      248px;
   --w-sidebar-mini: 64px;
   --h-topbar:       56px;
-  --w-content-max:  1440px;   /* 超过 1440 后靠留白，而不是让表格无限拉宽 */
   --w-prose:        68ch;     /* 长文最大行宽 */
 
   /* ---------- 动效 ---------- */
