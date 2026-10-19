@@ -251,11 +251,6 @@ body.sidebar-open .sidebar-scrim { display: block; }
   .table-container { padding: var(--sp-3); }
 }
 
-/* 1280px 以上：内容区不再无限拉宽 */
-@media (min-width: 1600px) {
-  .container { max-width: 1440px; }
-}
-
 /* ==========================================================================
    内联 SVG 图标（替代 FontAwesome，前端方案 F3-1 ②）
    - 尺寸随字号（1em），因此沿用占位元素原有的 font-size 即可；

@@ -56,9 +56,7 @@ body { min-height: 100vh; margin: 0; padding: 0; }
 
 /* 主内容区域 */
 .main-content { margin-left: 250px; min-height: 100vh; padding: 1.5rem; transition: all 0.3s ease; display: flex; justify-content: center; margin-top: 56px; }
-.container { background: transparent; border-radius: 0; padding: 0; margin: 0; max-width: 1400px; width: 100%; }
-@media (min-width: 1600px) { .container { max-width: 1600px; } }
-@media (min-width: 1920px) { .container { max-width: 1800px; } }
+.container { background: transparent; border-radius: 0; padding: 0; margin: 0; max-width: none; width: 100%; }
 .mobile-menu-toggle { display: none; position: fixed; top: 0.75rem; left: 0.75rem; z-index: 1001; background: rgba(255, 255, 255, 0.9); border: none; border-radius: 0; padding: 0.5rem; cursor: pointer; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); }
 
 /* 顶部导航栏 */
@@ -825,23 +823,24 @@ body { min-height: 100vh; margin: 0; padding: 0; }
         }
         .table-sticky thead th:first-child { background: var(--c-surface-sunken); z-index: 3; }
 
-        /* 分页信息条：每页条数居左、页码居中、共N条居右（三栏网格，垂直居中） */
-        .pagination-info { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 0.75rem; margin-top: 1.5rem; padding: 1rem 1.25rem 1.25rem; border-top: 1px solid var(--c-border); color: var(--c-text-secondary); font-size: 0.875rem; }
-        .pagination-info > span:first-child { order: 3; justify-self: end; white-space: nowrap; }
-        .pagination-info > div { display: contents; }
-        .pagination-info > div > form { order: 1; justify-self: start; white-space: nowrap; flex-wrap: nowrap; }
-        .pagination-info > div > ul.pagination { order: 2; justify-self: center; margin: 0; flex-wrap: nowrap; gap: 4px; }
-        .pagination-info .page-link { padding: 4px 10px; font-size: 13px; color: var(--c-text-secondary); border-color: var(--c-border); border-radius: 4px; line-height: 1.4; }
-        .pagination-info .page-link:hover { color: var(--c-primary); background: var(--c-primary-subtle); border-color: var(--c-primary-subtle); }
-        .pagination-info .page-item.active .page-link { background: var(--c-primary); border-color: var(--c-primary); color: var(--c-surface); }
-        .pagination-info .page-item.disabled .page-link { color: var(--c-text-tertiary); background: var(--c-surface); border-color: var(--c-border); }
+        /* 分页信息条：左侧总计信息、右侧「每页条数 + 页码」控件组 */
+        .pagination-info { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem 1.5rem; margin-top: 1.25rem; padding: 0.9rem 1.25rem; border-top: 1px solid var(--c-border); color: var(--c-text-secondary); font-size: 0.875rem; }
+        .pagination-info > span:first-child { white-space: nowrap; }
+        .pagination-info .pag-controls { display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; }
+        .pagination-info .pag-perpage { display: flex; align-items: center; gap: 0.4rem; white-space: nowrap; }
+        .pagination-info .pag-perpage label, .pagination-info .pag-perpage > span { font-size: 13px; }
+        .pagination-info ul.pagination { display: flex; align-items: center; gap: 4px; margin: 0; flex-wrap: nowrap; }
+        .pagination-info .page-item .page-link { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 28px; padding: 0 8px; margin: 0; font-size: 13px; line-height: 1; color: var(--c-text-secondary); background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 6px; transition: color .15s, border-color .15s, background .15s; }
+        .pagination-info .page-item .page-link:hover { color: var(--c-primary); background: var(--c-primary-subtle); border-color: var(--c-primary); text-decoration: none; }
+        .pagination-info .page-item.active .page-link { color: var(--c-surface); background: var(--c-primary); border-color: var(--c-primary); font-weight: 600; }
+        .pagination-info .page-item.disabled .page-link { color: var(--c-text-tertiary); background: var(--c-surface); border-color: var(--c-border); cursor: not-allowed; }
+        .pagination-info .page-item.pag-ellipsis .page-link { min-width: 16px; padding: 0 2px; border: 0; background: transparent; cursor: default; }
+        .pagination-info .page-item.pag-ellipsis .page-link:hover { color: var(--c-text-tertiary); background: transparent; border-color: transparent; }
+        .per-page-select { border: 1px solid var(--c-border-strong); border-radius: 6px; padding: 3px 6px; font-size: 13px; color: var(--c-text-secondary); background: var(--c-surface); }
         @media (max-width: 768px) {
-            .pagination-info { grid-template-columns: 1fr; justify-items: center; row-gap: 0.5rem; }
-            .pagination-info > span:first-child { order: 1; justify-self: center; }
-            .pagination-info > div > form { order: 2; }
-            .pagination-info > div > ul.pagination { order: 3; }
+            .pagination-info { flex-direction: column; justify-content: center; }
+            .pagination-info .pag-controls { justify-content: center; }
         }
-        .per-page-select { border: 1px solid var(--c-border-strong); border-radius: 4px; padding: 2px 6px; font-size: 13px; color: var(--c-text-secondary); }
 
         /* KPI 迷你趋势条 */
         .trend-bars { display: flex; align-items: flex-end; gap: 4px; height: 40px; }

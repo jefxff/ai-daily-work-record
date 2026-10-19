@@ -76,42 +76,7 @@
         </table>
     </div>
 
-    {% if page_obj.has_other_pages %}
-    <div class="pagination-info">
-        <span>共 {{ page_obj.paginator.count }} 条 · 第 {{ page_obj.number }} / {{ page_obj.paginator.num_pages }} 页</span>
-        <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
-            <form method="GET" style="display: flex; align-items: center; gap: 0.4rem;">
-                {% for k, v in request.GET.items %}{% if k != 'per_page' and k != 'page' %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endif %}{% endfor %}
-                <label style="font-size: 13px;">每页</label>
-                <select class="per-page-select" name="per_page" onchange="this.form.submit()">
-                    <option value="10" {% if page_obj.paginator.per_page == 10 %}selected{% endif %}>10</option>
-                    <option value="30" {% if page_obj.paginator.per_page == 30 %}selected{% endif %}>30</option>
-                    <option value="50" {% if page_obj.paginator.per_page == 50 %}selected{% endif %}>50</option>
-                </select>
-                <span style="font-size: 13px;">条</span>
-            </form>
-            <ul class="pagination">
-                {% if page_obj.has_previous %}
-                <li class="page-item"><a class="page-link" href="?{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}">&laquo;</a></li>
-                {% else %}
-                <li class="page-item disabled"><a class="page-link" href="#">&laquo;</a></li>
-                {% endif %}
-                {% for num in page_obj.paginator.page_range %}
-                {% if num == page_obj.number %}
-                <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
-                {% elif num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
-                <li class="page-item"><a class="page-link" href="?{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ num }}">{{ num }}</a></li>
-                {% endif %}
-                {% endfor %}
-                {% if page_obj.has_next %}
-                <li class="page-item"><a class="page-link" href="?{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ page_obj.next_page_number }}">&raquo;</a></li>
-                {% else %}
-                <li class="page-item disabled"><a class="page-link" href="#">&raquo;</a></li>
-                {% endif %}
-            </ul>
-        </div>
-    </div>
-    {% endif %}
+    {% include 'records/_pagination.html' with page_obj=page_obj %}
 </div>
 
 {% include "samples/_toast.html" %}

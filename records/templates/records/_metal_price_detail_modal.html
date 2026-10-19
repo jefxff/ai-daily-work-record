@@ -63,7 +63,7 @@
     var data = JSON.parse(document.getElementById('mpChartData').textContent);
     new Chart(el.getContext('2d'), {
         type: 'line',
-        data: { labels: labels, datasets: [{ label: '{{ current_metal }}', data: data, borderColor: '#1890ff', backgroundColor: 'var(--c-primary-ring)', borderWidth: 2, pointRadius: 3, fill: true, tension: 0.4 }] },
+        data: { labels: labels, datasets: [{ label: '{{ current_metal }}', data: data, borderColor: '#1890ff', backgroundColor: 'rgba(24, 144, 255, 0.15)', borderWidth: 2, pointRadius: 3, fill: true, tension: 0.4 }] },
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true } }, scales: { x: { ticks: { color: '#8c8c8c' } }, y: { ticks: { color: '#8c8c8c' } } } }
     });
 })();
