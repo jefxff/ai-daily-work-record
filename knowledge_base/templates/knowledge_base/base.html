@@ -24,7 +24,7 @@
         width: 280px;
         max-height: calc(100vh - 88px);
         overflow-y: auto;
-        z-index: 100;
+        z-index: var(--z-dropdown);
         background: var(--c-surface) !important;
         border: 1px solid var(--c-border) !important;
         border-radius: 8px !important;
@@ -215,7 +215,7 @@
         background: var(--c-surface-sunken);
         padding: 0.2rem 0.4rem;
         border-radius: 4px;
-        font-family: 'Consolas', 'Monaco', monospace;
+        font-family: var(--font-mono);
         font-size: 0.9em;
         color: #c41d7f;
     }

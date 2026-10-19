@@ -9,8 +9,8 @@
     <!-- 设计令牌（登录页是独立外壳，必须单独引入，否则 var(--) 全部失效） -->
     <link href="{% static 'css/tokens.css' %}?v=20261019c" rel="stylesheet">
     <style>
-        * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
-        body { background: var(--c-bg); min-height: 100vh; margin: 0; display: flex; align-items: center; justify-content: center; padding: 1.5rem; }
+        body { font-family: var(--font-body); background: var(--c-bg); min-height: 100vh; margin: 0; display: flex; align-items: center; justify-content: center; padding: 1.5rem; }
+        .auth-brand h1, .auth-card h2 { font-family: var(--font-display); }
         .auth-shell { width: 100%; max-width: 420px; }
         .auth-brand { text-align: center; margin-bottom: 1.5rem; }
         .auth-brand .brand-logo { width: 48px; height: 48px; background: var(--c-primary); border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 0.75rem; }

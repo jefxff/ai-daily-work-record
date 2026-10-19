@@ -158,7 +158,7 @@
 </div>
 
 <!-- 恢复/删除确认弹窗（本页专属：确认后走 AJAX） -->
-<div id="riskBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center;">
+<div id="riskBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:var(--z-modal);align-items:center;justify-content:center;">
     <div style="background:var(--c-surface);border-radius:12px;max-width:520px;width:92%;padding:1.5rem;">
         <h6 class="mb-3" style="font-weight:700;" id="riskTitle">操作确认</h6>
         <div id="riskBody" style="font-size:.86rem;"></div>
@@ -174,7 +174,7 @@
 </div>
 
 <!-- 任务进度弹窗 -->
-<div id="taskBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center;">
+<div id="taskBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:var(--z-modal);align-items:center;justify-content:center;">
     <div style="background:var(--c-surface);border-radius:12px;max-width:640px;width:94%;padding:1.5rem;">
         <h6 class="mb-3" style="font-weight:700;" id="taskTitle">任务进行中</h6>
         <div class="d-flex align-items-center gap-2 mb-2">
@@ -194,7 +194,7 @@
 </div>
 
 <!-- 操作记录详情弹窗 -->
-<div id="logDetailBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center;">
+<div id="logDetailBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:var(--z-modal);align-items:center;justify-content:center;">
     <div style="background:var(--c-surface);border-radius:12px;max-width:640px;width:94%;padding:1.5rem;">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h6 class="mb-0" style="font-weight:700;">操作记录详情</h6>

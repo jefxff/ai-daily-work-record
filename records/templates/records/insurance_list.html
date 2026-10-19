@@ -171,15 +171,15 @@
         position: sticky !important;
         right: 0;
         background: var(--c-surface) !important;
-        z-index: 10;
+        z-index: var(--z-sticky);
         box-shadow: -3px 0 5px rgba(0,0,0,0.08);
-        border-left: 1px solid #e8e8e8;
+        border-left: 1px solid var(--c-border);
     }
     .table tbody tr:hover td.col-actions {
         background: var(--c-surface-sunken) !important;
     }
     .table thead th.col-actions {
-        z-index: 20;
+        z-index: var(--z-sticky-head);
         background: var(--c-surface-sunken) !important;
     }
 
@@ -203,7 +203,7 @@
         max-width: 90vw;
         max-height: 70vh;
         overflow-y: auto;
-        z-index: 1000;
+        z-index: var(--z-dropdown);
         display: none;
     }
 
