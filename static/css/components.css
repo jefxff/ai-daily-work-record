@@ -447,6 +447,12 @@ html.act-icons td[data-label="操作"] :is([data-act="delete"], .btn-delete, .bt
   mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.8 6.6h16.4'/%3E%3Cpath d='M9.2 6.6V4.4h5.6v2.2'/%3E%3Cpath d='M6.4 6.6l.9 13.1h9.4l.9-13.1'/%3E%3Cpath d='M10.4 10.6v5.8M13.6 10.6v5.8'/%3E%3C/svg%3E");
 }
 
+/* 操作列按钮组沿列轴心水平居中：全站表头与单元格均为水平居中，
+   弹性盒包裹层（<div style="display:flex">）默认靠左堆积，会与居中表头错位；
+   统一居中后按钮组中轴与「操作」表头重合（每日记录/样品台账已有同款页面级处理）。
+   卡片模式（≤640px）按钮已 flex:1 拉伸，justify-content 不产生可见影响。 */
+td[data-label="操作"] > div { justify-content: center; }
+
 /* ---- ≤640px：卡片模式下操作列降级为整宽等分操作栏 ---- */
 @media (max-width: 640px) {
   html.act-icons .table--cards tbody tr td[data-label="操作"] {

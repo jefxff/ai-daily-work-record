@@ -77,7 +77,7 @@
                         <td data-label="开工日期">{{ decoration.start_date|date:'Y-m-d' }}</td>
                         <td data-label="原价">¥{{ decoration.original_price|default:0|floatformat:2 }}</td>
                         <td data-label="核后价">¥{{ decoration.final_price|floatformat:2 }}</td>
-                        <td data-label="核减金额">{% if decoration.reduced_price and decoration.reduced_price > 0 %}<span class="reduced-amt">¥{{ decoration.reduced_price|floatformat:2 }}</span>{% else %}¥{{ decoration.reduced_price|default:0|floatformat:2 }}{% endif %}</td>
+                        <td data-label="核减金额">¥{{ decoration.reduced_price|default:0|floatformat:2 }}</td>
                         <td data-label="操作">
                             <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
                                 <a href="{% url 'decoration_detail' decoration.id %}" class="btn-transparent btn-sm" data-modal-detail data-modal-title="装修详情">详细</a>
@@ -110,7 +110,6 @@
     .table tbody td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
     .table tbody td:last-child { overflow: visible; }
     .table td { font-variant-numeric: tabular-nums; }
-    .reduced-amt { color: var(--c-text); font-weight: 600; }
 
     /* 筛选下拉 */
     .filter-container { position: relative; display: inline-block; }

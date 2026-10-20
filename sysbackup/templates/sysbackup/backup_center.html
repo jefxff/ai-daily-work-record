@@ -1,5 +1,22 @@
 {% extends "records/base.html" %}
 {% block page_title %}数据备份 · 系统管理{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 操作记录日期筛选：日期输入与按钮采用全站通用规格（search-input + Bootstrap 按钮），与试样看板筛选条视觉一致 */
+    .log-filter {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: var(--sp-2);
+    }
+    .log-filter-sep { font-size: 0.8rem; color: var(--c-text-tertiary); flex-shrink: 0; }
+    @media (max-width: 640px) {
+        .log-filter { width: 100%; }
+        .log-filter .search-input { flex: 1 1 110px; width: auto; min-width: 0; }
+    }
+</style>
+{% endblock %}
 {% block content %}
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
@@ -99,12 +116,12 @@
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
                 <h6 class="mb-0" style="font-weight:600;">操作记录</h6>
-                <form class="d-flex gap-2 align-items-center flex-wrap" id="logFilterForm">
-                    <input type="date" class="form-control form-control-sm" id="logStart" style="max-width:150px;" title="开始日期">
-                    <span class="text-muted" style="font-size:.8rem;">至</span>
-                    <input type="date" class="form-control form-control-sm" id="logEnd" style="max-width:150px;" title="结束日期">
-                    <button class="btn btn-sm btn-outline-primary text-nowrap" type="submit">查询</button>
-                    <button class="btn btn-sm btn-outline-secondary text-nowrap" type="button" id="btnLogReset">重置</button>
+                <form class="log-filter" id="logFilterForm">
+                    <input type="date" class="search-input" id="logStart" title="开始日期" aria-label="开始日期" style="width:140px;">
+                    <span class="log-filter-sep">至</span>
+                    <input type="date" class="search-input" id="logEnd" title="结束日期" aria-label="结束日期" style="width:140px;">
+                    <button class="btn btn-primary btn-sm" type="submit">查询</button>
+                    <button class="btn btn-outline-secondary btn-sm" type="button" id="btnLogReset">重置</button>
                 </form>
             </div>
             <ul class="nav nav-tabs" id="logTabs">
@@ -137,15 +154,16 @@
                 </table>
             </div>
             <div class="pagination-info" id="logPager">
-                <span id="logTotalText">共 0 条记录</span>
-                <div>
-                    <form id="logSizeForm" class="d-flex align-items-center gap-1">
-                        <label class="text-muted" style="font-size:.8rem;" for="logPageSize">每页</label>
+                <span id="logTotalText">共 0 条 · 第 1 / 1 页</span>
+                <div class="pag-controls">
+                    <form id="logSizeForm" class="pag-perpage">
+                        <label for="logPageSize">每页</label>
                         <select id="logPageSize" class="per-page-select">
-                            <option value="10">10 条</option>
-                            <option value="20">20 条</option>
-                            <option value="50">50 条</option>
+                            <option value="10">10</option>
+                            <option value="30">30</option>
+                            <option value="50">50</option>
                         </select>
+                        <span>条</span>
                     </form>
                     <ul class="pagination" id="logPagination"></ul>
                 </div>
@@ -529,7 +547,7 @@
     }
 
     function renderLogPager(d) {
-        $('logTotalText').textContent = '共 ' + d.total + ' 条记录，第 ' + d.page + ' / ' + (d.pages || 1) + ' 页';
+        $('logTotalText').textContent = '共 ' + d.total + ' 条 · 第 ' + d.page + ' / ' + (d.pages || 1) + ' 页';
         var ul = $('logPagination');
         ul.innerHTML = '';
         var pages = d.pages || 1;
