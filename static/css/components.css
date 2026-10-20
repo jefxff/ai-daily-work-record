@@ -143,12 +143,15 @@
   }
   /* 卡片模式：复位各页面 extra_css 给 .table 设的 min-width（1040~1560px）。
      不复位时整张卡被撑到该宽度，右对齐的「值」被挤到视口外，看起来只剩左侧标签。
-     卡片模式本就横向铺平全部列，故同步隐藏「已隐藏 N 个次要列」的提示条。 */
+     卡片模式本就横向铺平全部列，故同步隐藏「已隐藏 N 个次要列」的提示条——
+     提示条的父容器有 .table-container 与 .table-responsive 两种写法（如试样详情页
+     的三张记录表），两种都要覆盖，否则卡片模式仍会提示"已隐藏次要列"。 */
   .table--cards {
     min-width: 0 !important;
     table-layout: auto;
   }
-  .table-container:has(.table--cards) .hidden-cols-hint {
+  .table-container:has(.table--cards) .hidden-cols-hint,
+  .table-responsive:has(.table--cards) .hidden-cols-hint {
     display: none;
   }
   .table--cards td::before {
@@ -163,6 +166,30 @@
     font-weight: 600;
     background: var(--c-surface-sunken);
     border-radius: var(--r-sm) var(--r-sm) 0 0;
+  }
+}
+
+/* 筛选下拉面板：小屏定位修正。
+   各列表页（每日记录/装修/客户账期/客户客诉/诉讼/保险/操作留痕）的 extra_css 都把
+   面板写成「以筛选按钮为基准、right: 0、min-width: 280~320px」——桌面端按钮在操作条
+   右侧，面板向左展开没问题；小屏下操作条换行、按钮落到最左侧（x≈20），右对齐后
+   面板整体跑到视口左侧之外，只剩右边缘一条可见（用户反馈的"选择框在左侧视区外"）。
+   这里在 ≤640px 把定位基准从按钮改为整条操作行：面板左右各贴操作行边缘，宽度自适应，
+   无论按钮落在哪一行哪个位置都完整可见。桌面端不受影响（规则只在媒体查询内生效）。 */
+@media (max-width: 640px) {
+  .page-actions { position: relative; }
+  .filter-button,
+  .filter-container { position: static !important; }
+  .filter-dropdown {
+    left: 0 !important;
+    right: 0 !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    top: 100% !important;
+    margin-top: 8px !important;
+    max-height: min(70vh, 520px);
+    overflow-y: auto;
   }
 }
 
@@ -497,4 +524,39 @@ html.act-icons td[data-label="操作"] :is([data-act="delete"], .btn-delete, .bt
   white-space: nowrap;
   pointer-events: none;
   box-shadow: var(--sh-2);
+}
+
+/* ==========================================================================
+   §7 表格操作列 · 统一分隔线
+   --------------------------------------------------------------------------
+   客户账期等 6 个页面（模板里带 .col-actions）自带「操作列左侧 1px 竖线」，
+   其余列表页的操作列与数据列之间没有分隔，同一套表格在模块之间视觉不统一。
+   这里把这条线收敛到组件层复用，颜色 / 粗细取客户账期页同款
+   （1px solid var(--c-border)），与页内既有的 .col-actions 声明取值一致。
+
+   钩子：tbody 里存在 td[data-label="操作"] 的表格，对其末列表头与单元格补左边框。
+   全站 44 张列表 / 子表都满足「操作列在末列、表头列数与数据行列数一致」，
+   因此用 th:last-child 定位同列表头是安全的；
+   :is(.table, .table--cards) 同时覆盖档案模块未挂 .table 的 lg-table / lgd-table。
+   ≤640px 卡片模式下操作列降级为整宽操作栏（用 border-top 分隔），
+   故规则只在 641px 以上生效，避免竖线落在卡片左边缘。
+   ========================================================================== */
+@media (min-width: 641px) {
+  :is(.table, .table--cards):has(tbody td[data-label="操作"]) > thead > tr > th:last-child,
+  :is(.table, .table--cards) > tbody > tr > td[data-label="操作"] {
+    border-left: 1px solid var(--c-border);
+    /* 间距与客户账期页一致：分隔线到操作按钮 12px。左右同时收窄到 12px，
+       内容盒左右对称，操作按钮才能继续与居中表头严格对齐。 */
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}
+
+/* 卡片模式下操作列已降级为整宽操作栏（靠 border-top 与上方字段分隔），
+   客户账期 / 客诉 / 保险等页模板自带的 .col-actions 竖线会在卡片左边缘
+   残留一段短线，这里统一清掉。 */
+@media (max-width: 640px) {
+  .table--cards > tbody > tr > td[data-label="操作"] {
+    border-left: 0 !important;
+  }
 }

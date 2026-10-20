@@ -103,7 +103,7 @@
                             </div>
                         </td>
                         <td data-label="操作">
-                            <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                            <div style="display: flex; gap: 0.25rem; align-items: center; justify-content: center; flex-wrap: nowrap;">
                                 <a href="{% url 'daily_record_detail' record.id %}" class="btn-transparent btn-sm" data-modal-detail data-modal-title="每日记录详情">详情</a>
                                 {% can "daily_record" "update" %}
                                 <a href="{% url 'daily_record_edit' record.id %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑每日记录">编辑</a>
@@ -195,7 +195,7 @@
     .filter-reset:hover { background: var(--c-border-strong) !important; }
 
     /* 工作进度迷你进度条 */
-    .progress-cell { display: flex; align-items: center; gap: 8px; min-width: 130px; }
+    .progress-cell { display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 130px; }
     .mini-progress { flex: 1; max-width: 90px; height: 6px; background: var(--c-border); border-radius: 3px; overflow: hidden; }
     .mini-progress-fill { display: block; height: 100%; width: 0; background: var(--c-primary); border-radius: 3px; transition: width 0.4s ease; }
     .mini-progress.done .mini-progress-fill { background: var(--c-success); }

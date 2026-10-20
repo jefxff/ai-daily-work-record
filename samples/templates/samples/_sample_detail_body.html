@@ -6,10 +6,12 @@
     .head-title { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
     .head-title h2 { margin: 0; font-size: 1.3rem; color: var(--c-text); }
     .head-actions { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
-    .info-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.9rem 1.75rem; }
-    @media (max-width: 1200px) { .info-grid { grid-template-columns: 1fr 1fr 1fr; } }
-    @media (max-width: 992px) { .info-grid { grid-template-columns: 1fr 1fr; } }
-    @media (max-width: 576px) { .info-grid { grid-template-columns: 1fr; } }
+    /* 网格轨道统一用 minmax(0, 1fr)：1fr 的自动最小尺寸等于子项 min-content，
+       会被长文件名 / 文件选择控件等最宽子项撑开，窄屏下导致整列溢出视口。 */
+    .info-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.9rem 1.75rem; }
+    @media (max-width: 1200px) { .info-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    @media (max-width: 992px) { .info-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 576px) { .info-grid { grid-template-columns: minmax(0, 1fr); } }
     .info-item { min-width: 0; }
     #supplierTypeSelect { border-radius: 6px; border: 1px solid var(--c-border-strong); color: var(--c-text); }
     #supplierTypeSelect:focus { border-color: var(--c-primary); outline: none; box-shadow: 0 0 0 2px var(--c-primary-ring); }
@@ -28,11 +30,24 @@
     .step-item.done .step-label, .step-item.current .step-label { color: var(--c-text); font-weight: 500; }
     .step-line { flex: 1; height: 2px; background: var(--c-border); margin: 0 0.75rem; min-width: 24px; }
     .step-item.done .step-line { background: var(--c-primary); }
+    /* 小屏：4 步 + 圆点 + 就地不换行的标签 + 连接线需要约 630px，手机宽度下整条步骤条
+       溢出到卡片外（页面出现横向滚动）。改为 2×2 换行紧凑布局，并隐藏连接线避免行尾悬空。 */
+    @media (max-width: 768px) {
+        .step-bar { padding: 0.9rem 1rem; flex-wrap: wrap; gap: 0.7rem 0.5rem; }
+        .step-item,
+        .step-item:last-child { flex: 1 1 44%; min-width: 0; }
+        .step-label { white-space: normal; font-size: 0.8rem; margin-left: 0.4rem; }
+        .step-line { display: none; }
+    }
 
     /* ===== 主体两栏：左时间轴 / 右记录 ===== */
     .detail-layout { display: grid; grid-template-columns: 420px minmax(0, 1fr); gap: 1.25rem; align-items: start; }
     @media (max-width: 1200px) { .detail-layout { grid-template-columns: 360px minmax(0, 1fr); } }
-    @media (max-width: 992px) { .detail-layout { grid-template-columns: 1fr; } }
+    /* 单列时轨道必须写 minmax(0, 1fr)：写成 1fr 时轨道最小尺寸取子项 min-content，
+       右侧记录卡（长文件名 + 证明材料 + 文件控件）会把轨道撑到 500px 以上，
+       窄屏下整页出现横向滚动、内容被推出视口右侧。 */
+    @media (max-width: 992px) { .detail-layout { grid-template-columns: minmax(0, 1fr); } }
+    .detail-left, .detail-right { min-width: 0; }
     .detail-left { position: sticky; top: 70px; }
     @media (max-width: 992px) { .detail-left { position: static; } }
 
@@ -76,16 +91,17 @@
     .audit-hint { background: var(--c-surface-sunken); border-radius: 6px; padding: 8px 12px; font-size: 0.8rem; color: var(--c-text-secondary); margin-bottom: 0.9rem; }
     .cover-hint { font-size: 0.8rem; color: var(--c-text-secondary); }
     .detail-left .record-card { margin-bottom: 0; }
-    .record-title { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .record-title { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
     .record-title h3 { font-size: 1rem; font-weight: 600; color: var(--c-text); margin: 0; display: flex; align-items: center; gap: 0.5rem; }
     .record-title h3::before { content: ''; width: 4px; height: 15px; border-radius: 2px; background: var(--c-primary); flex-shrink: 0; }
     .deleted-banner { background: var(--c-danger-bg); border: 1px solid #ffccc7; color: var(--c-danger); border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; }
 
     /* 证明材料卡片 */
     .proof-banner { background: var(--c-primary-subtle); border: 1px solid var(--c-border-hover); border-radius: 8px; padding: 10px 14px; font-size: 0.82rem; color: var(--c-text); margin-bottom: 1rem; line-height: 1.6; }
-    .proof-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-    @media (max-width: 1200px) { .proof-grid { grid-template-columns: 1fr; } }
-    .proof-card { border: 1.5px solid #13c2c2; border-radius: 10px; padding: 1rem 1.25rem; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .proof-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem; }
+    /* 同上：单列轨道用 minmax(0, 1fr)，否则被证明材料卡片内最宽子项（长文件名）撑开 */
+    @media (max-width: 1200px) { .proof-grid { grid-template-columns: minmax(0, 1fr); } }
+    .proof-card { min-width: 0; border: 1.5px solid #13c2c2; border-radius: 10px; padding: 1rem 1.25rem; transition: transform 0.2s ease, box-shadow 0.2s ease; }
     .proof-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
     .proof-card.has-files { border-color: var(--c-primary); }
     .proof-head { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }

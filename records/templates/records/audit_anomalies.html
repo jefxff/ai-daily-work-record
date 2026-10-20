@@ -33,7 +33,7 @@
             <span class="total-hint">同一操作人 1 小时内删除 &gt; {{ delete_burst_threshold }} 条</span>
         </div>
         <div class="table-responsive">
-            <table class="table--cards table">
+            <table class="table--cards table anomaly-table">
                 <thead>
                     <tr>
                         <th scope="col">操作人</th>
@@ -65,7 +65,7 @@
             <span class="total-hint">同一操作人同一天 ≥ {{ off_hours_batch_threshold }} 条删除或编辑</span>
         </div>
         <div class="table-responsive">
-            <table class="table--cards table">
+            <table class="table--cards table anomaly-table">
                 <thead>
                     <tr>
                         <th scope="col">操作人</th>
@@ -97,7 +97,7 @@
             <span class="total-hint">同一操作人 1 小时内 &gt; {{ high_freq_threshold }} 条</span>
         </div>
         <div class="table-responsive">
-            <table class="table--cards table">
+            <table class="table--cards table anomaly-table">
                 <thead>
                     <tr>
                         <th scope="col">操作人</th>
@@ -129,7 +129,7 @@
             <span class="total-hint">同一操作人 1 小时内导出 &gt; {{ export_burst_threshold }} 次</span>
         </div>
         <div class="table-responsive">
-            <table class="table--cards table">
+            <table class="table--cards table anomaly-table">
                 <thead>
                     <tr>
                         <th scope="col">操作人</th>
@@ -198,5 +198,15 @@
         background: var(--c-surface-sunken);
     }
     .anomaly-section-title { font-weight: 600; color: var(--c-text); }
+    /* 4 张独立分组表：默认 auto 布局会按各表自身内容分别计算列宽，
+       导致列位置层层错开（宽屏下尤其明显）。这里改为 fixed 布局，
+       由首行 th 的百分比宽度统一决定列网格——四张表列数、宽度相同，
+       故所有分组表的列位置完全一致（与「到期预警」页同一套做法）。 */
+    .anomaly-table {
+        table-layout: fixed;
+    }
+    .anomaly-table th:nth-child(1) { width: 40%; }  /* 操作人 */
+    .anomaly-table th:nth-child(2) { width: 30%; }  /* 小时 / 日期 */
+    .anomaly-table th:nth-child(3) { width: 30%; }  /* 条数 / 删除条数 / 导出次数 */
 </style>
 {% endblock %}
