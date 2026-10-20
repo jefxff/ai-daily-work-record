@@ -21,8 +21,8 @@
     <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
     <!-- 设计令牌 + 外壳 + 组件：外置后可被浏览器缓存；版本号用于发布瞬间避免「新 HTML + 旧 CSS」 -->
     <link href="{% static 'css/tokens.css' %}?v=20261019c" rel="stylesheet">
-    <link href="{% static 'css/app.css' %}?v=20261020c" rel="stylesheet">
-    <link href="{% static 'css/components.css' %}?v=20261020j" rel="stylesheet">
+    <link href="{% static 'css/app.css' %}?v=20261021d" rel="stylesheet">
+    <link href="{% static 'css/components.css' %}?v=20261021a" rel="stylesheet">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -31,9 +31,9 @@
     <!-- 顶部导航栏 -->
     <nav class="top-nav">
         <div class="top-nav-left">
-            <div class="brand-logo">
+            <a href="{% url 'home' %}" class="brand-logo" aria-label="返回首页">
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-            </div>
+            </a>
             <div class="nav-tabs">
                 <a href="{% url 'home' %}" class="nav-tab {% if request.path == '/' %}active{% endif %}">首页</a>
                 {% can_view "data_view" %}

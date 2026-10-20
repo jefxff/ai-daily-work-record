@@ -11,9 +11,6 @@
 <!-- 左侧导航栏 -->
 {% load accounts_tags %}
 <nav class="sidebar" id="sidebar" aria-label="主导航">
-    <div class="sidebar-header">
-        <a href="{% url 'home' %}" class="sidebar-logo">DWR</a>
-    </div>
 
     {% can_view_any "daily_record" "decoration" "customer_credit" "customer_complaint" "complaint" "regulation" "price_evaluation" "insurance" "metal_price" "data_view" "knowledge" %}
     <!-- 分组：工作台 -->
