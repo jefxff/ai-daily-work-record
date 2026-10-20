@@ -47,7 +47,7 @@
             <span class="total-hint">{{ group.items|length }} 项</span>
         </div>
         <div class="table-responsive">
-            <table class="table--cards table">
+            <table class="table--cards table expiry-day-table">
                 <thead>
                     <tr>
                         <th scope="col">类型</th>
@@ -142,5 +142,23 @@
     .expiry-day-date { font-weight: 600; }
     .expiry-day-weekday { color: var(--c-text-muted, #666); }
     .table-container { margin-top: 1rem; }
+    /* 每天一个分组、各自一张表：默认 auto 布局会按各表内容分别计算列宽，
+       导致 32 张表的列位置层层错开（宽屏下尤其明显）。这里改为 fixed 布局，
+       由首行 th 的百分比宽度统一决定列网格——所有分组表宽度相同，故列位置完全一致。
+       百分比按最窄场景（表宽 = min-width 860px）反算，保证任何宽度下内容不溢出。 */
+    .expiry-day-table {
+        table-layout: fixed;
+        min-width: 860px;
+    }
+    .expiry-day-table th:nth-child(1) { width: 10%; }    /* 类型 */
+    .expiry-day-table th:nth-child(2) { width: 15.5%; }  /* 名称 */
+    .expiry-day-table th:nth-child(3) { width: 24.5%; }  /* 说明 */
+    .expiry-day-table th:nth-child(4) { width: 13%; }    /* 到期日期 */
+    .expiry-day-table th:nth-child(5) { width: 13.5%; }  /* 剩余天数 */
+    .expiry-day-table th:nth-child(6) { width: 11%; }    /* 状态 */
+    .expiry-day-table th:nth-child(7) { width: 12.5%; }  /* 操作 */
+    /* 分组表行数少，收紧单元格内边距，避免整页形成大片留白 */
+    .expiry-day-table th,
+    .expiry-day-table td { padding: 10px 14px; }
 </style>
 {% endblock %}

@@ -369,6 +369,9 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
             .page-actions .btn-transparent,
             .page-actions .btn-primary { flex: 1 1 auto; }
         }
+        /* 操作条里的工具行（Bootstrap .d-flex 默认 nowrap）：允许换行，
+           避免窄屏下筛选/状态/导出等多枚按钮被挤出视口两侧 */
+        .page-actions .d-flex { flex-wrap: wrap; }
 
         /* 通知铃铛（Ant Design 风格） */
         .nav-notify { position: relative; display: flex; align-items: center; flex-shrink: 0; }

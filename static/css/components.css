@@ -141,6 +141,16 @@
     overflow: visible !important;
     text-overflow: clip !important;
   }
+  /* 卡片模式：复位各页面 extra_css 给 .table 设的 min-width（1040~1560px）。
+     不复位时整张卡被撑到该宽度，右对齐的「值」被挤到视口外，看起来只剩左侧标签。
+     卡片模式本就横向铺平全部列，故同步隐藏「已隐藏 N 个次要列」的提示条。 */
+  .table--cards {
+    min-width: 0 !important;
+    table-layout: auto;
+  }
+  .table-container:has(.table--cards) .hidden-cols-hint {
+    display: none;
+  }
   .table--cards td::before {
     content: attr(data-label);
     flex: 0 0 38%;
@@ -292,3 +302,199 @@ body.sidebar-open .sidebar-scrim { display: block; }
 
 /* 大尺寸装饰图标（如搜索空态） */
 .icon--xl { stroke-width: 1.5; }
+
+/* ==========================================================================
+   §6 表格操作列 · 图标微按钮（图标 + 悬停提示）
+   --------------------------------------------------------------------------
+   改造前的问题：操作列里三个动作同用「浅底 + 边框 + 文字」的实心小方块，
+   详细与编辑完全同款、删除常驻红块 —— 一行里三块色块并排，噪声大、无层级、
+   破坏性操作与查看操作紧邻无间隔。
+
+   本层只改视觉，不动模板结构与业务逻辑：
+     ① 三个动作统一成同一规格的微按钮：常态无底色无边框、文字走次级色；
+        悬停 / 键盘聚焦才浮出浅底，视觉重量大幅下降。
+     ② 图标用 mask-image 注入，以 [data-act]（base.html 从按钮文字推导）为主，
+        模板里已有的 [data-modal-detail] / [data-modal-edit] / .btn-delete /
+        href 关键字为辅；未命中钩子的动作（归还 / 恢复 / 下载 / 撤销…）不出
+        图标，但仍自动获得同一套安静的微按钮观感。
+     ③ 删除常态不"喊"，只在「行悬停 / 键盘聚焦 / 触屏设备」时转危险红。
+     ④ 桌面端只留图标，鼠标移入 / 键盘聚焦时浮出文字气泡（§6b）；
+        触屏端无 hover，保留「图标 + 文字」，不留死角。
+     ⑤ ≤640px 卡片模式下，操作列降级为整宽等分操作栏（热区 40px）。
+
+   本层整体由 html.act-icons 门控：该 class 由 base.html 的小脚本按页面启用，
+   用户管理 / 角色管理 / 数据备份与恢复等系统页刻意不启用，保持原有「文字
+   按钮」形态（这些页面按钮构成与本层假设不同）。
+
+   选择器用 td[data-label="操作"] 作为唯一钩子：它覆盖全部列表页（记录的
+   col-actions 单元格同样带此属性），且不受档案模块 .table--cards lg-table
+   这类无 .table 类名的表格影响。本文件加载在 app.css 之后，特异度亦高于
+   .btn-transparent / .arc-page .btn / .btn-sm。
+   ========================================================================== */
+
+/* ---- 微按钮骨架 ---- */
+html.act-icons td[data-label="操作"] :is(.btn, .btn-sm) {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 9px;
+  border-radius: var(--r-md);
+  border: 1px solid transparent;
+  background: transparent;
+  box-shadow: none;
+  color: var(--c-text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  line-height: 1;
+  text-decoration: none;
+  vertical-align: middle;
+  transition: background-color 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+}
+
+/* 未命中图标钩子的按钮：伪元素为 0 宽，不占位、不出现实心方块 */
+html.act-icons td[data-label="操作"] :is(.btn, .btn-sm)::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 0;
+  height: 15px;
+  background-color: currentColor;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+/* 悬停 / 键盘聚焦：浮出浅底（同特异度时由后面的危险色规则覆盖删除按钮） */
+html.act-icons td[data-label="操作"] :is(.btn, .btn-sm):hover,
+html.act-icons td[data-label="操作"] :is(.btn, .btn-sm):focus-visible {
+  background: var(--c-primary-subtle);
+  color: var(--c-primary-active);
+  border-color: var(--c-primary-ring);
+  text-decoration: none;
+}
+
+/* ---- 危险动作：常态最弱，行悬停 / 聚焦才转红 ----
+   危险色选择器刻意不含 .btn-outline-danger / .btn-danger：数据备份页的「恢复」
+   按钮正是 btn-outline-danger，会被误当成删除而常驻红。删除语义一律由
+   [data-act="delete"]（脚本按按钮文字推导）+ .btn-delete / .btn-delete-bk /
+   href*="delete" 判定。 */
+html.act-icons td[data-label="操作"] :is([data-act="delete"], .btn-delete, .btn-delete-bk, a[href*="delete"]) {
+  color: var(--c-text-tertiary);
+}
+html.act-icons tbody tr:hover td[data-label="操作"] :is([data-act="delete"], .btn-delete, .btn-delete-bk, a[href*="delete"]),
+html.act-icons td[data-label="操作"] :is([data-act="delete"], .btn-delete, .btn-delete-bk, a[href*="delete"]):hover,
+html.act-icons td[data-label="操作"] :is([data-act="delete"], .btn-delete, .btn-delete-bk, a[href*="delete"]):focus-visible {
+  background: var(--c-danger-bg);
+  color: var(--c-danger);
+  border-color: var(--c-danger-line);
+}
+/* 触屏设备没有 hover，危险色常驻，避免删除动作被彻底弱化到看不见 */
+@media (hover: none), (pointer: coarse) {
+  html.act-icons td[data-label="操作"] :is([data-act="delete"], .btn-delete, .btn-delete-bk, a[href*="delete"]) {
+    color: var(--c-danger);
+  }
+}
+
+/* ---- 图标注入（mask 用 alpha 通道，颜色跟随 currentColor） ----
+   钩子以 data-act（base.html 从按钮文字推导）为主，模板里已有的属性为辅。
+   编辑这一条刻意不用 a[href*="edit"]：/customer_credit/... 之类 URL 里的
+   "cr**edit**" 会被误命中，把「详细」也套上铅笔图标。 */
+html.act-icons td[data-label="操作"] :is([data-act="detail"], [data-modal-detail], a[href*="detail"])::before {
+  width: 15px;
+  margin-right: 5px;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1.8 12S5.4 5.6 12 5.6 22.2 12 22.2 12 18.6 18.4 12 18.4 1.8 12 1.8 12z'/%3E%3Ccircle cx='12' cy='12' r='3.1'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1.8 12S5.4 5.6 12 5.6 22.2 12 22.2 12 18.6 18.4 12 18.4 1.8 12 1.8 12z'/%3E%3Ccircle cx='12' cy='12' r='3.1'/%3E%3C/svg%3E");
+}
+html.act-icons td[data-label="操作"] :is([data-act="edit"], [data-modal-edit])::before {
+  width: 15px;
+  margin-right: 5px;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 20.2h4.2L20.6 7.8a2.9 2.9 0 0 0-4.1-4.1L4 16.1v4.1z'/%3E%3Cpath d='M14.8 5.4l3.8 3.8'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 20.2h4.2L20.6 7.8a2.9 2.9 0 0 0-4.1-4.1L4 16.1v4.1z'/%3E%3Cpath d='M14.8 5.4l3.8 3.8'/%3E%3C/svg%3E");
+}
+html.act-icons td[data-label="操作"] :is([data-act="delete"], .btn-delete, .btn-delete-bk, a[href*="delete"])::before {
+  width: 15px;
+  margin-right: 5px;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.8 6.6h16.4'/%3E%3Cpath d='M9.2 6.6V4.4h5.6v2.2'/%3E%3Cpath d='M6.4 6.6l.9 13.1h9.4l.9-13.1'/%3E%3Cpath d='M10.4 10.6v5.8M13.6 10.6v5.8'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.8 6.6h16.4'/%3E%3Cpath d='M9.2 6.6V4.4h5.6v2.2'/%3E%3Cpath d='M6.4 6.6l.9 13.1h9.4l.9-13.1'/%3E%3Cpath d='M10.4 10.6v5.8M13.6 10.6v5.8'/%3E%3C/svg%3E");
+}
+
+/* ---- ≤640px：卡片模式下操作列降级为整宽等分操作栏 ---- */
+@media (max-width: 640px) {
+  html.act-icons .table--cards tbody tr td[data-label="操作"] {
+    display: flex !important;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: var(--sp-2);
+    padding: var(--sp-2) var(--sp-3) !important;
+    background: var(--c-surface-sunken) !important;
+    border-top: 1px solid var(--c-border);
+    border-radius: 0 0 var(--r-sm) var(--r-sm);
+  }
+  /* 卡片模式已有 data-label 作为左侧标签，操作栏不需要再重复一遍"操作" */
+  html.act-icons .table--cards tbody tr td[data-label="操作"]::before { display: none !important; }
+
+  /* 模板里的内联包裹层（<div style="display:flex;gap:.25rem">）拉平成同宽弹性项 */
+  html.act-icons .table--cards tbody tr td[data-label="操作"] > div {
+    display: flex !important;
+    flex: 1 1 0;
+    min-width: 0;
+    gap: var(--sp-2) !important;
+    margin: 0 !important;
+  }
+  /* 删除按钮的 <form> 只是提交容器：用 display:contents 拆掉它自己的盒子，
+     让内部 button 直接成为弹性项。否则在 box-sizing:border-box + flex-basis:0
+     下，弹性项的假设主轴尺寸被自身 padding 兜底，form（padding 0）比两侧
+     <a>（padding 0 9px）少 18px 起点，三项宽度永远差 ~20px 而对不齐。 */
+  html.act-icons .table--cards tbody tr td[data-label="操作"] form {
+    display: contents !important;
+  }
+  html.act-icons .table--cards tbody tr td[data-label="操作"] :is(.btn, .btn-sm) {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 40px;
+    justify-content: center;
+  }
+}
+
+/* ==========================================================================
+   §6b 操作列 · 仅图标模式 + 悬停提示
+   --------------------------------------------------------------------------
+   目标：桌面端操作列只留图标（列宽从 ~200px 收到 ~101px），鼠标移入 / 键盘
+   聚焦时才浮出文字气泡；触屏端无 hover，保留「图标 + 文字」，不留死角。
+
+   只在「有 hover 能力」的媒体查询里收起文字，且以 [data-act] 为开关——该属性
+   由 base.html 的小脚本从按钮已有文字推导（详细/详情→detail、编辑→edit、
+   删除→delete），因此：
+     ① 未命中图标钩子的动作（恢复/下载/归还/撤销…）没有 data-act，不会收起
+        文字，避免变成一个无图标、无文字的空方块；
+     ② 无 JS 时退化为「图标 + 文字」，仍可读。
+   气泡由脚本站到 body 上用 fixed 定位（见 .u-tip），避开 .table-container 与
+   .table-responsive 的 overflow 裁切。
+   ========================================================================== */
+@media (hover: hover) and (pointer: fine) {
+  html.act-icons td[data-label="操作"] :is(.btn, .btn-sm)[data-act] {
+    padding: 0 8px;
+    font-size: 0;
+  }
+  /* 文字收起后图标不再需要与文字拉开间距 */
+  html.act-icons td[data-label="操作"] :is(.btn, .btn-sm)[data-act]::before {
+    margin-right: 0;
+  }
+}
+
+.u-tip {
+  position: fixed;
+  z-index: var(--z-toast);
+  max-width: 16em;
+  padding: 5px 9px;
+  background: var(--c-text);
+  color: var(--c-surface);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: var(--sh-2);
+}

@@ -110,7 +110,7 @@
     .table tbody td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
     .table tbody td:last-child { overflow: visible; }
     .table td { font-variant-numeric: tabular-nums; }
-    .reduced-amt { color: var(--c-danger); font-weight: 600; }
+    .reduced-amt { color: var(--c-text); font-weight: 600; }
 
     /* 筛选下拉 */
     .filter-container { position: relative; display: inline-block; }
@@ -179,18 +179,6 @@
     .filter-apply:hover { background: var(--c-primary-hover) !important; }
     .filter-reset { background: var(--c-surface-sunken) !important; color: var(--c-text-secondary) !important; }
     .filter-reset:hover { background: var(--c-border-strong) !important; }
-
-    /* 删除按钮 */
-    .btn-delete {
-        background: var(--c-danger-bg) !important;
-        color: var(--c-danger) !important;
-        border: 1px solid #ffccc7 !important;
-    }
-    .btn-delete:hover {
-        background: var(--c-danger) !important;
-        color: var(--c-surface) !important;
-        border-color: var(--c-danger) !important;
-    }
 </style>
 {% endblock %}
 

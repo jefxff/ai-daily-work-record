@@ -38,7 +38,7 @@
                 <label for="baseUrlInput">API 地址</label>
                 <input id="baseUrlInput" type="text" name="base_url" value="{{ config.base_url }}"
                        placeholder="{{ effective_base_url }}" autocomplete="off">
-                <p class="ai-hint">留空将使用该接入方式的默认地址。</p>
+                <p class="ai-hint">留空将使用该接入方式的默认地址。远程 Ollama 请填服务器地址，如 http://192.168.x.x:11434（Ollama 服务端需以 OLLAMA_HOST=0.0.0.0 启动）；MiniMax 如需 GroupId，请在地址末尾追加 ?GroupId=你的GroupId。</p>
             </div>
 
             <div class="ai-field ai-field-wide">

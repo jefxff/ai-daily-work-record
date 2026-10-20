@@ -67,10 +67,39 @@
 
     /* 宽表：横向滚动 + 截断 + 紧凑字号，操作按钮横排 */
     .lg-table-wrap { overflow-x: auto; }
-    .lg-table { min-width: 1080px; border-collapse: collapse; width: 100%; font-size: 13px; }
+    /* 每个台账卡片各一张表：默认 auto 布局会按各表内容分别算列宽，多张卡片纵向
+       排在一起时列位置层层错开（宽屏下尤其明显）。改为 fixed 布局，由首行 th 的
+       百分比宽度统一决定列网格，所有卡片列位置完全一致；min-width 按各列文字
+       （日期、合同编号、金额、状态徽标、操作按钮）的实际需要反算，故任何宽度下
+       内容都不溢出，窄屏只是横向滚动。 */
+    .lg-table {
+        min-width: 1400px;
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 13px;
+        table-layout: fixed;
+    }
+    /* 百分比按真实数据反算：非截断列（编号/金额/日期/部门/位置编码/经办人/状态/操作）
+       在 min-width 1400px 的列宽都不小于实际最长值，故不会出现文字越出列边的情况 */
+    .lg-table th:nth-child(1)  { width: 8%; }    /* 编号 */
+    .lg-table th:nth-child(2)  { width: 10%; }   /* 名称（截断 + title 提示） */
+    .lg-table th:nth-child(3)  { width: 10.5%; } /* 相对方/公司名称（截断 + title 提示） */
+    .lg-table th:nth-child(4)  { width: 13%; }   /* 合同编号 */
+    .lg-table th:nth-child(5)  { width: 8.5%; }  /* 金额 */
+    .lg-table th:nth-child(6)  { width: 8.5%; }  /* 签订日期 */
+    .lg-table th:nth-child(7)  { width: 8.5%; }  /* 到期日期 */
+    .lg-table th:nth-child(8)  { width: 6.5%; }  /* 部门 */
+    .lg-table th:nth-child(9)  { width: 7%; }    /* 位置编码 */
+    .lg-table th:nth-child(10) { width: 5%; }    /* 经办人 */
+    .lg-table th:nth-child(11) { width: 6%; }    /* 状态 */
+    .lg-table th:nth-child(12) { width: 8.5%; }  /* 操作 */
     .lg-table th { background: var(--c-surface-sunken); color: var(--c-text-secondary); font-weight: 600; padding: 9px 12px; text-align: left; white-space: nowrap; border-bottom: 1px solid var(--c-border); }
     .lg-table td { padding: 9px 12px; color: var(--c-text); border-bottom: 1px solid var(--c-surface-sunken); white-space: nowrap; }
-    .lg-table td.lg-ellipsis { max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+    /* 列宽已由上面的百分比网格锁定，这里只需负责截断显示（原先的 max-width 会与固定列宽打架） */
+    .lg-table td.lg-ellipsis { overflow: hidden; text-overflow: ellipsis; }
+    /* 合同编号存在「一格多编号」的长值（实测最长约 375px），固定列宽下改为换行，
+       既保证数据完整可见，又不会越出列边压到邻列 */
+    .lg-table td[data-label="合同编号"] { white-space: normal; word-break: break-word; }
     .lg-table tbody tr:hover { background: var(--c-primary-subtle); }
     .lg-row-actions { display: flex; gap: 6px; flex-wrap: nowrap; }
     .lg-empty { text-align: center; color: var(--c-text-secondary); padding: 1.6rem 0; }
@@ -85,6 +114,12 @@
     .ls-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0.25rem; border-bottom: 1px solid var(--c-surface-sunken); }
     .ls-row:last-child { border-bottom: none; }
     .ls-row .ls-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--c-text); }
+
+    /* 窄屏：工具条右侧按钮组改为整行换行，避免「＋ 新建台账」等被挤出视口 */
+    @media (max-width: 640px) {
+        .lg-toolbar .lg-actions { flex-wrap: wrap; width: 100%; margin-left: 0; }
+        .lg-toolbar .lg-actions .btn { flex: 1 1 auto; }
+    }
 </style>
 {% endblock %}
 

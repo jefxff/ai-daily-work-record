@@ -10,6 +10,7 @@
 """
 
 import logging
+from urllib.parse import urlsplit, urlunsplit
 
 import requests
 
@@ -27,15 +28,25 @@ class AICallError(Exception):
 
 
 def _endpoint(config):
-    """按提供商拼出实际请求地址；已填完整路径则原样使用。"""
-    base = config.effective_base_url().rstrip("/")
+    """按提供商拼出实际请求地址；已填完整路径则原样使用。
+
+    地址栏允许携带查询参数（如 MiniMax 的 ``?GroupId=xxx``），拼接路径时
+    保留原有 query，避免把路径拼到 ``?`` 之后生成非法 URL。
+    """
+    base = config.effective_base_url().strip()
     if not base:
         raise AICallError("未配置 API 地址")
     if config.provider == "ollama":
-        return base if base.endswith(OLLAMA_CHAT_PATH) else base + OLLAMA_CHAT_PATH
-    if config.provider == "minimax":
-        return base if base.endswith(MINIMAX_CHAT_PATH) else base + MINIMAX_CHAT_PATH
-    return base if base.endswith(OPENAI_CHAT_PATH) else base + OPENAI_CHAT_PATH
+        chat_path = OLLAMA_CHAT_PATH
+    elif config.provider == "minimax":
+        chat_path = MINIMAX_CHAT_PATH
+    else:
+        chat_path = OPENAI_CHAT_PATH
+    parts = urlsplit(base)
+    path = parts.path.rstrip("/")
+    if not path.endswith(chat_path):
+        path += chat_path
+    return urlunsplit((parts.scheme, parts.netloc, path, parts.query, parts.fragment))
 
 
 def _extract_content(provider, data):
@@ -89,6 +100,16 @@ def chat(messages, config):
         data = resp.json()
     except ValueError as exc:
         raise AICallError("响应不是合法 JSON") from exc
+
+    if config.provider == "minimax":
+        # MiniMax 业务错误放在 base_resp 里（HTTP 仍是 200），必须透出真实原因，
+        # 否则会落到 choices 解析失败，用户只看到「响应格式无法解析」。
+        base_resp = data.get("base_resp") or {}
+        status_code = base_resp.get("status_code")
+        if status_code not in (None, 0):
+            raise AICallError(
+                f"MiniMax 返回错误 {status_code}：{base_resp.get('status_msg', '')}"
+            )
 
     content = _extract_content(config.provider, data)
     if not content or not str(content).strip():
