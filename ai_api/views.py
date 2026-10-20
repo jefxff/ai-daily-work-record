@@ -14,7 +14,7 @@ from accounts.services import has_perm
 from records.audit import log_operation, snapshot
 from samples.services import (
     create_partner, create_sample, create_test_record, create_batch_record,
-    BusinessError, client_ip,
+    BusinessError,
 )
 
 logger = logging.getLogger(__name__)
@@ -66,14 +66,12 @@ class EnhancedModelViewSet(viewsets.ModelViewSet):
     perm_module = None
 
     # ---- 操作留痕配置（AI API 的更新/删除属静默写通道，必须留痕）----
-    # audit_store: 留痕存储，'records' -> records.OperationLog（records/archive/knowledge 模块）
-    #              'samples' -> samples.OperationLog（samples 模块使用独立留痕表）
+    # 所有模块统一写 records.OperationLog（操作留痕已全站归一，无独立分表）
     # audit_label:        留痕模块名（与页面端留痕一致，如 '每日记录'），为空回退 perm_module
     # audit_object_name:  留痕对象类型名（如 '台账'），为空则用 audit_label
     # audit_display_field:留痕摘要中引用的展示字段（与页面端 display_field 一致）
     # audit_style:        标识符风格，'bracket' -> '[模块]下的记录#id'（records 模块）
-    #                     'plain' -> '对象#id'（archive/knowledge 页面端既有风格）
-    audit_store = 'records'
+    #                     'plain' -> '对象#id'（archive/knowledge/samples 页面端既有风格）
     audit_label = None
     audit_object_name = None
     audit_display_field = None
@@ -89,56 +87,21 @@ class EnhancedModelViewSet(viewsets.ModelViewSet):
                 return str(value)
         return f'ID {obj.pk}'
 
-    def _audit_operator(self):
-        user = self.request.user
-        if user.is_authenticated:
-            return user.get_username()
-        # 未登录请求 fallback 到 IP（与 records.audit 语义一致）
-        xff = self.request.META.get('HTTP_X_FORWARDED_FOR')
-        if xff:
-            return xff.split(',')[0].strip()
-        return self.request.META.get('REMOTE_ADDR', '未知')
-
     def _write_audit(self, op_type, obj_id, summary, before=None, after=None):
         """写入操作留痕；留痕失败仅记日志，不影响 API 主流程。
 
-        before/after 为 records.audit.snapshot 归一后的字典；samples 独立留痕表
-        无对应字段，仅 records.OperationLog 通道落库快照。
+        before/after 为 records.audit.snapshot 归一后的字典：
+        新增仅传 after、删除仅传 before、编辑两者都传。
         """
         try:
             label = self._audit_label()
             obj_name = self.audit_object_name or label
-            if self.audit_store == 'samples':
-                from samples.models import OperationLog as SampleOperationLog
-                # 显式映射：改造前用三元表达式（'更新' → UPDATE，其余 → DELETE），
-                # 一旦传入 '新增' 会被静默记成"删除"（审计 #8）
-                _ACTION_MAP = {
-                    '新增': SampleOperationLog.Action.CREATE,
-                    '更新': SampleOperationLog.Action.UPDATE,
-                    '删除': SampleOperationLog.Action.DELETE,
-                }
-                action = _ACTION_MAP.get(op_type)
-                if action is None:
-                    logger.warning(
-                        '未知留痕动作 %r，回退为 UPDATE；audit_label=%s',
-                        op_type, label,
-                    )
-                    action = SampleOperationLog.Action.UPDATE
-                SampleOperationLog.objects.create(
-                    action=action,
-                    target_type=label,
-                    target_repr=f'{obj_name}#{obj_id}',
-                    summary=summary,
-                    operator=self._audit_operator(),
-                    ip=client_ip(self.request),
-                )
+            if self.audit_style == 'plain':
+                identifier = f'{obj_name}#{obj_id}'
             else:
-                if self.audit_style == 'plain':
-                    identifier = f'{obj_name}#{obj_id}'
-                else:
-                    identifier = f'[{label}]下的记录#{obj_id}'
-                log_operation(self.request, label, op_type, identifier, summary,
-                              before=before, after=after)
+                identifier = f'[{label}]下的记录#{obj_id}'
+            log_operation(self.request, label, op_type, identifier, summary,
+                          before=before, after=after)
         except Exception:
             logger.exception('AI API 操作留痕写入失败（%s %s#%s）',
                              op_type, self.audit_label or self.perm_module, obj_id)
@@ -150,18 +113,18 @@ class EnhancedModelViewSet(viewsets.ModelViewSet):
         记录更难追责，创建恰恰是最需要留痕的动作（审计 #8）。
         """
         obj = serializer.save()
-        label = self._audit_label()
+        obj_name = self.audit_object_name or self._audit_label()
         display = self._audit_display(obj)
-        self._write_audit('新增', obj.pk, f'新增{label}: {display}',
+        self._write_audit('新增', obj.pk, f'新增{obj_name}: {display}',
                           after=snapshot(obj))
 
     def perform_update(self, serializer):
         # 快照须在 save 前拍：save 会就地改写实例
         before_snap = snapshot(serializer.instance)
         obj = serializer.save()
-        label = self._audit_label()
+        obj_name = self.audit_object_name or self._audit_label()
         display = self._audit_display(obj)
-        self._write_audit('更新', obj.pk, f'编辑{label}: {display}',
+        self._write_audit('更新', obj.pk, f'编辑{obj_name}: {display}',
                           before=before_snap, after=snapshot(obj))
 
     def perform_destroy(self, instance):
@@ -169,9 +132,9 @@ class EnhancedModelViewSet(viewsets.ModelViewSet):
         obj_id = instance.pk
         before_snap = snapshot(instance)
         display = self._audit_display(instance)
-        label = self._audit_label()
+        obj_name = self.audit_object_name or self._audit_label()
         instance.delete()
-        self._write_audit('删除', obj_id, f'删除{label}: {display}', before=before_snap)
+        self._write_audit('删除', obj_id, f'删除{obj_name}: {display}', before=before_snap)
 
     def get_queryset(self):
         """重写查询集以支持过滤"""
@@ -370,9 +333,10 @@ class ComplaintViewSet(EnhancedModelViewSet):
 class PartnerViewSet(EnhancedModelViewSet):
     """供应商档案 API"""
     perm_module = 'samples'
-    audit_store = 'samples'
-    audit_label = '供应商档案'
+    audit_label = '试样管理'
+    audit_object_name = '供应商档案'
     audit_display_field = 'name'
+    audit_style = 'plain'
     queryset = Partner.objects.all()
     serializer_class = PartnerSerializer
     search_fields = ['partner_code', 'name', 'contact_person', 'contact_info']
@@ -382,9 +346,10 @@ class PartnerViewSet(EnhancedModelViewSet):
 class SampleViewSet(EnhancedModelViewSet):
     """样品主档 API（不含已软删除样品；删除请走页面软删除流程）"""
     perm_module = 'samples'
-    audit_store = 'samples'
-    audit_label = '样品主档'
+    audit_label = '试样管理'
+    audit_object_name = '样品主档'
     audit_display_field = 'sample_no'
+    audit_style = 'plain'
     queryset = Sample.objects.filter(is_deleted=False)
     serializer_class = SampleSerializer
     search_fields = ['sample_no', 'material_name', 'model', 'spec', 'registrar']
@@ -394,9 +359,10 @@ class SampleViewSet(EnhancedModelViewSet):
 class TestRecordViewSet(EnhancedModelViewSet):
     """试样记录 API"""
     perm_module = 'samples'
-    audit_store = 'samples'
-    audit_label = '试样记录'
+    audit_label = '试样管理'
+    audit_object_name = '试样记录'
     audit_display_field = 'test_no'
+    audit_style = 'plain'
     queryset = TestRecord.objects.all()
     serializer_class = TestRecordSerializer
     search_fields = ['test_no', 'test_result', 'report_code', 'operator', 'package_type']
@@ -406,9 +372,10 @@ class TestRecordViewSet(EnhancedModelViewSet):
 class BatchRecordViewSet(EnhancedModelViewSet):
     """小批量记录 API"""
     perm_module = 'samples'
-    audit_store = 'samples'
-    audit_label = '小批量记录'
+    audit_label = '试样管理'
+    audit_object_name = '小批量记录'
     audit_display_field = 'batch_no'
+    audit_style = 'plain'
     queryset = BatchRecord.objects.all()
     serializer_class = BatchRecordSerializer
     search_fields = ['batch_no', 'alternative_model', 'operator', 'remark']
@@ -418,9 +385,10 @@ class BatchRecordViewSet(EnhancedModelViewSet):
 class AuditRecordViewSet(EnhancedModelViewSet):
     """审厂记录 API（附件上传走页面）"""
     perm_module = 'samples'
-    audit_store = 'samples'
-    audit_label = '审厂记录'
+    audit_label = '试样管理'
+    audit_object_name = '审厂记录'
     audit_display_field = 'audit_no'
+    audit_style = 'plain'
     queryset = AuditRecord.objects.all()
     serializer_class = AuditRecordSerializer
     search_fields = ['audit_no', 'audit_remark', 'auditor']

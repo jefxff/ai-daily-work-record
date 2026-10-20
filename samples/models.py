@@ -316,32 +316,6 @@ class AuditRecord(TimeStampedModel):
         return name.endswith((".jpg", ".jpeg", ".png", ".gif", ".webp"))
 
 
-class OperationLog(models.Model):
-    """全流程操作留痕（新增/编辑/删除/状态变更）。"""
-
-    class Action(models.TextChoices):
-        CREATE = "create", "新增"
-        UPDATE = "update", "编辑"
-        DELETE = "delete", "删除"
-        STATUS = "status", "状态变更"
-
-    action = models.CharField("操作类型", max_length=10, choices=Action.choices, db_index=True)
-    target_type = models.CharField("对象类型", max_length=30, db_index=True)
-    target_repr = models.CharField("对象标识", max_length=200)
-    summary = models.TextField("变更摘要", blank=True)
-    operator = models.CharField("操作人", max_length=50, blank=True)
-    ip = models.GenericIPAddressField("IP地址", null=True, blank=True)
-    created_at = models.DateTimeField("操作时间", auto_now_add=True, db_index=True)
-
-    class Meta:
-        verbose_name = "操作日志"
-        verbose_name_plural = verbose_name
-        ordering = ["-created_at", "-id"]
-
-    def __str__(self):
-        return f"{self.get_action_display()} {self.target_type} {self.target_repr}"
-
-
 def proof_upload_path(instance, filename):
     """证明材料按 样品编号/阶段/原文件名 分目录存储。"""
     sample_no = instance.sample.sample_no if instance.sample_id else "unbound"

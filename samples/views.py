@@ -38,7 +38,6 @@ from .forms import (
 from .models import (
     AuditRecord,
     BatchRecord,
-    OperationLog,
     Partner,
     ProofAttachment,
     Sample,
@@ -931,14 +930,14 @@ def supplier_type_update(request, pk):
     old_type = sample.supplier_type
     sample.supplier_type = new_type
     sample.save(update_fields=["supplier_type"])
-    # 留痕
-    OperationLog.objects.create(
-        action=OperationLog.Action.UPDATE,
-        target_type="Sample",
-        target_repr=sample.sample_no,
-        summary=f"供应商类型 {old_type} → {new_type}",
-        operator=_current_name(request),
-        ip=services.client_ip(request),
+    # 留痕（统一写入系统操作留痕）
+    services._log(
+        _current_name(request),
+        services.Action.UPDATE,
+        "样品主档",
+        sample.sample_no,
+        f"供应商类型 {old_type} → {new_type}",
+        services.client_ip(request),
     )
     return JsonResponse({"ok": True, "supplier_type": new_type})
 
@@ -969,13 +968,13 @@ def audit_create(request, pk):
                 return next_round
 
             next_round = services.save_with_retry(_assign_and_save)
-            OperationLog.objects.create(
-                action=OperationLog.Action.CREATE,
-                target_type="AuditRecord",
-                target_repr=record.audit_no,
-                summary=f"{partner.name} 新增第{next_round}轮审厂记录",
-                operator=auditor,
-                ip=services.client_ip(request),
+            services._log(
+                auditor,
+                services.Action.CREATE,
+                "审厂记录",
+                record.audit_no,
+                f"{partner.name} 新增第{next_round}轮审厂记录",
+                services.client_ip(request),
             )
             # 通知触发：审厂结果登记后通知有试样读取权限的用户（业务提醒，同轮次幂等）
             try:
@@ -1030,13 +1029,13 @@ def audit_edit(request, pk, record_pk):
             record = form.save(commit=False)
             record.auditor = auditor
             record.save()
-            OperationLog.objects.create(
-                action=OperationLog.Action.UPDATE,
-                target_type="AuditRecord",
-                target_repr=record.audit_no,
-                summary=f"{partner.name} 编辑第{record.round_no}轮审厂记录",
-                operator=auditor,
-                ip=services.client_ip(request),
+            services._log(
+                auditor,
+                services.Action.UPDATE,
+                "审厂记录",
+                record.audit_no,
+                f"{partner.name} 编辑第{record.round_no}轮审厂记录",
+                services.client_ip(request),
             )
             messages.success(request, "审厂记录已更新。")
             if is_ajax:
@@ -1074,13 +1073,13 @@ def audit_delete(request, pk, record_pk):
                 if rec.audit_no:
                     rec.audit_no = f"A{partner.partner_code}-{new_round:02d}"
                 rec.save(update_fields=["round_no", "audit_no"])
-        OperationLog.objects.create(
-            action=OperationLog.Action.DELETE,
-            target_type="AuditRecord",
-            target_repr=audit_no,
-            summary=f"{partner.name} 删除第{round_no}轮审厂记录",
-            operator=_current_name(request),
-            ip=services.client_ip(request),
+        services._log(
+            _current_name(request),
+            services.Action.DELETE,
+            "审厂记录",
+            audit_no,
+            f"{partner.name} 删除第{round_no}轮审厂记录",
+            services.client_ip(request),
         )
         messages.success(request, "审厂记录已删除。")
         return redirect("samples:partner_detail", pk=pk)
@@ -1261,25 +1260,6 @@ def partner_delete(request, pk):
             messages.error(request, str(exc))
         return redirect("samples:partner_list")
     return render(request, "samples/partner_confirm_delete.html", {"partner": partner})
-
-
-# ---------------------------------------------------------------------------
-# 操作日志
-# ---------------------------------------------------------------------------
-
-# 操作留痕列表（keyword 搜索去首尾空白；非法动作值忽略不筛选）
-log_list = make_list_view(
-    perm_module="samples", template_name="samples/log_list.html",
-    page_var="page_obj", model=OperationLog,
-    search_param="keyword", search_fields=["target_repr", "summary"],
-    filters=[
-        ("action",
-         lambda qs, v: qs.filter(action=v) if v in dict(OperationLog.Action.choices) else qs,
-         "strip", "action"),
-        ("target_type", "target_type", "strip", "target_type"),
-    ],
-    extra_context={"action_choices": OperationLog.Action.choices},
-)
 
 
 # ---------------------------------------------------------------------------

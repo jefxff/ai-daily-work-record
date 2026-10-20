@@ -445,7 +445,7 @@ class RbacAuthTests(TestCase):
             reverse("dashboard"), reverse("data_download"), reverse("operation_log_list"),
             reverse("knowledge_base:document_list"), reverse("knowledge_base:category_list"),
             reverse("samples:list"), reverse("samples:dashboard"),
-            reverse("samples:partner_list"), reverse("samples:log_list"),
+            reverse("samples:partner_list"),
             reverse("accounts:user_list"), reverse("accounts:role_list"),
             reverse("accounts:login_logs"),
             reverse("expiry_calendar"), reverse("expiry_export"),

@@ -22,7 +22,7 @@
     <!-- 设计令牌 + 外壳 + 组件：外置后可被浏览器缓存；版本号用于发布瞬间避免「新 HTML + 旧 CSS」 -->
     <link href="{% static 'css/tokens.css' %}?v=20261019c" rel="stylesheet">
     <link href="{% static 'css/app.css' %}?v=20261020c" rel="stylesheet">
-    <link href="{% static 'css/components.css' %}?v=20261020e" rel="stylesheet">
+    <link href="{% static 'css/components.css' %}?v=20261020j" rel="stylesheet">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -533,9 +533,10 @@
              并把「详情/详细/查看/编辑/删除」在桌面端收成纯图标（§6b）。
            - 有 hover 能力的设备上，为这些图标按钮挂悬停/聚焦提示气泡；
              触屏端不挂，文字保持可见。
-           - 系统管理类页面（用户管理、角色管理、数据备份与恢复）的按钮构成
-             与本层假设不同（混有「重置密码/停用/恢复/下载」等），刻意不启用
-             图标模式，保持原有「文字按钮」形态。
+           - 系统管理类页面（/accounts/users、/accounts/roles、/system/backup
+             等路径，见下方 OPT_OUT 清单）的按钮构成与本层假设不同（混有
+             「重置密码/停用/恢复/下载」等），刻意不启用图标模式，保持原有
+             「文字按钮」形态。
            刻意不用 href*="edit" 判断编辑：/customer_credit/... 里的 "credit"
            含 "edit" 子串，会把「详细」误判成编辑。 */
         (function () {

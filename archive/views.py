@@ -5,7 +5,7 @@ urls.py 的 `from . import views` 引用方式与全部 URL 名称不变：
 
 - views_ledger    台账总览 / 详情 / CRUD / 移动 / 单表与批量导入导出
 - views_cabinet   档案柜 CRUD（含层格编辑）
-- views_archive   档案 CRUD / 详情 / 移动 / 电子附件 / 二维码 / 操作日志
+- views_archive   档案 CRUD / 详情 / 移动 / 电子附件 / 二维码
 - views_category  类别 CRUD
 - views_borrow    借阅登记与归还
 - views_io        档案导入导出与表级通用导入导出
@@ -23,7 +23,6 @@ from .views_archive import (  # noqa: F401
     archive_file_thumb,
     archive_files_upload,
     archive_move,
-    log_list,
     qrcode,
 )
 from .views_borrow import borrow_create, borrow_list, borrow_return  # noqa: F401

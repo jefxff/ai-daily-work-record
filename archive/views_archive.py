@@ -9,13 +9,11 @@ import os
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
-from django.core.paginator import Paginator
 from django.db import IntegrityError, transaction
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from accounts.decorators import perm_required
-from records.crud import _per_page
 from records.models import OperationLog
 
 from .forms import ArchiveForm, validate_archive_file
@@ -233,15 +231,3 @@ def qrcode(request, pk):
     response = HttpResponse(buf.getvalue(), content_type="image/png")
     response["Content-Disposition"] = f'inline; filename="qrcode_{arc.code}.png"'
     return response
-
-
-@login_required
-@perm_required("archive", "read")
-def log_list(request):
-    # 后端分页（10/30/50）：替代原先硬截断最近 200 条，全部留痕均可翻页查看
-    qs = OperationLog.objects.filter(module_type="档案管理").order_by("-operation_time")
-    per_page = _per_page(request)
-    page_obj = Paginator(qs, per_page).get_page(request.GET.get("page"))
-    return render(request, "archive/log_list.html", {
-        "logs": page_obj, "page_obj": page_obj, "per_page": per_page,
-    })

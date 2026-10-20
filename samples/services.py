@@ -13,11 +13,13 @@ import logging
 import random
 import time
 
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, models, transaction
 from django.utils import timezone
 
+from records.models import OperationLog as RecordsOperationLog
+
 from . import serialno
-from .models import BatchRecord, OperationLog, Partner, ProofAttachment, Sample, TestRecord
+from .models import BatchRecord, Partner, ProofAttachment, Sample, TestRecord
 
 logger = logging.getLogger(__name__)
 
@@ -58,14 +60,35 @@ def client_ip(request):
     return request.META.get("REMOTE_ADDR")
 
 
+class Action(models.TextChoices):
+    """留痕动作枚举（原 samples.OperationLog.Action，操作留痕统一后保留动作语义）。"""
+
+    CREATE = "create", "新增"
+    UPDATE = "update", "编辑"
+    DELETE = "delete", "删除"
+    STATUS = "status", "状态变更"
+
+
+# 动作 → 系统统一留痕 operation_type 的中文映射
+_ACTION_TYPE_MAP = {
+    Action.CREATE: "新增",
+    Action.UPDATE: "编辑",
+    Action.DELETE: "删除",
+    Action.STATUS: "状态变更",
+}
+
+
 def _log(operator, action, target_type, target_repr, summary, ip=None):
-    OperationLog.objects.create(
-        action=action,
-        target_type=target_type,
-        target_repr=target_repr[:200],
-        summary=summary,
+    """写入系统统一操作留痕（records.OperationLog，模块固定为「试样管理」）。
+
+    ip 参数保留以兼容既有调用点；records.OperationLog 无 IP 字段，暂不落库。
+    """
+    RecordsOperationLog.objects.create(
         operator=(operator or "").strip(),
-        ip=ip,
+        module_type="试样管理",
+        operation_type=_ACTION_TYPE_MAP.get(action, "编辑"),
+        object_identifier=f"{target_type}#{target_repr}"[:200],
+        change_summary=summary or "",
     )
 
 
@@ -169,7 +192,7 @@ def _resync_sample_status(sample, operator, ip=None, context=""):
     sample.save()
     _log(
         operator,
-        OperationLog.Action.STATUS,
+        Action.STATUS,
         "样品主档",
         sample.sample_no,
         f"{context}，状态「{old_status_text}」→「{sample.get_status_display()}」",
@@ -193,7 +216,7 @@ def create_partner(partner, operator=None, ip=None):
     save_with_retry(_assign_and_save)
     _log(
         operator,
-        OperationLog.Action.CREATE,
+        Action.CREATE,
         "供应商档案",
         str(partner),
         f"新增供应商档案：{partner.name}",
@@ -232,7 +255,7 @@ def update_partner(partner, operator=None, ip=None):
     if changed:
         _log(
             operator,
-            OperationLog.Action.UPDATE,
+            Action.UPDATE,
             "供应商档案",
             str(partner),
             "；".join(changed),
@@ -253,7 +276,7 @@ def delete_partner(partner, operator=None, ip=None):
     partner.delete()
     _log(
         operator,
-        OperationLog.Action.DELETE,
+        Action.DELETE,
         "供应商档案",
         repr_text,
         f"删除档案：{name}",
@@ -279,7 +302,7 @@ def create_sample(sample, operator=None, ip=None):
     save_with_retry(_assign_and_save)
     _log(
         operator,
-        OperationLog.Action.CREATE,
+        Action.CREATE,
         "样品主档",
         sample.sample_no,
         (
@@ -320,7 +343,7 @@ def update_sample(sample, operator=None, ip=None):
             changed.append(f"{labels[field]}：「{ov or '空'}」改为「{nv or '空'}」")
     summary = "；".join(changed)
     if summary:
-        _log(operator, OperationLog.Action.UPDATE, "样品主档", sample.sample_no, summary, ip)
+        _log(operator, Action.UPDATE, "样品主档", sample.sample_no, summary, ip)
     return sample
 
 
@@ -334,7 +357,7 @@ def soft_delete_sample(sample, operator=None, ip=None):
     sample.save(update_fields=["is_deleted", "deleted_by", "deleted_at", "updated_at"])
     _log(
         operator,
-        OperationLog.Action.DELETE,
+        Action.DELETE,
         "样品主档",
         sample.sample_no,
         f"删除样品：{sample.material_name}/{sample.model}（软删除，可恢复）",
@@ -352,7 +375,7 @@ def restore_sample(sample, operator=None, ip=None):
     sample.save(update_fields=["is_deleted", "deleted_by", "deleted_at", "updated_at"])
     _log(
         operator,
-        OperationLog.Action.UPDATE,
+        Action.UPDATE,
         "样品主档",
         sample.sample_no,
         "恢复已删除样品",
@@ -386,7 +409,7 @@ def terminate_sample(sample, operator, reason, ip=None):
     )
     _log(
         operator,
-        OperationLog.Action.STATUS,
+        Action.STATUS,
         "样品主档",
         sample.sample_no,
         f"手动终止：状态「{old_status}」→「已终止」，终止原因：{reason}",
@@ -438,7 +461,7 @@ def create_test_record(record, operator=None, ip=None, terminate_reason=""):
 
     _log(
         operator,
-        OperationLog.Action.CREATE,
+        Action.CREATE,
         "试样记录",
         record.test_no,
         (
@@ -481,7 +504,7 @@ def update_test_record(record, operator=None, ip=None):
     if summary:
         _log(
             operator,
-            OperationLog.Action.UPDATE,
+            Action.UPDATE,
             "试样记录",
             record.test_no,
             f"样品 {record.sample.sample_no} 第{record.round_no}轮试样编辑：{summary}",
@@ -502,7 +525,7 @@ def delete_test_record(record, operator=None, ip=None):
     sample = record.sample
     round_no = record.round_no
     record.delete()
-    _log(operator, OperationLog.Action.DELETE, "试样记录", text, "删除试样记录", ip)
+    _log(operator, Action.DELETE, "试样记录", text, "删除试样记录", ip)
     _resync_sample_status(
         sample,
         operator,
@@ -556,7 +579,7 @@ def create_batch_record(record, operator=None, ip=None, terminate_reason=""):
 
     _log(
         operator,
-        OperationLog.Action.CREATE,
+        Action.CREATE,
         "小批量记录",
         record.batch_no,
         (
@@ -595,7 +618,7 @@ def update_batch_record(record, operator=None, ip=None):
     if summary:
         _log(
             operator,
-            OperationLog.Action.UPDATE,
+            Action.UPDATE,
             "小批量记录",
             record.batch_no,
             f"样品 {record.sample.sample_no} 第{record.round_no}批小批量编辑：{summary}",
@@ -616,7 +639,7 @@ def delete_batch_record(record, operator=None, ip=None):
     sample = record.sample
     round_no = record.round_no
     record.delete()
-    _log(operator, OperationLog.Action.DELETE, "小批量记录", text, "删除小批量记录", ip)
+    _log(operator, Action.DELETE, "小批量记录", text, "删除小批量记录", ip)
     _resync_sample_status(
         sample,
         operator,
@@ -654,7 +677,7 @@ def upload_proof(sample, stage, file_obj, operator=None, ip=None, remark=""):
     stage_label = attachment.get_stage_display()
     _log(
         operator,
-        OperationLog.Action.CREATE,
+        Action.CREATE,
         "证明材料",
         f"{sample.sample_no} · {stage_label}",
         (
@@ -684,7 +707,7 @@ def delete_proof(attachment, operator=None, ip=None):
         logger.exception("删除证明材料时清理存储文件失败：%s", file_path)
     _log(
         operator,
-        OperationLog.Action.DELETE,
+        Action.DELETE,
         "证明材料",
         f"{sample_no} · {stage_label}",
         f"删除证明材料：{stage_label}，文件「{file_name}」",

@@ -1,8 +1,8 @@
 """ai_api 的改造验收测试（对应技术审计报告 v4 的 #8 / #9 / #23）。
 
 覆盖三件事：
-- #8：AI API 是"静默写通道"，创建/更新/删除都必须留痕，且 samples 分表的
-      动作映射不能把"新增"记成"删除"。
+- #8：AI API 是"静默写通道"，创建/更新/删除都必须留痕，且操作类型映射
+      不能把"新增"记成"删除"（samples 留痕已统一写入 records.OperationLog）。
 - #9：序列化器不再 fields='__all__' 即"能写所有字段"，系统维护字段必须只读，
       否则 status / is_deleted 可以绕过状态机与软删除流程。
 - #23：健康检查必须做真实探测，而不是恒定返回 ok。
@@ -15,7 +15,6 @@ from django.test import RequestFactory, TestCase
 from rest_framework.test import APIClient
 
 from records.models import DailyRecord, OperationLog, Regulation
-from samples.models import OperationLog as SampleOperationLog
 
 from .serializers import (
     DailyRecordSerializer,
@@ -76,29 +75,24 @@ class AuditTrailTests(TestCase):
         self.assertIn(f"记录#{pk}", log.object_identifier)
 
     def test_samples_audit_action_mapping(self):
-        """samples 分表的动作映射：'新增' 不能落成 DELETE（改造前三元表达式的坑）。"""
+        """samples 统一留痕的动作映射：'新增' 不能落成'删除'（改造前三元表达式的坑）。"""
         request = RequestFactory().post("/api/samples/sample/")
         request.user = self.root
         view = SampleViewSet()
         view.request = request
 
         view._write_audit("新增", 1, "新增样品: S2601001")
-        self.assertEqual(
-            SampleOperationLog.objects.order_by("-id").first().action,
-            SampleOperationLog.Action.CREATE,
-        )
+        log = OperationLog.objects.filter(module_type="试样管理").order_by("-id").first()
+        self.assertEqual(log.operation_type, "新增")
+        self.assertEqual(log.object_identifier, "样品主档#1")
 
         view._write_audit("更新", 1, "编辑样品: S2601001")
-        self.assertEqual(
-            SampleOperationLog.objects.order_by("-id").first().action,
-            SampleOperationLog.Action.UPDATE,
-        )
+        log = OperationLog.objects.filter(module_type="试样管理").order_by("-id").first()
+        self.assertEqual(log.operation_type, "更新")
 
         view._write_audit("删除", 1, "删除样品: S2601001")
-        self.assertEqual(
-            SampleOperationLog.objects.order_by("-id").first().action,
-            SampleOperationLog.Action.DELETE,
-        )
+        log = OperationLog.objects.filter(module_type="试样管理").order_by("-id").first()
+        self.assertEqual(log.operation_type, "删除")
 
 
 class SerializerReadOnlyTests(TestCase):

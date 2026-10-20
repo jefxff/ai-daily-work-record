@@ -60,9 +60,6 @@ urlpatterns = [
     path("tables/<str:table>/template/", views.table_template, name="table_template"),
     path("tables/<str:table>/import/", views.table_import, name="table_import"),
 
-    # 操作日志
-    path("logs/", views.log_list, name="log_list"),
-
     # ---- 证照管理子模块 ----
     path("licenses/", views.license_list, name="license_list"),
     path("licenses/import/", views.import_licenses, name="license_import"),

@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import AuditRecord, BatchRecord, OperationLog, Partner, ProofAttachment, Sample, TestRecord
+from .models import AuditRecord, BatchRecord, Partner, ProofAttachment, Sample, TestRecord
 
 
 @admin.register(Partner)
@@ -72,21 +72,6 @@ class BatchRecordAdmin(admin.ModelAdmin):
     list_display = ("batch_no", "sample", "round_no", "ordered", "batch_result", "kingdee_entered", "unit_price", "operator")
     list_filter = ("batch_result", "ordered", "kingdee_entered")
     search_fields = ("batch_no", "sample__sample_no", "alternative_model")
-
-
-@admin.register(OperationLog)
-class OperationLogAdmin(admin.ModelAdmin):
-    list_display = ("created_at", "operator", "action", "target_type", "target_repr", "summary")
-    list_filter = ("action", "target_type", "created_at")
-    search_fields = ("target_repr", "summary", "operator")
-    readonly_fields = [f.name for f in OperationLog._meta.fields]
-    date_hierarchy = "created_at"
-
-    def has_add_permission(self, request):
-        return False
-
-    def has_change_permission(self, request, obj=None):
-        return False
 
 
 @admin.register(ProofAttachment)

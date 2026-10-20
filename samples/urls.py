@@ -66,9 +66,6 @@ urlpatterns = [
     path("partners/<int:pk>/audits/<int:record_pk>/edit/", views.audit_edit, name="audit_edit"),
     path("partners/<int:pk>/audits/<int:record_pk>/delete/", views.audit_delete, name="audit_delete"),
 
-    # 操作留痕
-    path("logs/", views.log_list, name="log_list"),
-
     # Excel 导出
     path("export/samples.xlsx", views.export_samples, name="export"),
 ]
