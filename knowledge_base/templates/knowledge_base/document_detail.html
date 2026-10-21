@@ -114,7 +114,13 @@
         toggle.disabled = true;
         fetch(toggle.dataset.url, {
             method: 'POST',
-            headers: { 'X-CSRFToken': getCookie('csrftoken') || csrf, 'X-Requested-With': 'XMLHttpRequest' },
+            // 必须显式声明表单类型：fetch 对字符串 body 默认发 text/plain，
+            // Django 的 request.POST 不解析 text/plain，会拿到空值报 400
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                'X-CSRFToken': getCookie('csrftoken') || csrf,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
             body: body.toString(),
             keepalive: true
         })
