@@ -94,6 +94,11 @@
     .lg-table th:nth-child(11) { width: 6%; }    /* 状态 */
     .lg-table th:nth-child(12) { width: 8.5%; }  /* 操作 */
     .lg-table th { background: var(--c-surface-sunken); color: var(--c-text-secondary); font-weight: 600; padding: 9px 12px; text-align: left; white-space: nowrap; border-bottom: 1px solid var(--c-border); }
+    /* 状态 / 操作两列：表头与单元格统一沿列轴心居中。
+       其余列均为左对齐，但这两列的内容（状态徽标、操作按钮组）已是居中，
+       表头若保持左对齐会与内容错位。 */
+    .lg-table th:nth-child(11), .lg-table th:nth-child(12),
+    .lg-table td[data-label="状态"], .lg-table td[data-label="操作"] { text-align: center; }
     .lg-table td { padding: 9px 12px; color: var(--c-text); border-bottom: 1px solid var(--c-surface-sunken); white-space: nowrap; }
     /* 列宽已由上面的百分比网格锁定，这里只需负责截断显示（原先的 max-width 会与固定列宽打架） */
     .lg-table td.lg-ellipsis { overflow: hidden; text-overflow: ellipsis; }
