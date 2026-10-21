@@ -49,6 +49,19 @@
             </div>
         </div>
 
+        <!-- 图表区：各模块记录数 + 近 30 天每日记录趋势（P5 第二步） -->
+        <div class="charts-row">
+            <div class="chart-box">
+                <div class="chart-title">各模块记录数</div>
+                <div class="chart-canvas"><canvas id="chartModules" role="img" aria-label="各模块记录数横向条形图"></canvas></div>
+            </div>
+            <div class="chart-box">
+                <div class="chart-title">近 30 天每日记录趋势</div>
+                <div class="chart-canvas"><canvas id="chartTrend" role="img" aria-label="近30天每日记录趋势折线图"></canvas></div>
+            </div>
+        </div>
+        {{ chart_payload|json_script:"dashboardChartData" }}
+
         <!-- 待处理项目卡片 -->
         <div class="pending-card" data-pending-count="{{ pending_count }}">
             <div class="pending-header">
@@ -90,9 +103,9 @@
                 {% endif %}
             </div>
 
-            {% if pending_count > 10 %}
+            {% if pending_count > 0 %}
             <div class="pending-footer">
-                <button class="view-all-btn" id="viewAllPendingBtn">展开全部 {{ pending_count }} 条待处理事项 ▼</button>
+                <a class="view-all-btn" href="{% url 'workspace' %}">前往待办工作台查看全部 {{ pending_count }} 条待处理事项 →</a>
             </div>
             {% endif %}
         </div>
@@ -104,7 +117,10 @@
                 <div class="module-header">
                     <div class="module-icon">🏠</div>
                     <h3 class="module-title">装修模块</h3>
-                    <span class="module-status status-normal">正常</span>
+                    {% with b=module_badges.decoration %}
+                    {% if b.url %}<a class="module-status status-{{ b.level }}" href="{{ b.url }}">{{ b.text }}</a>
+                    {% else %}<span class="module-status status-{{ b.level }}">{{ b.text }}</span>{% endif %}
+                    {% endwith %}
                 </div>
                 <div class="module-stats">
                     <div class="module-main-stat">{{ total_decorations }}</div>
@@ -154,7 +170,10 @@
                 <div class="module-header">
                     <div class="module-icon">💳</div>
                     <h3 class="module-title">客户账期</h3>
-                    <span class="module-status status-warning">警告</span>
+                    {% with b=module_badges.customer_credit %}
+                    {% if b.url %}<a class="module-status status-{{ b.level }}" href="{{ b.url }}">{{ b.text }}</a>
+                    {% else %}<span class="module-status status-{{ b.level }}">{{ b.text }}</span>{% endif %}
+                    {% endwith %}
                 </div>
                 <div class="module-stats">
                     <div class="module-main-stat">{{ total_customers }}</div>
@@ -212,7 +231,10 @@
                 <div class="module-header">
                     <div class="module-icon">📞</div>
                     <h3 class="module-title">客户客诉</h3>
-                    <span class="module-status status-normal">正常</span>
+                    {% with b=module_badges.customer_complaint %}
+                    {% if b.url %}<a class="module-status status-{{ b.level }}" href="{{ b.url }}">{{ b.text }}</a>
+                    {% else %}<span class="module-status status-{{ b.level }}">{{ b.text }}</span>{% endif %}
+                    {% endwith %}
                 </div>
                 <div class="module-stats">
                     <div class="module-main-stat">{{ complaint_total_count }}</div>
@@ -266,7 +288,10 @@
                 <div class="module-header">
                     <div class="module-icon">⚖️</div>
                     <h3 class="module-title">诉讼模块</h3>
-                    <span class="module-status status-error">异常</span>
+                    {% with b=module_badges.complaint %}
+                    {% if b.url %}<a class="module-status status-{{ b.level }}" href="{{ b.url }}">{{ b.text }}</a>
+                    {% else %}<span class="module-status status-{{ b.level }}">{{ b.text }}</span>{% endif %}
+                    {% endwith %}
                 </div>
                 <div class="module-stats">
                     <div class="module-main-stat">{{ lawsuit_total_count }}</div>
@@ -320,7 +345,10 @@
                 <div class="module-header">
                     <div class="module-icon">📋</div>
                     <h3 class="module-title">制度及处罚</h3>
-                    <span class="module-status status-normal">正常</span>
+                    {% with b=module_badges.regulation %}
+                    {% if b.url %}<a class="module-status status-{{ b.level }}" href="{{ b.url }}">{{ b.text }}</a>
+                    {% else %}<span class="module-status status-{{ b.level }}">{{ b.text }}</span>{% endif %}
+                    {% endwith %}
                 </div>
                 <div class="module-stats">
                     <div class="module-main-stat">{{ total_regulations }}</div>
@@ -370,7 +398,10 @@
                 <div class="module-header">
                     <div class="module-icon">💰</div>
                     <h3 class="module-title">核价模块</h3>
-                    <span class="module-status status-normal">正常</span>
+                    {% with b=module_badges.price_evaluation %}
+                    {% if b.url %}<a class="module-status status-{{ b.level }}" href="{{ b.url }}">{{ b.text }}</a>
+                    {% else %}<span class="module-status status-{{ b.level }}">{{ b.text }}</span>{% endif %}
+                    {% endwith %}
                 </div>
                 <div class="module-stats">
                     <div class="module-main-stat">{{ price_total_count }}</div>
@@ -420,7 +451,10 @@
                 <div class="module-header">
                     <div class="module-icon">📄</div>
                     <h3 class="module-title">保险模块</h3>
-                    <span class="module-status status-normal">正常</span>
+                    {% with b=module_badges.insurance %}
+                    {% if b.url %}<a class="module-status status-{{ b.level }}" href="{{ b.url }}">{{ b.text }}</a>
+                    {% else %}<span class="module-status status-{{ b.level }}">{{ b.text }}</span>{% endif %}
+                    {% endwith %}
                 </div>
                 <div class="module-stats">
                     <div class="module-main-stat">{{ insurance_total_count }}</div>
@@ -470,7 +504,10 @@
                 <div class="module-header">
                     <div class="module-icon">📅</div>
                     <h3 class="module-title">每日记录</h3>
-                    <span class="module-status status-normal">正常</span>
+                    {% with b=module_badges.daily_record %}
+                    {% if b.url %}<a class="module-status status-{{ b.level }}" href="{{ b.url }}">{{ b.text }}</a>
+                    {% else %}<span class="module-status status-{{ b.level }}">{{ b.text }}</span>{% endif %}
+                    {% endwith %}
                 </div>
                 <div class="module-stats">
                     <div class="module-main-stat">{{ daily_total_count }}</div>
@@ -514,6 +551,116 @@
                     <a href="{% url 'daily_record_list' %}" class="view-more-btn">查看更多</a>
                 </div>
             </div>
+
+            {% if 'samples' in visible_module_keys %}
+            <!-- 试样管理模块 -->
+            <div class="module-card module-samples">
+                <div class="module-header">
+                    <div class="module-icon">🧪</div>
+                    <h3 class="module-title">试样管理</h3>
+                    {% with b=module_badges.samples %}
+                    {% if b.url %}<a class="module-status status-{{ b.level }}" href="{{ b.url }}">{{ b.text }}</a>
+                    {% else %}<span class="module-status status-{{ b.level }}">{{ b.text }}</span>{% endif %}
+                    {% endwith %}
+                </div>
+                <div class="module-stats">
+                    <div class="module-main-stat">{{ sample_total_count }}</div>
+                    <div class="module-sub-stats">
+                        <div class="sub-stat">
+                            <div class="sub-stat-value">{{ sample_total_count }}</div>
+                            <div class="sub-stat-label">样品总数</div>
+                        </div>
+                        <div class="sub-stat">
+                            <div class="sub-stat-value">{{ sample_active_count }}</div>
+                            <div class="sub-stat-label">进行中</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="data-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th scope="col">样品编号</th>
+                                <th scope="col">物料名称</th>
+                                <th scope="col">状态</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sample in sample_recent %}
+                            <tr>
+                                <td data-label="样品编号">{{ sample.sample_no }}</td>
+                                <td data-label="物料名称">{{ sample.material_name|truncatechars:14 }}</td>
+                                <td data-label="状态">{{ sample.get_status_display }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="empty-cell">📭 暂无数据</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="module-footer">
+                    <a href="{% url 'samples:list' %}" class="view-more-btn">查看更多</a>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if 'archive' in visible_module_keys %}
+            <!-- 档案管理模块 -->
+            <div class="module-card module-archive">
+                <div class="module-header">
+                    <div class="module-icon">🗂️</div>
+                    <h3 class="module-title">档案管理</h3>
+                    {% with b=module_badges.archive %}
+                    {% if b.url %}<a class="module-status status-{{ b.level }}" href="{{ b.url }}">{{ b.text }}</a>
+                    {% else %}<span class="module-status status-{{ b.level }}">{{ b.text }}</span>{% endif %}
+                    {% endwith %}
+                </div>
+                <div class="module-stats">
+                    <div class="module-main-stat">{{ archive_total_count }}</div>
+                    <div class="module-sub-stats">
+                        <div class="sub-stat">
+                            <div class="sub-stat-value">{{ archive_total_count }}</div>
+                            <div class="sub-stat-label">档案总数</div>
+                        </div>
+                        <div class="sub-stat">
+                            <div class="sub-stat-value">{{ archive_borrowed_count }}</div>
+                            <div class="sub-stat-label">借出中</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="data-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th scope="col">档案编号</th>
+                                <th scope="col">档案名称</th>
+                                <th scope="col">存放位置</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for archive in archive_recent %}
+                            <tr>
+                                <td data-label="档案编号">{{ archive.code }}</td>
+                                <td data-label="档案名称">{{ archive.name|truncatechars:14 }}</td>
+                                <td data-label="存放位置">{{ archive.location_path|default:'未分配' }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="empty-cell">📭 暂无数据</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="module-footer">
+                    <a href="{% url 'archive:overview' %}" class="view-more-btn">查看更多</a>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 {% endblock %}
@@ -981,10 +1128,33 @@
             justify-content: flex-end;
         }
     }
-</style>
+/* 图表区（P5 第二步：各模块记录数 + 近 30 天趋势） */
+        .charts-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .chart-box {
+            background: var(--c-surface);
+            border-radius: 8px;
+            padding: 1.25rem 1.5rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+        .chart-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--c-text);
+            margin-bottom: 0.75rem;
+        }
+        .chart-canvas { position: relative; height: 230px; }
+        a.module-status { text-decoration: none; }
+        .pending-footer .view-all-btn { display: inline-block; text-align: center; }
+    </style>
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'js/chart.min.js' %}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // 页面加载时设置当前时间
@@ -1050,34 +1220,71 @@
             });
         });
 
-        // 查看全部待处理事项按钮 - 展开/收起功能
-        const viewAllBtn = document.getElementById('viewAllPendingBtn');
-        const pendingCard = document.querySelector('.pending-card');
-        const pendingList = document.getElementById('pendingList');
-        const pendingCount = pendingCard ? parseInt(pendingCard.dataset.pendingCount) : 0;
-        if (viewAllBtn) {
-            viewAllBtn.addEventListener('click', function() {
-                const hiddenItems = document.querySelectorAll('.pending-hidden');
-                const isExpanded = viewAllBtn.classList.contains('expanded');
+        // 查看全部入口已改为跳转待办工作台（见模板底部链接），不再需要本地展开逻辑
 
-                if (isExpanded) {
-                    // 收起：隐藏第11条之后的内容，恢复最大高度限制
-                    hiddenItems.forEach(item => {
-                        item.style.display = 'none';
-                    });
-                    pendingList.style.maxHeight = '400px';
-                    pendingList.style.overflowY = 'auto';
-                    viewAllBtn.textContent = '展开全部 ' + pendingCount + ' 条待处理事项 ▼';
-                    viewAllBtn.classList.remove('expanded');
-                } else {
-                    // 展开：显示所有内容，移除最大高度限制，让页面自适应
-                    hiddenItems.forEach(item => {
-                        item.style.display = 'flex';
-                    });
-                    pendingList.style.maxHeight = 'none';
-                    pendingList.style.overflowY = 'visible';
-                    viewAllBtn.textContent = '收起多余待处理事项 ▲';
-                    viewAllBtn.classList.add('expanded');
+        // ===== P5 第二步：图表区（颜色取自设计令牌，换肤自动跟随） =====
+        const chartDataEl = document.getElementById('dashboardChartData');
+        if (chartDataEl && typeof Chart !== 'undefined') {
+            const chartData = JSON.parse(chartDataEl.textContent);
+            const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+            const cPrimary = cssVar('--c-primary');
+            const cText = cssVar('--c-text-secondary');
+            const cBorder = cssVar('--c-border');
+            // Chart.js 不接受 CSS 变量字符串，这里统一解析为 rgba
+            const withAlpha = (color, alpha) => {
+                const hex = (color || '').trim();
+                if (/^#[0-9a-f]{6}$/i.test(hex)) {
+                    const r = parseInt(hex.slice(1, 3), 16);
+                    const g = parseInt(hex.slice(3, 5), 16);
+                    const b = parseInt(hex.slice(5, 7), 16);
+                    return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+                }
+                return hex;
+            };
+
+            new Chart(document.getElementById('chartModules'), {
+                type: 'bar',
+                data: {
+                    labels: chartData.module_labels,
+                    datasets: [{
+                        label: '记录数',
+                        data: chartData.module_values,
+                        backgroundColor: cPrimary,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: cText }, grid: { color: cBorder } },
+                        y: { ticks: { color: cText }, grid: { display: false } }
+                    }
+                }
+            });
+
+            new Chart(document.getElementById('chartTrend'), {
+                type: 'line',
+                data: {
+                    labels: chartData.trend_labels,
+                    datasets: [{
+                        label: '每日记录',
+                        data: chartData.trend_values,
+                        borderColor: cPrimary,
+                        backgroundColor: withAlpha(cPrimary, 0.13),
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 2
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: cText, maxTicksLimit: 8 }, grid: { display: false } },
+                        y: { ticks: { color: cText }, grid: { color: cBorder }, beginAtZero: true }
+                    }
                 }
             });
         }

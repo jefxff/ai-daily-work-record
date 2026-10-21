@@ -942,7 +942,7 @@ def refresh_metal_prices(request):
 @perm_required("data_view", "read")
 def dashboard(request):
     """数据展示看板视图"""
-    from datetime import date
+    from datetime import timedelta
     
     # 获取各模块数据
     decorations = Decoration.objects.all()
@@ -1033,10 +1033,11 @@ def dashboard(request):
     _visible = set(visible_modules(request.user))
     total_records = stats_svc.total_records(_visible, _records_total)
 
-    # 看板 8 个模块卡中当前用户可见的数量（原为模板硬编码 8，新增模块/按权限过滤不计）
+    # 看板 10 个模块卡中当前用户可见的数量（原为模板硬编码 8，新增模块/按权限过滤不计）
     _DASHBOARD_MODULE_KEYS = (
         'decoration', 'customer_credit', 'customer_complaint', 'complaint',
         'regulation', 'price_evaluation', 'insurance', 'daily_record',
+        'samples', 'archive',
     )
     module_count = sum(1 for k in _DASHBOARD_MODULE_KEYS if k in _visible)
     
@@ -1110,6 +1111,148 @@ def dashboard(request):
     # 近 7 天每日记录数趋势（含今天，升序，缺数的天补 0，共 7 项）
     weekly_trend = _weekly_trend(request.user)
 
+    # ===== P5 第二步：模块徽标真实化 + 图表区数据 =====
+    today_d = timezone.localdate()
+
+    # 客诉：未闭环中已超 SLA 的数量（SLA 默认 48h，可按单覆盖）
+    cc_open_qs = customer_complaints.filter(complaint_status__in=['未完成', '处理中'])
+    complaint_sla_overdue_count = sum(1 for c in cc_open_qs if c.is_sla_overdue)
+
+    # 诉讼：答辩期剩余 0~3 天（立案 + 15 天）
+    lawsuit_answer_soon_count = 0
+    for case in complaints.exclude(progress='结案'):
+        answer_deadline = case.answer_deadline
+        if answer_deadline and 0 <= (answer_deadline - today_d).days <= 3:
+            lawsuit_answer_soon_count += 1
+
+    # 保险：已过期 / 30 天内到期（分开口径，避免把过期混算成临期）
+    insurance_expired_count = insurances.filter(end_date__lt=today_d).count()
+    insurance_expiring_count = insurances.filter(
+        end_date__gte=today_d, end_date__lte=today_d + timedelta(days=30)
+    ).count()
+
+    # 每日记录：已过截止日期仍未完成
+    daily_overdue_count = daily_records.filter(
+        status='未完成', due_date__lt=today_d
+    ).count()
+
+    module_badges = {
+        'decoration': {'level': 'normal', 'text': '正常', 'url': ''},
+        'customer_credit': {
+            'level': 'warning' if credit_pending_site_count else 'normal',
+            'text': f'{credit_pending_site_count} 项待排期' if credit_pending_site_count else '正常',
+            'url': '',
+        },
+        'customer_complaint': {
+            'level': 'error' if complaint_sla_overdue_count else ('warning' if complaint_incomplete_count else 'normal'),
+            'text': (
+                f'{complaint_sla_overdue_count} 单超时' if complaint_sla_overdue_count
+                else (f'{complaint_incomplete_count} 单未闭环' if complaint_incomplete_count else '全部闭环')
+            ),
+            'url': '/workspace/?source=customer_complaint',
+        },
+        'complaint': {
+            'level': 'error' if lawsuit_answer_soon_count else ('warning' if lawsuit_incomplete_count else 'normal'),
+            'text': (
+                f'{lawsuit_answer_soon_count} 项答辩临期' if lawsuit_answer_soon_count
+                else (f'{lawsuit_incomplete_count} 件进行中' if lawsuit_incomplete_count else '全部结案')
+            ),
+            'url': '/workspace/?source=lawsuit',
+        },
+        'regulation': {'level': 'normal', 'text': '正常', 'url': ''},
+        'price_evaluation': {'level': 'normal', 'text': '正常', 'url': ''},
+        'insurance': {
+            'level': 'error' if insurance_expired_count else ('warning' if insurance_expiring_count else 'normal'),
+            'text': (
+                f'{insurance_expired_count} 份已过期' if insurance_expired_count
+                else (f'{insurance_expiring_count} 份临期' if insurance_expiring_count else '正常')
+            ),
+            'url': '',
+        },
+        'daily_record': {
+            'level': 'error' if daily_overdue_count else ('warning' if daily_incomplete_count else 'normal'),
+            'text': (
+                f'{daily_overdue_count} 条逾期' if daily_overdue_count
+                else (f'{daily_incomplete_count} 条未完成' if daily_incomplete_count else '已清')
+            ),
+            'url': '/workspace/?source=daily_record',
+        },
+    }
+
+    # 各模块记录数（仅统计当前用户可见模块，口径与 total_records 一致）
+    module_chart_items = [('每日记录', daily_total_count)]
+    if 'archive' in _visible:
+        from archive.models import Archive
+        module_chart_items.append(('档案', Archive.objects.count()))
+    if 'samples' in _visible:
+        from samples.models import Sample
+        module_chart_items.append(('样品', Sample.objects.filter(is_deleted=False).count()))
+    module_chart_items.append(('核价', price_total_count))
+    module_chart_items.append(('保险', insurance_total_count))
+    if 'archive' in _visible:
+        from archive.models import License
+        module_chart_items.append(('证照', License.objects.count()))
+    module_chart_items.append(('客诉', complaint_total_count))
+    module_chart_items.append(('诉讼', lawsuit_total_count))
+    module_chart_items.append(('装修', total_decorations))
+
+    # 近 30 天每日记录趋势（按天聚合一次查询，缺数补 0）
+    trend_end = timezone.localdate()
+    trend_start = trend_end - timedelta(days=29)
+    trend_rows = (
+        daily_records
+        .filter(record_date__date__gte=trend_start, record_date__date__lte=trend_end)
+        .annotate(day=TruncDate('record_date'))
+        .values('day')
+        .annotate(c=Count('id'))
+    )
+    trend_map = {row['day']: row['c'] for row in trend_rows}
+    trend30 = [
+        {
+            'label': (trend_start + timedelta(days=i)).strftime('%m-%d'),
+            'c': trend_map.get(trend_start + timedelta(days=i), 0),
+        }
+        for i in range(30)
+    ]
+
+    chart_payload = {
+        'module_labels': [x[0] for x in module_chart_items],
+        'module_values': [x[1] for x in module_chart_items],
+        'trend_labels': [x['label'] for x in trend30],
+        'trend_values': [x['c'] for x in trend30],
+    }
+
+    # ===== 试样管理 / 档案管理：数据展示卡片 =====
+    from archive.models import Archive, BorrowRecord, LicenseBorrowRecord
+    from samples.models import Sample
+
+    sample_qs = Sample.objects.filter(is_deleted=False)
+    sample_total_count = sample_qs.count()
+    sample_active_count = sample_qs.filter(status__in=[
+        Sample.Status.PENDING, Sample.Status.TESTING, Sample.Status.SMALL_BATCH,
+    ]).count()
+    sample_recent = sample_qs.select_related('supplier').order_by('-registered_at')[:5]
+
+    archive_total_count = Archive.objects.count()
+    archive_recent = (
+        Archive.objects.select_related('cabinet', 'category').order_by('-created_at')[:5]
+    )
+    archive_borrowed_count = (
+        BorrowRecord.objects.filter(return_time__isnull=True).count()
+        + LicenseBorrowRecord.objects.filter(return_time__isnull=True).count()
+    )
+
+    module_badges['samples'] = {
+        'level': 'warning' if sample_active_count else 'normal',
+        'text': f'{sample_active_count} 项进行中' if sample_active_count else '正常',
+        'url': '',
+    }
+    module_badges['archive'] = {
+        'level': 'warning' if archive_borrowed_count else 'normal',
+        'text': f'{archive_borrowed_count} 份借出中' if archive_borrowed_count else '正常',
+        'url': '/archive/borrows/' if archive_borrowed_count else '',
+    }
+
     context = {
         'total_records': total_records,
         'module_count': module_count,
@@ -1153,6 +1296,15 @@ def dashboard(request):
         'daily_records': daily_records[:5],
         'weekly_trend': weekly_trend,
         'trend_max': max([x['c'] for x in weekly_trend] + [1]),
+        'module_badges': module_badges,
+        'chart_payload': chart_payload,
+        'visible_module_keys': _visible,
+        'sample_total_count': sample_total_count,
+        'sample_active_count': sample_active_count,
+        'sample_recent': sample_recent,
+        'archive_total_count': archive_total_count,
+        'archive_borrowed_count': archive_borrowed_count,
+        'archive_recent': archive_recent,
     }
     
     return render(request, 'records/dashboard.html', context)
