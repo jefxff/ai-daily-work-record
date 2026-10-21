@@ -44,6 +44,17 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
 .sidebar-dropdown.show { max-height: 32rem; }
 .sidebar-dropdown a { padding-left: 3rem; font-size: 0.8rem; margin: 0; border-radius: 0; }
 
+/* 分组标题（如"工作台"）可折叠：保留 section-title 视觉，交互逻辑与 dropdown-toggle 三组完全一致 */
+.sidebar-section-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; background: none; border: 0; margin: 0; cursor: pointer; appearance: none; }
+.sidebar-section-toggle:hover { color: var(--c-text-secondary); }
+.sidebar-section-toggle:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.5); outline-offset: -2px; }
+.sidebar-section-toggle__chevron { flex: 0 0 auto; opacity: 0.5; transition: transform 0.28s ease; color: inherit; }
+.sidebar-section-toggle[aria-expanded="true"] .sidebar-section-toggle__chevron { transform: rotate(180deg); }
+/* 分组菜单容器：复用 max-height 过渡（与 sidebar-dropdown 动画/时长一致），
+   但不继承 sidebar-dropdown 的 3rem 缩进——内部保留原始 .sidebar-menu-item > li > a 样式 */
+.sidebar-section-menu { max-height: 0; overflow: hidden; transition: max-height 0.28s ease; }
+.sidebar-section-menu.show { max-height: 48rem; }
+
 /* 主内容区域 */
 .main-content { margin-left: 250px; min-height: 100vh; padding: 1.5rem; transition: margin-left 0.3s ease; display: flex; justify-content: center; margin-top: 56px; }
 .container { background: transparent; border-radius: 0; padding: 0; margin: 0; max-width: none; width: 100%; }
