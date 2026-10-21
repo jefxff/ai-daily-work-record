@@ -79,11 +79,14 @@ class HomePermissionTests(TestCase):
         # 档案权限用户应当能打开首页（不返回 403），但不该看到每日记录的统计块
         self.assertNotIn("总记录数", html)
         self.assertNotIn("未完成工作记录", html)
+        # 首页固定 10 张业务模块卡按权限显隐：仅有档案权限时只渲染 1 张
+        self.assertEqual(html.count('class="home-module"'), 1)
 
     def test_superuser_sees_cards(self):
         self.client.force_login(self.superuser)
         html = self.client.get(reverse("home")).content.decode()
-        self.assertIn("总记录数", html)
+        self.assertIn("业务模块", html)
+        self.assertEqual(html.count('class="home-module"'), 10)
 
     def test_no_duplicate_queries_for_hidden_modules(self):
         """不可见模块不应产生查询：零权限用户的首页 SQL 条数应显著低于超管。"""

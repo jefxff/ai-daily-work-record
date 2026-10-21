@@ -2,7 +2,7 @@
 {% load static %}
 {% load accounts_tags %}
 
-{% block page_title %}每日工作记录管理网站{% endblock %}
+{% block page_title %}我的工作台 · 每日工作记录管理网站{% endblock %}
 
 {% block content %}
 {% if no_permission %}
@@ -23,388 +23,381 @@
 </div>
 {% else %}
 
-<!-- 行动区：我的待办计数 + 快捷新增（口径与待办工作台一致） -->
+<header class="home-head">
+    <div>
+        <h1 class="home-head__title">我的工作台</h1>
+        <p class="home-head__sub">{{ today_label }}</p>
+    </div>
+    <p class="home-head__meta">共 {{ business_module_count }} 个业务模块</p>
+</header>
+
+<!-- 面板 1：我的待办 -->
 {% if todo_counts %}
-<section class="home-action" aria-label="我的待办与快捷入口">
-    <div class="home-action__stats">
-        <a class="home-action__stat" href="{% url 'workspace' %}">
-            <span class="home-action__value">{{ todo_counts.total }}</span>
-            <span class="home-action__label">待处理</span>
+<section class="home-panel home-todo" aria-label="我的待办">
+    <div class="home-kpis">
+        <a class="home-kpi home-kpi--main" href="{% url 'workspace' %}">
+            <span class="home-kpi__value">{{ todo_counts.total }}</span>
+            <span class="home-kpi__label">待处理</span>
         </a>
-        <a class="home-action__stat is-danger" href="{% url 'workspace' %}?urgency=高">
-            <span class="home-action__value">{{ todo_counts.urgent }}</span>
-            <span class="home-action__label">紧急</span>
+        <a class="home-kpi home-kpi--danger" href="{% url 'workspace' %}?urgency=高">
+            <span class="home-kpi__value">{{ todo_counts.urgent }}</span>
+            <span class="home-kpi__label">紧急</span>
         </a>
-        <div class="home-action__stat is-warning">
-            <span class="home-action__value">{{ todo_counts.due_soon }}</span>
-            <span class="home-action__label">7 天内到期</span>
+        <div class="home-kpi home-kpi--warning">
+            <span class="home-kpi__value">{{ todo_counts.due_soon }}</span>
+            <span class="home-kpi__label">7 天内到期</span>
         </div>
-        <div class="home-action__stat is-muted">
-            <span class="home-action__value">{% if 'daily_record' in mods %}{{ today_submitted_count }}{% else %}—{% endif %}</span>
-            <span class="home-action__label">今日已提交</span>
+        <div class="home-kpi">
+            <span class="home-kpi__value">{% if 'daily_record' in mods %}{{ today_submitted_count }}{% else %}—{% endif %}</span>
+            <span class="home-kpi__label">今日已提交</span>
         </div>
     </div>
-    <div class="home-action__quick">
-        {% can "daily_record" "create" %}<a class="btn-transparent btn-sm" href="{% url 'daily_record_add' %}">+ 每日记录</a>{% endcan %}
-        {% can "customer_complaint" "create" %}<a class="btn-transparent btn-sm" href="{% url 'customer_complaint_add' %}">+ 客户客诉</a>{% endcan %}
-        {% can "price_evaluation" "create" %}<a class="btn-transparent btn-sm" href="{% url 'price_evaluation_add' %}">+ 核价</a>{% endcan %}
-        {% can "decoration" "create" %}<a class="btn-transparent btn-sm" href="{% url 'decoration_add' %}">+ 装修</a>{% endcan %}
-        {% can "samples" "create" %}<a class="btn-transparent btn-sm" href="{% url 'samples:create' %}">+ 试样</a>{% endcan %}
-        <a class="home-action__more" href="{% url 'workspace' %}">前往待办工作台 →</a>
+    <div class="home-cta">
+        {% can "daily_record" "create" %}<a class="home-btn" href="{% url 'daily_record_add' %}">+ 每日记录</a>{% endcan %}
+        {% can "customer_complaint" "create" %}<a class="home-btn" href="{% url 'customer_complaint_add' %}">+ 客户客诉</a>{% endcan %}
+        {% can "price_evaluation" "create" %}<a class="home-btn" href="{% url 'price_evaluation_add' %}">+ 核价</a>{% endcan %}
+        {% can "decoration" "create" %}<a class="home-btn" href="{% url 'decoration_add' %}">+ 装修</a>{% endcan %}
+        {% can "samples" "create" %}<a class="home-btn" href="{% url 'samples:create' %}">+ 试样</a>{% endcan %}
+        <a class="home-btn home-btn--primary" href="{% url 'workspace' %}">前往待办工作台 →</a>
     </div>
 </section>
 {% endif %}
 
-<div class="row g-4">
-    <!-- 每日记录卡片 -->
-    {% can_view "daily_record" %}
-    <div class="col-md-6 col-lg-4">
-        <a class="card" href="{% url 'daily_record_list' %}">
-            <div class="card-body card-daily">
-                <h5 class="card-title">每日记录</h5>
-                <div class="card-content">
-                    <div class="card-main">
-                        <div class="card-subtitle">总记录数</div>
-                        <div class="card-value">{{ total_daily_records }}</div>
-                    </div>
-                    <div class="card-stats">
-                        <div class="card-stat">
-                            <span class="card-stat-label">未完成</span>
-                            <span class="card-stat-value">{{ incomplete_daily_records_count|default:0 }}</span>
+<!-- 面板 2：业务模块（固定 10 张卡，按权限显隐） -->
+<section class="home-panel" aria-label="业务模块">
+    <div class="home-panel__head">
+        <h2 class="home-panel__title"><span class="home-panel__dot"></span>业务模块</h2>
+        {% can_view "data_view" %}
+        <a class="home-panel__link" href="{% url 'dashboard' %}">数据展示看板 →</a>
+        {% endcan_view %}
+    </div>
+    <div class="home-modules">
+        {% can_view "daily_record" %}
+        <a class="home-module" href="{% url 'daily_record_list' %}">
+            <div class="home-module__top"><span class="home-module__icon">📅</span><span class="home-module__name">每日记录</span></div>
+            <div class="home-module__main">{{ total_daily_records }}</div>
+            <div class="home-spark" aria-hidden="true">
+                {% for d in weekly_trend %}<i class="home-spark__bar{% if forloop.last %} is-today{% endif %}" data-h="{% widthratio d.c trend_max 22 %}"></i>{% endfor %}
+            </div>
+            <div class="home-module__sub"><span>未完成</span><b>{{ incomplete_daily_records_count }}</b></div>
+        </a>
+        {% endcan_view %}
+
+        {% can_view "customer_credit" %}
+        <a class="home-module" href="{% url 'customer_credit_list' %}">
+            <div class="home-module__top"><span class="home-module__icon">💳</span><span class="home-module__name">客户账期</span></div>
+            <div class="home-module__main">{{ total_customers }}</div>
+            <div class="home-module__sub"><span>同意</span><b>{{ agree_count }}</b></div>
+            <div class="home-module__sub"><span>不同意</span><b>{{ disagree_count }}</b></div>
+        </a>
+        {% endcan_view %}
+
+        {% can_view "customer_complaint" %}
+        <a class="home-module" href="{% url 'customer_complaint_list' %}">
+            <div class="home-module__top"><span class="home-module__icon">📞</span><span class="home-module__name">客户客诉</span></div>
+            <div class="home-module__main">{{ total_complaints }}</div>
+            <div class="home-module__sub"><span>未闭环</span><b>{{ incomplete_complaints }}</b></div>
+            <div class="home-module__sub"><span>已闭环</span><b>{{ complaints_closed }}</b></div>
+        </a>
+        {% endcan_view %}
+
+        {% can_view "regulation" %}
+        <a class="home-module" href="{% url 'regulation_list' %}">
+            <div class="home-module__top"><span class="home-module__icon">📜</span><span class="home-module__name">制度及处罚</span></div>
+            <div class="home-module__main">{{ total_regulations }}</div>
+            <div class="home-module__sub"><span>本月新增</span><b>{{ regulation_month_count }}</b></div>
+            <div class="home-module__sub"><span>本年新增</span><b>{{ regulation_year_count }}</b></div>
+        </a>
+        {% endcan_view %}
+
+        {% can_view "price_evaluation" %}
+        <a class="home-module" href="{% url 'price_evaluation_list' %}">
+            <div class="home-module__top"><span class="home-module__icon">💰</span><span class="home-module__name">核价</span></div>
+            <div class="home-module__main">{{ total_price_evaluations }}</div>
+            <div class="home-module__sub"><span>核减金额</span><b>¥{{ total_price_reduction|floatformat:2 }}</b></div>
+        </a>
+        {% endcan_view %}
+
+        {% can_view "decoration" %}
+        <a class="home-module" href="{% url 'decoration_list' %}">
+            <div class="home-module__top"><span class="home-module__icon">🏠</span><span class="home-module__name">装修</span></div>
+            <div class="home-module__main">{{ total_decorations }}</div>
+            <div class="home-module__sub"><span>核减金额</span><b>¥{{ decoration_reduced_total|default:0|floatformat:2 }}</b></div>
+        </a>
+        {% endcan_view %}
+
+        {% can_view "insurance" %}
+        <a class="home-module" href="{% url 'insurance_list' %}">
+            <div class="home-module__top"><span class="home-module__icon">🛡️</span><span class="home-module__name">保险</span></div>
+            <div class="home-module__main">{{ total_insurance }}</div>
+            <div class="home-module__sub"><span>30 天内到期</span><b>{{ insurance_due_soon_count }}</b></div>
+            <div class="home-module__sub"><span>已过期</span><b>{{ insurance_expired_count }}</b></div>
+        </a>
+        {% endcan_view %}
+
+        {% can_view "complaint" %}
+        <a class="home-module" href="{% url 'complaint_list' %}">
+            <div class="home-module__top"><span class="home-module__icon">⚖️</span><span class="home-module__name">诉讼</span></div>
+            <div class="home-module__main">{{ total_litigations }}</div>
+            <div class="home-module__sub"><span>未完结</span><b>{{ incomplete_litigations_total }}</b></div>
+            <div class="home-module__sub"><span>答辩临期</span><b>{{ litigation_answer_soon_count }}</b></div>
+        </a>
+        {% endcan_view %}
+
+        {% can_view "samples" %}
+        <a class="home-module" href="{% url 'samples:list' %}">
+            <div class="home-module__top"><span class="home-module__icon">🧪</span><span class="home-module__name">试样管理</span></div>
+            <div class="home-module__main">{{ total_samples }}</div>
+            <div class="home-module__sub"><span>进行中</span><b>{{ samples_in_progress }}</b></div>
+            <div class="home-module__sub"><span>已终止</span><b>{{ samples_terminated }}</b></div>
+        </a>
+        {% endcan_view %}
+
+        {% can_view "archive" %}
+        <a class="home-module" href="{% url 'archive:overview' %}">
+            <div class="home-module__top"><span class="home-module__icon">🗂️</span><span class="home-module__name">档案管理</span></div>
+            <div class="home-module__main">{{ total_archives }}</div>
+            <div class="home-module__sub"><span>借出中</span><b>{{ archives_borrowed }}</b></div>
+            <div class="home-module__sub"><span>证照临期</span><b>{{ licenses_expiring }}</b></div>
+        </a>
+        {% endcan_view %}
+    </div>
+</section>
+
+<!-- 面板 3：需要关注（三块明细，Tab 折叠） -->
+{% if focus_tab %}
+<section class="home-panel" aria-label="需要关注">
+    <div class="home-panel__head">
+        <h2 class="home-panel__title"><span class="home-panel__dot home-panel__dot--danger"></span>需要关注</h2>
+        <div class="home-tabs" role="tablist" aria-label="需要关注的明细分类">
+            {% if 'daily_record' in mods %}
+            <button type="button" class="home-tabs__btn" role="tab" id="homeTabDaily"
+                    aria-selected="{% if focus_tab == 'daily_record' %}true{% else %}false{% endif %}"
+                    aria-controls="homePaneDaily" data-tab="daily_record"
+                    tabindex="{% if focus_tab == 'daily_record' %}0{% else %}-1{% endif %}">
+                未完成记录 <span class="home-tabs__count">{{ incomplete_daily_records_count }}</span>
+            </button>
+            {% endif %}
+            {% if 'insurance' in mods %}
+            <button type="button" class="home-tabs__btn" role="tab" id="homeTabInsurance"
+                    aria-selected="{% if focus_tab == 'insurance' %}true{% else %}false{% endif %}"
+                    aria-controls="homePaneInsurance" data-tab="insurance"
+                    tabindex="{% if focus_tab == 'insurance' %}0{% else %}-1{% endif %}">
+                临期保险 <span class="home-tabs__count">{{ insurance_due_soon_count }}</span>
+            </button>
+            {% endif %}
+            {% if 'complaint' in mods %}
+            <button type="button" class="home-tabs__btn" role="tab" id="homeTabLitigation"
+                    aria-selected="{% if focus_tab == 'complaint' %}true{% else %}false{% endif %}"
+                    aria-controls="homePaneLitigation" data-tab="complaint"
+                    tabindex="{% if focus_tab == 'complaint' %}0{% else %}-1{% endif %}">
+                未完结诉讼 <span class="home-tabs__count">{{ incomplete_litigations_total }}</span>
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if 'daily_record' in mods %}
+    <div id="homePaneDaily" role="tabpanel" aria-labelledby="homeTabDaily" data-home-pane="daily_record" {% if focus_tab != 'daily_record' %}hidden{% endif %}>
+        <ul class="home-rows">
+            {% for record in incomplete_daily_records %}
+            <li class="home-rows__item">
+                {% if request.user|can_do:'daily_record.update' %}
+                <a class="home-row{% if record.is_overdue %} home-row--danger{% elif record.due_date and record.days_left <= 3 %} home-row--warning{% endif %}"
+                   href="{% url 'daily_record_edit' record.pk %}" data-modal-edit data-modal-title="编辑每日记录">
+                {% else %}
+                <a class="home-row{% if record.is_overdue %} home-row--danger{% elif record.due_date and record.days_left <= 3 %} home-row--warning{% endif %}"
+                   href="{% url 'daily_record_list' %}">
+                {% endif %}
+                    <span class="home-row__flag" aria-hidden="true"></span>
+                    <div class="home-row__main">
+                        <p class="home-row__title" title="{{ record.work_content }}">{{ record.work_content }}</p>
+                        <div class="home-row__meta">
+                            <span>{{ record.department }}</span>
+                            <span class="home-row__sep" aria-hidden="true">·</span>
+                            <span>{% if record.due_date %}截止 {{ record.due_date|date:"Y-m-d" }}{% else %}未设截止日期{% endif %}</span>
+                            {% if record.is_overdue %}<span class="home-tag home-tag--danger">逾期 {{ record.days_left|cut:"-" }} 天</span>
+                            {% elif record.due_date and record.days_left <= 3 %}<span class="home-tag home-tag--warning">剩 {{ record.days_left }} 天</span>{% endif %}
                         </div>
                     </div>
-                </div>
-                <div style="margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                    <span style="font-size: 0.7rem; color: var(--c-text-secondary); white-space: nowrap;">近 7 天</span>
-                    <div class="trend-bars" style="height: 28px;">
-                        {% for d in weekly_trend %}
-                        <div class="trend-bar" title="{{ d.date }}：{{ d.c }} 条" aria-label="{{ d.date }} 共 {{ d.c }} 条记录" data-h="{% widthratio d.c trend_max 28 %}"></div>
-                        {% endfor %}
+                    <div class="home-row__right">
+                        <span class="home-progress">
+                            <span class="home-progress__bar" aria-hidden="true"><i data-w="{{ record.progress }}"></i></span>
+                            <span>{{ record.progress }}%</span>
+                        </span>
+                        <span class="home-tag home-tag--gray">{{ record.status }}</span>
+                        <span class="home-row__arrow" aria-hidden="true">›</span>
                     </div>
-                </div>
-            </div>
-        </a>
-    </div>
-    {% endcan_view %}
-
-    <!-- 客户账期卡片 -->
-    {% can_view "customer_credit" %}
-    <div class="col-md-6 col-lg-4">
-        <a class="card" href="{% url 'customer_credit_list' %}">
-            <div class="card-body card-credit">
-                <h5 class="card-title">客户账期</h5>
-                <div class="card-content">
-                    <div class="card-main">
-                        <div class="card-subtitle">总客户数</div>
-                        <div class="card-value">{{ total_customers }}</div>
-                    </div>
-                    <div class="card-stats">
-                        <div class="card-stat">
-                            <span class="card-stat-label">同意</span>
-                            <span class="card-stat-value">{{ agree_count }}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </a>
-    </div>
-    {% endcan_view %}
-
-    <!-- 客户客诉卡片 -->
-    {% can_view "customer_complaint" %}
-    <div class="col-md-6 col-lg-4">
-        <a class="card" href="{% url 'customer_complaint_list' %}">
-            <div class="card-body card-complaint">
-                <h5 class="card-title">客户客诉</h5>
-                <div class="card-content">
-                    <div class="card-main">
-                        <div class="card-subtitle">总客诉数</div>
-                        <div class="card-value">{{ total_complaints }}</div>
-                    </div>
-                    <div class="card-stats">
-                        <div class="card-stat">
-                            <span class="card-stat-label">未完成</span>
-                            <span class="card-stat-value">{{ incomplete_complaints }}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </a>
-    </div>
-    {% endcan_view %}
-
-    <!-- 制度及处罚卡片 -->
-    {% can_view "regulation" %}
-    <div class="col-md-6 col-lg-4">
-        <a class="card" href="{% url 'regulation_list' %}">
-            <div class="card-body card-regulation">
-                <h5 class="card-title">制度及处罚</h5>
-                <div class="card-content">
-                    <div class="card-main">
-                        <div class="card-subtitle">总制度数</div>
-                        <div class="card-value">{{ total_regulations }}</div>
-                    </div>
-                </div>
-            </div>
-        </a>
-    </div>
-    {% endcan_view %}
-
-    <!-- 核价卡片 -->
-    {% can_view "price_evaluation" %}
-    <div class="col-md-6 col-lg-4">
-        <a class="card" href="{% url 'price_evaluation_list' %}">
-            <div class="card-body card-price">
-                <h5 class="card-title">核价</h5>
-                <div class="card-content">
-                    <div class="card-main">
-                        <div class="card-subtitle">总核价数</div>
-                        <div class="card-value">{{ total_price_evaluations }}</div>
-                    </div>
-                    <div class="card-stats">
-                        <div class="card-stat">
-                            <span class="card-stat-label">核减金额</span>
-                            <span class="card-stat-value">¥{{ total_price_reduction|floatformat:2 }}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </a>
-    </div>
-    {% endcan_view %}
-
-    <!-- 装修卡片 -->
-    {% can_view "decoration" %}
-    <div class="col-md-6 col-lg-4">
-        <a class="card" href="{% url 'decoration_list' %}">
-            <div class="card-body card-decoration">
-                <h5 class="card-title">装修</h5>
-                <div class="card-content">
-                    <div class="card-main">
-                        <div class="card-subtitle">总装修数</div>
-                        <div class="card-value">{{ total_decorations }}</div>
-                    </div>
-                    <div class="card-stats">
-                        <div class="card-stat">
-                            <span class="card-stat-label">核减金额</span>
-                            <span class="card-stat-value">¥{{ decoration_reduced_total|default:0|floatformat:2 }}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </a>
-    </div>
-    {% endcan_view %}
-</div>
-
-{% can_view "daily_record" %}
-<!-- 未完成工作记录（仅最紧急 5 条，其余到列表页） -->
-<div class="daily-records-section">
-    <h2 class="section-title">未完成工作记录 <a href="{% url 'daily_record_list' %}" class="section-link">查看全部 {{ incomplete_daily_records_count }} 条 →</a></h2>
-    <div class="table-container">
-        <table class="table--cards table table-hover">
-            <thead>
-                <tr>
-                    <th scope="col">序号</th>
-                    <th scope="col">日期及时间</th>
-                    <th scope="col">提出部门</th>
-                    <th scope="col">工作内容</th>
-                    <th scope="col">截至日期</th>
-                    <th scope="col">工作状态</th>
-                    <th scope="col">工作进度</th>
-                    <th scope="col">操作</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for record in incomplete_daily_records %}
-                <tr>
-                    <td data-label="序号">{{ forloop.counter }}</td>
-                    <td data-label="日期及时间">{{ record.record_date|date:"Y-m-d H:i" }}</td>
-                    <td data-label="提出部门">{{ record.department }}</td>
-                    <td data-label="工作内容">{{ record.work_content|truncatechars:50 }}</td>
-                    <td data-label="截至日期">
-                        {% if record.due_date %}
-                            {{ record.due_date|date:"Y-m-d" }}
-                            {% if record.is_overdue %}<span class="due-tag is-danger">逾期 {{ record.days_left|cut:"-" }} 天</span>
-                            {% elif record.days_left <= 3 %}<span class="due-tag is-warning">剩 {{ record.days_left }} 天</span>{% endif %}
-                        {% else %}—{% endif %}
-                    </td>
-                    <td data-label="工作状态">
-                        <span class="badge-transparent">{{ record.status }}</span>
-                    </td>
-                    <td data-label="工作进度">
-                        <div class="progress">
-                            <div class="progress-bar" role="progressbar" aria-valuenow="{{ record.progress }}" aria-valuemin="0" aria-valuemax="100" style="width: {{ record.progress }}%;">
-                                {{ record.progress }}%
-                            </div>
-                        </div>
-                    </td>
-                    <td data-label="操作">
-                        {% can "daily_record" "update" %}
-                        <a href="{% url 'daily_record_edit' record.pk %}" class="btn-transparent" data-modal-edit data-modal-title="编辑每日记录">编辑</a>
-                        {% endcan %}
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="8" class="text-center py-4">暂无未完成的工作记录</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% if incomplete_daily_records_count > 5 %}
-    <div class="section-more">
-        <a class="btn-transparent btn-sm" href="{% url 'daily_record_list' %}">查看全部 {{ incomplete_daily_records_count }} 条未完成记录 →</a>
+                </a>
+            </li>
+            {% empty %}
+            <li class="home-empty">暂无未完成的工作记录</li>
+            {% endfor %}
+        </ul>
+        <div class="home-rows__more">
+            <a class="home-panel__link" href="{% url 'daily_record_list' %}">查看全部 {{ incomplete_daily_records_count }} 条 →</a>
+        </div>
     </div>
     {% endif %}
-</div>
-{% endcan_view %}
 
-<!-- 金属价格行情（仅前 5 个品种） -->
+    {% if 'insurance' in mods %}
+    <div id="homePaneInsurance" role="tabpanel" aria-labelledby="homeTabInsurance" data-home-pane="insurance" {% if focus_tab != 'insurance' %}hidden{% endif %}>
+        <ul class="home-rows">
+            {% for insurance in insurance_due_soon %}
+            <li class="home-rows__item">
+                {% if request.user|can_do:'insurance.update' %}
+                <a class="home-row{% if insurance.days_level == 'danger' %} home-row--danger{% elif insurance.days_level == 'warning' %} home-row--warning{% endif %}"
+                   href="{% url 'insurance_edit' insurance.pk %}" data-modal-edit data-modal-title="编辑保险">
+                {% else %}
+                <a class="home-row{% if insurance.days_level == 'danger' %} home-row--danger{% elif insurance.days_level == 'warning' %} home-row--warning{% endif %}"
+                   href="{% url 'insurance_list' %}">
+                {% endif %}
+                    <span class="home-row__flag" aria-hidden="true"></span>
+                    <div class="home-row__main">
+                        <p class="home-row__title" title="{{ insurance.title }}">{{ insurance.title }} · {{ insurance.company_name }}</p>
+                        <div class="home-row__meta">
+                            <span>{{ insurance.department }}</span>
+                            <span class="home-row__sep" aria-hidden="true">·</span>
+                            <span>截止 {{ insurance.end_date|date:"Y-m-d" }}</span>
+                        </div>
+                    </div>
+                    <div class="home-row__right">
+                        <span class="home-tag {% if insurance.days_level == 'danger' %}home-tag--danger{% elif insurance.days_level == 'warning' %}home-tag--warning{% else %}home-tag--gray{% endif %}">{{ insurance.days_text }}</span>
+                        <span class="home-row__arrow" aria-hidden="true">›</span>
+                    </div>
+                </a>
+            </li>
+            {% empty %}
+            <li class="home-empty">近 30 天无临期保险{% if insurance_later_count %}，另有 {{ insurance_later_count }} 份未到期{% endif %}</li>
+            {% endfor %}
+        </ul>
+        <div class="home-rows__more">
+            <a class="home-panel__link" href="{% url 'insurance_list' %}">查看全部 {{ insurance_due_soon_count }} 份临期保险 →</a>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if 'complaint' in mods %}
+    <div id="homePaneLitigation" role="tabpanel" aria-labelledby="homeTabLitigation" data-home-pane="complaint" {% if focus_tab != 'complaint' %}hidden{% endif %}>
+        <ul class="home-rows">
+            {% for litigation in incomplete_litigations %}
+            <li class="home-rows__item">
+                {% if request.user|can_do:'complaint.update' %}
+                <a class="home-row{% if litigation.answer_level == 'danger' %} home-row--danger{% elif litigation.answer_level == 'warning' %} home-row--warning{% endif %}"
+                   href="{% url 'complaint_edit' litigation.pk %}" data-modal-edit data-modal-title="编辑诉讼">
+                {% else %}
+                <a class="home-row{% if litigation.answer_level == 'danger' %} home-row--danger{% elif litigation.answer_level == 'warning' %} home-row--warning{% endif %}"
+                   href="{% url 'complaint_list' %}">
+                {% endif %}
+                    <span class="home-row__flag" aria-hidden="true"></span>
+                    <div class="home-row__main">
+                        <p class="home-row__title" title="{{ litigation.dispute_type }} · {{ litigation.case_number }} · 被告 {{ litigation.defendant }}">{{ litigation.dispute_type }} · {{ litigation.case_number }} · 被告 {{ litigation.defendant }}</p>
+                        <div class="home-row__meta">
+                            <span>受理法院 {{ litigation.court }}</span>
+                            <span class="home-row__sep" aria-hidden="true">·</span>
+                            <span>涉案 ¥{{ litigation.amount|floatformat:2 }}</span>
+                            <span class="home-tag {% if litigation.answer_level == 'danger' %}home-tag--danger{% elif litigation.answer_level == 'warning' %}home-tag--warning{% else %}home-tag--gray{% endif %}">{{ litigation.answer_text }}</span>
+                        </div>
+                    </div>
+                    <div class="home-row__right">
+                        <span class="home-tag home-tag--gray">{{ litigation.progress }}</span>
+                        <span class="home-row__arrow" aria-hidden="true">›</span>
+                    </div>
+                </a>
+            </li>
+            {% empty %}
+            <li class="home-empty">暂无进度未完结的诉讼案件</li>
+            {% endfor %}
+        </ul>
+        <div class="home-rows__more">
+            <a class="home-panel__link" href="{% url 'complaint_list' %}">查看全部 {{ incomplete_litigations_total }} 件未完结诉讼 →</a>
+        </div>
+    </div>
+    {% endif %}
+</section>
+{% endif %}
+
+<!-- 面板 4：金属价格行情（紧凑条） -->
 {% can_view "metal_price" %}
-<div class="metal-prices-section">
-    <h2 class="section-title">
-        <a href="{% url 'metal_price_detail' metal_name=metal_prices.0.metal_name|default:'1#铜' %}" class="metal-title-link" data-modal-detail data-modal-title="金属价格行情">金属价格行情</a> <a href="{% url 'metal_price_detail' metal_name=metal_prices.0.metal_name|default:'1#铜' %}" class="section-link" data-modal-detail data-modal-title="金属价格行情">查看全部 {{ metal_price_total }} 个品种 →</a>
-    </h2>
-    <p class="price-source">
+<section class="home-panel" aria-label="金属价格行情">
+    <div class="home-panel__head">
+        <h2 class="home-panel__title">
+            <span class="home-panel__dot"></span>
+            <a class="home-panel__link" href="{% url 'metal_price_detail' metal_name=metal_prices.0.metal_name|default:'1#铜' %}" data-modal-detail data-modal-title="金属价格行情">金属价格行情</a>
+        </h2>
+        <a class="home-panel__link" href="{% url 'metal_price_detail' metal_name=metal_prices.0.metal_name|default:'1#铜' %}" data-modal-detail data-modal-title="金属价格行情">全部 {{ metal_price_total }} 个品种 →</a>
+    </div>
+    <p class="home-quote__note">
         数据来源：长江有色金属网 · 最后更新 {% if metal_price_updated %}{{ metal_price_updated|date:"m-d H:i" }}{% else %}—{% endif %}
-        {% if metal_price_stale %}<span class="due-tag is-warning">数据可能已过期</span>{% endif %}
+        {% if metal_price_stale %}<span class="home-tag home-tag--warning">数据可能已过期</span>{% endif %}
     </p>
-
-    <div class="metal-prices-grid">
+    <div class="home-quotes">
         {% for metal in metal_prices %}
-        <div class="metal-price-card">
-            <div class="metal-header">
-                <span class="metal-name">{{ metal.metal_name }}</span>
-                <span class="metal-date">{{ metal.crawl_date|date:"m-d" }}</span>
+        <div class="home-quote">
+            <div class="home-quote__name">
+                <span>{{ metal.metal_name }}</span>
+                <span class="{% if metal.price_change > 0 %}home-quote__up{% elif metal.price_change < 0 %}home-quote__down{% else %}home-quote__flat{% endif %}">
+                    {% if metal.price_change > 0 %}▲ {{ metal.price_change|floatformat:0 }}
+                    {% elif metal.price_change < 0 %}▼ {{ metal.price_change|floatformat:0 }}
+                    {% else %}- 0{% endif %}
+                </span>
             </div>
-            <div class="metal-price-info">
-                <div class="price-change {% if metal.price_change > 0 %}price-up{% elif metal.price_change < 0 %}price-down{% else %}price-flat{% endif %}">
-                    {% if metal.price_change > 0 %}
-                        ▲ {{ metal.price_change|floatformat:0 }}
-                    {% elif metal.price_change < 0 %}
-                        ▼ {{ metal.price_change|floatformat:0 }}
-                    {% else %}
-                        - 0
-                    {% endif %}
-                </div>
-                <div class="metal-price">{{ metal.price|floatformat:0 }}</div>
-                <div class="metal-unit">{{ metal.unit }}</div>
-            </div>
+            <div class="home-quote__price">{{ metal.price|floatformat:0 }}</div>
+            <div class="home-quote__unit">{{ metal.unit }}</div>
         </div>
         {% empty %}
-        <p class="text-muted">暂无金属价格数据</p>
+        <p class="home-empty">暂无金属价格数据</p>
         {% endfor %}
     </div>
-</div>
-{% endcan_view %}
-
-<!-- 临期保险（30 天内到期，最紧急 5 条） -->
-{% can_view "insurance" %}
-<div class="metal-prices-section">
-    <h2 class="section-title">
-        <a href="{% url 'insurance_list' %}" class="metal-title-link">临期保险（30 天内到期）</a> <a href="{% url 'insurance_list' %}" class="section-link">未到期共 {{ insurance_not_expired_count }} 份 · 查看全部 →</a>
-    </h2>
-    <div class="table-container">
-        <table class="table--cards table table-hover">
-            <thead>
-                <tr>
-                    <th scope="col">序号</th>
-                    <th scope="col">公司名称</th>
-                    <th scope="col">标题</th>
-                    <th scope="col">截止日期</th>
-                    <th scope="col">到期状态</th>
-                    <th scope="col">部门</th>
-                    <th scope="col">操作</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for insurance in insurance_due_soon %}
-                <tr>
-                    <td data-label="序号">{{ forloop.counter }}</td>
-                    <td data-label="公司名称">{{ insurance.company_name }}</td>
-                    <td data-label="标题">{{ insurance.title }}</td>
-                    <td data-label="截止日期">{{ insurance.end_date|date:"Y-m-d" }}</td>
-                    <td data-label="到期状态"><span class="due-tag is-{{ insurance.days_level }}">{{ insurance.days_text }}</span></td>
-                    <td data-label="部门">{{ insurance.department }}</td>
-                    <td data-label="操作">
-                        {% can "insurance" "update" %}
-                        <a href="{% url 'insurance_edit' insurance.pk %}" class="btn-transparent" data-modal-edit data-modal-title="编辑保险">编辑</a>
-                        {% endcan %}
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="7" class="text-center py-4">近 30 天无临期保险{% if insurance_later_count %}，另有 {{ insurance_later_count }} 份未到期{% endif %}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% if insurance_due_soon_count > 5 %}
-    <div class="section-more">
-        <a class="btn-transparent btn-sm" href="{% url 'insurance_list' %}">查看全部 {{ insurance_due_soon_count }} 份临期保险 →</a>
-    </div>
-    {% endif %}
-</div>
-{% endcan_view %}
-
-<!-- 进度未完结诉讼（答辩期最紧急 5 件） -->
-{% can_view "complaint" %}
-<div class="metal-prices-section">
-    <h2 class="section-title">
-        <a href="{% url 'complaint_list' %}" class="metal-title-link">进度未完结诉讼</a> <a href="{% url 'complaint_list' %}" class="section-link">共 {{ incomplete_litigations_total }} 件 · 查看全部 →</a>
-    </h2>
-    <div class="table-container">
-        <table class="table--cards table table-hover">
-            <thead>
-                <tr>
-                    <th scope="col">序号</th>
-                    <th scope="col">纠纷类型</th>
-                    <th scope="col">被告</th>
-                    <th scope="col">案号</th>
-                    <th scope="col">涉案金额（元）</th>
-                    <th scope="col">受理法院</th>
-                    <th scope="col">代理律师</th>
-                    <th scope="col">进度</th>
-                    <th scope="col">答辩期</th>
-                    <th scope="col">操作</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for litigation in incomplete_litigations %}
-                <tr>
-                    <td data-label="序号">{{ forloop.counter }}</td>
-                    <td data-label="纠纷类型">{{ litigation.dispute_type }}</td>
-                    <td data-label="被告">{{ litigation.defendant }}</td>
-                    <td data-label="案号">{{ litigation.case_number }}</td>
-                    <td data-label="涉案金额（元）">¥{{ litigation.amount|floatformat:2 }}</td>
-                    <td data-label="受理法院">{{ litigation.court }}</td>
-                    <td data-label="代理律师">{{ litigation.lawyer }}</td>
-                    <td data-label="进度">{{ litigation.progress }}</td>
-                    <td data-label="答辩期"><span class="due-tag is-{{ litigation.answer_level }}">{{ litigation.answer_text }}</span></td>
-                    <td data-label="操作">
-                        {% can "complaint" "update" %}
-                        <a href="{% url 'complaint_edit' litigation.pk %}" class="btn-transparent" data-modal-edit data-modal-title="编辑诉讼">编辑</a>
-                        {% endcan %}
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="10" class="text-center py-4">暂无进度未完结的诉讼案件</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% if incomplete_litigations_total > 5 %}
-    <div class="section-more">
-        <a class="btn-transparent btn-sm" href="{% url 'complaint_list' %}">查看全部 {{ incomplete_litigations_total }} 件未完结诉讼 →</a>
-    </div>
-    {% endif %}
-</div>
+</section>
 {% endcan_view %}
 
 {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    document.addEventListener('DOMContentLoaded', function () {
+        // 迷你趋势条 / 进度条：模板值经 data-* 传递，避免内联 style 出现模板语法
+        document.querySelectorAll('.home-spark__bar[data-h]').forEach(function (bar) {
+            bar.style.height = bar.dataset.h + 'px';
+        });
+        document.querySelectorAll('.home-progress__bar i[data-w]').forEach(function (bar) {
+            bar.style.width = bar.dataset.w + '%';
+        });
+
+        // 需要关注：Tab 切换（点击 + 左右方向键），一次只显示一个面板
+        var tablist = document.querySelector('.home-tabs');
+        if (!tablist) return;
+        var tabs = Array.prototype.slice.call(tablist.querySelectorAll('[role="tab"]'));
+        var panes = Array.prototype.slice.call(document.querySelectorAll('[data-home-pane]'));
+        if (!tabs.length) return;
+
+        function activate(tab) {
+            tabs.forEach(function (t) {
+                var on = t === tab;
+                t.setAttribute('aria-selected', on ? 'true' : 'false');
+                t.tabIndex = on ? 0 : -1;
+            });
+            panes.forEach(function (p) {
+                p.hidden = p.getAttribute('data-home-pane') !== tab.getAttribute('data-tab');
+            });
+        }
+
+        tabs.forEach(function (tab, index) {
+            tab.addEventListener('click', function () { activate(tab); });
+            tab.addEventListener('keydown', function (e) {
+                var next = null;
+                if (e.key === 'ArrowRight') next = tabs[(index + 1) % tabs.length];
+                else if (e.key === 'ArrowLeft') next = tabs[(index - 1 + tabs.length) % tabs.length];
+                if (next) { e.preventDefault(); activate(next); next.focus(); }
+            });
+        });
+
+        var current = tablist.querySelector('[role="tab"][aria-selected="true"]') || tabs[0];
+        activate(current);
+    });
+})();
+</script>
 {% endblock %}

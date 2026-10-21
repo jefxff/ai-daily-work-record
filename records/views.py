@@ -75,11 +75,33 @@ def home(request):
     from . import stats as stats_svc
 
     mods = set(visible_modules(request.user))
+    today = timezone.localdate()
 
     # 先给全部键一个安全的默认值：模板里任何位置引用都不会得到空字符串意外
     context = {
         'mods': mods,
         'no_permission': not mods,
+        'today_label': f'{today.year}年{today.month}月{today.day}日 星期{"一二三四五六日"[today.weekday()]}',
+        'business_module_count': len(mods & {
+            'daily_record', 'customer_credit', 'customer_complaint', 'regulation',
+            'price_evaluation', 'decoration', 'insurance', 'complaint', 'samples', 'archive',
+        }),
+        'focus_tab': next(
+            (key for key in ('daily_record', 'insurance', 'complaint') if key in mods), ''
+        ),
+        'regulation_month_count': 0,
+        'regulation_year_count': 0,
+        'complaints_closed': 0,
+        'total_insurance': 0,
+        'insurance_expired_count': 0,
+        'total_litigations': 0,
+        'litigation_answer_soon_count': 0,
+        'total_samples': 0,
+        'samples_in_progress': 0,
+        'samples_terminated': 0,
+        'total_archives': 0,
+        'archives_borrowed': 0,
+        'licenses_expiring': 0,
         'total_daily_records': 0,
         'incomplete_daily_records_count': 0,
         'incomplete_daily_records': [],
@@ -149,11 +171,19 @@ def home(request):
         cc = stats_svc.customer_complaint_stats()
         context.update({
             'total_complaints': cc['total'],
-            'incomplete_complaints': cc['pending'],
+            # 「未闭环」= 未完成 + 处理中，与列表页筛选口径一致
+            'incomplete_complaints': cc['incomplete'],
+            'complaints_closed': cc['total'] - cc['incomplete'],
         })
 
     if 'regulation' in mods:
         context['total_regulations'] = stats_svc.regulation_count()
+        context['regulation_month_count'] = Regulation.objects.filter(
+            issue_date__year=today.year, issue_date__month=today.month
+        ).count()
+        context['regulation_year_count'] = Regulation.objects.filter(
+            issue_date__year=today.year
+        ).count()
 
     if 'price_evaluation' in mods:
         ps = stats_svc.price_stats()
@@ -189,8 +219,10 @@ def home(request):
             end_date__gte=today, end_date__lte=today + timedelta(days=30)
         ).order_by('end_date')
         agg = Insurance.objects.aggregate(
+            total=Count('id'),
             not_expired=Count('id', filter=Q(end_date__gt=today)),
             due_soon=Count('id', filter=Q(end_date__gte=today, end_date__lte=today + timedelta(days=30))),
+            expired=Count('id', filter=Q(end_date__lt=today)),
         )
         soon = list(soon_qs[:5])
         for ins in soon:
@@ -206,11 +238,18 @@ def home(request):
         context['insurance_due_soon_count'] = agg['due_soon']
         context['insurance_not_expired_count'] = agg['not_expired']
         context['insurance_later_count'] = agg['not_expired'] - agg['due_soon']
+        context['total_insurance'] = agg['total']
+        context['insurance_expired_count'] = agg['expired']
 
     if 'complaint' in mods:
         today = timezone.localdate()
         open_qs = Complaint.objects.exclude(progress='结案')
-        # 答辩期截止 = 立案 + 15 天，日期越早越紧急；首页只取最紧急的 5 件
+        context['total_litigations'] = Complaint.objects.count()
+        # 答辩期截止 = 立案 + 15 天；剩余 0~3 天为临期（与数据看板口径一致）
+        context['litigation_answer_soon_count'] = open_qs.filter(
+            filed_at__range=(today - timedelta(days=15), today - timedelta(days=12))
+        ).count()
+        # 日期越早越紧急；首页只取最紧急的 5 件
         litigations = list(open_qs.order_by(F('filed_at').asc(nulls_last=True), '-id')[:5])
         for case in litigations:
             case.answer_days = (case.answer_deadline - today).days if case.answer_deadline else None
@@ -223,6 +262,33 @@ def home(request):
                 case.answer_level = 'warning' if case.answer_days <= 3 else 'normal'
         context['incomplete_litigations'] = litigations
         context['incomplete_litigations_total'] = open_qs.count()
+
+    if 'samples' in mods:
+        sample_agg = Sample.objects.filter(is_deleted=False).aggregate(
+            total=Count('id'),
+            in_progress=Count('id', filter=Q(status__in=['pending', 'testing', 'small_batch'])),
+            terminated=Count('id', filter=Q(status='terminated')),
+        )
+        context.update({
+            'total_samples': sample_agg['total'],
+            'samples_in_progress': sample_agg['in_progress'],
+            'samples_terminated': sample_agg['terminated'],
+        })
+
+    if 'archive' in mods:
+        from archive.models import BorrowRecord, License, LicenseBorrowRecord
+        context.update({
+            'total_archives': Archive.objects.count(),
+            'archives_borrowed': (
+                BorrowRecord.objects.filter(return_time__isnull=True).count()
+                + LicenseBorrowRecord.objects.filter(return_time__isnull=True).count()
+            ),
+            # 与证照「即将到期」判定一致：有效期或下次年审日在 30 天内
+            'licenses_expiring': License.objects.filter(
+                Q(expire_date__gte=today, expire_date__lte=today + timedelta(days=30))
+                | Q(next_review_date__gte=today, next_review_date__lte=today + timedelta(days=30))
+            ).count(),
+        })
 
     # 行动区：跨模块待办计数与工作台同一口径（views_workspace.collect_todos）
     if mods & {'daily_record', 'customer_complaint', 'complaint', 'samples', 'archive'}:
