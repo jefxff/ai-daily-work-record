@@ -45,23 +45,11 @@
 </div>
 {% endblock %}
 
-{% block extra_js %}
-<script>
-/* 分类筛选树：caret 折叠/展开（服务端直出，静态绑定即可） */
-(function () {
-    document.querySelectorAll('.kb-cat-tree .kb-cat-caret:not(.kb-cat-caret-spacer)').forEach(function (caret) {
-        caret.addEventListener('click', function () {
-            var open = caret.classList.toggle('is-open');
-            caret.setAttribute('aria-expanded', open ? 'true' : 'false');
-            var row = caret.closest('.kb-cat-row');
-            var node = row && row.closest('.kb-cat-node');
-            var kids = node && node.querySelector(':scope > .kb-cat-children');
-            if (kids) kids.hidden = !open;
-        });
-    });
-})();
-</script>
-{% endblock %}
+{% comment %}
+分类筛选树的 caret 折叠脚本在 knowledge_base/base.html（两页共用）——
+放在本页 extra_js 里会被详情页的同名 block 覆盖不到，且两处都会绑定
+等于点一下切换两次（2026-10-22 重构）。
+{% endcomment %}
 
 {% block right_sidebar %}
 {% include "knowledge_base/_right_sidebar.html" %}

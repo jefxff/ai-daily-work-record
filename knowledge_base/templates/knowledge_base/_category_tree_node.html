@@ -1,16 +1,22 @@
 {% comment %}
-知识库列表页右栏「分类筛选」树形节点（递归）。
+知识库右栏「分类筛选」树形节点（递归，列表页与详情页共用）。
 
-数据形状（views.document_list）：
-    [{'cat': KnowledgeCategory(带 doc_count 注释), 'children': [同形]}, ...]
+数据形状（views._sidebar_context）：
+    [{'cat': KnowledgeCategory(带 doc_count 注释), 'children': [同形],
+      'docs': [当前用户可见的已发布文档...]}, ...]
 open_ids：选中分类的祖先链，默认展开；其余折叠。
-计数口径与列表一致（只算当前用户可见的已发布文档），私有文档不外泄。
+计数口径与列表一致（只算当前用户可见的已发布文档）——docs 里同样只有
+可见文档，他人私有标题不会出现；自己的私有文档带锁标。
+
+caret 折叠/展开即「文件夹系统」（用户 2026-10-22 要求每个分类都有）：
+展开区 = 该分类的文档 + 子分类树；两者皆空的分类才用 spacer
+（无可折叠内容，给了也是死控件）。
 {% endcomment %}
 {% for node in nodes %}
 <div class="kb-cat-node">
     <div class="kb-cat-row">
-        {% if node.children %}
-        <button type="button" class="kb-cat-caret{% if node.cat.pk in open_ids %} is-open{% endif %}" aria-label="展开或折叠子分类" aria-expanded="{% if node.cat.pk in open_ids %}true{% else %}false{% endif %}">
+        {% if node.children or node.docs %}
+        <button type="button" class="kb-cat-caret{% if node.cat.pk in open_ids %} is-open{% endif %}" aria-label="展开或折叠「{{ node.cat.name }}」" aria-expanded="{% if node.cat.pk in open_ids %}true{% else %}false{% endif %}">
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
         {% else %}
@@ -20,8 +26,14 @@ open_ids：选中分类的祖先链，默认展开；其余折叠。
             <span>{{ node.cat.name }}</span><span class="kb-side-list-count">{{ node.cat.doc_count }}</span>
         </a>
     </div>
-    {% if node.children %}
+    {% if node.children or node.docs %}
     <div class="kb-cat-children"{% if node.cat.pk not in open_ids %} hidden{% endif %}>
+        {% for doc in node.docs %}
+        <a href="{% url 'knowledge_base:document_detail' doc.pk %}" class="kb-side-list-item kb-cat-doc{% if current_doc_id == doc.pk %} is-current{% endif %}"{% if current_doc_id == doc.pk %} aria-current="page"{% endif %}>
+            <span class="kb-cat-doc-title">{{ doc.title }}</span>
+            {% if doc.visibility == 'private' %}<svg class="icon kb-cat-doc-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" title="仅自己可见"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>{% endif %}
+        </a>
+        {% endfor %}
         {% include 'knowledge_base/_category_tree_node.html' with nodes=node.children %}
     </div>
     {% endif %}

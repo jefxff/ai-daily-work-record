@@ -127,6 +127,7 @@
 {% endblock %}
 
 {% block extra_css %}
+{{ block.super }}
 <style>
 /* ═══════════════════════════════════════════════════════════════
    知识库详情页 ·「书房」阅读体验（单栏 + 右栏）
@@ -134,6 +135,10 @@
    无衬线做正文；右栏与列表页共用 _right_sidebar.html。
    一次编排的入场动效，prefers-reduced-motion 全量降级。
    全部颜色/间距/时长走 tokens.css 令牌，零字面值。
+
+   注意：block.super 必须保留——基座 extra_css 里有右栏布局
+   （.fixed-right-sidebar / .knowledge-main-with-right）与侧栏样式，
+   本块整块覆盖会让右栏掉到文档流下方（2026-10-22 用户截图事故）。
    ═══════════════════════════════════════════════════════════════ */
 
 /* ── 面包屑 ── */
@@ -586,7 +591,8 @@
 }
 
 /* 画布：氛围层 = 主色微光 + 细点阵（参考图的「纸感」底色）。
-   min-height 由 JS 按内容高度收紧（小图不再是一片大海），封顶 76vh 滚动。 */
+   高度由 JS 按内容收紧（小图不再是一片大海），封顶 76vh 滚动；
+   宽度铺满内容列，SVG 自动放大铺满 + 水平居中（renderMindmap 自适应）。 */
 .kb-mindmap {
     position: relative;
     min-height: 56vh;
@@ -600,7 +606,7 @@
     background-size: auto, 18px 18px;
     scrollbar-width: thin;
 }
-.kb-mindmap svg { display: block; transform-origin: 0 0; }
+.kb-mindmap svg { display: block; margin-left: auto; margin-right: auto; transform-origin: 0 0; }
 .kb-mm-box {
     fill: var(--c-surface);
     stroke: var(--c-border-strong);
@@ -792,11 +798,30 @@
                 .then(function (resp) { return resp.json(); })
                 .then(function (data) {
                     if (!data.ok) throw new Error('load failed');
-                    return data.tree || [];
+                    return { tree: data.tree || [], editor_mode: data.editor_mode || 'markdown' };
                 })
                 .catch(function (err) { treePromise = null; throw err; });
         }
         return treePromise;
+    }
+
+    /* 导图树：结构化文档（outline 模式）直接用节点树；
+       markdown 文档的 md_to_tree 是扁平列表（标题和段落同级），按标题层级
+       分组成树，非标题节点不进导图——导图展示的是文档结构，不是全文。 */
+    function buildMapTree(data) {
+        var nodes = (data && data.tree) || [];
+        if (data && data.editor_mode === 'outline') return nodes;
+        var roots = [], stack = [];
+        nodes.forEach(function (n) {
+            if (n.type !== 'heading') return;
+            var level = n.heading_level || 1;
+            while (stack.length && stack[stack.length - 1].level >= level) stack.pop();
+            var item = { text: n.text, type: 'heading', children: [], collapsed: false };
+            if (stack.length) stack[stack.length - 1].node.children.push(item);
+            else roots.push(item);
+            stack.push({ level: level, node: item });
+        });
+        return roots;
     }
 
     /* ═══════════ 只读大纲（参照参考图：大号笔记 + #标签徽章） ═══════════ */
@@ -922,12 +947,13 @@
         ROOT_H: 46, L1_H: 36, NODE_H: 32, GAP: 9,
         LEVEL_W: 232, PAD: 15, CLIP: 220,
         STAGE_PAD: 48,       /* .kb-mindmap 上下 padding 合计（--sp-6 × 2） */
-        STAGE_MIN: 260       /* 舞台贴合内容时的最小高度 */
+        STAGE_MIN: 260,      /* 舞台贴合内容时的最小高度 */
+        SCALE_MAX: 2.2       /* 小图自动放大的上限（再大就失真/稀疏） */
     };
     var measureCtx = document.createElement('canvas').getContext('2d');
     var FONT_NODE = '13px sans-serif';
     var FONT_ROOT = '700 15px "Noto Serif SC","Songti SC",SimSun,serif';
-    var mmState = { svg: null, w: 0, h: 0, zoom: 1 };
+    var mmState = { svg: null, w: 0, h: 0, autoScale: 1, zoom: 1 };
 
     function measure(s, font) { measureCtx.font = font; return measureCtx.measureText(s).width; }
 
@@ -946,8 +972,9 @@
         if (!nodes.length) {
             var empty = document.createElement('div');
             empty.className = 'kb-mm-empty';
-            empty.textContent = '本文档暂无大纲内容，切换到「阅读」查看全文';
+            empty.textContent = '本文档暂无标题结构，切换到「阅读」查看全文；正文中加入 # 标题即可生成导图';
             mmCanvas.appendChild(empty);
+            mmCanvas.style.minHeight = '180px';   /* 空态紧凑舞台，不再是一整片点阵 */
             return;
         }
         var root = { text: docTitle, type: 'root', children: nodes, collapsed: false };
@@ -963,22 +990,28 @@
             if (node._kidsVisible) {
                 node.children.forEach(function (c) { place(c, depth + 1, node); });
                 node._y = (node.children[0]._y + node.children[node.children.length - 1]._y) / 2;
-                node._subH = Math.max.apply(null, node.children.map(function (c) { return c._subH; }));
             } else {
                 node._y = cursorY + node._h / 2;
                 cursorY += node._h + MM.GAP;
-                node._subH = node._h;
             }
             node._x = depth * MM.LEVEL_W;
         })(root, 0, null);
 
-        var width = 0, height = 0;
+        /* 画布尺寸 = 全部节点盒子的并集。
+           历史事故：旧实现按 _subH（子节点高度的最大值）推高度，多节点时高度
+           被算成 47px，根与后续节点全被 viewBox 裁掉——用户看到「内容没有
+           正确显示，只剩一个 pill 和大片空白」（2026-10-22 截图）。 */
+        var maxX = 0, minTop = Infinity, maxBottom = -Infinity;
         (function bounds(n) {
-            width = Math.max(width, n._x + n._w);
-            height = Math.max(height, n._subH);
+            maxX = Math.max(maxX, n._x + n._w);
+            minTop = Math.min(minTop, n._y - n._h / 2);
+            maxBottom = Math.max(maxBottom, n._y + n._h / 2);
             if (n._kidsVisible) n.children.forEach(bounds);
         })(root);
-        width += MM.PAD; height += MM.PAD;
+        var offsetY = MM.PAD - minTop;   /* 父盒可能探出首子节点上方，整体下移补回 */
+        (function shift(n) { n._y += offsetY; if (n._kidsVisible) n.children.forEach(shift); })(root);
+        var width = maxX + MM.PAD;
+        var height = (maxBottom - minTop) + MM.PAD * 2;
 
         var svg = document.createElementNS(NS, 'svg');
         svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
@@ -1072,25 +1105,33 @@
             });
         }
 
-        /* 舞台贴合内容：内容矮于 56vh 时收紧舞台（小图不再是一片大海），
-           更高时交还 CSS（56vh 起步、76vh 封顶滚动）；有富余则垂直居中。 */
+        /* 舞台贴合 + 自适应缩放：内容矮时收紧舞台（小图不再是一片大海）；
+           窄图自动放大铺满舞台宽度（封顶 SCALE_MAX、永不缩小——大图保持
+           100%，交还 CSS 56vh 起步 / 76vh 封顶滚动）；垂直富余居中，
+           水平居中走 CSS（.kb-mindmap svg margin auto）。 */
         var vh = window.innerHeight || 800;
         var stageMin = Math.max(MM.STAGE_MIN, height + MM.STAGE_PAD + 16);
-        if (stageMin < vh * 0.56) {
-            mmCanvas.style.minHeight = stageMin + 'px';
-            var slack = stageMin - MM.STAGE_PAD - height;
-            if (slack > 0) svg.style.marginTop = Math.round(slack / 2) + 'px';
-        }
+        if (stageMin < vh * 0.56) mmCanvas.style.minHeight = stageMin + 'px';
+        mmState.autoScale = Math.min(
+            ((mmCanvas.clientWidth || width) - MM.STAGE_PAD) / width,
+            (vh * 0.62 - MM.STAGE_PAD) / height,
+            MM.SCALE_MAX
+        );
+        if (!(mmState.autoScale >= 1)) mmState.autoScale = 1;   /* 隐藏态/NaN 兜底 */
+        var slack = stageMin - MM.STAGE_PAD - height * mmState.autoScale;
+        if (slack > 0) svg.style.marginTop = Math.round(slack / 2) + 'px';
+        mmState.zoom = 1;
         applyZoom();
         mmCanvas.appendChild(svg);
     }
 
     function applyZoom() {
         var zoomEl = document.getElementById('kbMmZoom');
-        if (zoomEl) zoomEl.textContent = Math.round(mmState.zoom * 100) + '%';
+        var total = (mmState.autoScale || 1) * mmState.zoom;
+        if (zoomEl) zoomEl.textContent = Math.round(total * 100) + '%';
         if (!mmState.svg) return;
-        mmState.svg.setAttribute('width', mmState.w * mmState.zoom);
-        mmState.svg.setAttribute('height', mmState.h * mmState.zoom);
+        mmState.svg.setAttribute('width', mmState.w * total);
+        mmState.svg.setAttribute('height', mmState.h * total);
     }
 
     /* 工具条：展开/折叠全部 + 缩放（树未加载时先拉数据再执行） */
@@ -1099,7 +1140,8 @@
             var action = btn.dataset.mmAction;
             if (action === 'zoom-in') { mmState.zoom = Math.min(2, +(mmState.zoom + 0.25).toFixed(2)); applyZoom(); return; }
             if (action === 'zoom-out') { mmState.zoom = Math.max(0.5, +(mmState.zoom - 0.25).toFixed(2)); applyZoom(); return; }
-            getTree().then(function (tree) {
+            getTree().then(function (data) {
+                var tree = buildMapTree(data);
                 (function walk(nodes) {
                     nodes.forEach(function (n) {
                         if (action === 'expand') n.collapsed = false;
@@ -1127,12 +1169,12 @@
             outlineView.hidden = view !== 'outline';
             mindmapView.hidden = view !== 'mindmap';
             if (view === 'read') return;
-            getTree().then(function (tree) {
+            getTree().then(function (data) {
                 if (view === 'outline') {
                     outlineView.innerHTML = '';
-                    outlineView.appendChild(buildOutlineList(tree));
+                    outlineView.appendChild(buildOutlineList(data.tree));
                 } else {
-                    renderMindmap(tree);
+                    renderMindmap(buildMapTree(data));
                 }
             }).catch(function () {
                 if (window.showToast) window.showToast('大纲数据加载失败，请重试', 'error');

@@ -160,6 +160,11 @@
     .kb-cat-link { flex: 1; min-width: 0; }
     .kb-cat-children { margin-left: 9px; padding-left: var(--sp-2); border-left: 1px solid var(--c-border); }
     .kb-cat-children[hidden] { display: none; }
+    /* 分类下的文档行（caret 展开区）：紧凑 + 单行省略 + 锁标；当前文档高亮 */
+    .kb-cat-doc { padding: 4px 10px; font-size: 0.8rem; }
+    .kb-cat-doc-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .kb-cat-doc-lock { width: 11px; height: 11px; flex: none; color: var(--c-text-tertiary); }
+    .kb-cat-doc.is-current { background: var(--c-primary-subtle); color: var(--c-primary); font-weight: 500; }
 
     /* ===== 文档列表卡片 ===== */
     .kb-doc-card { background: var(--c-surface); border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); padding: 20px; }
@@ -353,6 +358,23 @@
             var wrapper = document.querySelector('.knowledge-wrapper');
             if (wrapper) wrapper.classList.remove('knowledge-main-with-right');
         }
+    })();
+
+    // 分类筛选树：caret 折叠/展开（服务端直出，静态绑定即可）。
+    // 必须放在基座而不是列表页的 extra_js——子模板的 extra_js 会整块覆盖
+    // 基座同名 block，放在列表页里详情页就拿不到（2026-10-22：详情页
+    // 右栏 caret 曾是一排死按钮）。
+    (function() {
+        document.querySelectorAll('.kb-cat-tree .kb-cat-caret:not(.kb-cat-caret-spacer)').forEach(function (caret) {
+            caret.addEventListener('click', function () {
+                var open = caret.classList.toggle('is-open');
+                caret.setAttribute('aria-expanded', open ? 'true' : 'false');
+                var row = caret.closest('.kb-cat-row');
+                var node = row && row.closest('.kb-cat-node');
+                var kids = node && node.querySelector(':scope > .kb-cat-children');
+                if (kids) kids.hidden = !open;
+            });
+        });
     })();
 </script>
 {% endblock %}

@@ -41,25 +41,43 @@ def _modal_form(request, template, context, *, ok=True):
     return JsonResponse({'ok': ok, 'html': html}, status=200 if ok else 422)
 
 
-def _sidebar_context(user, selected_category_id=None, selected_tag=None):
+def _sidebar_context(user, selected_category_id=None, selected_tag=None, current_doc_id=None):
     """右栏上下文（列表页与详情页共用，见 _right_sidebar.html）。
 
     包含：统计四联（文档/分类/浏览/平均）、分类树（含可见口径计数与
     选中项的祖先展开链）、标签云。分类计数只算当前用户可见的已发布文档——
     分类名不算敏感信息故分类本身不隐藏，但计数口径必须与列表一致，
     否则「分类 42 篇」点进去只有 3 条，用户以为系统坏了。
+
+    每个分类还挂载其下可见的已发布文档（``docs``）：右栏分类树的 caret
+    展开即「文件夹系统」——子分类与文档都在展开区里。文档标题只在可见
+    范围内出现（他人私有文档不进列表，与计数/列表同口径；自己的私有
+    文档带锁标）。``current_doc_id`` 供详情页在树里高亮当前文档。
     """
     published_visible_q = Q(documents__status='published') & (
         Q(documents__visibility=access.PUBLIC) | Q(documents__owner=user))
+    published_q = Q(documents__status='published')
     if access.can_read_private_of_others(user):
         categories = KnowledgeCategory.objects.annotate(
-            doc_count=Count('documents', distinct=True))
+            doc_count=Count('documents', filter=published_q, distinct=True))
     else:
         categories = KnowledgeCategory.objects.annotate(
             doc_count=Count('documents', filter=published_visible_q, distinct=True))
 
+    # 分类 → 可见文档（与计数同口径：已发布 + 可见范围）。标题是用户本来
+    # 就能在列表页看到的信息，不存在新增泄漏面；一次查询按分类分组，
+    # 避免 N+1。
+    docs_by_cat = {}
+    visible_published = (access.visible_docs(user)
+                         .filter(status='published')
+                         .only('id', 'title', 'visibility', 'category_id')
+                         .order_by('-updated_at'))
+    for d in visible_published:
+        docs_by_cat.setdefault(d.category_id, []).append(d)
+
     # 分类树：parent 自引用组装（列表页筛选用；详情页用来定位当前文档所在分类）
-    cat_nodes = {c.pk: {'cat': c, 'children': []} for c in categories}
+    cat_nodes = {c.pk: {'cat': c, 'children': [], 'docs': docs_by_cat.get(c.pk, [])}
+                 for c in categories}
     cat_roots = []
     for c in categories:
         if c.parent_id and c.parent_id in cat_nodes:
@@ -133,6 +151,7 @@ def _sidebar_context(user, selected_category_id=None, selected_tag=None):
         'open_ids': open_ids,
         'selected_category': str(sel_id) if sel_id is not None else '',
         'selected_tag': selected_tag or '',
+        'current_doc_id': current_doc_id,
         'total_documents': total_documents,
         'total_categories': total_categories,
         'total_views': total_views,
@@ -277,8 +296,10 @@ def document_detail(request, pk):
         'category_path': _category_path(document.category),
         'can_edit_doc': access.can_edit(document, request.user),
         # 右栏与列表页同款（_right_sidebar.html）：统计/分类筛选树/标签云；
-        # 选中项=当前文档所在分类，树会自动展开其祖先链并高亮
-        **_sidebar_context(request.user, document.category_id),
+        # 选中项=当前文档所在分类，树会自动展开其祖先链并高亮；
+        # current_doc_id 让树里的当前文档行也高亮
+        **_sidebar_context(request.user, document.category_id,
+                           current_doc_id=document.pk),
         **_vis_form_context(document, request.user),
     }
     return render(request, 'knowledge_base/document_detail.html', context)

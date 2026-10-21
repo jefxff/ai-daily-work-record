@@ -4,13 +4,17 @@
 1. Markdown 阅读排版：标题/表格/引用/代码块正常渲染，GFM 任务列表转 checkbox；
    防回归重点：详情页自带 extra_css 会整块覆盖基座同名 block，
    `.markdown-content` 规则必须出现在本页样式里（曾经的「不美观」根因）。
-2. 思维导图舞台：画布容器 + 工具条（展开/折叠/缩放）就位，不再是小框；
-   舞台高度由 JS 按内容收紧（小图不再是一片大海）。
+2. 思维导图：画布尺寸取全部节点盒子的并集（旧 `_subH` 算法把高度算成
+   47px，下方节点全被 viewBox 裁掉——2026-10-22 用户截图「只剩一个 pill、
+   大片空白」）；markdown 扁平树按标题层级分组；小图自动放大铺满舞台。
 3. 返回列表按钮：位于文档操作组第一位（「设为全员可见」旁边）。
 4. 详情页单栏 + 右栏：原左栏文件夹系统已取消，改为与列表页共用的
-   右栏分类筛选树（_right_sidebar.html）；caret 折叠/展开即文件夹能力；
-   当前文档所在分类高亮且祖先链默认展开；分类树只含分类名与计数，
-   私有文档标题绝不泄漏；计数口径与列表一致（他人私有不计入）。
+   右栏分类筛选树（_right_sidebar.html）；caret 折叠/展开即文件夹能力——
+   每个有内容的分类（子分类或可见文档）都有 caret，展开区 = 文档 +
+   子分类树；当前文档所在分类高亮且祖先链默认展开；他人私有文档标题
+   绝不泄漏（不进树），自己的私有文档带锁标；计数口径与列表一致。
+   防回归重点：详情页 extra_css 必须 `{{ block.super }}`，否则基座的
+   右栏布局样式被整块覆盖，右栏会掉到文档流下方。
 
 运行：python manage.py test knowledge_base.tests_reader
 """
@@ -80,6 +84,20 @@ class ReaderShellTests(TestCase):
         self.assertNotIn("kb-folder-tree", self.html)
         self.assertNotIn("kb-reader-main", self.html)
 
+    def test_base_layout_css_inherited(self):
+        """防回归：详情页 extra_css 必须 {{ block.super }}。基座同名 block 里
+        有右栏布局（.fixed-right-sidebar / .knowledge-main-with-right）与侧栏
+        样式，整块覆盖会让右栏掉到文档流下方（2026-10-22 用户截图 2 事故）。"""
+        self.assertIn(".fixed-right-sidebar", self.html)
+        self.assertIn("position: fixed", self.html)
+        self.assertIn(".knowledge-main-with-right", self.html)
+        self.assertIn(".kb-cat-doc", self.html)   # 侧栏文档行样式同样来自基座
+
+    def test_caret_toggle_script_present(self):
+        """右栏 caret 折叠脚本在基座（两页共用）——放在列表页 extra_js 里会被
+        详情页同名 block 覆盖，详情页的 caret 曾是一排死按钮（2026-10-22）。"""
+        self.assertIn("kb-cat-caret:not(.kb-cat-caret-spacer)", self.html)
+
     def test_view_panels_default_state(self):
         """阅读视图默认可见，大纲/导图隐藏；分段控件三个 tab 就位。"""
         self.assertIn('id="kbReadView" role="tabpanel"', self.html)
@@ -97,13 +115,20 @@ class ReaderShellTests(TestCase):
         self.assertIn('id="kbMmZoom"', self.html)
 
     def test_mindmap_stage_fits_content(self):
-        """问题 2（改版）：舞台不再固定 56vh——JS 按内容高度收紧（小图不再是
-        一片大海），内容更矮时垂直居中；CSS 仍保留 56vh 起步/76vh 封顶滚动。"""
-        self.assertIn("STAGE_MIN", self.html)               # 贴合时的最小高度常数
-        self.assertIn("stageMin < vh * 0.56", self.html)    # 仅在内容更矮时收紧
-        self.assertIn("mmCanvas.style.minHeight", self.html)
-        self.assertIn("min-height: 56vh", self.html)        # 大图：交还 CSS 滚动
-        self.assertIn("max-height: 76vh", self.html)
+        """问题 1（2026-10-22 三修）：画布尺寸取全部节点盒子的并集——旧
+           `_subH` 算法把多节点画布高度算成 47px，根与后续节点全被 viewBox
+           裁掉（用户看到「内容没有正确显示，只剩一个 pill、大片空白」）；
+           markdown 扁平树按标题层级分组（段落不进导图）；小图自动放大
+           铺满舞台宽度并水平居中；空态紧凑舞台。"""
+        self.assertIn("buildMapTree", self.html)       # 扁平树 → 标题层级树
+        self.assertIn("editor_mode", self.html)        # outline 模式直通的判断
+        self.assertIn("minTop", self.html)             # 盒子并集边界（替换 _subH）
+        self.assertIn("offsetY", self.html)            # 整体下移，防父盒探出上沿
+        self.assertIn("mmState.autoScale", self.html)  # 小图自适应放大
+        self.assertIn("SCALE_MAX", self.html)
+        self.assertNotIn("node._subH", self.html)   # 旧算法代码不得回流（注释提及不算）
+        self.assertIn("min-height: 56vh", self.html)   # 大图：交还 CSS 滚动
+        self.assertIn("margin-left: auto", self.html)  # 水平居中
 
     def test_markdown_styles_defined_on_detail_page(self):
         """防回归：基座的 .markdown-content 规则不会继承过来（同名 block 被整块覆盖），
@@ -175,19 +200,26 @@ class MarkdownRenderingTests(TestCase):
 
 
 class DetailSidebarTests(TestCase):
-    """问题 4（改版）：详情页右栏 = 列表页右栏，分类筛选树即文件夹能力。
+    """问题 4（2026-10-22 改版）：详情页右栏 = 列表页右栏，分类树的
+    caret 折叠/展开即文件夹系统——展开区 = 该分类的可见文档 + 子分类树。
 
-    原左栏文件夹系统取消后，私有隔离变成结构性保证：右栏只渲染分类名与
-    可见口径计数，文档标题根本不出现在树里；计数口径与列表一致，他人
-    私有文档不计入（否则「分类 N 篇」点进去对不上，用户以为系统坏了）。
+    私有隔离口径：树里的文档只有当前用户可见的（他人私有文档不进列表，
+    与计数/列表页同口径）；自己的私有文档带锁标。计数口径与列表一致，
+    他人私有文档不计入（否则「分类 N 篇」点进去对不上，用户以为系统坏了）。
     """
 
     def setUp(self):
         self.series = KnowledgeCategory.objects.create(name="Django 学习", sort_order=5)
         self.basic = KnowledgeCategory.objects.create(
             name="基础篇", parent=self.series, sort_order=1)
+        self.other_cat = KnowledgeCategory.objects.create(
+            name="其他篇", parent=self.series, sort_order=2)
+        self.empty_cat = KnowledgeCategory.objects.create(name="空分类", sort_order=9)
         self.public_doc = KnowledgeDocument.objects.create(
             title="公开教程", category=self.basic, content="公开内容",
+            status="published", visibility="public")
+        KnowledgeDocument.objects.create(
+            title="进阶教程", category=self.other_cat, content="进阶内容",
             status="published", visibility="public")
         self.owner = User.objects.create_user("kbowner", "owner@e.com", PWD, is_active=True)
         self.stranger = User.objects.create_user("kbstrange", "s@e.com", PWD, is_active=True)
@@ -229,16 +261,45 @@ class DetailSidebarTests(TestCase):
         seg = self._sidebar_html(self.owner, self.public_doc)
         self.assertIn("Django 学习", seg)
         self.assertIn("基础篇", seg)
-        self.assertIn("kb-cat-caret", seg)      # caret 折叠/展开 = 原文件夹能力
+        self.assertIn("kb-cat-caret", seg)      # caret 折叠/展开 = 文件夹能力
+
+    def test_every_category_with_content_gets_caret(self):
+        """问题 3（2026-10-22）：每个有内容的分类都有 caret——有子分类的
+           （Django 学习）、只有文档的（基础篇/其他篇）都给折叠/展开；
+           两者皆空的分类才用 spacer（无可折叠内容，给了也是死控件）。"""
+        seg = self._sidebar_html(self.owner, self.public_doc)
+        self.assertIn('aria-label="展开或折叠「Django 学习」"', seg)  # 有子分类
+        self.assertIn('aria-label="展开或折叠「基础篇」"', seg)      # 只有文档
+        self.assertIn('aria-label="展开或折叠「其他篇」"', seg)      # 只有文档
+        self.assertIn("kb-cat-caret kb-cat-caret-spacer", seg)      # 空分类
+
+    def test_expanded_area_lists_docs_and_subcategories(self):
+        """caret 展开区 = 文档 + 子分类树（文件夹系统的等价物）；
+           详情页当前文档行高亮，自己的私有文档带锁标。"""
+        seg = self._sidebar_html(self.owner, self.public_doc)
+        self.assertIn("kb-cat-doc-title", seg)        # 文档行
+        self.assertIn("公开教程", seg)                 # 基础篇的公开文档
+        self.assertIn("进阶教程", seg)                 # 其他篇的文档
+        self.assertIn("kb-cat-doc is-current", seg)   # 当前文档高亮
+        self.assertIn('aria-current="page"', seg)
+        self.assertIn("kb-cat-doc-lock", seg)         # 自己的私有带锁标
+        self.assertIn("我的私有笔记", seg)
 
     def test_current_category_highlighted_and_ancestors_expanded(self):
-        """当前文档所在分类高亮（active），其祖先链默认展开（is-open、无 hidden）。"""
+        """当前文档所在分类高亮（active），其祖先链默认展开（is-open、展开区
+           无 hidden）；不在链上的分类保持折叠（其他篇）。"""
         seg = self._sidebar_html(self.owner, self.public_doc)
         self.assertIn(
             '?category=%d" class="kb-side-list-item kb-cat-link active' % self.basic.pk,
             seg, "当前文档所在分类未高亮")
-        self.assertIn("is-open", seg)       # 父级「Django 学习」caret 展开态
-        self.assertNotIn(" hidden", seg)    # 子树容器未折叠
+        self.assertIn("is-open", seg)       # 链上 caret 展开态
+        for cat in (self.series, self.basic):
+            node_html = seg[seg.find('?category=%d"' % cat.pk):]
+            container = node_html[node_html.find("kb-cat-children"):]
+            self.assertTrue(
+                container.startswith('kb-cat-children">'),
+                f"「{cat.name}」的展开区被折叠了")
+        self.assertIn('kb-cat-children" hidden', seg)   # 链外分类保持折叠
 
     def test_category_count_uses_visibility_scope(self):
         """计数口径与列表一致：owner 计入自己的私有（2），陌生人只看公开（1）。"""
@@ -250,12 +311,15 @@ class DetailSidebarTests(TestCase):
             '<span>基础篇</span><span class="kb-side-list-count">1</span>', seg)
 
     def test_private_doc_titles_never_leak(self):
-        """铁律：分类树只含分类名与计数，任何私有文档标题都不经过右栏。"""
-        for viewer, leaked in ((self.owner, "他人的私有笔记"),
-                               (self.stranger, "我的私有笔记"),
-                               (self.stranger, "他人的私有笔记")):
-            seg = self._sidebar_html(viewer, self.public_doc)
-            self.assertNotIn(leaked, seg)
+        """铁律：树里的文档只有当前用户可见的——他人私有标题绝不出现，
+           自己的私有文档才出现（且带锁标）。"""
+        owner_seg = self._sidebar_html(self.owner, self.public_doc)
+        self.assertNotIn("他人的私有笔记", owner_seg)
+        self.assertIn("我的私有笔记", owner_seg)
+        stranger_seg = self._sidebar_html(self.stranger, self.public_doc)
+        self.assertNotIn("他人的私有笔记", stranger_seg)
+        self.assertNotIn("我的私有笔记", stranger_seg)
+        self.assertIn("公开教程", stranger_seg)
 
 
 class ListCategoryTreeTests(TestCase):
@@ -282,6 +346,13 @@ class ListCategoryTreeTests(TestCase):
         self.assertIn("kb-cat-caret", html)
         self.assertIn("总分类", html)
         self.assertIn("子分类", html)
+        self.assertIn("树下文档", html)        # 展开区里的文档行（2026-10-22）
+        self.assertIn("kb-cat-doc-title", html)
+
+    def test_caret_toggle_script_present(self):
+        """caret 折叠脚本在基座（列表页与详情页共用，不得只放列表页）。"""
+        html = self.client.get(reverse("knowledge_base:document_list")).content.decode("utf-8")
+        self.assertIn("kb-cat-caret:not(.kb-cat-caret-spacer)", html)
 
     def test_ancestors_expand_when_child_selected(self):
         """选中子分类：父链默认展开，子项高亮。"""
