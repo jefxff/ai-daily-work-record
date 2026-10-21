@@ -21,6 +21,7 @@ SOURCE_META = {
     "archive_contract": {"module": "archive", "kind_label": "合同", "lead_days": 60},
     "license_expire": {"module": "archive", "kind_label": "证照有效期", "lead_days": 60},
     "license_review": {"module": "archive", "kind_label": "证照年审", "lead_days": 30},
+    "borrow_due": {"module": "archive", "kind_label": "借阅应还", "lead_days": 30},
 }
 
 DEFAULT_LEAD_DAYS = {kind: meta["lead_days"] for kind, meta in SOURCE_META.items()}
@@ -85,7 +86,7 @@ def collect_expiry_items(user, *, horizon_days=DEFAULT_HORIZON_DAYS,
             ))
 
     if has_perm(user, SOURCE_META["archive_contract"]["module"], "read"):
-        from archive.models import Archive, License
+        from archive.models import Archive, BorrowRecord, License
 
         for obj in Archive.objects.filter(expire_date__range=(start, end)):
             items.append(_make_item(
@@ -101,6 +102,16 @@ def collect_expiry_items(user, *, horizon_days=DEFAULT_HORIZON_DAYS,
             items.append(_make_item(
                 "license_review", obj.name, obj.code, obj.next_review_date,
                 today, lead["license_review"], f"/archive/licenses/{obj.pk}/",
+            ))
+        # 未归还借阅的应还日期：days_left 由 due_time 实时计算，
+        # 不依赖列表页的 status 刷新（逾期事项在此始终可见）
+        for obj in BorrowRecord.objects.filter(
+            return_time__isnull=True, due_time__range=(start, end),
+        ).select_related("archive"):
+            items.append(_make_item(
+                "borrow_due", obj.archive.name,
+                f"{obj.archive.code} · 借阅人 {obj.borrower}", obj.due_time,
+                today, lead["borrow_due"], f"/archive/archives/{obj.archive_id}/",
             ))
 
     items.sort(key=lambda it: (it["date"], it["kind"]))
@@ -136,3 +147,52 @@ def summarize(items):
 def month_items(items, year, month):
     """筛选到期日落在指定自然月内的条目（供「本月到期清单」导出）。"""
     return [it for it in items if it["date"].year == year and it["date"].month == month]
+
+
+# ---- 月历网格（月视图浏览 + 点选日期过滤） ----
+
+_SEVERITY_RANK = {"danger": 3, "warning": 2, "success": 1}
+
+
+def _worst_key(item):
+    """条目的最严重等级键：已过期视同 danger。"""
+    return "danger" if item["days_left"] < 0 else item["severity"]
+
+
+def month_day_map(items, year, month):
+    """指定自然月内 日期 -> {count, worst, kinds}，供月历格子渲染。"""
+    day_map = {}
+    for it in month_items(items, year, month):
+        cell = day_map.setdefault(it["date"], {"count": 0, "worst": "success", "kinds": set()})
+        cell["count"] += 1
+        cell["kinds"].add(it["kind"])
+        if _SEVERITY_RANK[_worst_key(it)] > _SEVERITY_RANK[cell["worst"]]:
+            cell["worst"] = _worst_key(it)
+    return day_map
+
+
+def build_month_weeks(items, year, month, *, today, selected=None):
+    """把指定自然月排成 周 -> 日格 的二维结构（含前后月补位灰格）。
+
+    每格：{date, in_month, count, worst, kinds(排序后列表), is_today, is_selected}；
+    无事项的格子 count=0 / worst=None。
+    """
+    import calendar as _cal
+
+    day_map = month_day_map(items, year, month)
+    weeks = []
+    for week in _cal.Calendar(firstweekday=0).monthdatescalendar(year, month):
+        cells = []
+        for d in week:
+            info = day_map.get(d)
+            cells.append({
+                "date": d,
+                "in_month": d.month == month,
+                "count": info["count"] if info else 0,
+                "worst": info["worst"] if info else None,
+                "kinds": sorted(info["kinds"]) if info else [],
+                "is_today": d == today,
+                "is_selected": d == selected,
+            })
+        weeks.append(cells)
+    return weeks

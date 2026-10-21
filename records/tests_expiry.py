@@ -118,3 +118,88 @@ class ExpiryExportEmptyStateTests(TestCase):
         resp = self.client.get(reverse("expiry_export"))
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.content.decode(), "本月暂无到期事项")
+
+
+class BorrowDueSourceTests(TestCase):
+    """未归还借阅的应还日期进入到期聚合（days_left 实时计算，不依赖 status 刷新）。"""
+
+    def setUp(self):
+        call_command("sync_rbac", verbosity=0)
+        self.user = User.objects.create_user("exp_borrow", "b@e.com", "x12345678")
+        grant("archive", ("read",), self.user)
+
+        from archive.models import Archive, BorrowRecord
+
+        today = timezone.localdate()
+        self.archive = Archive.objects.create(code="A-BOR-1", name="逾期合同档案")
+        BorrowRecord.objects.create(
+            archive=self.archive, borrower="张三", due_time=today - timedelta(days=3),
+        )
+        BorrowRecord.objects.create(
+            archive=Archive.objects.create(code="A-BOR-2", name="已还档案"),
+            borrower="李四", due_time=today - timedelta(days=5),
+            return_time=timezone.now(),
+        )
+
+    def test_open_borrow_visible_returned_hidden(self):
+        self.client.force_login(self.user)
+        resp = self.client.get(reverse("expiry_calendar"))
+        kinds = _item_kinds(resp)
+        self.assertIn("borrow_due", kinds, "未归还借阅应出现在到期聚合中")
+        self.assertEqual(kinds.count("borrow_due"), 1, "已归还的借阅不应出现")
+
+    def test_overdue_borrow_is_danger(self):
+        items = expiry.collect_expiry_items(self.user)
+        borrow = next(it for it in items if it["kind"] == "borrow_due")
+        self.assertLess(borrow["days_left"], 0)
+        self.assertEqual(borrow["severity"], "danger")
+
+
+class MonthCalendarTests(TestCase):
+    """月历网格与点选日期过滤。"""
+
+    def setUp(self):
+        call_command("sync_rbac", verbosity=0)
+        self.user = User.objects.create_user("exp_cal", "c@e.com", "x12345678")
+        grant("archive", ("read",), self.user)
+
+        from archive.models import Archive
+
+        self.today = timezone.localdate()
+        Archive.objects.create(
+            code="A-CAL-1", name="本月到期合同", expire_date=self.today + timedelta(days=5),
+        )
+
+    def test_month_weeks_cover_today_and_count(self):
+        self.client.force_login(self.user)
+        resp = self.client.get(reverse("expiry_calendar"))
+        self.assertEqual(resp.status_code, 200)
+        weeks = resp.context["month_weeks"]
+        cells = [c for week in weeks for c in week]
+        today_cell = next(c for c in cells if c["is_today"])
+        self.assertTrue(today_cell["in_month"])
+        target = self.today + timedelta(days=5)
+        target_cell = next(c for c in cells if c["date"] == target)
+        self.assertEqual(target_cell["count"], 1)
+        self.assertIn("archive_contract", target_cell["kinds"])
+
+    def test_day_filter_narrows_by_day(self):
+        self.client.force_login(self.user)
+        target = self.today + timedelta(days=5)
+        resp = self.client.get(reverse("expiry_calendar"), {"day": target.strftime("%Y-%m-%d")})
+        by_day = resp.context["by_day"]
+        self.assertEqual(len(by_day), 1)
+        self.assertEqual(by_day[0]["date"], target)
+
+    def test_out_of_window_day_ignored(self):
+        self.client.force_login(self.user)
+        resp = self.client.get(reverse("expiry_calendar"), {"day": "2035-01-01"})
+        self.assertIsNone(resp.context["selected_day"])
+
+    def test_month_nav_clamped_to_window(self):
+        """ym 超出数据窗口时钳制回窗口内月份。"""
+        self.client.force_login(self.user)
+        resp = self.client.get(reverse("expiry_calendar"), {"ym": "2035-01"})
+        month_start = resp.context["month_start"]
+        horizon_end = self.today + timedelta(days=expiry.DEFAULT_HORIZON_DAYS)
+        self.assertEqual(month_start, horizon_end.replace(day=1))

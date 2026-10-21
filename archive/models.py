@@ -643,7 +643,8 @@ class AnnualReview(TimeStampedModel):
         verbose_name="证照",
     )
     review_date = models.DateField("年审日期", default=date.today)
-    result = models.CharField("年审结果", max_length=10, choices=RESULT_CHOICES, default="passed")
+    # 默认「待处理」：登记时未选择结果不再静默记为「通过」（原 default=passed 会掩盖异常）
+    result = models.CharField("年审结果", max_length=10, choices=RESULT_CHOICES, default="pending")
     reviewer = models.CharField("经办人", max_length=50)
     new_expire_date = models.DateField("新有效期至", null=True, blank=True, help_text="年审通过后的新有效期（可选）")
     remark = models.CharField("备注", max_length=500, blank=True)

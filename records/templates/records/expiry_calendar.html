@@ -26,6 +26,9 @@
             <label>证照年审提前（天）
                 <input type="number" name="lead_review" min="1" max="180" value="{{ lead_form.lead_review }}">
             </label>
+            <label>借阅应还提前（天）
+                <input type="number" name="lead_borrow" min="1" max="180" value="{{ lead_form.lead_borrow }}">
+            </label>
             <button type="submit" class="btn-transparent">应用</button>
             <a href="{% url 'expiry_export' %}" class="btn-transparent expiry-export">导出本月到期清单</a>
         </div>
@@ -38,6 +41,59 @@
         <span class="status-badge success">正常 {{ summary.normal }}</span>
         <span class="status-badge info">合计 {{ summary.total }}</span>
     </div>
+
+    {# 月历：按来源着色、点选日期联动过滤下方清单 #}
+    <div class="table-container expiry-cal">
+        <div class="expiry-cal-head">
+            {% if month_has_prev %}<a href="?{{ qs_prev }}" class="btn-transparent btn-sm">‹ 上月</a>{% else %}<span class="expiry-cal-nav-ph"></span>{% endif %}
+            <span class="expiry-cal-title">{{ month_start|date:'Y 年 n 月' }}</span>
+            <a href="?{{ qs_today_month }}" class="btn-transparent btn-sm">回到本月</a>
+            {% if month_has_next %}<a href="?{{ qs_next }}" class="btn-transparent btn-sm">下月 ›</a>{% else %}<span class="expiry-cal-nav-ph"></span>{% endif %}
+        </div>
+        <div class="expiry-cal-grid" role="grid" aria-label="到期事项月历">
+            <div class="expiry-cal-wd" role="columnheader">周一</div>
+            <div class="expiry-cal-wd" role="columnheader">周二</div>
+            <div class="expiry-cal-wd" role="columnheader">周三</div>
+            <div class="expiry-cal-wd" role="columnheader">周四</div>
+            <div class="expiry-cal-wd" role="columnheader">周五</div>
+            <div class="expiry-cal-wd" role="columnheader">周六</div>
+            <div class="expiry-cal-wd" role="columnheader">周日</div>
+            {% for week in month_weeks %}
+                {% for cell in week %}
+                    {% if cell.count %}
+                <a class="expiry-cal-cell{% if not cell.in_month %} out-month{% endif %} sev-{{ cell.worst }}{% if cell.is_today %} is-today{% endif %}{% if cell.is_selected %} is-selected{% endif %}"
+                   role="gridcell"
+                   href="?{{ qs_day_base }}&day={{ cell.date|date:'Y-m-d' }}"
+                   title="{{ cell.date|date:'Y-m-d' }}：{{ cell.count }} 项到期">
+                    <span class="expiry-cal-daynum">{{ cell.date.day }}</span>
+                    <span class="expiry-cal-count">{{ cell.count }}</span>
+                    <span class="expiry-cal-dots">
+                        {% for k in cell.kinds %}<i class="expiry-dot dot-{{ k }}"></i>{% endfor %}
+                    </span>
+                </a>
+                    {% else %}
+                <span class="expiry-cal-cell empty{% if not cell.in_month %} out-month{% endif %}{% if cell.is_today %} is-today{% endif %}" role="gridcell">
+                    <span class="expiry-cal-daynum">{{ cell.date.day }}</span>
+                </span>
+                    {% endif %}
+                {% endfor %}
+            {% endfor %}
+        </div>
+        <div class="expiry-cal-legend">
+            <span><i class="expiry-dot dot-insurance"></i>保险</span>
+            <span><i class="expiry-dot dot-archive_contract"></i>合同</span>
+            <span><i class="expiry-dot dot-license_expire"></i>证照有效期</span>
+            <span><i class="expiry-dot dot-license_review"></i>证照年审</span>
+            <span><i class="expiry-dot dot-borrow_due"></i>借阅应还</span>
+        </div>
+    </div>
+
+    {% if selected_day %}
+    <div class="expiry-day-filter">
+        仅显示 <strong>{{ selected_day|date:'Y-m-d' }}</strong> 的到期事项
+        <a href="?{{ qs_clear_day }}" class="btn-transparent btn-sm">清除筛选</a>
+    </div>
+    {% endif %}
 
     {% for group in by_day %}
     <div class="table-container">
@@ -160,5 +216,110 @@
     /* 分组表行数少，收紧单元格内边距，避免整页形成大片留白 */
     .expiry-day-table th,
     .expiry-day-table td { padding: 10px 14px; }
+
+    /* ---- 月历 ---- */
+    .expiry-cal { padding: 12px 16px; }
+    .expiry-cal-head {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 0.75rem;
+    }
+    .expiry-cal-title { font-weight: 600; font-size: 1rem; }
+    .expiry-cal-nav-ph { width: 64px; }   /* 无翻页链接时占位，保持标题居中轴稳定 */
+    .expiry-cal-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 4px;
+    }
+    .expiry-cal-wd {
+        text-align: center;
+        font-size: 12px;
+        color: var(--c-text-secondary);
+        padding: 4px 0;
+    }
+    .expiry-cal-cell {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        min-height: 56px;
+        padding: 6px 8px;
+        border: 1px solid var(--c-border);
+        border-radius: 6px;
+        background: var(--c-surface);
+        color: var(--c-text);
+        text-decoration: none;
+        font-size: 13px;
+    }
+    a.expiry-cal-cell:hover { border-color: var(--c-primary); box-shadow: var(--sh-focus); }
+    .expiry-cal-cell.empty { cursor: default; }
+    .expiry-cal-cell.out-month { opacity: 0.45; }
+    .expiry-cal-cell.sev-danger  { background: var(--c-danger-bg);  border-color: var(--c-danger-line); }
+    .expiry-cal-cell.sev-warning { background: var(--c-warning-bg); border-color: var(--c-warning-line); }
+    .expiry-cal-cell.sev-success { background: var(--c-success-bg); border-color: var(--c-success-line); }
+    .expiry-cal-cell.is-today .expiry-cal-daynum {
+        background: var(--c-primary);
+        color: var(--c-text-inverse);
+        border-radius: 50%;
+        width: 22px;
+        height: 22px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .expiry-cal-cell.is-selected { outline: 2px solid var(--c-primary-active); outline-offset: 1px; }
+    .expiry-cal-count {
+        position: absolute;
+        top: 6px;
+        right: 8px;
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--c-text-secondary);
+    }
+    .expiry-cal-dots {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 3px;
+        margin-top: auto;
+    }
+    .expiry-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+    /* 来源着色：全部取 tokens 语义色，与图例一一对应 */
+    .dot-insurance        { background: var(--c-info); }
+    .dot-archive_contract { background: var(--c-accent); }
+    .dot-license_expire   { background: var(--c-danger); }
+    .dot-license_review   { background: var(--c-warning); }
+    .dot-borrow_due       { background: var(--c-borrowed); }
+    .expiry-cal-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-top: 0.75rem;
+        font-size: 12px;
+        color: var(--c-text-secondary);
+    }
+    .expiry-cal-legend span { display: inline-flex; align-items: center; gap: 4px; }
+    .expiry-day-filter {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-top: 1rem;
+        padding: 0.6rem 1rem;
+        border: 1px solid var(--c-info-line);
+        border-radius: 6px;
+        background: var(--c-info-bg);
+        font-size: 13px;
+    }
+    /* 小屏（≤640px）：月历格子收紧，图例换行 */
+    @media (max-width: 640px) {
+        .expiry-cal-cell { min-height: 44px; padding: 4px 5px; font-size: 12px; }
+        .expiry-cal-cell.is-today .expiry-cal-daynum { width: 18px; height: 18px; }
+        .expiry-cal-head { flex-wrap: wrap; }
+    }
 </style>
 {% endblock %}

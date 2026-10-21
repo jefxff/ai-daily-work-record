@@ -3,7 +3,7 @@
 跨模块页面（insurance + archive）：无现成的"任一模块"装饰器，故在视图内按来源
 模块 read 权限过滤（见 records/expiry.py）；二者均无权限时渲染 403。
 """
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from django.http import HttpResponse
 from django.shortcuts import render
@@ -23,6 +23,7 @@ LEAD_PARAM_MAP = {
     "lead_contract": "archive_contract",
     "lead_license": "license_expire",
     "lead_review": "license_review",
+    "lead_borrow": "borrow_due",
 }
 
 STATUS_TEXT = {"expired": "已过期", "danger": "紧急", "warning": "临近", "success": "正常"}
@@ -52,9 +53,43 @@ def _forbidden(request):
     }, status=403)
 
 
+def _parse_date(raw):
+    """解析 YYYY-MM-DD，非法值返回 None。"""
+    try:
+        return datetime.strptime(raw, "%Y-%m-%d").date()
+    except (TypeError, ValueError):
+        return None
+
+
+def _parse_month(raw):
+    """解析 YYYY-MM，非法值返回 None。"""
+    try:
+        return datetime.strptime(raw, "%Y-%m").date().replace(day=1)
+    except (TypeError, ValueError):
+        return None
+
+
+def _shift_month(month_start, delta):
+    """月份偏移（delta=±1），返回偏移后的 1 号日期。"""
+    year = month_start.year + (month_start.month - 1 + delta) // 12
+    month = (month_start.month - 1 + delta) % 12 + 1
+    return month_start.replace(year=year, month=month)
+
+
+def _qs(request, **overrides):
+    """以当前 GET 参数为基础生成查询串（overrides 中 None 表示删除该参数）。"""
+    params = request.GET.copy()
+    for key, value in overrides.items():
+        if value is None:
+            params.pop(key, None)
+        else:
+            params[key] = value
+    return params.urlencode()
+
+
 @perm_required_any(("insurance", "read"), ("archive", "read"))
 def expiry_calendar(request):
-    """未来 N 天内到期事项，按天排列并红/黄/绿分级。"""
+    """未来 N 天内到期事项，按月历浏览、点选日期过滤，红/黄/绿分级。"""
     if not _has_any(request.user):
         return _forbidden(request)
 
@@ -72,17 +107,48 @@ def expiry_calendar(request):
     )
     today = timezone.localdate()
     lead_used = {**expiry.DEFAULT_LEAD_DAYS, **lead_overrides}
+
+    # 月历：ym 指定展示月份（默认当月），钳制在数据窗口内，避免空月翻页
+    win_start = today - timedelta(days=expiry.LOOKBACK_DAYS)
+    win_end = today + timedelta(days=days)
+    month_start = _parse_month(request.GET.get("ym")) or today.replace(day=1)
+    month_start = max(win_start.replace(day=1), min(win_end.replace(day=1), month_start))
+    prev_month = _shift_month(month_start, -1)
+    next_month = _shift_month(month_start, 1)
+
+    # 点选日期过滤：day 命中窗口才生效；点选后下方清单只列当日事项
+    selected = _parse_date(request.GET.get("day"))
+    if selected and not (win_start <= selected <= win_end):
+        selected = None
+    by_day = expiry.group_by_day(items)
+    if selected:
+        by_day = [g for g in by_day if g["date"] == selected]
+
     return render(request, "records/expiry_calendar.html", {
         "days": days,
         "today": today,
         "horizon_end": today + timedelta(days=days),
-        "by_day": expiry.group_by_day(items),
+        "by_day": by_day,
         "summary": expiry.summarize(items),
         # 回填表单用（按 GET 参数名索引）
         "lead_form": {param: lead_used[kind] for param, kind in LEAD_PARAM_MAP.items()},
         # 供筛选 chips 展示生效值（按 kind 索引）
         "lead_used": lead_used,
         "kind_labels": {k: m["kind_label"] for k, m in expiry.SOURCE_META.items()},
+        # 月历
+        "month_start": month_start,
+        "month_weeks": expiry.build_month_weeks(
+            items, month_start.year, month_start.month, today=today, selected=selected,
+        ),
+        "month_has_prev": prev_month >= win_start.replace(day=1),
+        "month_has_next": next_month <= win_end.replace(day=1),
+        "qs_prev": _qs(request, ym=prev_month.strftime("%Y-%m"), day=None),
+        "qs_next": _qs(request, ym=next_month.strftime("%Y-%m"), day=None),
+        "qs_today_month": _qs(request, ym=None, day=None),
+        # 点选某日的基础查询串（ym 固定为当前展示月，模板拼接 &day=YYYY-MM-DD）
+        "qs_day_base": _qs(request, ym=month_start.strftime("%Y-%m"), day=None),
+        "selected_day": selected,
+        "qs_clear_day": _qs(request, day=None),
     })
 
 
