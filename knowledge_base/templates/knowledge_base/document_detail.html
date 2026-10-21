@@ -91,7 +91,7 @@
     </div>
     <div class="list-group">
         {% for doc in related_docs %}
-        <a href="{% url 'knowledge_base:document_detail' doc.pk %}" class="list-group-item list-group-item-action" data-modal-detail data-modal-title="{{ doc.title }}">
+        <a href="{% url 'knowledge_base:document_detail' doc.pk %}" class="list-group-item list-group-item-action">
             {{ doc.title }}
         </a>
         {% endfor %}

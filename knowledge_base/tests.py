@@ -1,8 +1,8 @@
 """批次B 验收测试：知识库阅读记录表（KnowledgeView）+ 阅读报告页。
 
 覆盖：
-1. 详情页非 AJAX 打开 → 写一行 KnowledgeView（阅读人 / 来源 IP 落库），view_count 自增；
-   AJAX 弹窗预览 → 不写阅读记录（同一次浏览不重复计数）。
+1. 详情页打开 → 写一行 KnowledgeView（阅读人 / 来源 IP 落库），view_count 自增；
+   详情弹窗已取消：带 AJAX 请求头也按整页渲染并计入，不再有预览特例。
 2. 阅读报告页权限：仅 system.read 可访问（仅有 knowledge.read → 403，匿名 → 302）。
 3. 阅读报告聚合正确：窗口内阅读总量 / 独立阅读人 / 覆盖文档数 / 热门文档榜。
 
@@ -77,7 +77,8 @@ class KnowledgeViewRecordTests(TestCase):
         self.doc.refresh_from_db()
         self.assertEqual(self.doc.view_count, 2)
 
-    def test_ajax_preview_does_not_write(self):
+    def test_ajax_header_renders_full_page(self):
+        """详情弹窗已取消：带 X-Requested-With 头也按整页渲染并计入浏览。"""
         c = Client()
         c.force_login(self.user)
         resp = c.get(
@@ -85,9 +86,12 @@ class KnowledgeViewRecordTests(TestCase):
             HTTP_X_REQUESTED_WITH="XMLHttpRequest",
         )
         self.assertEqual(resp.status_code, 200)
-        self.assertFalse(KnowledgeView.objects.exists())
+        self.assertIn("text/html", resp["Content-Type"])
+        self.assertIn("测试文档", resp.content.decode())
+        # 弹窗取消后不再有「预览不计入」的特例
+        self.assertTrue(KnowledgeView.objects.exists())
         self.doc.refresh_from_db()
-        self.assertEqual(self.doc.view_count, 0)
+        self.assertEqual(self.doc.view_count, 1)
 
 
 class KnowledgeReportTests(TestCase):
@@ -398,3 +402,25 @@ class VisibilityMatrixTests(TestCase):
         self.assertNotIn('id="kbVisToggle"', body_bob)
         # bob 能看到公开文档上的可见性徽章
         self.assertIn("全员可见", body_bob)
+
+    def test_detail_page_ui_ignores_ajax_header(self):
+        """详情弹窗已取消：带 X-Requested-With 头也渲染同一张整页。
+
+        此前列表页走 AJAX 弹窗、其余入口走整页，两条路径 UI 曾不一致；
+        现在合并为整页，可见性 UI 完整（徽章两态 + 切换按钮仅创建人）。
+        """
+        detail_private = reverse("knowledge_base:document_detail", args=[self.private_doc.pk])
+        body_alice = self._login(self.alice).get(
+            detail_private, HTTP_X_REQUESTED_WITH="XMLHttpRequest").content.decode()
+        self.assertIn('id="kbVisBadge"', body_alice)
+        self.assertIn('id="kbVisToggle"', body_alice)
+        self.assertIn("仅自己可见", body_alice)
+        self.assertIn("设为全员可见", body_alice)
+
+        # 公开文档：徽章同样显示（此前的弹窗模板公开时连徽章都不渲染）
+        detail_public = reverse("knowledge_base:document_detail", args=[self.public_doc.pk])
+        body_bob = self._login(self.bob).get(
+            detail_public, HTTP_X_REQUESTED_WITH="XMLHttpRequest").content.decode()
+        self.assertIn('id="kbVisBadge"', body_bob)
+        self.assertIn("全员可见", body_bob)
+        self.assertNotIn('id="kbVisToggle"', body_bob)

@@ -218,7 +218,7 @@
                 <div class="detail-value">{{ other.complaint_description|default:'-'|truncatechars:100 }}</div>
             </div>
             <div class="mt-2">
-                <a href="{% url 'customer_detail' other.id %}" class="btn-transparent btn-sm" data-modal-detail data-modal-title="{{ other.customer_name }} 详情">查看详情</a>
+                <a href="{% url 'customer_detail' other.id %}" class="btn-transparent btn-sm">查看详情</a>
             </div>
         </div>
         {% endfor %}

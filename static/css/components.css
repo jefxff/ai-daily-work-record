@@ -605,48 +605,155 @@ td[data-label="操作"] > div { justify-content: center; }
 }
 
 /* ==========================================================================
-   五态流程条（诉讼状态推进）
-   用法：<div class="flow-steps">
-           <div class="flow-step done"><div class="fs-box">立案</div></div>
-           <div class="flow-step current"><span class="fs-arrow">→</span><div class="fs-box">审理中</div></div>
-           …
-         </div>
+   案件进程步骤条（诉讼详情页：五态 + 日期 + 推进可视化）
+   结构：<ol class="case-flow">
+           <li class="case-step is-done|is-current|is-todo">
+             <span class="case-node">…</span>
+             <span class="case-label">立案</span>
+             <span class="case-date">2026-10-21</span>
+           </li>
+         </ol>
+   设计口径（工业实用·精密仪表，全部走令牌，双主题安全）：
+   - 节点用「淡底 + 彩色描边 + 彩色图形」的状态徽章语言，而非实色块，
+     避免暗色主题下浅色实底配白图标的对比度翻车；
+   - 连线画在节点中心高度并被节点盖住：done 段 success 实线、
+     current 出口半主色半灰（行进到一半）、todo 段 neutral；
+   - 入场时整条 flow 淡入上移、连线自左向右依次展开（80ms 错峰），
+     current 节点光环呼吸；全部包在 prefers-reduced-motion 内。
    ========================================================================== */
-.flow-steps {
+.case-flow {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0;
-  margin: 8px 0;
+  align-items: flex-start;
+  list-style: none;
+  margin: 0;
+  padding: var(--sp-5) var(--sp-3) var(--sp-4);
+  background: var(--c-surface-sunken);
+  border-radius: var(--r-md);
 }
-.flow-step {
+.case-step {
+  flex: 1 1 0;
+  min-width: 0;
+  position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
+  text-align: center;
 }
-.flow-step .fs-box {
-  border: 1px solid var(--c-border-strong);
-  border-radius: 6px;
-  padding: 6px 14px;
-  font-size: 13px;
-  color: var(--c-text-secondary);
+/* 连线：本步节点右缘 → 下一步节点左缘（z-index 0，被不透明节点盖住中段） */
+.case-step:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  top: 13px;
+  left: calc(50% + 18px);
+  right: calc(-50% + 18px);
+  height: 2px;
+  border-radius: 1px;
+  background: var(--c-border);
+}
+.case-step.is-done:not(:last-child)::before { background: var(--c-success); }
+.case-step.is-current:not(:last-child)::before {
+  background: linear-gradient(to right, var(--c-primary) 50%, var(--c-border) 50%);
+}
+.case-node {
+  position: relative;
+  z-index: 1;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-full);
   background: var(--c-surface);
+  border: 2px solid var(--c-border-strong);
+  color: var(--c-text-tertiary);
+}
+.case-node .icon { width: 14px; height: 14px; stroke-width: 3; }
+.case-step.is-done .case-node {
+  background: var(--c-success-bg);
+  border-color: var(--c-success);
+  color: var(--c-success);
+}
+.case-step.is-current .case-node {
+  background: var(--c-primary-subtle);
+  border-color: var(--c-primary);
+  color: var(--c-primary);
+  box-shadow: 0 0 0 4px var(--c-primary-ring);
+}
+.case-node-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--r-full);
+  background: var(--c-primary);
+}
+.case-node-num {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.case-label {
+  margin-top: var(--sp-2);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--c-text);
   white-space: nowrap;
 }
-.flow-step.done .fs-box {
-  background: var(--c-success);
-  border-color: var(--c-success);
-  color: #fff;
-}
-.flow-step.current .fs-box {
-  background: var(--c-primary);
-  border-color: var(--c-primary);
-  color: #fff;
+.case-step.is-current .case-label {
+  color: var(--c-primary-active);
   font-weight: 600;
 }
-.flow-step .fs-arrow {
+.case-step.is-todo .case-label { color: var(--c-text-tertiary); }
+.case-date {
+  min-height: 15px;
+  margin-top: 2px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
   color: var(--c-text-tertiary);
-  margin: 0 8px;
-  font-size: 14px;
+  white-space: nowrap;
+}
+.case-step.is-done .case-date { color: var(--c-text-secondary); }
+.case-step.is-current .case-date { color: var(--c-primary-active); }
+
+/* —— 入场编排：flow 淡入上移 + 连线依次展开 + current 光环呼吸 —— */
+@media (prefers-reduced-motion: no-preference) {
+  .case-flow { animation: caseFlowIn var(--dur-slow) var(--ease-out) both; }
+  .case-step:not(:last-child)::before {
+    transform-origin: left center;
+    animation: caseLineGrow 480ms var(--ease-out) backwards;
+  }
+  .case-step:nth-child(1):not(:last-child)::before { animation-delay: 140ms; }
+  .case-step:nth-child(2):not(:last-child)::before { animation-delay: 220ms; }
+  .case-step:nth-child(3):not(:last-child)::before { animation-delay: 300ms; }
+  .case-step:nth-child(4):not(:last-child)::before { animation-delay: 380ms; }
+  .case-step.is-current .case-node {
+    animation: caseNodePulse 2.4s ease-in-out 640ms infinite;
+  }
+  @keyframes caseFlowIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes caseLineGrow {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+  }
+  @keyframes caseNodePulse {
+    0%, 100% { box-shadow: 0 0 0 4px var(--c-primary-ring); }
+    50% { box-shadow: 0 0 0 7px var(--c-primary-ring); }
+  }
+}
+@media (max-width: 640px) {
+  .case-flow { padding: var(--sp-4) var(--sp-1) var(--sp-3); }
+  .case-node { width: 24px; height: 24px; }
+  .case-node .icon { width: 12px; height: 12px; }
+  .case-step:not(:last-child)::before { top: 11px; left: calc(50% + 15px); right: calc(-50% + 15px); }
+  .case-label { font-size: 12px; }
+  /* 窄屏每步约 51px，等宽日期会溢出：隐藏（完整日期见下方「关键日期」卡，
+     进程条在移动端只承担「走到哪一步」的导航职责） */
+  .case-date { display: none; }
 }
 
 /* SLA 计时（客诉闭环：全页面与弹窗共用） */

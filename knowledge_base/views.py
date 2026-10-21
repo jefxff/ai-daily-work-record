@@ -166,21 +166,23 @@ def _vis_form_context(document=None, user=None):
 
 @perm_required("knowledge", "read")
 def document_detail(request, pk):
-    """文档详情（无权访问一律 404：403 等于告诉对方「这篇存在，只是你没权限」）"""
+    """文档详情（无权访问一律 404：403 等于告诉对方「这篇存在，只是你没权限」）
+
+    详情页已取消 AJAX 弹窗（用户要求），一律整页渲染；浏览计数随之不再
+    区分请求头——带 X-Requested-With 的请求也按正常浏览计入。
+    """
     document = get_object_or_404(access.visible_docs(request.user), pk=pk)
-    is_ajax = _is_ajax(request)
-    if not is_ajax:
-        # 原子自增（F 表达式），避免并发浏览时的读-改-写覆盖导致计数丢失
-        KnowledgeDocument.objects.filter(pk=document.pk).update(
-            view_count=F('view_count') + 1)
-        document.refresh_from_db(fields=['view_count'])
-        # 阅读明细表：每次打开详情页写一行（弹窗预览不计入，避免重复计数）
-        KnowledgeView.objects.create(
-            document=document,
-            user=request.user if request.user.is_authenticated else None,
-            viewer=request.user.get_username() if request.user.is_authenticated else '',
-            ip=client_ip(request),
-        )
+    # 原子自增（F 表达式），避免并发浏览时的读-改-写覆盖导致计数丢失
+    KnowledgeDocument.objects.filter(pk=document.pk).update(
+        view_count=F('view_count') + 1)
+    document.refresh_from_db(fields=['view_count'])
+    # 阅读明细表：每次打开详情页写一行
+    KnowledgeView.objects.create(
+        document=document,
+        user=request.user if request.user.is_authenticated else None,
+        viewer=request.user.get_username() if request.user.is_authenticated else '',
+        ip=client_ip(request),
+    )
 
     # 将Markdown内容转换为HTML，并过滤 script/iframe/事件属性等危险内容
     document.content_html = _sanitize_html(markdown.markdown(
@@ -204,8 +206,6 @@ def document_detail(request, pk):
         'can_edit_doc': access.can_edit(document, request.user),
         **_vis_form_context(document, request.user),
     }
-    if is_ajax:
-        return _modal_form(request, 'knowledge_base/_document_detail_modal.html', context)
     return render(request, 'knowledge_base/document_detail.html', context)
 
 

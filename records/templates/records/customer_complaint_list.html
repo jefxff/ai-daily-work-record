@@ -160,7 +160,7 @@
                         <td data-label="备注" class="col-optional" title="{{ complaint.remarks|default:'' }}">{{ complaint.remarks|default:''|truncatechars:30 }}</td>
                         <td data-label="操作" class="col-actions">
                             <div style="display: flex; gap: 0.25rem; align-items: center; flex-wrap: nowrap;">
-                                <a href="{% url 'customer_detail' complaint.id %}" class="btn-transparent btn-sm" data-modal-detail data-modal-title="客户详情">详细</a>
+                                <a href="{% url 'customer_detail' complaint.id %}" class="btn-transparent btn-sm">详细</a>
                                 {% can "customer_complaint" "update" %}
                                 <a href="{% url 'customer_complaint_edit' complaint.id %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑客户客诉">编辑</a>
                                 {% endcan %}

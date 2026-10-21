@@ -20,7 +20,7 @@
         <p class="text-muted mb-4">共找到 <strong>{{ page_obj.paginator.count }}</strong> 条结果</p>
         <div class="list-group">
             {% for document in documents %}
-            <a href="{% url 'knowledge_base:document_detail' document.pk %}" class="list-group-item list-group-item-action" data-modal-detail data-modal-title="{{ document.title }}">
+            <a href="{% url 'knowledge_base:document_detail' document.pk %}" class="list-group-item list-group-item-action">
                 <h5>{{ document.title }}</h5>
                 <p class="text-muted">{{ document.summary|default:document.content|truncatechars:150 }}</p>
                 <div class="d-flex gap-2">

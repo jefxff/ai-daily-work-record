@@ -603,7 +603,7 @@ customer_complaint_export = make_export_view(
 
 @perm_required("customer_complaint", "read")
 def customer_detail(request, pk):
-    """客户详情视图"""
+    """客户详情视图（已取消 AJAX 弹窗，一律整页渲染）"""
     # 获取客户客诉信息
     complaint = get_object_or_404(CustomerComplaint, pk=pk)
 
@@ -614,8 +614,6 @@ def customer_detail(request, pk):
         'complaint': complaint,
         'other_complaints': other_complaints
     }
-    if _is_ajax(request):
-        return _modal_detail(request, 'records/_customer_detail_modal.html', context)
     return render(request, 'records/customer_detail.html', context)
 
 
@@ -1572,10 +1570,8 @@ def customer_credit_detail(request, pk):
 
 @perm_required("complaint", "read")
 def complaint_detail(request, pk):
-    """诉讼详情视图"""
+    """诉讼详情视图（已取消 AJAX 弹窗，一律整页渲染）"""
     complaint = get_object_or_404(Complaint, pk=pk)
-    if _is_ajax(request):
-        return _modal_detail(request, 'records/_complaint_detail_modal.html', {'complaint': complaint})
     return render(request, 'records/complaint_detail.html', {'complaint': complaint})
 
 

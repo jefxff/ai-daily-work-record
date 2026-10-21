@@ -2,7 +2,7 @@
 {% load static %}
 {% load accounts_tags %}
 
-{% block page_title %}诉讼详情 - 每日工作记录管理网站{% endblock %}
+{% block page_title %}诉讼详情 - {{ complaint.defendant }} - 每日工作记录管理网站{% endblock %}
 
 {% block top_nav_actions %}
     <a href="{% url 'complaint_list' %}" class="btn-transparent">返回列表</a>
@@ -15,44 +15,59 @@
 {% endblock %}
 
 {% block content %}
+    <div class="page-header">
+        <h2>诉讼详情 · {{ complaint.defendant }}<span class="total-hint">{% if complaint.filed_at %}立案于 {{ complaint.filed_at|date:'Y-m-d' }}{% endif %}</span></h2>
+        <span class="status-badge {% if complaint.progress == '结案' %}success{% elif complaint.progress == '审理中' %}warning{% else %}info{% endif %}">{{ complaint.progress }}</span>
+    </div>
+
     <!-- 案件进程 -->
-    <div class="detail-card" style="margin-bottom:1.25rem;">
+    <section class="detail-card" style="margin-bottom:1.25rem;" aria-label="案件进程">
         <div class="detail-title">案件进程</div>
-        <div class="flow-steps">
+
+        <ol class="case-flow">
             {% for status, d, stage in complaint.timeline_steps %}
-            <div class="flow-step {{ stage }}">
-                {% if not forloop.first %}<span class="fs-arrow">→</span>{% endif %}
-                <div class="fs-box">{{ status }}</div>
-            </div>
+            <li class="case-step is-{{ stage }}"{% if stage == 'current' %} aria-current="step"{% endif %}>
+                <span class="case-node" aria-hidden="true">
+                    {% if stage == 'done' %}
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    {% elif stage == 'current' %}
+                    <span class="case-node-dot"></span>
+                    {% else %}
+                    <span class="case-node-num">{{ forloop.counter }}</span>
+                    {% endif %}
+                </span>
+                <span class="case-label">{{ status }}</span>
+                <span class="case-date">{% if d %}{{ d|date:"Y-m-d" }}{% endif %}</span>
+            </li>
             {% endfor %}
+        </ol>
+
+        <div class="case-summary">
+            <span class="status-badge {% if complaint.progress == '结案' %}success{% elif complaint.progress == '审理中' %}warning{% else %}info{% endif %}">{{ complaint.progress }}</span>
+            {% if complaint.current_progress_days is not None %}
+            <span class="case-summary-meta">自 <b>{{ complaint.progress_date|date:"Y-m-d" }}</b> 起已持续 <b class="case-days">{{ complaint.current_progress_days }}</b> 天</span>
+            {% else %}
+            <span class="case-summary-meta">当前状态尚未回填日期</span>
+            {% endif %}
         </div>
-        <div class="detail-row">
-            <span class="detail-label">当前状态：</span>
-            <span class="detail-value">
-                <span class="status-badge {% if complaint.progress == '结案' %}success{% elif complaint.progress == '审理中' %}warning{% else %}info{% endif %}">{{ complaint.progress }}</span>
-                {% if complaint.current_progress_days is not None %} · 自 {{ complaint.progress_date|date:'Y-m-d' }} 起 {{ complaint.current_progress_days }} 天{% endif %}
-            </span>
-        </div>
+
         {% if complaint.progress != '结案' %}
         {% can "complaint" "update" %}
-        <div class="detail-row">
-            <span class="detail-label">推进状态：</span>
-            <span class="detail-value">
-                <form method="post" action="{% url 'complaint_advance' complaint.id %}" style="display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                    {% csrf_token %}
-                    <select name="progress" class="form-select" style="width:auto;">
-                        {% for choice in complaint.PROGRESS_CHOICES %}
-                        <option value="{{ choice.0 }}" {% if complaint.progress == choice.0 %}selected{% endif %}>{{ choice.1 }}</option>
-                        {% endfor %}
-                    </select>
-                    <button type="submit" class="btn-primary btn-sm">推进并回填日期</button>
-                </form>
-                <span style="font-size:12px;color:var(--c-text-tertiary);margin-left:8px;">状态推进时自动写入对应日期（首次进入时）</span>
-            </span>
-        </div>
+        <form method="post" action="{% url 'complaint_advance' complaint.id %}" class="case-advance">
+            <div class="case-advance-field">
+                <label for="caseAdvanceSelect">推进状态</label>
+                <select id="caseAdvanceSelect" name="progress" class="form-select">
+                    {% for choice in complaint.PROGRESS_CHOICES %}
+                    <option value="{{ choice.0 }}" {% if complaint.progress == choice.0 %}selected{% endif %}>{{ choice.1 }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn-primary">推进并回填日期</button>
+            <p class="case-advance-hint">状态推进时自动写入对应日期（仅首次进入该状态时回填，不覆盖已有日期）</p>
+        </form>
         {% endcan %}
         {% endif %}
-    </div>
+    </section>
 
     <div class="row g-4">
         <div class="col-lg-7">
@@ -143,4 +158,61 @@
             </div>
         </div>
     </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* —— 案件进程·状态摘要条：徽章 + 持续天数（等宽数字） —— */
+    .case-summary {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: var(--sp-3);
+        margin-top: var(--sp-5);
+        padding-top: var(--sp-4);
+        border-top: 1px solid var(--c-border);
+        font-size: 0.875rem;
+        color: var(--c-text-secondary);
+    }
+    .case-summary b { color: var(--c-text); font-weight: 600; }
+    .case-summary .case-days,
+    .case-summary .case-summary-meta b {
+        font-family: var(--font-mono);
+        font-variant-numeric: tabular-nums;
+    }
+    .case-summary .case-days { color: var(--c-primary-active); }
+
+    /* —— 案件进程·推进操作面板：左侧主色竖条标出操作区，与信息区拉开层次 —— */
+    .case-advance {
+        display: grid;
+        grid-template-columns: auto auto;
+        align-items: end;
+        gap: var(--sp-3) var(--sp-4);
+        margin-top: var(--sp-5);
+        padding: var(--sp-4) var(--sp-5);
+        background: var(--c-surface);
+        border: 1px solid var(--c-border);
+        border-left: 3px solid var(--c-primary);
+        border-radius: var(--r-md);
+    }
+    .case-advance-field { display: flex; flex-direction: column; gap: 6px; }
+    .case-advance-field label {
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: var(--c-text-secondary);
+    }
+    .case-advance-field .form-select { width: 180px; }
+    .case-advance .btn-primary { padding: 0.45rem 1.25rem; }
+    .case-advance-hint {
+        grid-column: 1 / -1;
+        margin: 0;
+        font-size: 0.75rem;
+        color: var(--c-text-tertiary);
+    }
+    @media (max-width: 640px) {
+        .case-advance { grid-template-columns: 1fr; }
+        .case-advance-field .form-select { width: 100%; }
+        .case-advance .btn-primary { justify-self: start; }
+    }
+</style>
 {% endblock %}

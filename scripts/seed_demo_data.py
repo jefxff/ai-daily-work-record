@@ -299,8 +299,31 @@ def seed_complaint():
     lawyers = ["金诚律师事务所 王律师", "正衡律师事务所 李律师", "德恒律师事务所 赵律师"]
     progresses = ["立案", "审理中", "判决", "执行", "结案"]
     created = 0
+    # 五态间隔（天）：立案→审理中→判决→执行→结案
+    gaps = [40, 55, 38, 25]
     for i in range(COUNT):
         progress = progresses[i % len(progresses)]
+        # 五态关键日期：按进度回填「已到达状态」的日期（与推进 action 同口径）。
+        # 必须从今天往回推——当前状态 8~33 天前进入、更早状态依次再往前，
+        # 否则后续状态的日期会落到未来，详情页「已持续 N 天」会出现负数。
+        idx = i % len(progresses)
+        state_dates = {}
+        cur = TODAY - timedelta(days=8 + (i % 6) * 5)
+        state_dates[idx] = cur
+        for j in range(idx - 1, -1, -1):
+            cur -= timedelta(days=gaps[j] + (i % 4) * 3)
+            state_dates[j] = cur
+        dates = {}
+        if 0 in state_dates:
+            dates["filed_at"] = state_dates[0]
+        if 1 in state_dates:
+            dates["hearing_at"] = state_dates[1]
+        if 2 in state_dates:
+            dates["judgment_at"] = state_dates[2]
+        if 3 in state_dates:
+            dates["execution_at"] = state_dates[3]
+        if 4 in state_dates:
+            dates["closed_at"] = state_dates[4]
         Complaint.objects.create(
             dispute_type=types[i % len(types)],
             defendant=f"{TAG}被告方 {i + 1:02d}",
@@ -311,6 +334,7 @@ def seed_complaint():
             progress=progress,
             detailed_progress=f"第 {i + 1} 案已进入{progress}阶段，材料齐全。",
             remarks="",
+            **dates,
         )
         created += 1
     return created
