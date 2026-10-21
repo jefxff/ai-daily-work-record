@@ -23,7 +23,7 @@
             </div>
             <div class="overview-stats">
                 <div class="stat-item">
-                    <div class="stat-value">8</div>
+                    <div class="stat-value">{{ module_count }}</div>
                     <div class="stat-label">业务模块</div>
                 </div>
                 <div class="stat-item">
@@ -125,7 +125,7 @@
                         <thead>
                             <tr>
                                 <th scope="col">项目名称</th>
-                                <th scope="col">状态</th>
+                                <th scope="col">开工日期</th>
                                 <th scope="col">金额</th>
                             </tr>
                         </thead>
@@ -133,7 +133,7 @@
                             {% for decoration in decorations|slice:':5' %}
                             <tr>
                                 <td data-label="项目名称">{{ decoration.project_name }}</td>
-                                <td data-label="状态">{% if decoration.final_price %}已完成{% else %}进行中{% endif %}</td>
+                                <td data-label="开工日期">{{ decoration.start_date|date:'Y-m-d' }}</td>
                                 <td data-label="金额">¥{{ decoration.original_price|default:0|stringformat:"d" }}</td>
                             </tr>
                             {% empty %}
@@ -237,16 +237,16 @@
                         <thead>
                             <tr>
                                 <th scope="col">客户名称</th>
-                                <th scope="col">类型</th>
-                                <th scope="col">状态</th>
+                                <th scope="col">客诉状态</th>
+                                <th scope="col">跟进情况</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for complaint in customer_complaints|slice:':5' %}
                             <tr>
                                 <td data-label="客户名称">{{ complaint.customer_name }}</td>
-                                <td data-label="类型">{{ complaint.complaint_status }}</td>
-                                <td data-label="状态">{{ complaint.follow_up_status }}</td>
+                                <td data-label="客诉状态">{{ complaint.complaint_status }}</td>
+                                <td data-label="跟进情况">{{ complaint.follow_up_status|default:''|truncatechars:20 }}</td>
                             </tr>
                             {% empty %}
                             <tr>

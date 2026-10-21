@@ -978,7 +978,15 @@ def dashboard(request):
         total_decorations + total_customers + complaint_total_count + lawsuit_total_count
         + total_regulations + price_total_count + insurance_total_count + daily_total_count
     )
-    total_records = stats_svc.total_records(set(visible_modules(request.user)), _records_total)
+    _visible = set(visible_modules(request.user))
+    total_records = stats_svc.total_records(_visible, _records_total)
+
+    # 看板 8 个模块卡中当前用户可见的数量（原为模板硬编码 8，新增模块/按权限过滤不计）
+    _DASHBOARD_MODULE_KEYS = (
+        'decoration', 'customer_credit', 'customer_complaint', 'complaint',
+        'regulation', 'price_evaluation', 'insurance', 'daily_record',
+    )
+    module_count = sum(1 for k in _DASHBOARD_MODULE_KEYS if k in _visible)
     
     # 计算完成率（基于实际数据，等价于原 exists()+count() 逻辑）
     total_processed = daily_stats['completed'] + complaint_stats['completed']
@@ -1052,6 +1060,7 @@ def dashboard(request):
 
     context = {
         'total_records': total_records,
+        'module_count': module_count,
         'completion_rate': completion_rate,
         'pending_count': pending_count,
         'pending_items': pending_items,  # 返回所有待处理事项
