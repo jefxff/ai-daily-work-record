@@ -1,0 +1,29 @@
+{% comment %}
+知识库列表页右栏「分类筛选」树形节点（递归）。
+
+数据形状（views.document_list）：
+    [{'cat': KnowledgeCategory(带 doc_count 注释), 'children': [同形]}, ...]
+open_ids：选中分类的祖先链，默认展开；其余折叠。
+计数口径与列表一致（只算当前用户可见的已发布文档），私有文档不外泄。
+{% endcomment %}
+{% for node in nodes %}
+<div class="kb-cat-node">
+    <div class="kb-cat-row">
+        {% if node.children %}
+        <button type="button" class="kb-cat-caret{% if node.cat.pk in open_ids %} is-open{% endif %}" aria-label="展开或折叠子分类" aria-expanded="{% if node.cat.pk in open_ids %}true{% else %}false{% endif %}">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+        {% else %}
+        <span class="kb-cat-caret kb-cat-caret-spacer" aria-hidden="true"></span>
+        {% endif %}
+        <a href="{% url 'knowledge_base:document_list' %}?category={{ node.cat.pk }}" class="kb-side-list-item kb-cat-link{% if selected_category == node.cat.pk|stringformat:'i' %} active{% endif %}">
+            <span>{{ node.cat.name }}</span><span class="kb-side-list-count">{{ node.cat.doc_count }}</span>
+        </a>
+    </div>
+    {% if node.children %}
+    <div class="kb-cat-children"{% if node.cat.pk not in open_ids %} hidden{% endif %}>
+        {% include 'knowledge_base/_category_tree_node.html' with nodes=node.children %}
+    </div>
+    {% endif %}
+</div>
+{% endfor %}

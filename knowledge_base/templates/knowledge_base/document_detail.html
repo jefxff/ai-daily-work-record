@@ -2,28 +2,87 @@
 {% load accounts_tags %}
 
 {% block knowledge_content %}
-<div class="card mb-4">
-    <div class="card-body">
-        <div class="d-flex justify-content-between align-items-start mb-4">
-            <div>
-                <h1 class="card-title">{{ document.title }}</h1>
-                <div class="d-flex gap-2 mt-2 align-items-center">
-                    {% if document.category %}
-                    <span class="badge badge-secondary">{{ document.category.name }}</span>
-                    {% endif %}
-                    {% for tag in document.tag_list %}
-                    <span class="badge badge-info">{{ tag }}</span>
-                    {% endfor %}
-                    <span class="status-badge {% if document.visibility == 'private' %}warning{% else %}info{% endif %}" id="kbVisBadge"
-                          title="{% if document.visibility == 'private' %}只有你能看到这篇文档{% else %}所有有知识库权限的同事都能看到这篇文档{% endif %}">
-                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="width:12px;height:12px;vertical-align:-1px;">{% if document.visibility == 'private' %}<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>{% else %}<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>{% endif %}</svg>
-                        <span id="kbVisBadgeText">{{ visibility_label }}</span>
+{% comment %}
+详情页「书房化」三栏：左文件夹树 / 中阅读区（阅读·大纲·导图）。
+样式全部走 tokens.css 令牌；本页自带 extra_css 覆盖基座模板同名块，
+.markdown-content 排版在此页内完整定义（基座里那份不会继承过来）。
+{% endcomment %}
+<div class="kb-reader">
+    <!-- ═══ 左栏：文件夹树 ═══ -->
+    <aside class="kb-folder" aria-label="知识库目录">
+        <div class="kb-folder-head">
+            <span class="kb-folder-title">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                知识库
+            </span>
+            <a href="{% url 'knowledge_base:document_list' %}" class="kb-folder-all">全部文档</a>
+        </div>
+        <nav class="kb-folder-tree" aria-label="分类与文档">
+            <a href="{% url 'knowledge_base:document_list' %}" class="kb-folder-name kb-folder-root-link">
+                <svg class="icon kb-folder-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                <span class="kb-folder-label">全部文档</span>
+            </a>
+            {% include 'knowledge_base/_folder_node.html' with nodes=category_tree.roots current_doc=document %}
+            {% if category_tree.uncategorized %}
+            <div class="kb-folder-group">
+                <div class="kb-folder-row">
+                    <span class="kb-folder-caret kb-folder-caret-spacer" aria-hidden="true"></span>
+                    <span class="kb-folder-name kb-folder-name-static">
+                        <svg class="icon kb-folder-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                        <span class="kb-folder-label">未分类</span>
+                        <span class="kb-folder-count">{{ category_tree.uncategorized|length }}</span>
                     </span>
                 </div>
+                <ul class="kb-folder-docs">
+                    {% for doc in category_tree.uncategorized %}
+                    <li>
+                        <a href="{% url 'knowledge_base:document_detail' doc.pk %}" class="kb-folder-doc{% if doc.pk == document.pk %} is-current{% endif %}"{% if doc.pk == document.pk %} aria-current="page"{% endif %}>
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                            <span class="kb-folder-doc-title">{{ doc.title }}</span>
+                            {% if doc.visibility == 'private' %}<span class="kb-folder-doc-lock" title="仅自己可见">
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            </span>{% endif %}
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
             </div>
-            <div class="btn-group">
+            {% endif %}
+        </nav>
+    </aside>
+
+    <!-- ═══ 中栏：阅读区 ═══ -->
+    <div class="kb-reader-main">
+        <!-- 面包屑：分类路径 -->
+        <nav class="kb-crumb" aria-label="当前位置">
+            <a href="{% url 'knowledge_base:document_list' %}">知识库</a>
+            {% for cat in category_path %}
+            <span class="kb-crumb-sep" aria-hidden="true">/</span>
+            <a href="{% url 'knowledge_base:document_list' %}?category={{ cat.pk }}">{{ cat.name }}</a>
+            {% endfor %}
+        </nav>
+
+        <!-- 文档头 -->
+        <header class="kb-doc-head">
+            <h1 class="kb-doc-title-serif">{{ document.title }}</h1>
+            <div class="kb-doc-meta">
+                {% if document.category %}<span class="kb-chip kb-chip-cat">{{ document.category.name }}</span>{% endif %}
+                {% for tag in document.tag_list %}<span class="kb-chip">{{ tag }}</span>{% endfor %}
+                <span class="status-badge {% if document.visibility == 'private' %}warning{% else %}info{% endif %}" id="kbVisBadge"
+                      title="{% if document.visibility == 'private' %}只有你能看到这篇文档{% else %}所有有知识库权限的同事都能看到这篇文档{% endif %}">
+                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="width:12px;height:12px;vertical-align:-1px;">{% if document.visibility == 'private' %}<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>{% else %}<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>{% endif %}</svg>
+                    <span id="kbVisBadgeText">{{ visibility_label }}</span>
+                </span>
+                <span class="kb-doc-meta-text">创建 {{ document.created_at|date:"Y-m-d" }} · 更新 {{ document.updated_at|date:"Y-m-d H:i" }}</span>
+                <span class="kb-doc-meta-text"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> {{ document.view_count }} 次浏览</span>
+            </div>
+            <div class="kb-doc-actions">
+                <a href="{% url 'knowledge_base:document_list' %}" class="btn-transparent">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="15 18 9 12 15 6"/></svg>
+                    返回列表
+                </a>
                 {% if can_manage_vis %}
-                <button type="button" class="btn btn-secondary" id="kbVisToggle"
+                <button type="button" class="btn-transparent" id="kbVisToggle"
                         data-url="{% url 'knowledge_base:document_visibility' document.pk %}"
                         data-current="{{ document.visibility }}"
                         aria-live="polite">
@@ -32,35 +91,31 @@
                 </button>
                 {% endif %}
                 {% if can_edit_doc %}
-                <a href="{% url 'knowledge_base:outline_editor' document.pk %}" class="btn btn-secondary">
-                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg> 编辑大纲
+                <a href="{% url 'knowledge_base:outline_editor' document.pk %}" class="btn-transparent">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                    编辑大纲
                 </a>
                 {% endif %}
                 {% can "knowledge" "update" %}
-                <a href="{% url 'knowledge_base:document_edit' document.pk %}" class="btn btn-primary" data-modal-edit data-modal-title="编辑文档">
-                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> 编辑
+                <a href="{% url 'knowledge_base:document_edit' document.pk %}" class="btn-primary" data-modal-edit data-modal-title="编辑文档">
+                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    编辑
                 </a>
                 {% endcan %}
                 {% can "knowledge" "delete" %}
-                <a href="{% url 'knowledge_base:document_delete' document.pk %}" class="btn btn-danger">
-                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg> 删除
+                <a href="{% url 'knowledge_base:document_delete' document.pk %}" class="btn-transparent btn-delete">
+                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                    删除
                 </a>
                 {% endcan %}
             </div>
-        </div>
-        
-        <div class="text-muted small mb-4">
-            创建时间：{{ document.created_at|date:"Y-m-d H:i" }} | 
-            更新时间：{{ document.updated_at|date:"Y-m-d H:i" }} | 
-            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> {{ document.view_count }} 次浏览
-        </div>
-        
+        </header>
+
         {% if document.summary %}
-        <div class="alert alert-info mb-4">
-            <strong>摘要：</strong>{{ document.summary }}
-        </div>
+        <p class="kb-doc-summary"><span class="kb-doc-summary-label">摘要</span>{{ document.summary }}</p>
         {% endif %}
 
+        <!-- 视图切换（分段控件） -->
         <div class="kb-view-switch" role="tablist" aria-label="文档视图切换">
             <button type="button" class="kb-view-tab is-active" data-view="read" role="tab" aria-selected="true" aria-controls="kbReadView">
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
@@ -76,16 +131,31 @@
             </button>
         </div>
 
-        <div class="content markdown-content" id="kbReadView" role="tabpanel">
-            {{ document.content_html|safe }}
+        <div class="kb-reader-body">
+            <div class="content markdown-content" id="kbReadView" role="tabpanel">
+                {{ document.content_html|safe }}
+            </div>
+            <div id="kbOutlineView" class="kb-outline" role="tabpanel" hidden></div>
+            <div class="kb-mindmap-stage" id="kbMindmapView" role="tabpanel" hidden>
+                <div class="kb-mm-toolbar">
+                    <span class="kb-mm-toolbar-title">思维导图</span>
+                    <span class="kb-mm-toolbar-spacer"></span>
+                    <button type="button" class="kb-mm-tool" data-mm-action="expand" title="展开全部">展开</button>
+                    <button type="button" class="kb-mm-tool" data-mm-action="collapse" title="折叠全部">折叠</button>
+                    <span class="kb-mm-zoom-group">
+                        <button type="button" class="kb-mm-tool kb-mm-zoom-btn" data-mm-action="zoom-out" title="缩小" aria-label="缩小">−</button>
+                        <span class="kb-mm-zoom-value" id="kbMmZoom">100%</span>
+                        <button type="button" class="kb-mm-tool kb-mm-zoom-btn" data-mm-action="zoom-in" title="放大" aria-label="放大">＋</button>
+                    </span>
+                </div>
+                <div class="kb-mindmap" id="kbMindmapCanvas"></div>
+            </div>
         </div>
-        <div id="kbOutlineView" class="kb-outline" role="tabpanel" hidden></div>
-        <div id="kbMindmapView" class="kb-mindmap" role="tabpanel" hidden></div>
     </div>
 </div>
 
 {% if related_docs %}
-<div class="card">
+<div class="card kb-related">
     <div class="card-header">
         <h5 class="mb-0">相关文档</h5>
     </div>
@@ -102,154 +172,721 @@
 
 {% block extra_css %}
 <style>
-    /* —— 幕布化 P1：只读大纲 / 导图视图（页面级样式，全部使用设计令牌） —— */
-    .kb-view-switch {
-        display: flex;
-        gap: 0.5rem;
-        margin-bottom: 1rem;
-        flex-wrap: wrap;
-    }
-    .kb-view-tab {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.375rem;
-        padding: 0.375rem 0.875rem;
-        border: 1px solid var(--c-border);
-        border-radius: 6px;
-        background: var(--c-surface);
-        color: var(--c-text-secondary);
-        font-size: 0.875rem;
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-    .kb-view-tab .icon { width: 14px; height: 14px; }
-    .kb-view-tab:hover { color: var(--c-text); border-color: var(--c-primary); }
-    .kb-view-tab.is-active {
-        background: var(--c-primary);
-        border-color: var(--c-primary);
-        color: var(--c-surface);
-    }
+/* ═══════════════════════════════════════════════════════════════
+   知识库详情页 ·「书房」阅读体验
+   定调：杂志编辑 × 书房气质——衬线展示字（--font-display）做标题层级，
+   无衬线做正文；三栏结构（文件夹树 / 阅读区 / 上下文）；
+   一次编排的入场动效，prefers-reduced-motion 全量降级。
+   全部颜色/间距/时长走 tokens.css 令牌，零字面值。
+   ═══════════════════════════════════════════════════════════════ */
 
-    /* 只读大纲 */
-    .kb-outline { font-size: 0.9rem; }
-    .kb-outline ul {
-        list-style: none;
-        margin: 0;
-        padding-left: 1.25rem;
-    }
-    .kb-outline > ul { padding-left: 0; }
-    .kb-outline li { margin: 0.125rem 0; }
-    .kb-outline-row {
-        display: flex;
-        align-items: flex-start;
-        gap: 0.375rem;
-        padding: 0.125rem 0.25rem;
-        border-radius: 4px;
-        color: var(--c-text);
-    }
-    .kb-outline-row:hover { background: var(--c-surface-sunken); }
-    .kb-caret {
-        flex: none;
-        width: 1.25rem;
-        height: 1.25rem;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border: none;
-        background: none;
-        color: var(--c-text-secondary);
-        cursor: pointer;
-        border-radius: 4px;
-        padding: 0;
-    }
-    .kb-caret:hover { background: var(--c-border); color: var(--c-text); }
-    .kb-caret .icon { width: 12px; height: 12px; transition: transform 0.15s ease; }
-    .kb-caret.is-open .icon { transform: rotate(90deg); }
-    .kb-caret-spacer { flex: none; width: 1.25rem; }
-    .kb-node-type {
-        flex: none;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 1.25rem;
-        height: 1.25rem;
-        color: var(--c-text-secondary);
-    }
-    .kb-node-type .icon { width: 13px; height: 13px; }
-    .kb-outline-text { min-width: 0; word-break: break-word; }
-    .kb-outline li.is-heading > .kb-outline-row { font-weight: 600; }
-    .kb-outline li.is-heading > .kb-outline-row .kb-outline-text { font-size: 1rem; }
-    .kb-outline li.is-done > .kb-outline-row .kb-outline-text {
-        color: var(--c-text-secondary);
-        text-decoration: line-through;
-    }
-    .kb-outline .kb-node-quote .kb-outline-text {
-        border-left: 3px solid var(--c-border);
-        padding-left: 0.5rem;
-        color: var(--c-text-secondary);
-    }
-    .kb-outline .kb-node-code .kb-outline-text {
-        font-family: var(--font-mono, monospace);
-        background: var(--c-surface-sunken);
-        border: 1px solid var(--c-border);
-        border-radius: 4px;
-        padding: 0 0.375rem;
-        font-size: 0.85em;
-    }
+/* ── 三栏布局 ── */
+.kb-reader {
+    display: grid;
+    grid-template-columns: 248px minmax(0, 1fr);
+    gap: var(--sp-7);
+    align-items: start;
+}
+.kb-reader-main { min-width: 0; }
 
-    /* 导图：横向滚动容器，SVG 尺寸由 JS 按内容计算 */
-    .kb-mindmap {
-        overflow: auto;
-        border: 1px solid var(--c-border);
-        border-radius: 8px;
-        background: var(--c-surface-sunken);
-        padding: 1rem;
-        max-height: 70vh;
-    }
-    .kb-mindmap svg { display: block; }
-    .kb-mindmap .kb-mm-box {
-        fill: var(--c-surface);
-        stroke: var(--c-border);
-        stroke-width: 1;
-        rx: 6;
-        cursor: pointer;
-    }
-    .kb-mindmap .kb-mm-box.is-root { stroke: var(--c-primary); stroke-width: 1.5; }
-    .kb-mindmap .kb-mm-text {
-        fill: var(--c-text);
-        font-size: 12px;
-        pointer-events: none;
-    }
-    .kb-mindmap .kb-mm-text.is-muted {
-        fill: var(--c-text-secondary);
-        text-decoration: line-through;
-    }
-    .kb-mindmap .kb-mm-edge {
-        fill: none;
-        stroke: var(--c-border);
-        stroke-width: 1.5;
-    }
-    .kb-mindmap .kb-mm-collapse {
-        fill: var(--c-surface);
-        stroke: var(--c-border);
-        cursor: pointer;
-    }
-    .kb-mindmap .kb-mm-collapse-text {
-        fill: var(--c-text-secondary);
-        font-size: 10px;
-        pointer-events: none;
-    }
-    .kb-mm-empty { color: var(--c-text-secondary); padding: 2rem 0; text-align: center; }
+/* ── 左栏：文件夹树 ── */
+.kb-folder {
+    position: sticky;
+    top: calc(var(--top-nav-h, 72px) + var(--sp-4));
+    max-height: calc(100vh - var(--top-nav-h, 72px) - var(--sp-8));
+    overflow-y: auto;
+    padding: var(--sp-4) var(--sp-2) var(--sp-4) 0;
+    border-right: 1px solid var(--c-border);
+    scrollbar-width: thin;
+}
+.kb-folder-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 0 var(--sp-2) var(--sp-3);
+    margin-bottom: var(--sp-2);
+    border-bottom: 1px solid var(--c-border);
+}
+.kb-folder-title {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: var(--c-text);
+}
+.kb-folder-title .icon { width: 16px; height: 16px; color: var(--c-primary); }
+.kb-folder-all {
+    font-size: 0.78rem;
+    color: var(--c-text-secondary);
+    text-decoration: none;
+    transition: color var(--dur-fast) var(--ease-out);
+}
+.kb-folder-all:hover { color: var(--c-primary); text-decoration: none; }
 
-    @media (max-width: 640px) {
-        .kb-mindmap { padding: 0.5rem; max-height: 60vh; }
-        .kb-outline ul { padding-left: 0.875rem; }
+.kb-folder-tree { display: flex; flex-direction: column; gap: 2px; padding-right: var(--sp-1); }
+.kb-folder-group { display: flex; flex-direction: column; }
+.kb-folder-row { display: flex; align-items: center; gap: 2px; }
+.kb-folder-caret {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 26px;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--c-text-tertiary);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: transform var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.kb-folder-caret:hover { color: var(--c-primary); }
+.kb-folder-caret.is-open { transform: rotate(90deg); }
+.kb-folder-caret .icon { width: 12px; height: 12px; }
+.kb-folder-caret-spacer { cursor: default; }
+.kb-folder-name {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: 5px var(--sp-2);
+    border-radius: 6px;
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--c-text);
+    text-decoration: none;
+    transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.kb-folder-name:hover { background: var(--c-surface-sunken); color: var(--c-primary); text-decoration: none; }
+.kb-folder-name-static { cursor: default; }
+.kb-folder-name-static:hover { background: none; color: var(--c-text); }
+.kb-folder-icon { width: 15px; height: 15px; flex: none; color: var(--c-text-tertiary); }
+.kb-folder-name:hover .kb-folder-icon { color: var(--c-primary); }
+.kb-folder-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kb-folder-count {
+    flex: none;
+    font-size: 0.72rem;
+    color: var(--c-text-tertiary);
+    font-variant-numeric: tabular-nums;
+    background: var(--c-surface-sunken);
+    border-radius: 8px;
+    padding: 0 6px;
+    line-height: 16px;
+}
+.kb-folder-children {
+    margin-left: 11px;
+    padding-left: var(--sp-2);
+    border-left: 1px solid var(--c-border);
+}
+.kb-folder-children[hidden] { display: none; }
+
+/* 文件夹下的文档 */
+.kb-folder-docs { list-style: none; margin: 2px 0 4px; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+.kb-folder-doc {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: 4px var(--sp-2) 4px var(--sp-5);
+    border-radius: 6px;
+    font-size: 0.82rem;
+    color: var(--c-text-secondary);
+    text-decoration: none;
+    transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.kb-folder-doc .icon { width: 13px; height: 13px; flex: none; opacity: 0.75; }
+.kb-folder-doc:hover { background: var(--c-surface-sunken); color: var(--c-primary); text-decoration: none; }
+.kb-folder-doc.is-current {
+    background: var(--c-primary-subtle);
+    color: var(--c-primary);
+    font-weight: 600;
+}
+.kb-folder-doc-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kb-folder-doc-lock { flex: none; display: inline-flex; }
+.kb-folder-doc-lock .icon { width: 11px; height: 11px; color: var(--c-warning); opacity: 1; }
+.kb-folder-empty { font-size: 0.78rem; color: var(--c-text-tertiary); padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-6); }
+
+/* ── 面包屑 ── */
+.kb-crumb {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+    font-size: 0.8rem;
+    color: var(--c-text-tertiary);
+    margin-bottom: var(--sp-3);
+}
+.kb-crumb a { color: var(--c-text-secondary); text-decoration: none; }
+.kb-crumb a:hover { color: var(--c-primary); text-decoration: none; }
+.kb-crumb-sep { color: var(--c-border-strong); }
+
+/* ── 文档头 ── */
+.kb-doc-head { margin-bottom: var(--sp-5); }
+.kb-doc-title-serif {
+    font-family: var(--font-display);
+    font-size: 1.9rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.3;
+    color: var(--c-text);
+    margin: 0 0 var(--sp-3);
+}
+.kb-doc-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+    font-size: 0.8rem;
+    color: var(--c-text-tertiary);
+}
+.kb-doc-meta-text { display: inline-flex; align-items: center; gap: 4px; }
+.kb-doc-meta-text .icon { width: 13px; height: 13px; }
+.kb-chip {
+    background: var(--c-surface-sunken);
+    color: var(--c-text-secondary);
+    border-radius: 4px;
+    padding: 1px 8px;
+    font-size: 0.72rem;
+}
+.kb-chip-cat { background: var(--c-primary-subtle); color: var(--c-primary); }
+
+/* 按钮组：与全站详情页同规格（btn-transparent / btn-primary / btn-delete） */
+.kb-doc-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+    margin-top: var(--sp-4);
+    padding-top: var(--sp-4);
+    border-top: 1px solid var(--c-border);
+}
+.kb-doc-actions .icon { width: 14px; height: 14px; }
+
+/* 摘要 */
+.kb-doc-summary {
+    position: relative;
+    margin: 0 0 var(--sp-5);
+    padding: var(--sp-3) var(--sp-4) var(--sp-3) calc(var(--sp-4) + 3px);
+    background: var(--c-primary-subtle);
+    border-left: 3px solid var(--c-primary);
+    border-radius: 0 8px 8px 0;
+    font-size: 0.9rem;
+    line-height: 1.7;
+    color: var(--c-text);
+}
+.kb-doc-summary-label {
+    display: inline-block;
+    margin-right: var(--sp-2);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--c-primary);
+    vertical-align: 1px;
+}
+
+/* ── 视图切换：分段控件 ── */
+.kb-view-switch {
+    display: inline-flex;
+    gap: 2px;
+    padding: 3px;
+    background: var(--c-surface-sunken);
+    border: 1px solid var(--c-border);
+    border-radius: 9px;
+    margin-bottom: var(--sp-5);
+}
+.kb-view-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: 6px var(--sp-4);
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--c-text-secondary);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+.kb-view-tab .icon { width: 14px; height: 14px; }
+.kb-view-tab:hover { color: var(--c-text); }
+.kb-view-tab.is-active {
+    background: var(--c-surface);
+    color: var(--c-primary);
+    font-weight: 600;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.10);
+}
+.kb-view-tab:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 1px; }
+
+/* ═════�══ Markdown 阅读排版（问题 1 核心）═════════════════════
+   杂志编辑手法：衬线标题 + 主色细节 + 精确的行长与行高。
+   （基座模板的同名规则不会继承到本页——本页自带 extra_css 块。） */
+.markdown-content {
+    font-size: 15px;
+    line-height: 1.78;
+    color: var(--c-text);
+    word-wrap: break-word;
+}
+.markdown-content > :first-child { margin-top: 0; }
+.markdown-content > :last-child { margin-bottom: 0; }
+
+/* 标题层级：衬线 + 主色记号，一眼分清层级 */
+.markdown-content h1 {
+    font-family: var(--font-display);
+    font-size: 1.72rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.35;
+    margin: var(--sp-8) 0 var(--sp-5);
+    padding-bottom: var(--sp-3);
+    border-bottom: 1px solid var(--c-border);
+    position: relative;
+}
+.markdown-content h1::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -1px;
+    width: 54px;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--c-primary);
+}
+.markdown-content h2 {
+    font-family: var(--font-display);
+    font-size: 1.32rem;
+    font-weight: 700;
+    line-height: 1.4;
+    margin: var(--sp-7) 0 var(--sp-4);
+    padding-left: var(--sp-3);
+    border-left: 4px solid var(--c-primary);
+}
+.markdown-content h3 {
+    font-size: 1.12rem;
+    font-weight: 600;
+    margin: var(--sp-6) 0 var(--sp-3);
+}
+.markdown-content h3::before {
+    content: "▍";
+    margin-right: var(--sp-2);
+    color: var(--c-primary);
+    font-size: 0.8em;
+    vertical-align: 1px;
+}
+.markdown-content h4, .markdown-content h5, .markdown-content h6 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: var(--sp-5) 0 var(--sp-2);
+    color: var(--c-text-secondary);
+}
+
+/* 段落 */
+.markdown-content p { margin: 0 0 var(--sp-4); }
+
+/* 列表：自定义 marker（主色圆点 / 主色序号） */
+.markdown-content ul { list-style: none; margin: 0 0 var(--sp-4); padding-left: var(--sp-5); }
+.markdown-content ul > li { position: relative; }
+.markdown-content ul > li::before {
+    content: "";
+    position: absolute;
+    left: calc(-1 * var(--sp-4));
+    top: 0.66em;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--c-primary);
+}
+.markdown-content ol { list-style: none; counter-reset: kb-ol; margin: 0 0 var(--sp-4); padding-left: var(--sp-6); }
+.markdown-content ol > li { position: relative; counter-increment: kb-ol; }
+.markdown-content ol > li::before {
+    content: counter(kb-ol);
+    position: absolute;
+    left: calc(-1 * var(--sp-6));
+    top: 0.18em;
+    width: var(--sp-5);
+    text-align: center;
+    font-size: 0.85em;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--c-primary-active);
+}
+.markdown-content li { margin: 0 0 var(--sp-2); }
+.markdown-content li > ul, .markdown-content li > ol { margin: var(--sp-2) 0 0; }
+
+/* 任务列表（views._render_markdown 把行首 [ ]/[x] 换成了 checkbox） */
+.markdown-content .kb-task-item { list-style: none; margin-left: calc(-1 * var(--sp-4)); }
+.markdown-content .kb-task-item::before { display: none; }
+.markdown-content .kb-task-item input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    margin-right: var(--sp-2);
+    vertical-align: -2px;
+    accent-color: var(--c-primary);
+    cursor: default;
+}
+
+/* 引用 */
+.markdown-content blockquote {
+    margin: var(--sp-5) 0;
+    padding: var(--sp-4) var(--sp-5);
+    background: var(--c-surface-sunken);
+    border-left: 3px solid var(--c-primary);
+    border-radius: 0 10px 10px 0;
+    color: var(--c-text-secondary);
+}
+.markdown-content blockquote p:last-child { margin-bottom: 0; }
+
+/* 行内代码 / 代码块 */
+.markdown-content :not(pre) > code {
+    font-family: var(--font-mono);
+    font-size: 0.88em;
+    background: var(--c-surface-sunken);
+    border: 1px solid var(--c-border);
+    border-radius: 4px;
+    padding: 0.1em 0.4em;
+    color: var(--c-primary-active);
+}
+.markdown-content pre {
+    margin: var(--sp-5) 0;
+    padding: var(--sp-4) var(--sp-5);
+    background: var(--c-surface-sunken);
+    border: 1px solid var(--c-border);
+    border-radius: 10px;
+    overflow-x: auto;
+    line-height: 1.7;
+}
+.markdown-content pre code {
+    font-family: var(--font-mono);
+    font-size: 0.86em;
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--c-text);
+}
+
+/* 表格 */
+.markdown-content .table, .markdown-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: var(--sp-5) 0;
+    font-size: 0.93em;
+}
+.markdown-content th {
+    background: var(--c-surface-sunken);
+    font-weight: 600;
+    white-space: nowrap;
+}
+.markdown-content th, .markdown-content td {
+    border: 1px solid var(--c-border);
+    padding: var(--sp-2) var(--sp-3);
+    text-align: left;
+}
+.markdown-content tbody tr { transition: background var(--dur-fast) var(--ease-out); }
+.markdown-content tbody tr:hover { background: var(--c-primary-subtle); }
+
+/* 链接 / 分割线 / 图片 */
+.markdown-content a {
+    color: var(--c-primary-active);
+    text-decoration: none;
+    border-bottom: 1px solid var(--c-primary-subtle);
+    transition: border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.markdown-content a:hover { color: var(--c-primary); border-bottom-color: var(--c-primary); }
+.markdown-content hr { border: none; height: 1px; background: var(--c-border); margin: var(--sp-8) 0; }
+.markdown-content img { max-width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--c-border); }
+
+/* ════════════ 大纲模式（问题 4·参照参考图：大号笔记） ════════════ */
+.kb-outline { font-size: 15px; line-height: 1.7; }
+.kb-outline ul {
+    list-style: none;
+    margin: 0;
+    padding-left: var(--sp-5);
+    border-left: 1px solid var(--c-border);
+}
+.kb-outline > ul { padding-left: 0; border-left: none; }
+.kb-outline li { margin: 0; }
+.kb-outline-row {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--sp-2);
+    padding: var(--sp-2) var(--sp-2);
+    border-radius: 6px;
+    transition: background var(--dur-fast) var(--ease-out);
+}
+.kb-outline-row:hover { background: var(--c-surface-sunken); }
+/* 标题层级字阶（heading_level 1-3）：杂志式层级差 */
+.kb-outline-row.is-h1 {
+    font-family: var(--font-display);
+    font-size: 1.22rem;
+    font-weight: 700;
+    color: var(--c-text);
+    margin-top: var(--sp-3);
+}
+.kb-outline-row.is-h2 { font-size: 1.05rem; font-weight: 600; }
+.kb-outline-row.is-h3 { font-size: 0.95rem; font-weight: 600; color: var(--c-text-secondary); }
+.kb-caret {
+    flex: none;
+    width: 20px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: none;
+    color: var(--c-text-tertiary);
+    cursor: pointer;
+    border-radius: 4px;
+    padding: 0;
+    transition: transform var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.kb-caret:hover { color: var(--c-primary); }
+.kb-caret.is-open { transform: rotate(90deg); }
+.kb-caret .icon { width: 11px; height: 11px; }
+.kb-caret-spacer { flex: none; width: 20px; height: 22px; }
+.kb-node-type {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 22px;
+    color: var(--c-text-tertiary);
+}
+.kb-node-type .icon { width: 13px; height: 13px; }
+.kb-outline-text { min-width: 0; word-break: break-word; }
+/* #标签 → 徽章（与参考图一致） */
+.kb-tag-chip {
+    display: inline-block;
+    margin: 0 2px;
+    padding: 0 7px;
+    border-radius: 9px;
+    font-size: 0.72em;
+    font-weight: 600;
+    line-height: 17px;
+    vertical-align: 1px;
+    background: var(--c-primary-subtle);
+    color: var(--c-primary);
+    border: 1px solid var(--c-primary-subtle);
+}
+/* 待办 checkbox（大纲态） */
+.kb-outline-todo {
+    flex: none;
+    width: 15px;
+    height: 15px;
+    margin-top: 4px;
+    accent-color: var(--c-primary);
+    cursor: default;
+}
+.kb-outline-row.is-done .kb-outline-text { color: var(--c-text-tertiary); text-decoration: line-through; }
+/* 节点类型微样式 */
+.kb-outline .kb-node-quote .kb-outline-text {
+    border-left: 3px solid var(--c-border-strong);
+    padding-left: var(--sp-3);
+    color: var(--c-text-secondary);
+}
+.kb-outline .kb-node-code .kb-outline-text {
+    font-family: var(--font-mono);
+    font-size: 0.86em;
+    background: var(--c-surface-sunken);
+    border: 1px solid var(--c-border);
+    border-radius: 4px;
+    padding: 0 var(--sp-2);
+}
+.kb-outline .kb-node-divider .kb-outline-text { color: var(--c-text-tertiary); letter-spacing: 0.2em; }
+.kb-outline .kb-node-ref .kb-outline-text { color: var(--c-primary-active); }
+.kb-outline-due {
+    flex: none;
+    font-size: 0.7rem;
+    color: var(--c-text-tertiary);
+    font-variant-numeric: tabular-nums;
+    margin-left: auto;
+    padding-left: var(--sp-3);
+    white-space: nowrap;
+}
+.kb-outline-due.is-overdue { color: var(--c-danger); font-weight: 600; }
+
+/* ════════════ 导图模式（问题 2·参照参考图：思维导图） ════════════ */
+.kb-mindmap-stage {
+    border: 1px solid var(--c-border);
+    border-radius: 12px;
+    background: var(--c-surface);
+    overflow: hidden;
+}
+/* 工具条 */
+.kb-mm-toolbar {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: var(--sp-2) var(--sp-3);
+    border-bottom: 1px solid var(--c-border);
+    background: var(--c-surface-sunken);
+}
+.kb-mm-toolbar-title {
+    font-family: var(--font-display);
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--c-text);
+}
+.kb-mm-toolbar-spacer { flex: 1; }
+.kb-mm-tool {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 34px;
+    height: 28px;
+    padding: 0 var(--sp-2);
+    border: 1px solid var(--c-border-strong);
+    border-radius: 6px;
+    background: var(--c-surface);
+    color: var(--c-text-secondary);
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+}
+.kb-mm-tool:hover { color: var(--c-primary); border-color: var(--c-primary); }
+.kb-mm-tool:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 1px; }
+.kb-mm-zoom-group { display: inline-flex; align-items: center; gap: var(--sp-1); margin-left: var(--sp-2); }
+.kb-mm-zoom-btn { font-size: 0.95rem; line-height: 1; padding: 0; width: 30px; }
+.kb-mm-zoom-value {
+    min-width: 44px;
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--c-text-tertiary);
+    font-variant-numeric: tabular-nums;
+}
+
+/* 画布：氛围层 = 主色微光 + 细点阵（参考图的「纸感」底色） */
+.kb-mindmap {
+    position: relative;
+    min-height: 56vh;
+    max-height: 76vh;
+    overflow: auto;
+    padding: var(--sp-6);
+    background-color: var(--c-surface);
+    background-image:
+        radial-gradient(42rem 26rem at 18% 0%, var(--c-primary-subtle), transparent 62%),
+        radial-gradient(var(--c-border) 1px, transparent 1px);
+    background-size: auto, 18px 18px;
+    scrollbar-width: thin;
+}
+.kb-mindmap svg { display: block; transform-origin: 0 0; }
+.kb-mm-box {
+    fill: var(--c-surface);
+    stroke: var(--c-border-strong);
+    stroke-width: 1;
+    rx: 8;
+    cursor: pointer;
+    transition: stroke var(--dur-fast) var(--ease-out);
+}
+.kb-mm-box:hover { stroke: var(--c-primary); }
+/* 根节点：衬线大胶囊 + 主色描边 + 光环（思维导图的视觉锚点） */
+.kb-mm-box.is-root {
+    fill: var(--c-primary-subtle);
+    stroke: var(--c-primary);
+    stroke-width: 1.5;
+    rx: 12;
+    filter: drop-shadow(0 4px 14px var(--c-primary-ring));
+}
+.kb-mm-box.is-l1 { fill: var(--c-surface); stroke: var(--c-primary); }
+.kb-mm-box.is-todo { stroke: var(--c-warning); }
+.kb-mm-text {
+    fill: var(--c-text);
+    font-size: 13px;
+    pointer-events: none;
+}
+.kb-mm-text.is-root {
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 700;
+    fill: var(--c-primary-active);
+}
+.kb-mm-text.is-l1 { font-weight: 600; }
+.kb-mm-text.is-muted { fill: var(--c-text-tertiary); text-decoration: line-through; }
+.kb-mm-text.is-quote { font-style: italic; fill: var(--c-text-secondary); }
+.kb-mm-edge {
+    fill: none;
+    stroke: var(--c-border-strong);
+    stroke-width: 1.5;
+}
+.kb-mm-edge.is-l1 { stroke: var(--c-primary); stroke-width: 2; opacity: 0.55; }
+.kb-mm-collapse {
+    fill: var(--c-surface);
+    stroke: var(--c-border-strong);
+    cursor: pointer;
+}
+.kb-mm-collapse:hover { stroke: var(--c-primary); }
+.kb-mm-collapse-text {
+    fill: var(--c-text-secondary);
+    font-size: 10px;
+    font-weight: 700;
+    pointer-events: none;
+}
+.kb-mm-empty {
+    color: var(--c-text-secondary);
+    text-align: center;
+    padding: var(--sp-9) 0;
+    font-size: 0.9rem;
+}
+
+/* ── 入场编排：一次排好的序列（文件夹 → 面包屑 → 文档头 → 切换 → 内容） ── */
+@media (prefers-reduced-motion: no-preference) {
+    .kb-folder, .kb-crumb, .kb-doc-head, .kb-doc-summary, .kb-view-switch, .kb-reader-body {
+        animation: kbReaderIn var(--dur-slow) var(--ease-out) both;
     }
+    .kb-crumb { animation-delay: 60ms; }
+    .kb-doc-head { animation-delay: 120ms; }
+    .kb-doc-summary { animation-delay: 180ms; }
+    .kb-view-switch { animation-delay: 240ms; }
+    .kb-reader-body { animation-delay: 300ms; }
+    @keyframes kbReaderIn {
+        from { opacity: 0; transform: translateY(14px); }
+        to { opacity: 1; transform: none; }
+    }
+    /* 导图节点错峰入场（JS 加 .is-in 后生效） */
+    .kb-mindmap .kb-mm-node { opacity: 0; transform: translateX(10px); }
+    .kb-mindmap .kb-mm-node.is-in {
+        opacity: 1;
+        transform: none;
+        transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
+    }
+}
+
+/* ── 响应式：中屏收窄左栏，小屏折叠为顶部横滑条 ── */
+@media (max-width: 1280px) {
+    .kb-reader { grid-template-columns: 216px minmax(0, 1fr); gap: var(--sp-5); }
+    .kb-doc-title-serif { font-size: 1.65rem; }
+}
+@media (max-width: 960px) {
+    .kb-reader { grid-template-columns: minmax(0, 1fr); }
+    .kb-folder {
+        position: static;
+        max-height: none;
+        border-right: none;
+        border-bottom: 1px solid var(--c-border);
+        padding: var(--sp-3) 0;
+        margin-bottom: var(--sp-4);
+    }
+    .kb-folder-tree { max-height: 260px; overflow-y: auto; }
+    .kb-doc-title-serif { font-size: 1.5rem; }
+}
+@media (max-width: 640px) {
+    .kb-mindmap { min-height: 48vh; padding: var(--sp-4); }
+    .kb-view-switch { width: 100%; }
+    .kb-view-tab { flex: 1; justify-content: center; }
+    .kb-doc-actions .btn-transparent, .kb-doc-actions .btn-primary { flex: 1 1 auto; }
+}
 </style>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+/* ═══ 脚本一：文档可见性切换（全员可见 ↔ 仅自己可见）═══
+   保留既有实现：DOM 契约（kbVisBadge/kbVisToggle/kbVisBadgeText/kbVisToggleText）
+   与文案（设为全员可见/收回为仅自己可见）被测试依赖，勿改结构。 */
 (function () {
     var toggle = document.getElementById('kbVisToggle');
     if (!toggle) return;
@@ -258,7 +895,6 @@
     var badgeText = document.getElementById('kbVisBadgeText');
     var toggleText = document.getElementById('kbVisToggleText');
 
-    // 锁图标 / 群组图标（内联 SVG，随状态切换）
     var ICON_LOCK = '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>';
     var ICON_PEOPLE = '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>';
 
@@ -296,7 +932,6 @@
         })
         .then(function (resp) { return resp.json().then(function (data) { return { ok: resp.ok, data: data }; }); })
         .then(function (result) {
-            // 先消费完响应体再更新界面，避免页面跳转时请求被中断
             if (result.ok && result.data.ok) {
                 renderState(result.data.visibility, result.data.visibility_label);
                 if (window.showToast) window.showToast(result.data.message, 'success');
@@ -322,18 +957,23 @@
 </script>
 
 <script>
-/* —— 幕布化 P1：只读大纲 / 导图视图（懒加载一次数据，纯渲染零写入） —— */
+/* ═══ 脚本二：书房阅读器 —— 视图切换 / 只读大纲 / 思维导图 / 文件夹树 ═══
+   大纲与导图共用同一份懒加载树数据（api_doc_tree，GET 只读零写入）。
+   导图用 canvas measureText 精确测宽（中文不再按 13px 估算导致裁切/溢出），
+   右向分层布局 + 贝塞尔连线 + 折叠徽章 + 缩放 + 错峰入场。 */
 (function () {
     var tabs = document.querySelectorAll('.kb-view-tab');
     var readView = document.getElementById('kbReadView');
     var outlineView = document.getElementById('kbOutlineView');
     var mindmapView = document.getElementById('kbMindmapView');
-    if (!tabs.length || !readView || !outlineView || !mindmapView) return;
+    var mmCanvas = document.getElementById('kbMindmapCanvas');
+    if (!tabs.length || !readView || !outlineView || !mindmapView || !mmCanvas) return;
 
     var apiUrl = '{% url 'knowledge_base:api_doc_tree' document.pk %}';
-    var titleEl = document.querySelector('.card-title');
+    var titleEl = document.querySelector('.kb-doc-title-serif');
     var docTitle = titleEl ? titleEl.textContent.trim() : '文档';
     var treePromise = null;
+    var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     function getTree() {
         if (!treePromise) {
@@ -348,36 +988,77 @@
         return treePromise;
     }
 
-    /* —— 只读大纲 —— */
+    /* ── 左栏文件夹树：caret 折叠（服务端直出，静态绑定即可） ── */
+    document.querySelectorAll('.kb-folder-tree .kb-folder-caret:not(.kb-folder-caret-spacer)').forEach(function (caret) {
+        caret.addEventListener('click', function () {
+            var open = caret.classList.toggle('is-open');
+            caret.setAttribute('aria-expanded', open ? 'true' : 'false');
+            var group = caret.closest('.kb-folder-group');
+            var kids = group && group.querySelector(':scope > .kb-folder-children');
+            if (kids) kids.hidden = !open;
+        });
+    });
+
+    /* ═══════════ 只读大纲（参照参考图：大号笔记 + #标签徽章） ═══════════ */
     var CARET = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="9 18 15 12 9 6"/></svg>';
     var STROKE_ATTRS = 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"';
     var TYPE_ICONS = {
-        todo: '<svg class="icon" viewBox="0 0 24 24" ' + STROKE_ATTRS + '><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>',
+        heading: '<svg class="icon" viewBox="0 0 24 24" ' + STROKE_ATTRS + '><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>',
         quote: '<svg class="icon" viewBox="0 0 24 24" ' + STROKE_ATTRS + '><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
         code: '<svg class="icon" viewBox="0 0 24 24" ' + STROKE_ATTRS + '><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
-        heading: '<svg class="icon" viewBox="0 0 24 24" ' + STROKE_ATTRS + '><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>',
-        divider: '<svg class="icon" viewBox="0 0 24 24" ' + STROKE_ATTRS + '><line x1="5" y1="12" x2="19" y2="12"/></svg>'
+        divider: '<svg class="icon" viewBox="0 0 24 24" ' + STROKE_ATTRS + '><line x1="5" y1="12" x2="19" y2="12"/></svg>',
+        ref: '<svg class="icon" viewBox="0 0 24 24" ' + STROKE_ATTRS + '><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>'
     };
+    /* #标签 → 徽章：只认「行首或空白之后」的 #，避免误伤 C# 之类写法 */
+    var TAG_RE = /(^|\s)(#[^\s#]+)/g;
+
+    function appendTextWithTags(el, text) {
+        var s = text || '';
+        var last = 0, m;
+        TAG_RE.lastIndex = 0;
+        while ((m = TAG_RE.exec(s))) {
+            if (m.index + m[1].length > last) {
+                el.appendChild(document.createTextNode(s.slice(last, m.index + m[1].length)));
+            }
+            var chip = document.createElement('span');
+            chip.className = 'kb-tag-chip';
+            chip.textContent = m[2];
+            el.appendChild(chip);
+            last = TAG_RE.lastIndex;
+        }
+        if (last < s.length) el.appendChild(document.createTextNode(s.slice(last)));
+    }
+
+    function isOverdue(due) {
+        if (!due) return false;
+        var d = new Date(due + 'T00:00:00');
+        if (isNaN(d.getTime())) return false;
+        var today = new Date(); today.setHours(0, 0, 0, 0);
+        return d < today;
+    }
 
     function buildOutlineList(nodes) {
         var ul = document.createElement('ul');
         nodes.forEach(function (node) {
             var type = node.type || 'text';
             var li = document.createElement('li');
-            li.className = 'is-' + type + (type === 'todo' && node.done ? ' is-done' : '');
-
             var row = document.createElement('div');
             row.className = 'kb-outline-row kb-node-' + type;
+            var level = parseInt(node.heading_level, 10);
+            if (level >= 1 && level <= 3) row.classList.add('is-h' + level);
+            if (type === 'todo' && node.done) row.classList.add('is-done');
 
             if (node.children && node.children.length) {
                 var caret = document.createElement('button');
                 caret.type = 'button';
-                caret.className = 'kb-caret is-open';
+                caret.className = 'kb-caret' + (node.collapsed ? '' : ' is-open');
                 caret.setAttribute('aria-label', '折叠或展开子节点');
+                caret.setAttribute('aria-expanded', node.collapsed ? 'false' : 'true');
                 caret.innerHTML = CARET;
                 caret.addEventListener('click', function () {
                     var open = caret.classList.toggle('is-open');
-                    var childUl = li.querySelector('ul');
+                    caret.setAttribute('aria-expanded', open ? 'true' : 'false');
+                    var childUl = li.querySelector(':scope > ul');
                     if (childUl) childUl.hidden = !open;
                 });
                 row.appendChild(caret);
@@ -387,7 +1068,15 @@
                 row.appendChild(spacer);
             }
 
-            if (TYPE_ICONS[type]) {
+            if (type === 'todo') {
+                var cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.className = 'kb-outline-todo';
+                cb.checked = !!node.done;
+                cb.disabled = true;   /* 只读视图：不写库 */
+                cb.setAttribute('aria-label', '待办完成状态');
+                row.appendChild(cb);
+            } else if (TYPE_ICONS[type]) {
                 var icon = document.createElement('span');
                 icon.className = 'kb-node-type';
                 icon.innerHTML = TYPE_ICONS[type];
@@ -401,69 +1090,84 @@
                 text.textContent = (node.text || '代码块') + (node.note ? '（' + lines + ' 行）' : '');
             } else if (type === 'divider') {
                 text.textContent = '— — —';
+            } else if (type === 'ref') {
+                text.textContent = node.ref_label || node.text || '';
             } else {
-                text.textContent = node.text || '';
+                appendTextWithTags(text, node.text || '');
             }
             row.appendChild(text);
+
+            if (type === 'todo' && node.due) {
+                var due = document.createElement('span');
+                due.className = 'kb-outline-due' + (isOverdue(node.due) ? ' is-overdue' : '');
+                due.textContent = String(node.due).slice(5);
+                due.title = '到期日 ' + node.due;
+                row.appendChild(due);
+            }
             li.appendChild(row);
 
             if (node.children && node.children.length) {
-                li.appendChild(buildOutlineList(node.children));
+                var childUl = buildOutlineList(node.children);
+                if (node.collapsed) childUl.hidden = true;
+                li.appendChild(childUl);
             }
             ul.appendChild(li);
         });
         return ul;
     }
 
-    /* —— 导图（自研 SVG 布局，方案 03 第七节口径） —— */
+    /* ═══════════ 思维导图（参照参考图：根胶囊 + 主色一级 + 折叠徽章） ═══════════ */
     var NS = 'http://www.w3.org/2000/svg';
-    var MM = { NODE_H: 34, GAP: 10, LEVEL_W: 200, PAD: 10, LIMIT: 182 };  // LIMIT≈26个ASCII宽
+    var MM = {
+        ROOT_H: 42, L1_H: 34, NODE_H: 30, GAP: 8,
+        LEVEL_W: 224, PAD: 14, CLIP: 210
+    };
+    var measureCtx = document.createElement('canvas').getContext('2d');
+    var FONT_NODE = '13px sans-serif';
+    var FONT_ROOT = '700 15px "Noto Serif SC","Songti SC",SimSun,serif';
+    var mmState = { svg: null, w: 0, h: 0, zoom: 1 };
 
-    function textWidth(s) {
-        var w = 0;
-        for (var i = 0; i < s.length; i++) w += s.charCodeAt(i) > 255 ? 13 : 7;
-        return w;
-    }
-    function clip(s) {
-        s = (s || '').replace(/\s+/g, ' ').trim();
-        if (!s) return '（空）';
-        var w = 0, out = '';
-        for (var i = 0; i < s.length; i++) {
-            var cw = s.charCodeAt(i) > 255 ? 13 : 7;
-            if (w + cw > MM.LIMIT) return out + '…';
-            out += s[i]; w += cw;
-        }
-        return out;
+    function measure(s, font) { measureCtx.font = font; return measureCtx.measureText(s).width; }
+
+    function clipText(s, maxW, font) {
+        s = (s || '').replace(/\s+/g, ' ').trim() || '（空）';
+        if (measure(s, font) <= maxW) return s;
+        var out = s;
+        while (out.length > 1 && measure(out + '…', font) > maxW) out = out.slice(0, -1);
+        return out + '…';
     }
 
     function renderMindmap(nodes) {
-        mindmapView.innerHTML = '';
+        mmCanvas.innerHTML = '';
+        mmState.svg = null;
         if (!nodes.length) {
             var empty = document.createElement('div');
             empty.className = 'kb-mm-empty';
-            empty.textContent = '本文档暂无大纲内容';
-            mindmapView.appendChild(empty);
+            empty.textContent = '本文档暂无大纲内容，切换到「阅读」查看全文';
+            mmCanvas.appendChild(empty);
             return;
         }
         var root = { text: docTitle, type: 'root', children: nodes, collapsed: false };
         var cursorY = 0;
-        (function place(node, depth) {
+        (function place(node, depth, parent) {
             node._depth = depth;
-            node._label = clip(node.text);
-            node._w = Math.max(56, textWidth(node._label) + MM.PAD * 2);
-            node._h = MM.NODE_H;
+            node._parent = parent;
+            var font = depth === 0 ? FONT_ROOT : FONT_NODE;
+            node._label = clipText(node.text, MM.CLIP, font);
+            node._w = Math.max(72, measure(node._label, font) + MM.PAD * 2);
+            node._h = depth === 0 ? MM.ROOT_H : (depth === 1 ? MM.L1_H : MM.NODE_H);
             node._kidsVisible = !node.collapsed && node.children && node.children.length > 0;
             if (node._kidsVisible) {
-                node.children.forEach(function (c) { place(c, depth + 1); });
+                node.children.forEach(function (c) { place(c, depth + 1, node); });
                 node._y = (node.children[0]._y + node.children[node.children.length - 1]._y) / 2;
-                node._subH = node.children[node.children.length - 1]._subH;
+                node._subH = Math.max.apply(null, node.children.map(function (c) { return c._subH; }));
             } else {
                 node._y = cursorY + node._h / 2;
                 cursorY += node._h + MM.GAP;
                 node._subH = node._h;
             }
             node._x = depth * MM.LEVEL_W;
-        })(root);
+        })(root, 0, null);
 
         var width = 0, height = 0;
         (function bounds(n) {
@@ -471,66 +1175,133 @@
             height = Math.max(height, n._subH);
             if (n._kidsVisible) n.children.forEach(bounds);
         })(root);
+        width += MM.PAD; height += MM.PAD;
 
         var svg = document.createElementNS(NS, 'svg');
-        svg.setAttribute('width', width + 8);
-        svg.setAttribute('height', height + 8);
+        svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
         svg.setAttribute('role', 'img');
         svg.setAttribute('aria-label', docTitle + ' 思维导图');
+        mmState.svg = svg; mmState.w = width; mmState.h = height;
 
-        function el(name, attrs) {
+        function el(name, attrs, parent) {
             var e = document.createElementNS(NS, name);
             for (var k in attrs) e.setAttribute(k, attrs[k]);
-            svg.appendChild(e);
+            (parent || svg).appendChild(e);
             return e;
         }
 
-        (function draw(node) {
-            var x = node._x, yTop = node._y - node._h / 2;
-            if (node._parent) {
-                var px = node._parent._x + node._parent._w;
+        /* 先画全部连线（压在节点下方），再画节点 */
+        (function drawEdges(node) {
+            if (!node._kidsVisible) return;
+            node.children.forEach(function (c) {
+                var px = node._x + node._w, x = c._x;
+                var bend = Math.max(36, (x - px) * 0.5);
                 el('path', {
-                    'class': 'kb-mm-edge',
-                    d: 'M ' + px + ' ' + node._parent._y +
-                       ' C ' + (px + 40) + ' ' + node._parent._y +
-                       ', ' + (x - 40) + ' ' + node._y + ', ' + x + ' ' + node._y
+                    'class': 'kb-mm-edge' + (c._depth === 1 ? ' is-l1' : ''),
+                    d: 'M ' + px + ' ' + node._y +
+                       ' C ' + (px + bend) + ' ' + node._y +
+                       ', ' + (x - bend) + ' ' + c._y + ', ' + x + ' ' + c._y
                 });
-            }
-            var box = el('rect', {
-                'class': 'kb-mm-box' + (node.type === 'root' ? ' is-root' : ''),
-                x: x, y: yTop, width: node._w, height: node._h, rx: 6
+                drawEdges(c);
             });
-            var tip = el('title');
-            tip.textContent = node.text || '';
-            el('text', {
-                'class': 'kb-mm-text' + (node.type === 'todo' && node.done ? ' is-muted' : ''),
-                x: x + MM.PAD, y: node._y + 4
-            }).textContent = node._label;
+        })(root);
 
+        var groups = [];
+        (function draw(node) {
+            var g = el('g', { 'class': 'kb-mm-node' });
+            groups.push(g);
+            var x = node._x, yTop = node._y - node._h / 2;
+            var boxClass = 'kb-mm-box';
+            if (node._depth === 0) boxClass += ' is-root';
+            else if (node._depth === 1) boxClass += ' is-l1';
+            if (node.type === 'todo') boxClass += ' is-todo';
+            var box = el('rect', {
+                'class': boxClass, x: x, y: yTop,
+                width: node._w, height: node._h, rx: node._depth === 0 ? 12 : 8
+            }, g);
+            var tip = el('title', {}, g);
+            tip.textContent = node.text || '';
+
+            var textClass = 'kb-mm-text';
+            if (node._depth === 0) textClass += ' is-root';
+            else if (node._depth === 1) textClass += ' is-l1';
+            if (node.type === 'todo' && node.done) textClass += ' is-muted';
+            if (node.type === 'quote') textClass += ' is-quote';
+            el('text', {
+                'class': textClass, x: x + MM.PAD, y: node._y + (node._depth === 0 ? 5 : 4)
+            }, g).textContent = node._label;
+
+            /* 折叠徽章：显示被折叠的子节点数，点击仅展开本级 */
             if (node.collapsed && node.children && node.children.length) {
-                var cx = x + node._w + 12, cy = node._y;
-                var badge = el('circle', { 'class': 'kb-mm-collapse', cx: cx, cy: cy, r: 9 });
-                badge.addEventListener('click', function () {
+                var cx = x + node._w + 13, cy = node._y;
+                var badge = el('circle', { 'class': 'kb-mm-collapse', cx: cx, cy: cy, r: 9 }, g);
+                badge.addEventListener('click', function (ev) {
+                    ev.stopPropagation();
                     node.collapsed = false;
                     renderMindmap(nodes);
                 });
-                el('text', { 'class': 'kb-mm-collapse-text', x: cx - 4, y: cy + 3.5 })
+                el('text', { 'class': 'kb-mm-collapse-text', x: cx - 4, y: cy + 3.5 }, g)
                     .textContent = String(node.children.length);
             }
-            box.addEventListener('click', function () {
-                if (node.children && node.children.length) {
+            /* 点击框体：有子节点则折叠/展开（根节点除外） */
+            if (node._depth > 0 && node.children && node.children.length) {
+                box.addEventListener('click', function () {
                     node.collapsed = !node.collapsed;
                     renderMindmap(nodes);
-                }
-            });
+                });
+                box.setAttribute('role', 'button');
+                box.setAttribute('tabindex', '0');
+                box.setAttribute('aria-label', (node.collapsed ? '展开' : '折叠') + '「' + (node.text || '') + '」的子节点');
+                box.addEventListener('keydown', function (ev) {
+                    if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); box.dispatchEvent(new MouseEvent('click')); }
+                });
+            }
 
-            if (node._kidsVisible) node.children.forEach(function (c) { c._parent = node; draw(c); });
+            if (node._kidsVisible) node.children.forEach(draw);
         })(root);
 
-        mindmapView.appendChild(svg);
+        /* 错峰入场：一次编排，reduced-motion 直接到位 */
+        if (reduceMotion) {
+            groups.forEach(function (g) { g.classList.add('is-in'); });
+        } else {
+            groups.forEach(function (g, i) {
+                setTimeout(function () { g.classList.add('is-in'); }, Math.min(i * 40, 640));
+            });
+        }
+        applyZoom();
+        mmCanvas.appendChild(svg);
     }
 
-    /* —— 视图切换 —— */
+    function applyZoom() {
+        var zoomEl = document.getElementById('kbMmZoom');
+        if (zoomEl) zoomEl.textContent = Math.round(mmState.zoom * 100) + '%';
+        if (!mmState.svg) return;
+        mmState.svg.setAttribute('width', mmState.w * mmState.zoom);
+        mmState.svg.setAttribute('height', mmState.h * mmState.zoom);
+    }
+
+    /* 工具条：展开/折叠全部 + 缩放（树未加载时先拉数据再执行） */
+    document.querySelectorAll('[data-mm-action]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var action = btn.dataset.mmAction;
+            if (action === 'zoom-in') { mmState.zoom = Math.min(2, +(mmState.zoom + 0.25).toFixed(2)); applyZoom(); return; }
+            if (action === 'zoom-out') { mmState.zoom = Math.max(0.5, +(mmState.zoom - 0.25).toFixed(2)); applyZoom(); return; }
+            getTree().then(function (tree) {
+                (function walk(nodes) {
+                    nodes.forEach(function (n) {
+                        if (action === 'expand') n.collapsed = false;
+                        if (action === 'collapse' && n.children && n.children.length) n.collapsed = true;
+                        if (n.children) walk(n.children);
+                    });
+                })(tree);
+                renderMindmap(tree);
+            }).catch(function () {
+                if (window.showToast) window.showToast('大纲数据加载失败，请重试', 'error');
+            });
+        });
+    });
+
+    /* ── 视图切换 ── */
     tabs.forEach(function (tab) {
         tab.addEventListener('click', function () {
             var view = tab.dataset.view;

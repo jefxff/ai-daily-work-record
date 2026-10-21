@@ -120,11 +120,13 @@ def purge():
     _del("知识文档", KnowledgeDocument.objects.filter(title__startswith=TAG))
     _del("知识分类", KnowledgeCategory.objects.filter(name__startswith=TAG))
 
-    # 通知
+    # 通知：迁移种子（notifications/0010）生成的通知标题不带 TAG，按接收者清
+    _del("通知(演示接收)", Notification.objects.filter(recipient__username__startswith="demo"))
     _del("通知", Notification.objects.filter(title__startswith=TAG))
 
-    # 演示用户
+    # 通知偏好与演示用户一一对应，先删偏好再删用户（OneToOne 同为 PROTECT）
     demo_users = User.objects.filter(username__startswith="demo")
+    _del("通知偏好", NotificationPreference.objects.filter(user__username__startswith="demo"))
     _del("演示用户", demo_users)
 
     if deleted:
@@ -474,6 +476,20 @@ def seed_knowledge():
         )
         roots.append(obj)
 
+    # 「Django 学习」系列：父子分类演示文件夹系统（同一主题的多篇教程归拢在一棵树下）
+    django_root = KnowledgeCategory.objects.create(
+        name=f"{TAG}Django 学习", description="从入门到部署的系列教程", sort_order=90
+    )
+    django_children = []
+    for j, (cname, cdesc) in enumerate([
+        ("Django 基础", "项目结构、路由与视图"),
+        ("Django 数据模型", "ORM、查询与迁移"),
+        ("Django 部署运维", "生产配置、静态文件与监控"),
+    ]):
+        django_children.append(KnowledgeCategory.objects.create(
+            name=f"{TAG}{cname}", description=cdesc, sort_order=j, parent=django_root
+        ))
+
     titles = [
         ("铜合金挤压工艺参数速查表", 0, "汇总常用牌号的挤压温度、速度与模具间隙。"),
         ("表面处理常见缺陷图谱", 0, "划伤、氧化、色差等缺陷的成因与对策。"),
@@ -512,7 +528,124 @@ def seed_knowledge():
             visibility="public",  # 演示数据等同存量文档口径：公开可见
             view_count=rnd.randint(3, 260),
         )
-    return len(titles)
+
+    # Django 系列教程：内容用标准 Markdown 写（标题/任务列表/引用/代码/表格/标签），
+    # 用于演示详情页的阅读排版、大纲与思维导图三种视图
+    django_docs = [
+        ("Django 教程 01：项目起手式", 0,
+         "创建虚拟环境、安装 Django、跑通第一个项目。",
+         """# 环境准备
+
+- [x] 安装 Python 3.10+ 并确认 `python --version`
+- [x] 创建虚拟环境 `.venv` 并激活
+- [ ] 安装 Django：`pip install django`
+- [ ] 执行 `django-admin startproject config .`
+
+## 目录结构
+
+> `manage.py` 是命令行入口，`config/` 是项目配置包，应用级的业务代码另建 app。
+
+## 常用命令
+
+| 命令 | 作用 |
+| --- | --- |
+| `runserver` | 启动开发服务器 |
+| `makemigrations` | 生成迁移文件 |
+| `migrate` | 应用迁移到数据库 |
+
+#重点 #入门 #环境"""),
+        ("Django 教程 02：URL 与视图", 0,
+         "URLconf 路由分发、函数视图与类视图的写法。",
+         """# 路由基础
+
+1. `urls.py` 用 `path()` 把 URL 模式映射到视图；
+2. 模式中的 `<int:pk>` 是路径转换器，捕获后作为视图参数；
+3. 用 `name=` 给路由命名，模板与代码里一律反解路由名，避免硬编码路径。
+
+## 视图两种写法
+
+- 函数视图（FBV）：简单直接，适合逻辑短的页面；
+- 类视图（CBV）：继承 `ListView` / `DetailView`，适合增删改查成套的场景。
+
+> 约定：详情/编辑/删除走同一组 CBV，列表与创建用 FBV，全项目保持一种味道。
+
+#重点 #路由 #视图"""),
+        ("Django 教程 03：模型与迁移", 1,
+         "模型字段、关系与迁移的生命周期管理。",
+         """# 模型即 schema
+
+- 每个模型类对应一张表，字段即列；
+- `ForeignKey` 表达多对一，`ManyToManyField` 表达多对多；
+- 迁移是模型的版本快照：`makemigrations` 生成、`migrate` 应用。
+
+## 变更字段的安全顺序
+
+1. 新字段先给默认值或 `null=True`；
+2. 部署迁移，再部署使用该字段的代码；
+3. 确认无旧代码引用后，再去掉默认值。
+
+> 生产库改字段前先 `sqlmigrate` 看生成的 SQL，大表加索引走 `CONCURRENTLY`。
+
+#重点 #模型 #迁移"""),
+        ("Django 教程 04：查询优化实务", 1,
+         "N+1 问题、select_related 与 only/defer 的取舍。",
+         """# 先测量再优化
+
+- [x] 用 `django-debug-toolbar` 或 `CaptureQueriesContext` 数 SQL 条数
+- [ ] 对列表页外键循环访问上 `select_related`
+- [ ] 对多对多循环访问上 `prefetch_related`
+- [ ] 详情页大字段用 `only()` 收敛 SELECT 列
+
+## 常见误区
+
+> `select_related` 不是越多越好： join 太深比多发几条 SQL 更慢。
+
+#重点 #性能 #ORM"""),
+        ("Django 教程 05：生产部署清单", 2,
+         "DEBUG 关闭、静态文件、日志与备份的落地配置。",
+         """# 上线前检查单
+
+- [x] `DEBUG=False` 且 `ALLOWED_HOSTS` 显式列主机
+- [x] `SECRET_KEY` 从环境变量注入，绝不进仓库
+- [ ] 静态文件用 `collectstatic` + 反向代理提供
+- [ ] 日志按天切割，ERROR 级接告警
+- [ ] 数据库定时冷备并验证可恢复
+
+## 监控三件事
+
+1. 进程存活（systemd restart 策略）；
+2. 磁盘与备份成功率；
+3. 慢查询与 5xx 比例。
+
+#重点 #部署 #运维"""),
+        ("Django 教程 06：常见坑速查", 2,
+         "时区、迁移冲突与模板继承的高频问题。",
+         """# 时区
+
+> `USE_TZ=True` 下入库是 UTC，展示层才转本地时间；直接 `datetime.now()` 会引入 naive 时间，埋下跨时区坑。
+
+# 迁移冲突
+
+两人各自生成了同号迁移时，用 `--merge` 合并，不要手动删对方的迁移文件。
+
+# 模板继承
+
+子模板覆盖父模板的 `block` 是整块替换——样式块被覆盖时，父级对应规则会整体消失。
+
+#重点 #排错 #经验"""),
+    ]
+    for i, (title, child_idx, summary, content) in enumerate(django_docs):
+        KnowledgeDocument.objects.create(
+            title=f"{TAG}{title}",
+            category=django_children[child_idx],
+            content=content,
+            summary=summary,
+            tags="Django,教程",
+            status="published",
+            visibility="public",
+            view_count=rnd.randint(30, 400),
+        )
+    return len(titles) + len(django_docs)
 
 
 def seed_samples():
@@ -681,9 +814,11 @@ def seed_archive(admin):
         "总经理办公会纪要 2026-06", "2026 年 6 月对账单",
     ]
     for i, name in enumerate(names):
-        cab = cabinets[i % 2]
-        layer = i // 2 % 5 + 1
-        cell = i % 10 + 1
+        # 格位分配必须满足 (cabinet, layer, cell) 唯一约束：
+        # 前 10 条进 1 号柜、后 10 条进 2 号柜，层按 1-5 循环、格按每 5 条进一格
+        cab = cabinets[i // 10]
+        layer = i % 5 + 1
+        cell = i // 5 + 1
         # 合同类档案设一个到期日，用于"档案合同临近到期"提醒
         expire = TODAY + timedelta(days=rnd.choice([-30, 15, 25, 200, 400]))
         Archive.objects.create(

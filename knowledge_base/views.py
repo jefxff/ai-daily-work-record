@@ -1,4 +1,5 @@
 import json
+import re
 import uuid
 from datetime import date, timedelta
 
@@ -24,6 +25,14 @@ from . import outline as kb_outline
 
 def _is_ajax(request):
     return request.headers.get('x-requested-with') == 'XMLHttpRequest'
+
+
+def _int_or_none(value):
+    """GET 参数 → int；非数字返回 None（绝不让脏参数击穿过滤链）。"""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _modal_form(request, template, context, *, ok=True):
@@ -56,6 +65,22 @@ def document_list(request):
     else:
         categories = KnowledgeCategory.objects.annotate(
             doc_count=Count('documents', filter=published_visible_q, distinct=True))
+
+    # 分类树（列表页右栏筛选用）：parent 自引用组装，计数沿用上面的可见口径
+    cat_nodes = {c.pk: {'cat': c, 'children': []} for c in categories}
+    cat_roots = []
+    for c in categories:
+        if c.parent_id and c.parent_id in cat_nodes:
+            cat_nodes[c.parent_id]['children'].append(cat_nodes[c.pk])
+        else:
+            cat_roots.append(cat_nodes[c.pk])
+    # 选中分类的祖先链默认展开，其余子树折叠（避免右栏一屏放不下）
+    open_ids = set()
+    if category_id:
+        sel = cat_nodes.get(_int_or_none(category_id))
+        while sel:
+            open_ids.add(sel['cat'].pk)
+            sel = cat_nodes.get(sel['cat'].parent_id)
 
     # 统计数据（聚合下推到数据库，避免把整表对象加载进 Python 求和）
     visible = access.visible_docs(request.user).filter(status='published')
@@ -119,6 +144,8 @@ def document_list(request):
         'page_obj': page_obj,
         'per_page': per_page,
         'categories': categories,
+        'category_tree': {'roots': cat_roots},
+        'open_ids': open_ids,
         'selected_category': category_id,
         'selected_tag': tag_filter,
         'total_documents': total_documents,
@@ -164,6 +191,76 @@ def _vis_form_context(document=None, user=None):
     }
 
 
+# ---------------------------------------------------------------- 详情页「书房化」阅读体验
+
+# GFM 任务列表行首标记：python-markdown 不识别，输出为纯文字，转 HTML 后替换为 checkbox
+_TASK_LINE_RE = re.compile(r'<li>\[( |x|X)\]\s*')
+
+
+def _render_markdown(text: str) -> str:
+    """Markdown → 安全 HTML（含 GFM 任务列表 checkbox 化）。
+
+    python-markdown 没有内置 tasklist 扩展，``- [ ] `` 会原样印成文字。
+    在 bleach 净化**之后**替换行首标记为禁用态 checkbox：语义可读
+    （屏幕阅读器报 checkbox），又不动白名单、不引新依赖。
+    """
+    html = _sanitize_html(markdown.markdown(
+        text,
+        extensions=[
+            'markdown.extensions.extra',
+            'markdown.extensions.codehilite',
+            'markdown.extensions.toc',
+        ]
+    ))
+    return _TASK_LINE_RE.sub(
+        lambda m: '<li class="kb-task-item">'
+                  '<input type="checkbox" disabled%s> '
+                  % (' checked' if m.group(1).lower() == 'x' else ''),
+        html,
+    )
+
+
+def _visible_category_tree(user):
+    """文件夹树（详情页左栏）：分类层级 + 每类下当前用户可见的已发布文档。
+
+    与列表页分类计数同口径：分类不隐藏（隐藏了新建文档选不到），
+    但只挂可见文档——私有文档的标题绝不能经过这棵树泄漏。
+    空分类保留，树形保持稳定（先建夹、再放文是正常用法）。
+
+    返回 ``{'roots': [节点...], 'uncategorized': [文档...]}``；
+    节点形状 ``{'cat', 'children', 'docs'}``，模板递归渲染。
+    """
+    cats = list(KnowledgeCategory.objects.all().order_by('sort_order', 'name'))
+    docs_by_cat = {}
+    visible = (access.visible_docs(user)
+               .filter(status='published')
+               .only('id', 'title', 'category_id', 'visibility', 'owner_id')
+               .order_by('-updated_at'))
+    for d in visible:
+        docs_by_cat.setdefault(d.category_id, []).append(d)
+
+    nodes = {c.pk: {'cat': c, 'children': [], 'docs': docs_by_cat.get(c.pk, [])}
+             for c in cats}
+    roots = []
+    for c in cats:
+        node = nodes[c.pk]
+        if c.parent_id and c.parent_id in nodes:
+            nodes[c.parent_id]['children'].append(node)
+        else:
+            roots.append(node)
+    return {'roots': roots, 'uncategorized': docs_by_cat.get(None, [])}
+
+
+def _category_path(cat):
+    """当前文档的分类路径（根 → 叶子），供面包屑使用；防 parent 环死循环。"""
+    path, seen = [], set()
+    while cat and cat.pk not in seen:
+        seen.add(cat.pk)
+        path.append(cat)
+        cat = cat.parent
+    return list(reversed(path))
+
+
 @perm_required("knowledge", "read")
 def document_detail(request, pk):
     """文档详情（无权访问一律 404：403 等于告诉对方「这篇存在，只是你没权限」）
@@ -185,14 +282,8 @@ def document_detail(request, pk):
     )
 
     # 将Markdown内容转换为HTML，并过滤 script/iframe/事件属性等危险内容
-    document.content_html = _sanitize_html(markdown.markdown(
-        document.content,
-        extensions=[
-            'markdown.extensions.extra',
-            'markdown.extensions.codehilite',
-            'markdown.extensions.toc',
-        ]
-    ))
+    # （_render_markdown：净化 + 任务列表 checkbox 化）
+    document.content_html = _render_markdown(document.content)
 
     # 获取相关文档（同分类或同标签；同样只从可见范围里挑，
     # 否则会通过「相关文档」把私有文档的标题带出来）
@@ -203,6 +294,8 @@ def document_detail(request, pk):
     context = {
         'document': document,
         'related_docs': related_docs,
+        'category_tree': _visible_category_tree(request.user),
+        'category_path': _category_path(document.category),
         'can_edit_doc': access.can_edit(document, request.user),
         **_vis_form_context(document, request.user),
     }

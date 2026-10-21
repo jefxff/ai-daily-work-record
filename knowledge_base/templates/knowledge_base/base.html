@@ -133,6 +133,18 @@
     .kb-side-list-count { font-size: 0.75rem; color: var(--c-text-secondary); flex-shrink: 0; }
     .kb-side-empty { color: var(--c-text-tertiary); font-size: 0.8rem; text-align: center; padding: 0.5rem 0; }
 
+    /* ===== 分类筛选树（系列文档：父子分类缩进 + caret 折叠） ===== */
+    .kb-cat-tree { display: flex; flex-direction: column; gap: 1px; }
+    .kb-cat-row { display: flex; align-items: center; gap: 1px; }
+    .kb-cat-caret { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 26px; padding: 0; border: none; background: none; color: var(--c-text-tertiary); cursor: pointer; border-radius: 4px; transition: transform 0.2s ease, color 0.2s ease; }
+    .kb-cat-caret:hover { color: var(--c-primary); }
+    .kb-cat-caret.is-open { transform: rotate(90deg); }
+    .kb-cat-caret .icon { width: 11px; height: 11px; }
+    .kb-cat-caret-spacer { cursor: default; }
+    .kb-cat-link { flex: 1; min-width: 0; }
+    .kb-cat-children { margin-left: 9px; padding-left: var(--sp-2); border-left: 1px solid var(--c-border); }
+    .kb-cat-children[hidden] { display: none; }
+
     /* ===== 文档列表卡片 ===== */
     .kb-doc-card { background: var(--c-surface); border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); padding: 20px; }
     .kb-doc-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; padding-bottom: 1rem; border-bottom: 1px solid var(--c-border); }

@@ -45,6 +45,24 @@
 </div>
 {% endblock %}
 
+{% block extra_js %}
+<script>
+/* 分类筛选树：caret 折叠/展开（服务端直出，静态绑定即可） */
+(function () {
+    document.querySelectorAll('.kb-cat-tree .kb-cat-caret:not(.kb-cat-caret-spacer)').forEach(function (caret) {
+        caret.addEventListener('click', function () {
+            var open = caret.classList.toggle('is-open');
+            caret.setAttribute('aria-expanded', open ? 'true' : 'false');
+            var row = caret.closest('.kb-cat-row');
+            var node = row && row.closest('.kb-cat-node');
+            var kids = node && node.querySelector(':scope > .kb-cat-children');
+            if (kids) kids.hidden = !open;
+        });
+    });
+})();
+</script>
+{% endblock %}
+
 {% block right_sidebar %}
 <!-- 知识库统计 -->
 <div class="kb-side-section">
@@ -82,20 +100,17 @@
     </div>
 </div>
 
-<!-- 分类筛选 -->
+<!-- 分类筛选（树形：系列文档可建父子分类，如「Django 学习」下的多篇教程） -->
 <div class="kb-side-section">
     <div class="kb-side-title">分类筛选</div>
-    <div>
+    <div class="kb-cat-tree">
         <a href="{% url 'knowledge_base:document_list' %}" class="kb-side-list-item {% if not selected_category %}active{% endif %}">
             <span>全部文档</span><span class="kb-side-list-count">{{ total_documents }}</span>
         </a>
-        {% for category in categories %}
-        <a href="{% url 'knowledge_base:document_list' %}?category={{ category.id }}" class="kb-side-list-item {% if selected_category == category.id|stringformat:'i' %}active{% endif %}">
-            <span>{{ category.name }}</span><span class="kb-side-list-count">{{ category.doc_count }}</span>
-        </a>
-        {% empty %}
+        {% include 'knowledge_base/_category_tree_node.html' with nodes=category_tree.roots %}
+        {% if not category_tree.roots %}
         <div class="kb-side-empty">暂无分类</div>
-        {% endfor %}
+        {% endif %}
     </div>
 </div>
 
