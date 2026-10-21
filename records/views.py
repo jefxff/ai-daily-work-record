@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest
 from django.views.decorators.http import require_POST
 from django.template.loader import render_to_string
-from django.db.models import Count, Q
+from django.db.models import Count, F, Q
 from django.db.models.functions import TruncDate
 from datetime import date, datetime, timedelta
 from .models import Decoration, CustomerCredit, CustomerComplaint, Regulation, PriceEvaluation, DailyRecord, MetalPrice, Insurance, Complaint, OperationLog
@@ -94,8 +94,17 @@ def home(request):
         'total_decorations': 0,
         'decoration_reduced_total': 0,
         'metal_prices': [],
-        'expiring_insurances': [],
+        'metal_price_total': 0,
+        'metal_price_updated': None,
+        'metal_price_stale': False,
+        'insurance_due_soon': [],
+        'insurance_due_soon_count': 0,
+        'insurance_not_expired_count': 0,
+        'insurance_later_count': 0,
         'incomplete_litigations': [],
+        'incomplete_litigations_total': 0,
+        'todo_counts': None,
+        'today_submitted_count': 0,
         'weekly_trend': [],
         'trend_max': 1,
     }
@@ -104,11 +113,26 @@ def home(request):
 
     if 'daily_record' in mods:
         ds = stats_svc.daily_stats(request.user)
+        today = timezone.localdate()
+        # 首页只渲染最紧急的 5 条（截止日期升序、空值置后），其余到列表页查看
+        records = list(
+            _my_daily_records(request.user)
+            .filter(status='未完成')
+            .order_by(F('due_date').asc(nulls_last=True), '-record_date')[:5]
+        )
+        for rec in records:
+            if rec.due_date:
+                rec.days_left = (rec.due_date - today).days
+                rec.is_overdue = rec.days_left < 0
+            else:
+                rec.days_left = None
+                rec.is_overdue = False
         context.update({
             'total_daily_records': ds['total'],
             'incomplete_daily_records_count': ds['incomplete'],
-            'incomplete_daily_records': _my_daily_records(request.user)
-                .filter(status='未完成').order_by('-record_date'),
+            'incomplete_daily_records': records,
+            'today_submitted_count': _my_daily_records(request.user)
+                .filter(record_date__date=today).count(),
             'weekly_trend': _weekly_trend(request.user),
         })
         context['trend_max'] = max([x['c'] for x in context['weekly_trend']] + [1])
@@ -151,16 +175,59 @@ def home(request):
             return (0, priority.index(name)) if name in priority else (1, name)
 
         all_prices.sort(key=_sort)
-        context['metal_prices'] = all_prices
+        # 首页只展示前 5 个品种，其余到行情详情页；并给出最后抓取时间与过期提示
+        context['metal_prices'] = all_prices[:5]
+        context['metal_price_total'] = len(all_prices)
+        if all_prices:
+            latest = max(p.crawl_time for p in all_prices)
+            context['metal_price_updated'] = latest
+            context['metal_price_stale'] = latest.date() < timezone.localdate()
 
     if 'insurance' in mods:
         today = timezone.localdate()
-        context['expiring_insurances'] = Insurance.objects.filter(
-            end_date__gt=today).order_by('end_date')
+        soon_qs = Insurance.objects.filter(
+            end_date__gte=today, end_date__lte=today + timedelta(days=30)
+        ).order_by('end_date')
+        agg = Insurance.objects.aggregate(
+            not_expired=Count('id', filter=Q(end_date__gt=today)),
+            due_soon=Count('id', filter=Q(end_date__gte=today, end_date__lte=today + timedelta(days=30))),
+        )
+        soon = list(soon_qs[:5])
+        for ins in soon:
+            ins.days_left = (ins.end_date - today).days
+            if ins.days_left <= 7:
+                ins.days_level = 'danger'
+            elif ins.days_left <= 30:
+                ins.days_level = 'warning'
+            else:
+                ins.days_level = 'normal'
+            ins.days_text = f'剩 {ins.days_left} 天' if ins.days_left > 0 else '今天到期'
+        context['insurance_due_soon'] = soon
+        context['insurance_due_soon_count'] = agg['due_soon']
+        context['insurance_not_expired_count'] = agg['not_expired']
+        context['insurance_later_count'] = agg['not_expired'] - agg['due_soon']
 
     if 'complaint' in mods:
-        context['incomplete_litigations'] = Complaint.objects.exclude(
-            progress='结案').order_by('-id')
+        today = timezone.localdate()
+        open_qs = Complaint.objects.exclude(progress='结案')
+        # 答辩期截止 = 立案 + 15 天，日期越早越紧急；首页只取最紧急的 5 件
+        litigations = list(open_qs.order_by(F('filed_at').asc(nulls_last=True), '-id')[:5])
+        for case in litigations:
+            case.answer_days = (case.answer_deadline - today).days if case.answer_deadline else None
+            if case.answer_days is None:
+                case.answer_text, case.answer_level = '未立案', 'muted'
+            elif case.answer_days < 0:
+                case.answer_text, case.answer_level = f'已过 {abs(case.answer_days)} 天', 'danger'
+            else:
+                case.answer_text = f'剩 {case.answer_days} 天'
+                case.answer_level = 'warning' if case.answer_days <= 3 else 'normal'
+        context['incomplete_litigations'] = litigations
+        context['incomplete_litigations_total'] = open_qs.count()
+
+    # 行动区：跨模块待办计数与工作台同一口径（views_workspace.collect_todos）
+    if mods & {'daily_record', 'customer_complaint', 'complaint', 'samples', 'archive'}:
+        from .views_workspace import todo_counts
+        context['todo_counts'] = todo_counts(request.user)
 
     return render(request, 'records/home.html', context)
 

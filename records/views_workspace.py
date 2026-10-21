@@ -176,6 +176,18 @@ def collect_todos(user, *, today=None, source_filter=None):
     return todos
 
 
+def todo_counts(user, *, today=None):
+    """行动区用的待办计数：与工作台同一份聚合，避免首页另起一套口径。"""
+    todos = collect_todos(user, today=today)
+    return {
+        "total": len(todos),
+        "urgent": sum(1 for t in todos if t["urgency"] == "高"),
+        "due_soon": sum(
+            1 for t in todos if t["days_left"] is not None and 0 <= t["days_left"] <= 7
+        ),
+    }
+
+
 def _forbidden(request):
     return render(request, "accounts/403.html", {
         "required_module": "archive/customer_complaint/complaint/samples/daily_record",
