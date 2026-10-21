@@ -24,7 +24,7 @@
 import logging
 
 from django.conf import settings
-from django.db.models import Q
+from django.db.models import F, Q
 
 logger = logging.getLogger(__name__)
 
@@ -208,6 +208,19 @@ def _revoke_share(doc):
             logger.warning('知识库文档 #%s 分享凭据吊销失败', doc.pk)
 
 
+def _bump_version(doc):
+    """可见性变化 → tree_version +1（F 表达式原子自增，不动 updated_at）。
+
+    正开着大纲编辑器的人下次保存时 base_version 过期，拿到 409 被迫
+    先感知权限变化，防止「刚被收回公开还能凭旧页面继续改」的窗口。
+    """
+    from .models import KnowledgeDocument
+
+    KnowledgeDocument.objects.filter(pk=doc.pk).update(
+        tree_version=F('tree_version') + 1)
+    doc.tree_version += 1   # 实例同步，后续同请求内读到的版本号保持一致
+
+
 def set_visibility(doc, visibility, *, request=None, actor=None, source=''):
     """切换可见性。返回是否真的发生了变化。
 
@@ -226,8 +239,8 @@ def set_visibility(doc, visibility, *, request=None, actor=None, source=''):
 
     if visibility == PRIVATE:
         _revoke_share(doc)
-        # 注：批次 4b 落地 tree_version 后，此处实装 _bump_version(doc)，
-        # 让正开着编辑器的其他人保存时拿到 409。
+    # 公开/收回都推进树版本：编辑器以 base_version 乐观锁感知权限变化
+    _bump_version(doc)
 
     _audit(request or _ActorRequest(actor), doc, old, visibility, source)
     return True

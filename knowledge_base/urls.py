@@ -14,8 +14,10 @@ urlpatterns = [
     path('document/<int:pk>/edit/', views.document_edit, name='document_edit'),
     # 切换可见性（owner 专属，仅 POST）
     path('document/<int:pk>/visibility/', views.document_visibility, name='document_visibility'),
-    # 大纲/导图数据源（只读，P1；4b 在同路径补 PUT 整树保存）
+    # 大纲/导图数据源（GET 只读 P1；PUT 整树保存 4b，同路径按方法分发）
     path('api/docs/<int:pk>/tree/', views.api_doc_tree, name='api_doc_tree'),
+    # 大纲编辑器页（4b）
+    path('document/<int:pk>/outline/', views.outline_editor, name='outline_editor'),
     # 删除文档
     path('document/<int:pk>/delete/', views.document_delete, name='document_delete'),
     # 分类列表

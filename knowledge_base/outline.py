@@ -15,7 +15,8 @@ md → tree → md 幂等（第二轮起逐字节稳定，tests_outline 守住�
 
 import re
 
-__all__ = ['md_to_tree', 'tree_to_md', 'count_nodes', 'depth_of', 'new_node']
+__all__ = ['md_to_tree', 'tree_to_md', 'count_nodes', 'depth_of', 'new_node',
+           'split_todo_due']
 
 _BULLET_RE = re.compile(r'^(\s*)(?:[-*]|\d+[.)])\s+(.*)$')
 _TODO_RE = re.compile(r'^\[( |x|X)\]\s+(.*)$')
@@ -23,6 +24,20 @@ _HEADING_RE = re.compile(r'^(\s*)(#{1,6})\s+(.*)$')
 _QUOTE_RE = re.compile(r'^(\s*)>\s?(.*)$')
 _FENCE_RE = re.compile(r'^(\s*)```(.*)$')
 _DIVIDER_RE = re.compile(r'^\s*(?:-{3,}|\*{3,}|_{3,})\s*$')
+# 待办转写：行首 ``YYYY-MM-DD`` 前缀 → due_date（服务端保存与前端编辑器共用同一规则）
+_DATE_PREFIX_RE = re.compile(r'^(\d{4}-\d{2}-\d{2})(?:\s+(.*))?$')
+
+
+def split_todo_due(text):
+    """待办文本 → (due_str|None, 剩余文本)。
+
+    ``2026-10-25 交报告`` → ``('2026-10-25', '交报告')``；
+    无日期形状前缀 → ``(None, 原文)``（日期合法性由调用方再验，这里只认形状）。
+    """
+    m = _DATE_PREFIX_RE.match((text or '').strip())
+    if m:
+        return m.group(1), (m.group(2) or '').strip()
+    return None, (text or '').strip()
 
 
 def new_node(text='', node_type='text', **kw):
@@ -150,6 +165,10 @@ def _render(node, level, out):
         out.append(f'{indent}{"#" * lv} {text}'.rstrip())
     elif ntype == 'todo':
         mark = '[x]' if node.get('done') else '[ ]'
+        # 到期日写回文本前缀（``YYYY-MM-DD 事项``）：content 兼容层不丢截止日，
+        # 且 md → tree → md 保持逐字节幂等（编辑器 GET 时服务端再剥离成 due 字段）。
+        if node.get('due') and not _DATE_PREFIX_RE.match(text):
+            text = f"{node['due']} {text}".strip()
         out.append(f'{indent}- {mark} {text}'.rstrip())
     elif ntype == 'quote':
         out.append(f'{indent}> {text}'.rstrip())

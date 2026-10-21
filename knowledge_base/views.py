@@ -1,18 +1,25 @@
+import json
+import uuid
+from datetime import date, timedelta
+
 import markdown
-from datetime import timedelta
 from django.http import JsonResponse, HttpResponseForbidden
 from django.shortcuts import render, get_object_or_404, redirect
 from django.core.paginator import Paginator
+from django.db import transaction
 from django.db.models import Count, F, Q, Sum
 from django.db.models.functions import TruncDate
 from django.template.loader import render_to_string
 from django.utils import timezone
+from records.audit import log_operation
 from records.crud import _per_page
-from .models import KnowledgeDocument, KnowledgeCategory, KnowledgeView
+from .models import KnowledgeDocument, KnowledgeCategory, KnowledgeNode, KnowledgeView
 from .forms import KnowledgeDocumentForm, KnowledgeCategoryForm
 from accounts.decorators import perm_required
 from accounts.security import client_ip
+from accounts.services import has_perm
 from . import access
+from . import outline as kb_outline
 
 
 def _is_ajax(request):
@@ -194,6 +201,7 @@ def document_detail(request, pk):
     context = {
         'document': document,
         'related_docs': related_docs,
+        'can_edit_doc': access.can_edit(document, request.user),
         **_vis_form_context(document, request.user),
     }
     if is_ajax:
@@ -308,8 +316,6 @@ def _doc_tree(document):
     editor_mode=outline 的文档从节点表组装；markdown 文档即时解析 content，
     不落库（P1 只读阶段零数据变更；首次在编辑器保存后才转 outline，见 4b）。
     """
-    from . import outline as kb_outline
-
     if document.editor_mode == 'outline':
         nodes = document.nodes.all().order_by('sort', 'id')
         by_parent = {}
@@ -323,6 +329,7 @@ def _doc_tree(document):
                 'text': n.text,
                 'done': n.is_done,
                 'note': n.note,
+                'due': n.due_date.isoformat() if n.due_date else None,
                 'heading_level': n.heading_level,
                 'collapsed': n.collapsed,
                 'ref_module': n.ref_module,
@@ -337,14 +344,201 @@ def _doc_tree(document):
 
 @perm_required("knowledge", "read")
 def api_doc_tree(request, pk):
-    """只读大纲/导图数据源（P1）。无权访问一律 404，不泄露文档存在性。"""
+    """大纲数据源：GET 只读（P1）/ PUT 整树保存（4b），同路径按方法分发。
+
+    无权访问一律 404，不泄露文档存在性；PUT 额外要求 knowledge.update + owner。
+    """
     document = get_object_or_404(access.visible_docs(request.user), pk=pk)
+    if request.method == 'PUT':
+        return _api_save_tree(request, document)
     return JsonResponse({
         'ok': True,
         'version': document.tree_version,
         'editor_mode': document.editor_mode,
         'tree': _doc_tree(document),
     })
+
+
+# —— 整树保存（方案 03 第五节伪代码的落地版）——
+MAX_NODES = 1000   # D3 拍板：节点上限 1000（方案原文 5000 收紧）
+MAX_DEPTH = 20
+_NODE_TYPES = {'text', 'todo', 'code', 'quote', 'divider', 'ref'}
+
+
+def _parse_due(value):
+    """ISO 日期字符串 → date；非法/缺失返回 None，绝不抛异常。"""
+    try:
+        return date.fromisoformat(str(value)) if value else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _normalize_tree(raw_tree):
+    """客户端树 → 可入库树：补 uid、白名单类型、待办日期前缀转写。
+
+    返回 (tree, node_count)。转写规则与前端编辑器一致（outline.split_todo_due）：
+    待办文本以 ``YYYY-MM-DD`` 开头 → 提取为 due 并剥离前缀；否则用节点携带的
+    due 字段（编辑器回传既有值）；都没有 → 清空。非法日期一律视为无到期日。
+    """
+    def walk(nodes, out):
+        for raw in nodes or []:
+            if not isinstance(raw, dict):
+                continue
+            ntype = raw.get('type') if raw.get('type') in _NODE_TYPES else 'text'
+            text = str(raw.get('text') or '')[:10000]
+            due = None
+            if ntype == 'todo':
+                due_str, rest = kb_outline.split_todo_due(text)
+                if due_str:
+                    due = _parse_due(due_str)
+                    if due:
+                        text = rest
+                else:
+                    due = _parse_due(raw.get('due'))
+            node = {
+                'uid': str(raw.get('uid') or uuid.uuid4().hex[:12])[:12],
+                'type': ntype,
+                'text': text,
+                'done': bool(raw.get('done')),
+                'note': str(raw.get('note') or '')[:50000],
+                'due': due,
+                'heading_level': (min(max(int(raw.get('heading_level') or 1), 1), 3)
+                                  if ntype == 'heading' else None),
+                'collapsed': bool(raw.get('collapsed')),
+                'ref_module': str(raw.get('ref_module') or '')[:32],
+                'ref_object_id': (int(raw['ref_object_id'])
+                                  if str(raw.get('ref_object_id') or '').isdigit() else None),
+                'ref_label': str(raw.get('ref_label') or '')[:200],
+                'children': [],
+            }
+            out.append(node)
+            walk(raw.get('children'), node['children'])
+        return out
+
+    tree = walk(raw_tree, [])
+    return tree, kb_outline.count_nodes(tree)
+
+
+def _api_save_tree(request, document):
+    """PUT 整树保存：乐观锁 409 + 层序落库 + content 兼容层同步写回。
+
+    - 权限：模块 update（外层已过 read）+ access.can_edit（owner 专属，
+      公开文档他人只读）；全程留痕，留痕失败只记日志不阻断保存。
+    - 并发：select_for_update 行锁内校验 base_version，过期 → 409 带最新版本。
+    - uid 缺失时服务端补 12 位；未出现的 uid 整节点级联删除。
+    """
+    if not has_perm(request.user, 'knowledge', 'update'):
+        return JsonResponse({'ok': False, 'message': '权限不足，无法保存大纲。'}, status=403)
+    if not access.can_edit(document, request.user):
+        return JsonResponse({'ok': False, 'message': '只能编辑自己创建的文档'}, status=403)
+
+    try:
+        payload = json.loads(request.body or b'{}')
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JsonResponse({'ok': False, 'message': '请求体不是合法 JSON'}, status=400)
+    if not isinstance(payload, dict):
+        return JsonResponse({'ok': False, 'message': '请求体格式错误'}, status=400)
+
+    tree, node_count = _normalize_tree(payload.get('tree') or [])
+    if node_count > MAX_NODES or kb_outline.depth_of(tree) > MAX_DEPTH:
+        return JsonResponse({
+            'ok': False,
+            'message': f'文档过大或层级过深（上限 {MAX_NODES} 个节点 / {MAX_DEPTH} 层）',
+        }, status=400)
+
+    try:
+        with transaction.atomic():
+            locked = KnowledgeDocument.objects.select_for_update().get(pk=document.pk)
+            if payload.get('base_version') != locked.tree_version:
+                return JsonResponse({
+                    'ok': False, 'error': 'conflict', 'version': locked.tree_version,
+                    'message': '该文档在别处被修改，保存被拒绝',
+                }, status=409)
+
+            existing = {n.uid: n for n in locked.nodes.all()}
+            seen, to_create, to_update = set(), [], []
+
+            def walk(nodes, parent):
+                for i, node in enumerate(nodes):
+                    uid = node['uid']
+                    if uid in seen:
+                        # 前端 bug 兜底：同一 uid 出现两次，视为新节点避免互相覆盖
+                        node = dict(node, uid=uuid.uuid4().hex[:12])
+                        uid = node['uid']
+                    seen.add(uid)
+                    row = existing.get(uid)
+                    if row is None:
+                        row = KnowledgeNode(document=locked, uid=uid)
+                        to_create.append(row)
+                    else:
+                        to_update.append(row)
+                    row.parent = parent
+                    row.sort = i
+                    row.text = node['text']
+                    row.note = node['note']
+                    row.node_type = node['type']
+                    row.is_done = node['done']
+                    row.due_date = node['due']
+                    row.collapsed = node['collapsed']
+                    row.heading_level = node['heading_level']
+                    row.ref_module = node['ref_module']
+                    row.ref_object_id = node['ref_object_id']
+                    row.ref_label = node['ref_label']
+                    walk(node['children'], row)
+
+            walk(tree, None)
+            # 新节点逐个 create（bulk_create 拿不到 pk，子节点挂不上 parent）；
+            # DFS 前序保证父行先入库。1000 节点单事务在 SQLite 上秒级完成。
+            for row in to_create:
+                row.save()
+            if to_update:
+                KnowledgeNode.objects.bulk_update(to_update, [
+                    'parent', 'sort', 'text', 'note', 'node_type', 'is_done',
+                    'due_date', 'collapsed', 'heading_level',
+                    'ref_module', 'ref_object_id', 'ref_label',
+                ], batch_size=200)
+            if seen:
+                locked.nodes.exclude(uid__in=seen).delete()
+            else:
+                locked.nodes.all().delete()
+
+            old_version = locked.tree_version
+            locked.tree_version += 1
+            locked.editor_mode = 'outline'
+            locked.content = kb_outline.tree_to_md(tree)   # 兼容层同步写回
+            locked.save(update_fields=['tree_version', 'editor_mode', 'content', 'updated_at'])
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception('知识库文档 #%s 整树保存失败', document.pk)
+        return JsonResponse({'ok': False, 'message': '保存失败，请稍后重试'}, status=500)
+
+    try:
+        log_operation(
+            request, '知识库', '大纲保存', f'知识文档#{locked.pk}',
+            f'「{locked.title}」整树保存（{node_count} 个节点，'
+            f'v{old_version} → v{locked.tree_version}）',
+        )
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception(
+            '知识库文档 #%s 大纲保存留痕失败', locked.pk)
+
+    return JsonResponse({'ok': True, 'version': locked.tree_version})
+
+
+@perm_required("knowledge", "update")
+def outline_editor(request, pk):
+    """大纲编辑器页（4b）：owner 专属；他人公开文档跳详情只读，私有 404。"""
+    document = get_object_or_404(access.visible_docs(request.user), pk=pk)
+    if not access.can_edit(document, request.user):
+        return redirect('knowledge_base:document_detail', pk=pk)
+    context = {
+        'document': document,
+        'tree_version': document.tree_version,
+        'tree_data': {'tree': _doc_tree(document), 'version': document.tree_version},
+        **_vis_form_context(document, request.user),
+    }
+    return render(request, 'knowledge_base/outline_editor.html', context)
 
 
 @perm_required("knowledge", "delete")
