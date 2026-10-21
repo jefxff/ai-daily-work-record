@@ -23,7 +23,7 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
 .sidebar { position: fixed; top: 56px; left: 0; width: 250px; height: calc(100vh - 56px); background: rgba(255, 255, 255, 0.2); border-right: 1px solid rgba(255, 255, 255, 0.15); box-shadow: 2px 0 8px rgba(0, 0, 0, 0.04); z-index: var(--z-sidebar); padding: 0.5rem 0 1rem; overflow-y: auto; transition: transform 0.3s ease; margin: 0; border-radius: 0; }
 .sidebar-header { padding: 0 1.5rem 1rem; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
 .sidebar-logo { font-size: 1.5rem; font-weight: 700; color: rgba(255, 255, 255, 0.95); text-decoration: none; display: block; }
-.sidebar-section-title { padding: 0.75rem 1.5rem 0.375rem; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(255, 255, 255, 0.5); }
+.sidebar-section-title { padding: 0.75rem 1.5rem 0.375rem; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.03em; color: rgba(255, 255, 255, 0.62); }
 .sidebar-menu-item { list-style: none; margin: 0; padding: 0; }
 .sidebar-menu-item li { margin: 0; padding: 0; }
 .sidebar-menu-item a { display: flex; align-items: center; gap: 0.625rem; padding: 0.625rem 1.5rem; color: rgba(255, 255, 255, 0.8); text-decoration: none; transition: color 0.2s ease, background-color 0.2s ease; font-size: 0.875rem; font-weight: 500; border-radius: 0; margin: 0; position: relative; }
@@ -44,11 +44,12 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
 .sidebar-dropdown.show { max-height: 32rem; }
 .sidebar-dropdown a { padding-left: 3rem; font-size: 0.8rem; margin: 0; border-radius: 0; }
 
-/* 分组标题（如"工作台"）可折叠：保留 section-title 视觉，交互逻辑与 dropdown-toggle 三组完全一致 */
-.sidebar-section-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; background: none; border: 0; margin: 0; cursor: pointer; appearance: none; }
-.sidebar-section-toggle:hover { color: var(--c-text-secondary); }
+/* 分组标题（如"工作台"）可折叠：字号/字重与 dropdown-toggle 对齐，
+   让可折叠分组标题与下一级的试样/档案/系统下拉按钮视觉同一层级 */
+.sidebar-section-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; background: none; border: 0; margin: 0; padding: 0.625rem 1.5rem; font-size: 0.875rem; font-weight: 500; letter-spacing: 0; color: rgba(255, 255, 255, 0.8); cursor: pointer; appearance: none; }
+.sidebar-section-toggle:hover { color: rgba(255, 255, 255, 0.95); background-color: rgba(255, 255, 255, 0.1); }
 .sidebar-section-toggle:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.5); outline-offset: -2px; }
-.sidebar-section-toggle__chevron { flex: 0 0 auto; opacity: 0.5; transition: transform 0.28s ease; color: inherit; }
+.sidebar-section-toggle__chevron { flex: 0 0 auto; opacity: 0.8; transition: transform 0.28s ease; color: inherit; }
 .sidebar-section-toggle[aria-expanded="true"] .sidebar-section-toggle__chevron { transform: rotate(180deg); }
 /* 分组菜单容器：复用 max-height 过渡（与 sidebar-dropdown 动画/时长一致），
    但不继承 sidebar-dropdown 的 3rem 缩进——内部保留原始 .sidebar-menu-item > li > a 样式 */
