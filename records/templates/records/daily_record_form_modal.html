@@ -46,6 +46,35 @@
 
     {% if errors.general %}<div class="alert alert-danger">{{ errors.general }}</div>{% endif %}
 
+    <div class="form-group mb-3">
+        <label class="form-check d-flex align-items-center gap-2 mb-0" for="kb_enabled">
+            <input type="checkbox" class="form-check-input mt-0" id="kb_enabled" name="kb_enabled"
+                   {% if record and record.kb_enabled %}checked{% endif %}>
+            <span class="form-label mb-0">沉淀到知识库</span>
+        </label>
+        <div class="kb-sync-scope" id="kb_sync_scope">
+            <span class="form-text mb-1">沉淀范围（仅影响知识库里的可见范围，每日记录本身始终只有本人可见）</span>
+            <div class="d-flex gap-3" role="radiogroup" aria-label="沉淀范围">
+                <label class="form-check mb-0 d-flex align-items-center gap-1">
+                    <input type="radio" name="kb_visibility" value="private"
+                           {% if not record or not record.kb_visibility or record.kb_visibility == 'private' %}checked{% endif %}>
+                    <span>仅自己可见</span>
+                </label>
+                <label class="form-check mb-0 d-flex align-items-center gap-1">
+                    <input type="radio" name="kb_visibility" value="public"
+                           {% if record and record.kb_visibility == 'public' %}checked{% endif %}>
+                    <span>全员可见</span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .kb-sync-scope { margin-top: 0.4rem; padding-left: 0.25rem; }
+        .form-group:has(#kb_enabled:not(:checked)) .kb-sync-scope { display: none; }
+        .kb-sync-scope .form-check-input { accent-color: var(--c-primary); margin: 0; }
+    </style>
+
     <div class="form-modal-actions">
         <button type="button" class="btn-transparent" data-modal-close>取消</button>
         <button type="submit" class="btn-transparent btn-delete" data-modal-save>{% if record %}保存修改{% else %}保存记录{% endif %}</button>

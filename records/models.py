@@ -217,6 +217,19 @@ class DailyRecord(models.Model):
     status = models.CharField(max_length=10, verbose_name='工作状态', null=False, blank=False, choices=[('完成', '完成'), ('未完成', '未完成')])
     progress = models.IntegerField(verbose_name='工作进度', null=False, blank=False, default=0, help_text='0-100')
 
+    # —— 知识库沉淀（批次 3）：两问一起问，否则没法表达「沉淀，但只给自己看」——
+    kb_enabled = models.BooleanField('沉淀到知识库', default=False)
+    kb_visibility = models.CharField(
+        '沉淀范围', max_length=10, default='private',
+        choices=[('private', '仅自己可见'), ('public', '全员可见')],
+        help_text='仅影响知识库里的可见范围，每日记录本身始终只有本人可见')
+    kb_doc = models.ForeignKey(
+        'knowledge_base.KnowledgeDocument', verbose_name='沉淀文档',
+        null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='daily_records',
+        help_text='沉淀到知识库后的大纲节点；文档被删时置空（节点已随文档级联删除）')
+    kb_synced_at = models.DateTimeField('沉淀时间', null=True, blank=True)
+
     class Meta:
         verbose_name = '每日记录'
         verbose_name_plural = '每日记录'

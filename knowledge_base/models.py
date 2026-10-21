@@ -59,6 +59,13 @@ class KnowledgeDocument(models.Model):
     # 不依赖标题字符串（用户改标题不影响同步逻辑）
     source = models.CharField('来源标记', max_length=32, blank=True, default='')
 
+    # —— 幕布化（批次 3 模型层 / 批次 4 编辑器）：——
+    editor_mode = models.CharField(
+        '编辑模式', max_length=10, default='markdown',
+        choices=[('markdown', 'Markdown'), ('outline', '大纲')],
+        help_text='首次在编辑器中保存后转为 outline')
+    tree_version = models.PositiveIntegerField('树版本(乐观锁)', default=1)
+
     class Meta:
         verbose_name = '知识文档'
         verbose_name_plural = '知识文档'
@@ -109,3 +116,57 @@ class KnowledgeView(models.Model):
 
     def __str__(self):
         return f"{self.viewer or '匿名'} → 文档#{self.document_id}"
+
+
+class KnowledgeNode(models.Model):
+    """大纲节点：邻接表 + 同级 sort（幕布化核心表）。
+
+    - 邻接表（parent 外键）而不是物化路径 / JSON 整块存储：一次查询取整棵树
+      按 (parent_id, sort) 内存组装，几十毫秒内完成；整树保存时同父节点
+      重排为 0..n，不存在小数精度耗尽问题。
+    - uid 是前端生成的稳定 id（12 位），diff 用，和数据库自增 pk 无关。
+    - ref_* 是业务引用三元组（与 accounts.registry.MODULES 的 key 对齐），
+      不走 GenericForeignKey：权限按 ref_module 就能调 has_perm 过滤，
+      渲染时也能按模块映射到详情路由。
+    """
+
+    TYPE = [
+        ('text', '文本'), ('todo', '待办'), ('code', '代码'),
+        ('quote', '引用块'), ('divider', '分隔'), ('ref', '业务引用'),
+    ]
+
+    document = models.ForeignKey(
+        KnowledgeDocument, on_delete=models.CASCADE,
+        related_name='nodes', verbose_name='文档')
+    uid = models.CharField('前端节点ID', max_length=12, db_index=True)
+    parent = models.ForeignKey(
+        'self', on_delete=models.CASCADE, null=True, blank=True,
+        related_name='children', verbose_name='父节点')
+    sort = models.IntegerField('同级顺序', default=0)
+    text = models.TextField('文本', blank=True)   # 行内标记：**粗体** `code` 等
+    note = models.TextField('备注', blank=True)
+    node_type = models.CharField(
+        '节点类型', max_length=10, choices=TYPE, default='text')
+    is_done = models.BooleanField('已完成', default=False)   # 仅 todo 有意义
+    due_date = models.DateField('截至日期', null=True, blank=True)
+    collapsed = models.BooleanField('已折叠', default=False)
+    heading_level = models.SmallIntegerField('标题层级', null=True, blank=True)  # 1-3，用于目录
+
+    ref_module = models.CharField('引用模块', max_length=32, blank=True, default='')
+    ref_object_id = models.PositiveIntegerField('引用对象ID', null=True, blank=True)
+    ref_label = models.CharField('引用名称快照', max_length=200, blank=True, default='')
+
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
+    updated_at = models.DateTimeField('更新时间', auto_now=True)
+
+    class Meta:
+        verbose_name = '知识大纲节点'
+        verbose_name_plural = verbose_name
+        ordering = ['sort', 'id']
+        indexes = [
+            models.Index(fields=['document', 'parent', 'sort']),
+            models.Index(fields=['node_type', 'is_done', 'due_date']),  # 待办聚合
+        ]
+
+    def __str__(self):
+        return f"节点#{self.pk}({self.node_type})@文档#{self.document_id}"

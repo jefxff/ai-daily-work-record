@@ -791,6 +791,13 @@ def daily_record_add(request):
         )
         log_operation(request, '每日记录', '新增', '[每日记录]下的新记录',
                       f'新增每日记录: {work_content}', after=snapshot(record))
+        # 知识库沉淀（批次 3）：表单两问（要不要沉淀/给谁看）；失败只记日志不影响主流程
+        from records import kb_sync as kb_service
+        kb_service.apply_flag(
+            record,
+            enabled=request.POST.get('kb_enabled') == 'on',
+            visibility=request.POST.get('kb_visibility') or 'private',
+            actor=request.user, request=request)
         # 通知触发：保存为「未完成」时提醒本人（同记录幂等，编辑改回未完成不会重复提醒）
         if status == '未完成':
             try:
@@ -889,6 +896,13 @@ def daily_record_edit(request, pk):
         log_operation(request, '每日记录', '更新', f'[每日记录]下的记录#{record.id}',
                       f'编辑每日记录: {record.work_content}',
                       before=before_snap, after=snapshot(record))
+        # 知识库沉淀（批次 3）：开关/范围有变化时同步；失败只记日志不影响主流程
+        from records import kb_sync as kb_service
+        kb_service.apply_flag(
+            record,
+            enabled=request.POST.get('kb_enabled') == 'on',
+            visibility=request.POST.get('kb_visibility') or 'private',
+            actor=request.user, request=request)
         if is_ajax:
             return JsonResponse({'ok': True, 'message': '保存成功'})
         return redirect('daily_record_list')
@@ -908,6 +922,23 @@ def daily_record_detail(request, pk):
     if _is_ajax(request):
         return _modal_detail(request, 'records/_daily_record_detail_modal.html', {'record': record})
     return render(request, 'records/daily_record_detail.html', {'record': record})
+
+
+@perm_required("daily_record", "create")
+def daily_record_kb_sync_batch(request):
+    """批量沉淀：当前用户全部未沉淀记录 → 知识库（一律私有，D5 拍板）。
+
+    独立于单条表单开关：给「先记了、后来想归档」的人一个一次到位的入口。
+    """
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'message': '仅支持 POST 请求'}, status=405)
+    from records import kb_sync as kb_service
+    ok, fail = kb_service.sync_batch(request.user, request=request)
+    if ok or fail:
+        log_operation(request, '每日记录', '批量沉淀', '[每日记录]下的批量沉淀',
+                      f'批量沉淀每日记录到知识库：成功 {ok} 条，失败 {fail} 条')
+    message = f'批量沉淀完成：成功 {ok} 条' + (f'，失败 {fail} 条' if fail else '，没有需要沉淀的记录')
+    return JsonResponse({'ok': True, 'message': message, 'synced': ok, 'failed': fail})
 
 daily_record_export = make_export_view(
     perm_module='daily_record', sheet_title='每日记录', log_label='每日记录',
