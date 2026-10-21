@@ -15,53 +15,132 @@
 {% endblock %}
 
 {% block content %}
-    <!-- 详情卡片 -->
-    <div class="detail-card">
-        <h2 class="detail-title">诉讼详细信息</h2>
-
+    <!-- 案件进程 -->
+    <div class="detail-card" style="margin-bottom:1.25rem;">
+        <div class="detail-title">案件进程</div>
+        <div class="flow-steps">
+            {% for status, d, stage in complaint.timeline_steps %}
+            <div class="flow-step {{ stage }}">
+                {% if not forloop.first %}<span class="fs-arrow">→</span>{% endif %}
+                <div class="fs-box">{{ status }}</div>
+            </div>
+            {% endfor %}
+        </div>
         <div class="detail-row">
-            <div class="detail-label">纠纷类型：</div>
-            <div class="detail-value">{{ complaint.dispute_type }}</div>
+            <span class="detail-label">当前状态：</span>
+            <span class="detail-value">
+                <span class="status-badge {% if complaint.progress == '结案' %}success{% elif complaint.progress == '审理中' %}warning{% else %}info{% endif %}">{{ complaint.progress }}</span>
+                {% if complaint.current_progress_days is not None %} · 自 {{ complaint.progress_date|date:'Y-m-d' }} 起 {{ complaint.current_progress_days }} 天{% endif %}
+            </span>
+        </div>
+        {% if complaint.progress != '结案' %}
+        {% can "complaint" "update" %}
+        <div class="detail-row">
+            <span class="detail-label">推进状态：</span>
+            <span class="detail-value">
+                <form method="post" action="{% url 'complaint_advance' complaint.id %}" style="display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                    {% csrf_token %}
+                    <select name="progress" class="form-select" style="width:auto;">
+                        {% for choice in complaint.PROGRESS_CHOICES %}
+                        <option value="{{ choice.0 }}" {% if complaint.progress == choice.0 %}selected{% endif %}>{{ choice.1 }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="btn-primary btn-sm">推进并回填日期</button>
+                </form>
+                <span style="font-size:12px;color:var(--c-text-tertiary);margin-left:8px;">状态推进时自动写入对应日期（首次进入时）</span>
+            </span>
+        </div>
+        {% endcan %}
+        {% endif %}
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <!-- 案件信息 -->
+            <div class="detail-card" style="margin-bottom:1.25rem;">
+                <div class="detail-title">案件信息</div>
+
+                <div class="detail-row">
+                    <span class="detail-label">纠纷类型：</span>
+                    <span class="detail-value">{{ complaint.dispute_type }}</span>
+                </div>
+
+                <div class="detail-row">
+                    <span class="detail-label">被告：</span>
+                    <span class="detail-value">{{ complaint.defendant }}</span>
+                </div>
+
+                <div class="detail-row">
+                    <span class="detail-label">案号：</span>
+                    <span class="detail-value">{{ complaint.case_number }}</span>
+                </div>
+
+                <div class="detail-row">
+                    <span class="detail-label">涉案金额：</span>
+                    <span class="detail-value">¥{{ complaint.amount }}</span>
+                </div>
+
+                <div class="detail-row">
+                    <span class="detail-label">受理法院：</span>
+                    <span class="detail-value">{{ complaint.court }}</span>
+                </div>
+
+                <div class="detail-row">
+                    <span class="detail-label">代理律师：</span>
+                    <span class="detail-value">{{ complaint.lawyer }}</span>
+                </div>
+
+                <div class="detail-row">
+                    <span class="detail-label">详细进度：</span>
+                    <span class="detail-value">{{ complaint.detailed_progress|default:"无" }}</span>
+                </div>
+
+                <div class="detail-row">
+                    <span class="detail-label">备注：</span>
+                    <span class="detail-value">{{ complaint.remarks|default:"无" }}</span>
+                </div>
+            </div>
+
+            <!-- 状态时间线 -->
+            <div class="detail-card">
+                <div class="detail-title" style="font-size:1.15rem;">状态时间线</div>
+                {% include 'records/_timeline.html' with steps=complaint.timeline_steps %}
+            </div>
         </div>
 
-        <div class="detail-row">
-            <div class="detail-label">被告：</div>
-            <div class="detail-value">{{ complaint.defendant }}</div>
-        </div>
-
-        <div class="detail-row">
-            <div class="detail-label">案号：</div>
-            <div class="detail-value">{{ complaint.case_number }}</div>
-        </div>
-
-        <div class="detail-row">
-            <div class="detail-label">涉案金额：</div>
-            <div class="detail-value">¥{{ complaint.amount }}</div>
-        </div>
-
-        <div class="detail-row">
-            <div class="detail-label">受理法院：</div>
-            <div class="detail-value">{{ complaint.court }}</div>
-        </div>
-
-        <div class="detail-row">
-            <div class="detail-label">代理律师：</div>
-            <div class="detail-value">{{ complaint.lawyer }}</div>
-        </div>
-
-        <div class="detail-row">
-            <div class="detail-label">进度：</div>
-            <div class="detail-value">{{ complaint.progress }}</div>
-        </div>
-
-        <div class="detail-row">
-            <div class="detail-label">详细进度：</div>
-            <div class="detail-value">{{ complaint.detailed_progress|default:"无" }}</div>
-        </div>
-
-        <div class="detail-row">
-            <div class="detail-label">备注：</div>
-            <div class="detail-value">{{ complaint.remarks|default:"无" }}</div>
+        <div class="col-lg-5">
+            <!-- 关键日期 -->
+            <div class="detail-card" style="margin-bottom:1.25rem;">
+                <div class="detail-title" style="font-size:1.15rem;">关键日期</div>
+                <div class="detail-row">
+                    <span class="detail-label">立案日期：</span>
+                    <span class="detail-value">{{ complaint.filed_at|date:'Y-m-d'|default:'—' }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">答辩期截止：</span>
+                    <span class="detail-value">
+                        {% if complaint.answer_deadline %}
+                        {{ complaint.answer_deadline|date:'Y-m-d' }}
+                        {% else %}—{% endif %}
+                    </span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">开庭日期：</span>
+                    <span class="detail-value">{{ complaint.hearing_at|date:'Y-m-d'|default:'—' }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">判决日期：</span>
+                    <span class="detail-value">{{ complaint.judgment_at|date:'Y-m-d'|default:'—' }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">执行日期：</span>
+                    <span class="detail-value">{{ complaint.execution_at|date:'Y-m-d'|default:'—' }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">结案日期：</span>
+                    <span class="detail-value">{{ complaint.closed_at|date:'Y-m-d'|default:'—' }}</span>
+                </div>
+            </div>
         </div>
     </div>
 {% endblock %}

@@ -22,7 +22,7 @@
     <!-- 设计令牌 + 外壳 + 组件：外置后可被浏览器缓存；版本号用于发布瞬间避免「新 HTML + 旧 CSS」 -->
     <link href="{% static 'css/tokens.css' %}?v=20261019c" rel="stylesheet">
     <link href="{% static 'css/app.css' %}?v=20261021d" rel="stylesheet">
-    <link href="{% static 'css/components.css' %}?v=20261021a" rel="stylesheet">
+    <link href="{% static 'css/components.css' %}?v=20261021c" rel="stylesheet">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -392,7 +392,8 @@
 
                 window.openFormModal = function (url, title) {
                     openModal(title);
-                    fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                    // cache:'no-store'：详情/表单内容随模板更新，禁止浏览器复用旧的 AJAX 响应
+                    fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, cache: 'no-store' })
                         .then(function (resp) {
                             var ct = resp.headers.get('content-type') || '';
                             if (ct.indexOf('application/json') !== -1) {

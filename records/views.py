@@ -1,11 +1,12 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest
+from django.views.decorators.http import require_POST
 from django.template.loader import render_to_string
 from django.db.models import Count, Q
 from django.db.models.functions import TruncDate
 from datetime import date, datetime, timedelta
 from .models import Decoration, CustomerCredit, CustomerComplaint, Regulation, PriceEvaluation, DailyRecord, MetalPrice, Insurance, Complaint, OperationLog
-from .forms import DecorationForm, CustomerCreditForm, CustomerComplaintForm, RegulationForm, PriceEvaluationForm, InsuranceForm, ComplaintForm
+from .forms import DecorationForm, CustomerCreditForm, CustomerComplaintForm, CustomerComplaintClosureForm, RegulationForm, PriceEvaluationForm, InsuranceForm, ComplaintForm
 from .audit import log_operation, snapshot
 from .crud import make_delete_view, make_export_view, make_form_view, make_list_view
 from django.utils import timezone
@@ -445,7 +446,7 @@ customer_complaint_add, customer_complaint_edit = make_form_view(
 customer_complaint_export = make_export_view(
     model=CustomerComplaint, perm_module='customer_complaint', sheet_title='客户客诉', log_label='客户客诉',
     filename_base='客户客诉', empty_text='当前无客户客诉记录，无法导出Excel',
-    headers=['客户名称', '责任业务员', '客诉申请日期', '终端客户', '产品型号', '我司出货量', '客户出货量', '客诉现象及客户诉求描述', '客户诉求（赔偿金额）', '是否报保险', '工程报告', '工程部分析原因报告', '欠缺材料', '客诉状态', '跟进情况', '备注'],
+    headers=['客户名称', '责任业务员', '客诉申请日期', '终端客户', '产品型号', '我司出货量', '客户出货量', '客诉现象及客户诉求描述', '客户诉求（赔偿金额）', '是否报保险', '工程报告', '工程部分析原因报告', '欠缺材料', '客诉状态', '跟进情况', '闭环结论', '闭环时间', '闭环人', '备注'],
     row_values=lambda obj, serial: [
         obj.customer_name, obj.responsible_salesperson,
         obj.complaint_date.strftime('%Y-%m-%d') if obj.complaint_date else '',
@@ -454,7 +455,11 @@ customer_complaint_export = make_export_view(
         obj.complaint_description or '', obj.compensation_amount or 0,
         '是' if obj.is_insured else '否', obj.engineering_report or '',
         obj.engineering_analysis or '', obj.missing_materials or '',
-        obj.complaint_status, obj.follow_up_status or '', obj.remarks or '',
+        obj.complaint_status, obj.follow_up_status or '',
+        obj.closure_result_display,
+        obj.closed_at.strftime('%Y-%m-%d %H:%M') if obj.closed_at else '',
+        str(obj.closed_by) if obj.closed_by else '',
+        obj.remarks or '',
     ],
 )
 
@@ -475,6 +480,53 @@ def customer_detail(request, pk):
     if _is_ajax(request):
         return _modal_detail(request, 'records/_customer_detail_modal.html', context)
     return render(request, 'records/customer_detail.html', context)
+
+
+@perm_required("customer_complaint", "update")
+@require_POST
+def customer_complaint_close(request, pk):
+    """客诉闭环操作：写入闭环结论/说明，自动回填闭环时间与闭环人。
+
+    闭环动作同步将 complaint_status 置为「已完成」、follow_up_status 置为「已闭环」，
+    并记录操作留痕、触发闭环通知（通知失败不影响主流程）。
+    """
+    complaint = get_object_or_404(CustomerComplaint, pk=pk)
+    form = CustomerComplaintClosureForm(request.POST)
+    if not form.is_valid():
+        return redirect('customer_detail', pk=pk)
+
+    before_snap = snapshot(complaint)
+    complaint.closure_result = form.cleaned_data['closure_result']
+    complaint.closure_note = form.cleaned_data['closure_note']
+    complaint.closed_at = timezone.now()
+    complaint.closed_by = request.user
+    # 状态由闭环动作推导：闭环即已完成
+    complaint.complaint_status = '已完成'
+    complaint.follow_up_status = '已闭环'
+    complaint.save()
+    log_operation(
+        request, '客户客诉', '状态变更', f'[客户客诉]下的记录#{complaint.id}',
+        f'客诉闭环: {complaint.customer_name}（结论：{complaint.get_closure_result_display()}）',
+        before=before_snap, after=snapshot(complaint),
+    )
+
+    # 通知接入：闭环告知登记人与责任业务员（业务员为文本字段，无法精确匹配用户，
+    # 故仅通知当前操作人；若后续业务员关联用户表可扩展收件人）
+    try:
+        from notifications.services import emit
+        emit('complaint_closed', recipient=request.user,
+             context={
+                 'customer_name': complaint.customer_name,
+                 'closed_at': timezone.localtime(complaint.closed_at).strftime('%Y-%m-%d %H:%M'),
+                 'closure_result': complaint.get_closure_result_display(),
+                 'closed_by': request.user.get_username(),
+                 'closure_note': complaint.closure_note or '',
+             },
+             link=f'/customer_detail/{complaint.pk}/')
+    except Exception:
+        logger.exception("客诉闭环通知发送失败")
+
+    return redirect('customer_detail', pk=pk)
 
 
 # 制度及处罚视图
@@ -1166,10 +1218,16 @@ complaint_delete = make_delete_view(
 complaint_export = make_export_view(
     model=Complaint, perm_module='complaint', sheet_title='客诉记录', log_label='诉讼',
     filename_base='客诉记录', empty_text='当前无客诉记录，无法导出Excel',
-    headers=['序号', '纠纷类型', '被告', '案号', '涉案金额（元）', '受理法院', '代理律师', '进度', '详细进度', '备注'],
+    headers=['序号', '纠纷类型', '被告', '案号', '涉案金额（元）', '受理法院', '代理律师', '进度', '立案日期', '开庭日期', '判决日期', '执行日期', '结案日期', '详细进度', '备注'],
     row_values=lambda obj, serial: [
         serial, obj.dispute_type, obj.defendant, obj.case_number, obj.amount,
-        obj.court, obj.lawyer, obj.progress, obj.detailed_progress or '', obj.remarks or '',
+        obj.court, obj.lawyer, obj.progress,
+        obj.filed_at.strftime('%Y-%m-%d') if obj.filed_at else '',
+        obj.hearing_at.strftime('%Y-%m-%d') if obj.hearing_at else '',
+        obj.judgment_at.strftime('%Y-%m-%d') if obj.judgment_at else '',
+        obj.execution_at.strftime('%Y-%m-%d') if obj.execution_at else '',
+        obj.closed_at.strftime('%Y-%m-%d') if obj.closed_at else '',
+        obj.detailed_progress or '', obj.remarks or '',
     ],
 )
 
@@ -1199,6 +1257,35 @@ def complaint_detail(request, pk):
     if _is_ajax(request):
         return _modal_detail(request, 'records/_complaint_detail_modal.html', {'complaint': complaint})
     return render(request, 'records/complaint_detail.html', {'complaint': complaint})
+
+
+@perm_required("complaint", "update")
+@require_POST
+def complaint_advance(request, pk):
+    """诉讼状态推进：更新 progress 并自动回填对应状态的日期字段（仅当该日期为空时）。
+
+    状态推进遵守 OperationLog 统一留痕约束；日期字段一旦写入不被覆盖，保留首次
+    进入该状态的时间。
+    """
+    complaint = get_object_or_404(Complaint, pk=pk)
+    new_progress = request.POST.get('progress', '').strip()
+    valid = {c[0] for c in Complaint.PROGRESS_CHOICES}
+    if new_progress not in valid:
+        return HttpResponseBadRequest('非法的诉讼状态')
+
+    before_snap = snapshot(complaint)
+    complaint.progress = new_progress
+    # 自动回填当前状态对应的日期字段（仅首次进入时）
+    date_field = Complaint.PROGRESS_DATE_FIELD.get(new_progress)
+    if date_field and not getattr(complaint, date_field):
+        setattr(complaint, date_field, timezone.localdate())
+    complaint.save()
+    log_operation(
+        request, '诉讼', '状态变更', f'[诉讼]下的记录#{complaint.id}',
+        f'诉讼状态推进: {complaint.case_number} → {new_progress}',
+        before=before_snap, after=snapshot(complaint),
+    )
+    return redirect('complaint_detail', pk=pk)
 
 
 # 操作留痕视图（固定每页 20 条；搜索不剥离空白，筛选值原样过滤）

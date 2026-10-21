@@ -1,91 +1,194 @@
 {% extends 'records/base.html' %}
 {% load static %}
+{% load accounts_tags %}
 
 {% block page_title %}客户详情 - {{ complaint.customer_name }} - 每日工作记录管理网站{% endblock %}
 
+{% block top_nav_actions %}
+    <a href="{% url 'customer_complaint_list' %}" class="btn-transparent">返回列表</a>
+    {% can "customer_complaint" "update" %}
+    <a href="{% url 'customer_complaint_edit' complaint.id %}" class="btn-transparent" data-modal-edit data-modal-title="编辑客户客诉">编辑客诉</a>
+    {% endcan %}
+    {% if not complaint.is_closed %}
+    {% can "customer_complaint" "update" %}
+    <a href="#closurePanel" class="btn-primary">确认闭环</a>
+    {% endcan %}
+    {% endif %}
+{% endblock %}
+
 {% block content %}
-    <!-- 客户基本信息 -->
-    <div class="detail-card">
-        <h2 class="detail-title">{{ complaint.customer_name }} - 详细信息</h2>
+    <div class="page-header">
+        <h2>客诉详情 · {{ complaint.customer_name }}<span class="total-hint">登记于 {{ complaint.complaint_date|date:'Y-m-d' }}</span></h2>
+        {% if complaint.is_closed %}
+        <span class="status-badge success">已闭环</span>
+        {% elif complaint.is_sla_overdue %}
+        <span class="status-badge danger">处理中 · 已超时</span>
+        {% else %}
+        <span class="status-badge warning">{{ complaint.complaint_status }}</span>
+        {% endif %}
+    </div>
 
-        <div class="detail-row">
-            <div class="detail-label">客户名称：</div>
-            <div class="detail-value">{{ complaint.customer_name }}</div>
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <!-- 客诉基本信息 -->
+            <div class="detail-card">
+                <h2 class="detail-title">客诉信息</h2>
+
+                <div class="detail-row">
+                    <div class="detail-label">客户名称：</div>
+                    <div class="detail-value">{{ complaint.customer_name }}</div>
+                </div>
+
+                <div class="detail-row">
+                    <div class="detail-label">责任业务员：</div>
+                    <div class="detail-value">{{ complaint.responsible_salesperson }}</div>
+                </div>
+
+                <div class="detail-row">
+                    <div class="detail-label">客诉申请日期：</div>
+                    <div class="detail-value">{{ complaint.complaint_date|date:'Y-m-d' }}</div>
+                </div>
+
+                <div class="detail-row">
+                    <div class="detail-label">终端客户：</div>
+                    <div class="detail-value">{{ complaint.terminal_customer|default:'-' }}</div>
+                </div>
+
+                <div class="detail-row">
+                    <div class="detail-label">产品型号：</div>
+                    <div class="detail-value">{{ complaint.product_model|default:'-' }}</div>
+                </div>
+
+                <div class="detail-row">
+                    <div class="detail-label">我司出货量：</div>
+                    <div class="detail-value">{{ complaint.our_shipment|default:'-' }}</div>
+                </div>
+
+                <div class="detail-row">
+                    <div class="detail-label">客户出货量：</div>
+                    <div class="detail-value">{{ complaint.customer_shipment|default:'-' }}</div>
+                </div>
+
+                <div class="detail-row">
+                    <div class="detail-label">客诉现象及客户诉求描述：</div>
+                    <div class="detail-value">{{ complaint.complaint_description|default:'-' }}</div>
+                </div>
+
+                <div class="detail-row">
+                    <div class="detail-label">客户诉求（赔偿金额）：</div>
+                    <div class="detail-value">{% if complaint.compensation_amount %}¥{{ complaint.compensation_amount|floatformat:2 }}{% else %}-{% endif %}</div>
+                </div>
+
+                <div class="detail-row">
+                    <div class="detail-label">是否报保险：</div>
+                    <div class="detail-value">{% if complaint.is_insured %}是{% else %}否{% endif %}</div>
+                </div>
+
+                <div class="detail-row">
+                    <div class="detail-label">工程报告：</div>
+                    <div class="detail-value">{{ complaint.engineering_report|default:'-' }}</div>
+                </div>
+
+                <div class="detail-row">
+                    <div class="detail-label">工程部分析原因报告：</div>
+                    <div class="detail-value">{{ complaint.engineering_analysis|default:'-' }}</div>
+                </div>
+
+                <div class="detail-row">
+                    <div class="detail-label">欠缺材料：</div>
+                    <div class="detail-value">{{ complaint.missing_materials|default:'-' }}</div>
+                </div>
+
+                <div class="detail-row">
+                    <div class="detail-label">客诉状态：</div>
+                    <div class="detail-value">{{ complaint.complaint_status }}</div>
+                </div>
+
+                <div class="detail-row">
+                    <div class="detail-label">跟进情况：</div>
+                    <div class="detail-value">{{ complaint.follow_up_status|default:'-' }}</div>
+                </div>
+
+                <div class="detail-row">
+                    <div class="detail-label">备注：</div>
+                    <div class="detail-value">{{ complaint.remarks|default:'-' }}</div>
+                </div>
+
+                {% if complaint.is_closed %}
+                <div class="detail-row">
+                    <div class="detail-label">闭环结论：</div>
+                    <div class="detail-value">{{ complaint.closure_result_display|default:'-' }}</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">闭环说明：</div>
+                    <div class="detail-value">{{ complaint.closure_note|default:'-' }}</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">闭环时间：</div>
+                    <div class="detail-value">{{ complaint.closed_at|date:'Y-m-d H:i' }}</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">闭环人：</div>
+                    <div class="detail-value">{{ complaint.closed_by|default:'-' }}</div>
+                </div>
+                {% endif %}
+            </div>
         </div>
 
-        <div class="detail-row">
-            <div class="detail-label">责任业务员：</div>
-            <div class="detail-value">{{ complaint.responsible_salesperson }}</div>
-        </div>
+        <div class="col-lg-5">
+            <!-- SLA 计时 -->
+            <div class="detail-card" style="margin-bottom:1.25rem;">
+                <div class="detail-title" style="font-size:1.15rem;">SLA 计时</div>
+                {% if complaint.sla_hours %}
+                <div class="sla-row">
+                    <span class="sla-figure {% if complaint.is_sla_overdue %}is-overdue{% elif complaint.is_closed %}is-closed{% else %}is-normal{% endif %}">
+                        {% if complaint.is_closed %}已闭环{% elif complaint.is_sla_overdue %}超时 {{ complaint.sla_overdue_days }} 天{% elif complaint.sla_remaining %}{{ complaint.sla_remaining.days }}天{% else %}—{% endif %}
+                    </span>
+                    <span class="sla-caption">/ 承诺 {{ complaint.sla_hours }}h</span>
+                </div>
+                <div class="sla-progress{% if complaint.is_sla_overdue %} overdue{% endif %}">
+                    <div class="sla-progress-fill {% if complaint.is_closed or complaint.is_sla_overdue %}is-full{% else %}is-half{% endif %}"></div>
+                </div>
+                <p class="sla-deadline{% if complaint.is_sla_overdue %} is-overdue{% endif %}">
+                    截止：{% if complaint.sla_deadline %}{{ complaint.sla_deadline|date:'Y-m-d H:i' }}{% else %}—{% endif %}
+                    {% if complaint.is_sla_overdue %} · 已超时{% elif complaint.is_closed %} · 已闭环{% endif %}
+                </p>
+                {% else %}
+                <p class="sla-empty">未设置 SLA 时限（不考核）</p>
+                {% endif %}
+            </div>
 
-        <div class="detail-row">
-            <div class="detail-label">客诉申请日期：</div>
-            <div class="detail-value">{{ complaint.complaint_date|date:'Y-m-d' }}</div>
-        </div>
+            <!-- 处理时间线 -->
+            <div class="detail-card" style="margin-bottom:1.25rem;">
+                <div class="detail-title" style="font-size:1.15rem;">处理时间线</div>
+                {% include 'records/_timeline.html' with steps=complaint.closure_timeline_steps %}
+            </div>
 
-        <div class="detail-row">
-            <div class="detail-label">终端客户：</div>
-            <div class="detail-value">{{ complaint.terminal_customer|default:'-' }}</div>
-        </div>
-
-        <div class="detail-row">
-            <div class="detail-label">产品型号：</div>
-            <div class="detail-value">{{ complaint.product_model|default:'-' }}</div>
-        </div>
-
-        <div class="detail-row">
-            <div class="detail-label">我司出货量：</div>
-            <div class="detail-value">{{ complaint.our_shipment|default:'-' }}</div>
-        </div>
-
-        <div class="detail-row">
-            <div class="detail-label">客户出货量：</div>
-            <div class="detail-value">{{ complaint.customer_shipment|default:'-' }}</div>
-        </div>
-
-        <div class="detail-row">
-            <div class="detail-label">客诉现象及客户诉求描述：</div>
-            <div class="detail-value">{{ complaint.complaint_description|default:'-' }}</div>
-        </div>
-
-        <div class="detail-row">
-            <div class="detail-label">客户诉求（赔偿金额）：</div>
-            <div class="detail-value">{% if complaint.compensation_amount %}¥{{ complaint.compensation_amount|floatformat:2 }}{% else %}-{% endif %}</div>
-        </div>
-
-        <div class="detail-row">
-            <div class="detail-label">是否报保险：</div>
-            <div class="detail-value">{% if complaint.is_insured %}是{% else %}否{% endif %}</div>
-        </div>
-
-        <div class="detail-row">
-            <div class="detail-label">工程报告：</div>
-            <div class="detail-value">{{ complaint.engineering_report|default:'-' }}</div>
-        </div>
-
-        <div class="detail-row">
-            <div class="detail-label">工程部分析原因报告：</div>
-            <div class="detail-value">{{ complaint.engineering_analysis|default:'-' }}</div>
-        </div>
-
-        <div class="detail-row">
-            <div class="detail-label">欠缺材料：</div>
-            <div class="detail-value">{{ complaint.missing_materials|default:'-' }}</div>
-        </div>
-
-        <div class="detail-row">
-            <div class="detail-label">客诉状态：</div>
-            <div class="detail-value">{{ complaint.complaint_status }}</div>
-        </div>
-
-        <div class="detail-row">
-            <div class="detail-label">跟进情况：</div>
-            <div class="detail-value">{{ complaint.follow_up_status|default:'-' }}</div>
-        </div>
-
-        <div class="detail-row">
-            <div class="detail-label">备注：</div>
-            <div class="detail-value">{{ complaint.remarks|default:'-' }}</div>
+            <!-- 闭环操作区 -->
+            {% if not complaint.is_closed %}
+            {% can "customer_complaint" "update" %}
+            <div class="detail-card" id="closurePanel">
+                <div class="detail-title" style="font-size:1.15rem;">闭环操作区</div>
+                <form method="post" action="{% url 'customer_complaint_close' complaint.id %}">
+                    {% csrf_token %}
+                    <div style="margin-bottom:10px;">
+                        <label style="display:block;font-size:13px;color:var(--c-text-secondary);margin-bottom:4px;">闭环结论</label>
+                        <select class="form-select" name="closure_result" required>
+                            <option value="accepted">客户接受</option>
+                            <option value="partial">部分接受（需二次跟进）</option>
+                            <option value="rejected">不接受（转诉讼）</option>
+                        </select>
+                    </div>
+                    <div style="margin-bottom:10px;">
+                        <label style="display:block;font-size:13px;color:var(--c-text-secondary);margin-bottom:4px;">闭环说明</label>
+                        <textarea class="form-control" rows="3" name="closure_note" placeholder="记录最终处理结果与客户反馈……"></textarea>
+                    </div>
+                    <button type="submit" class="btn-primary" style="width:100%;">确认闭环</button>
+                    <p style="font-size:12px;color:var(--c-text-tertiary);margin:8px 0 0;">闭环后：状态置为「已完成」，时间线追加闭环记录，并通知操作人。</p>
+                </form>
+            </div>
+            {% endcan %}
+            {% endif %}
         </div>
     </div>
 
@@ -105,7 +208,10 @@
             </div>
             <div class="detail-row">
                 <div class="detail-label">客诉状态：</div>
-                <div class="detail-value">{{ other.complaint_status }}</div>
+                <div class="detail-value">
+                    {% if other.is_closed %}<span class="status-badge success">已闭环</span>
+                    {% else %}{{ other.complaint_status }}{% endif %}
+                </div>
             </div>
             <div class="detail-row">
                 <div class="detail-label">客诉描述：</div>

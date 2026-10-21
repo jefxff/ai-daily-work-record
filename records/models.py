@@ -1,5 +1,8 @@
+from datetime import datetime, time, timedelta
+
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 
 class Decoration(models.Model):
@@ -66,11 +69,92 @@ class CustomerComplaint(models.Model):
     complaint_status = models.CharField(max_length=20, verbose_name='客诉状态', null=False, blank=False, choices=[('未完成', '未完成'), ('处理中', '处理中'), ('已完成', '已完成')])
     follow_up_status = models.TextField(verbose_name='跟进情况', null=True, blank=True)
     remarks = models.TextField(verbose_name='备注', null=True, blank=True)
-    
+
+    # —— 闭环字段群（P2 客诉闭环）——
+    closed_at = models.DateTimeField(verbose_name='闭环时间', null=True, blank=True)
+    closed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name='闭环人',
+        null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='closed_complaints',
+    )
+    closure_result = models.CharField(
+        verbose_name='闭环结论', max_length=20, blank=True,
+        choices=[('accepted', '客户接受'), ('partial', '部分接受'), ('rejected', '不接受')],
+    )
+    closure_note = models.TextField(verbose_name='闭环说明', blank=True)
+    # SLA 承诺时限（小时），0 表示不考核
+    sla_hours = models.PositiveIntegerField(verbose_name='SLA时限(小时)', default=48)
+
     class Meta:
         verbose_name = '客户客诉'
         verbose_name_plural = '客户客诉'
         ordering = ['-id']
+
+    # —— 闭环 / SLA 便捷属性 ——
+    @property
+    def is_closed(self):
+        return self.closed_at is not None
+
+    @property
+    def sla_deadline(self):
+        """SLA 截止时间 = 客诉申请日期 00:00 + sla_hours 小时。"""
+        if not self.complaint_date or not self.sla_hours:
+            return None
+        start = datetime.combine(self.complaint_date, time.min)
+        if settings.USE_TZ:
+            start = timezone.make_aware(start)
+        return start + timedelta(hours=self.sla_hours)
+
+    @property
+    def sla_remaining(self):
+        """距 SLA 截止的剩余 timedelta，已超时为负。"""
+        deadline = self.sla_deadline
+        if deadline is None:
+            return None
+        return deadline - timezone.now()
+
+    @property
+    def is_sla_overdue(self):
+        if self.is_closed:
+            return False
+        remaining = self.sla_remaining
+        return remaining is not None and remaining.total_seconds() < 0
+
+    @property
+    def sla_overdue_days(self):
+        """超时天数（正数）；未超时或无截止时间返回 0。"""
+        remaining = self.sla_remaining
+        if self.is_closed or remaining is None:
+            return 0
+        seconds = remaining.total_seconds()
+        if seconds >= 0:
+            return 0
+        return int((-seconds + 86399) // 86400)
+
+    @property
+    def closure_result_display(self):
+        return dict(self._meta.get_field('closure_result').flatchoices).get(self.closure_result, '')
+
+    @property
+    def closure_timeline_steps(self):
+        """闭环五步法时间线：受理登记 → 核查定责 → 处置方案 → 回复客户 → 闭环确认。
+
+        仅「受理登记」与「闭环确认」有明确日期（complaint_date / closed_at），
+        中间三步为流程占位，闭环前显示为 todo，闭环后显示为 done。
+        """
+        closed = self.is_closed
+        steps = [
+            ('受理登记', self.complaint_date.strftime('%Y-%m-%d') if self.complaint_date else '', 'done'),
+            ('核查定责', '', 'done' if closed else 'todo'),
+            ('处置方案', '', 'done' if closed else 'todo'),
+            ('回复客户', '', 'done' if closed else 'todo'),
+            (
+                '闭环确认',
+                timezone.localtime(self.closed_at).strftime('%Y-%m-%d %H:%M') if closed else '待操作',
+                'done' if closed else 'current',
+            ),
+        ]
+        return steps
 
 
 class Regulation(models.Model):
@@ -202,23 +286,86 @@ class Insurance(models.Model):
 
 class Complaint(models.Model):
     """客诉模型"""
+    # 诉讼五态（保持现有 choices 不变，避免存量数据迁移）
+    PROGRESS_CHOICES = [('立案', '立案'), ('审理中', '审理中'), ('判决', '判决'), ('执行', '执行'), ('结案', '结案')]
+    # 状态 → 对应日期字段名（状态推进时由视图自动回填，未覆盖到的状态为 None）
+    PROGRESS_DATE_FIELD = {
+        '立案': 'filed_at',
+        '审理中': 'hearing_at',
+        '判决': 'judgment_at',
+        '执行': 'execution_at',
+        '结案': 'closed_at',
+    }
+
     dispute_type = models.CharField(max_length=100, verbose_name='纠纷类型', null=False, blank=False)
     defendant = models.CharField(max_length=100, verbose_name='被告', null=False, blank=False)
     case_number = models.CharField(max_length=50, verbose_name='案号', null=False, blank=False)
     amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='涉案金额（元）', null=False, blank=False)
     court = models.CharField(max_length=100, verbose_name='受理法院', null=False, blank=False)
     lawyer = models.CharField(max_length=50, verbose_name='代理律师', null=False, blank=False)
-    progress = models.CharField(max_length=50, verbose_name='进度', null=False, blank=False, choices=[('立案', '立案'), ('审理中', '审理中'), ('判决', '判决'), ('执行', '执行'), ('结案', '结案')])
+    progress = models.CharField(max_length=50, verbose_name='进度', null=False, blank=False, choices=PROGRESS_CHOICES)
     detailed_progress = models.TextField(verbose_name='详细进度', null=True, blank=True)
     remarks = models.TextField(verbose_name='备注', null=True, blank=True)
-    
+
+    # —— 五态关键日期（P3 诉讼时间线）：状态推进时自动回填 ——
+    filed_at = models.DateField(verbose_name='立案日期', null=True, blank=True)
+    hearing_at = models.DateField(verbose_name='开庭日期', null=True, blank=True)
+    judgment_at = models.DateField(verbose_name='判决日期', null=True, blank=True)
+    execution_at = models.DateField(verbose_name='执行日期', null=True, blank=True)
+    closed_at = models.DateField(verbose_name='结案日期', null=True, blank=True)
+
     class Meta:
         verbose_name = '客诉'
         verbose_name_plural = '客诉'
         ordering = ['-id']
-    
+
     def __str__(self):
         return f"{self.case_number} - {self.defendant}"
+
+    # —— 诉讼时间线便捷属性 ——
+    @property
+    def answer_deadline(self):
+        """答辩期截止 = 立案日期 + 15 天。"""
+        return self.filed_at + timedelta(days=15) if self.filed_at else None
+
+    @property
+    def progress_date(self):
+        """当前状态对应的日期字段值。"""
+        field = self.PROGRESS_DATE_FIELD.get(self.progress)
+        return getattr(self, field) if field else None
+
+    @property
+    def current_progress_days(self):
+        """当前状态已持续天数（自该状态日期起算）。"""
+        d = self.progress_date
+        if not d:
+            return None
+        return (timezone.localdate() - d).days
+
+    @property
+    def timeline_steps(self):
+        """供模板渲染的五态时间线数据：[(状态, 日期, 阶段), ...]。
+
+        阶段：done=已完成, current=当前, todo=未到达。以 progress 在 choices 中的
+        位置为分界点。
+        """
+        order = [c[0] for c in self.PROGRESS_CHOICES]
+        try:
+            current_idx = order.index(self.progress)
+        except ValueError:
+            current_idx = 0
+        steps = []
+        for idx, status in enumerate(order):
+            field = self.PROGRESS_DATE_FIELD.get(status)
+            d = getattr(self, field) if field else None
+            if idx < current_idx:
+                stage = 'done'
+            elif idx == current_idx:
+                stage = 'current'
+            else:
+                stage = 'todo'
+            steps.append((status, d, stage))
+        return steps
 
 
 class OperationLog(models.Model):

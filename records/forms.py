@@ -123,7 +123,7 @@ class CustomerComplaintForm(forms.ModelForm):
     """客户客诉表单"""
     class Meta:
         model = CustomerComplaint
-        fields = ['customer_name', 'responsible_salesperson', 'complaint_date', 'terminal_customer', 'product_model', 'our_shipment', 'customer_shipment', 'complaint_description', 'compensation_amount', 'is_insured', 'engineering_report', 'engineering_analysis', 'missing_materials', 'complaint_status', 'follow_up_status', 'remarks']
+        fields = ['customer_name', 'responsible_salesperson', 'complaint_date', 'terminal_customer', 'product_model', 'our_shipment', 'customer_shipment', 'complaint_description', 'compensation_amount', 'is_insured', 'engineering_report', 'engineering_analysis', 'missing_materials', 'complaint_status', 'follow_up_status', 'remarks', 'closure_result', 'closure_note', 'sla_hours']
         widgets = {
             'complaint_date': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
             'customer_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '请输入客户名称'}),
@@ -141,6 +141,9 @@ class CustomerComplaintForm(forms.ModelForm):
             'complaint_status': forms.Select(attrs={'class': 'form-select'}),
             'follow_up_status': forms.Textarea(attrs={'class': 'form-control', 'placeholder': '请输入跟进情况', 'rows': 3}),
             'remarks': forms.Textarea(attrs={'class': 'form-control', 'placeholder': '请输入备注', 'rows': 3}),
+            'closure_result': forms.Select(attrs={'class': 'form-select'}),
+            'closure_note': forms.Textarea(attrs={'class': 'form-control', 'placeholder': '请输入闭环说明', 'rows': 3}),
+            'sla_hours': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'SLA时限（小时），0 表示不考核', 'min': '0'}),
         }
         labels = {
             'customer_name': '客户名称',
@@ -159,6 +162,9 @@ class CustomerComplaintForm(forms.ModelForm):
             'complaint_status': '客诉状态',
             'follow_up_status': '跟进情况',
             'remarks': '备注',
+            'closure_result': '闭环结论',
+            'closure_note': '闭环说明',
+            'sla_hours': 'SLA时限(小时)',
         }
     
     def clean_customer_name(self):
@@ -184,6 +190,19 @@ class CustomerComplaintForm(forms.ModelForm):
         if not complaint_status:
             raise forms.ValidationError('客诉状态不能为空')
         return complaint_status
+
+
+class CustomerComplaintClosureForm(forms.Form):
+    """客诉闭环操作表单（仅闭环结论与说明，闭环时间/人由视图自动回填）。"""
+    closure_result = forms.ChoiceField(
+        label='闭环结论',
+        choices=[('accepted', '客户接受'), ('partial', '部分接受'), ('rejected', '不接受')],
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    closure_note = forms.CharField(
+        label='闭环说明', required=False,
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': '记录最终处理结果与客户反馈……'}),
+    )
 
 
 class RegulationForm(forms.ModelForm):
@@ -355,7 +374,7 @@ class ComplaintForm(forms.ModelForm):
     """客诉表单"""
     class Meta:
         model = Complaint
-        fields = ['dispute_type', 'defendant', 'case_number', 'amount', 'court', 'lawyer', 'progress', 'detailed_progress', 'remarks']
+        fields = ['dispute_type', 'defendant', 'case_number', 'amount', 'court', 'lawyer', 'progress', 'detailed_progress', 'remarks', 'filed_at', 'hearing_at', 'judgment_at', 'execution_at', 'closed_at']
         widgets = {
             'dispute_type': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '请输入纠纷类型'}),
             'defendant': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '请输入被告'}),
@@ -366,6 +385,11 @@ class ComplaintForm(forms.ModelForm):
             'progress': forms.Select(attrs={'class': 'form-select'}),
             'detailed_progress': forms.Textarea(attrs={'class': 'form-control', 'placeholder': '请输入详细进度', 'rows': 3}),
             'remarks': forms.Textarea(attrs={'class': 'form-control', 'placeholder': '请输入备注', 'rows': 3}),
+            'filed_at': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}, format='%Y-%m-%d'),
+            'hearing_at': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}, format='%Y-%m-%d'),
+            'judgment_at': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}, format='%Y-%m-%d'),
+            'execution_at': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}, format='%Y-%m-%d'),
+            'closed_at': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}, format='%Y-%m-%d'),
         }
         labels = {
             'dispute_type': '纠纷类型',
@@ -377,6 +401,11 @@ class ComplaintForm(forms.ModelForm):
             'progress': '进度',
             'detailed_progress': '详细进度',
             'remarks': '备注',
+            'filed_at': '立案日期',
+            'hearing_at': '开庭日期',
+            'judgment_at': '判决日期',
+            'execution_at': '执行日期',
+            'closed_at': '结案日期',
         }
     
     def clean_dispute_type(self):

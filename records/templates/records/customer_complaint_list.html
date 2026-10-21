@@ -144,7 +144,11 @@
                         <td data-label="工程部分析原因报告" title="{{ complaint.engineering_analysis|default:'' }}">{{ complaint.engineering_analysis|default:''|truncatechars:30 }}</td>
                         <td data-label="欠缺材料" title="{{ complaint.missing_materials|default:'' }}">{{ complaint.missing_materials|default:''|truncatechars:20 }}</td>
                         <td data-label="客诉状态">
-                            {% if complaint.complaint_status == '已完成' %}
+                            {% if complaint.is_closed %}
+                            <span class="status-badge success">已闭环</span>
+                            {% elif complaint.is_sla_overdue %}
+                            <span class="status-badge danger">{{ complaint.complaint_status }} · 超时</span>
+                            {% elif complaint.complaint_status == '已完成' %}
                             <span class="status-badge success">{{ complaint.complaint_status }}</span>
                             {% elif complaint.complaint_status == '处理中' %}
                             <span class="status-badge warning">{{ complaint.complaint_status }}</span>

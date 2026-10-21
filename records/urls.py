@@ -32,6 +32,7 @@ urlpatterns = [
     path('customer_complaint/edit/<int:pk>/', views.customer_complaint_edit, name='customer_complaint_edit'),
     path('customer_complaint/delete/<int:pk>/', views.customer_complaint_delete, name='customer_complaint_delete'),
     path('customer_complaint/export/', views.customer_complaint_export, name='customer_complaint_export'),
+    path('customer_complaint/close/<int:pk>/', views.customer_complaint_close, name='customer_complaint_close'),
     path('customer_detail/<int:pk>/', views.customer_detail, name='customer_detail'),
     
     # 制度及处罚
@@ -79,6 +80,7 @@ urlpatterns = [
     path('complaint/edit/<int:pk>/', views.complaint_edit, name='complaint_edit'),
     path('complaint/delete/<int:pk>/', views.complaint_delete, name='complaint_delete'),
     path('complaint/export/', views.complaint_export, name='complaint_export'),
+    path('complaint/advance/<int:pk>/', views.complaint_advance, name='complaint_advance'),
 
     # 数据展示看板
     path('dashboard/', views.dashboard, name='dashboard'),

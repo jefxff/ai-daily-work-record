@@ -1,0 +1,18 @@
+{% comment %}
+通用时间线组件（客诉闭环 / 诉讼状态共用）
+期望上下文：
+- steps: [(title, meta, stage), ...]，stage 取值 done | current | todo
+- title 为节点标题，meta 为日期/操作人等副信息
+注意：Django 的 {# #} 注释不支持跨行，多行注释必须用 comment 标签，否则会被原样输出到页面。
+{% endcomment %}
+<ol class="biz-timeline">
+    {% for title, meta, stage in steps %}
+    <li class="{{ stage }}">
+        <span class="tl-dot"></span>
+        <div>
+            <div class="tl-title">{{ title }}</div>
+            {% if meta %}<div class="tl-meta">{{ meta }}</div>{% endif %}
+        </div>
+    </li>
+    {% endfor %}
+</ol>

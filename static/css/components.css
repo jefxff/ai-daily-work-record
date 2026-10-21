@@ -533,6 +533,173 @@ td[data-label="操作"] > div { justify-content: center; }
 }
 
 /* ==========================================================================
+   时间线组件（客诉闭环 / 诉讼状态共用）
+   用法：<ol class="biz-timeline">
+           <li class="done|current|todo"><span class="tl-dot"></span>
+             <div><div class="tl-title">…</div><div class="tl-meta">…</div></div>
+           </li>
+         </ol>
+   ========================================================================== */
+.biz-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.biz-timeline li {
+  display: flex;
+  gap: 12px;
+  padding-bottom: 18px;
+  position: relative;
+}
+.biz-timeline li::before {
+  content: '';
+  position: absolute;
+  left: 7px;
+  top: 18px;
+  bottom: 0;
+  width: 2px;
+  background: var(--c-border);
+}
+.biz-timeline li:last-child {
+  padding-bottom: 0;
+}
+.biz-timeline li:last-child::before {
+  display: none;
+}
+.biz-timeline .tl-dot {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--c-surface);
+  border: 2px solid var(--c-border-strong);
+  margin-top: 2px;
+  z-index: 1;
+}
+.biz-timeline li.done .tl-dot {
+  background: var(--c-success);
+  border-color: var(--c-success);
+}
+.biz-timeline li.current .tl-dot {
+  background: var(--c-primary);
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 4px var(--c-primary-subtle);
+}
+.biz-timeline li.todo .tl-dot {
+  background: var(--c-surface);
+  border-style: dashed;
+}
+.biz-timeline .tl-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--c-text);
+}
+.biz-timeline .tl-meta {
+  font-size: 12px;
+  color: var(--c-text-tertiary);
+  margin-top: 2px;
+}
+.biz-timeline li.current .tl-title {
+  color: var(--c-primary);
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   五态流程条（诉讼状态推进）
+   用法：<div class="flow-steps">
+           <div class="flow-step done"><div class="fs-box">立案</div></div>
+           <div class="flow-step current"><span class="fs-arrow">→</span><div class="fs-box">审理中</div></div>
+           …
+         </div>
+   ========================================================================== */
+.flow-steps {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0;
+  margin: 8px 0;
+}
+.flow-step {
+  display: flex;
+  align-items: center;
+}
+.flow-step .fs-box {
+  border: 1px solid var(--c-border-strong);
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  color: var(--c-text-secondary);
+  background: var(--c-surface);
+  white-space: nowrap;
+}
+.flow-step.done .fs-box {
+  background: var(--c-success);
+  border-color: var(--c-success);
+  color: #fff;
+}
+.flow-step.current .fs-box {
+  background: var(--c-primary);
+  border-color: var(--c-primary);
+  color: #fff;
+  font-weight: 600;
+}
+.flow-step .fs-arrow {
+  color: var(--c-text-tertiary);
+  margin: 0 8px;
+  font-size: 14px;
+}
+
+/* SLA 计时（客诉闭环：全页面与弹窗共用） */
+.sla-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.sla-figure {
+  font-size: 1.35rem;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  line-height: 1.2;
+}
+.sla-figure.is-normal { color: var(--c-primary); }
+.sla-figure.is-closed { color: var(--c-success); }
+.sla-figure.is-overdue { color: var(--c-danger); }
+.sla-caption {
+  font-size: 12.5px;
+  color: var(--c-text-secondary);
+}
+.sla-progress {
+  height: 6px;
+  background: var(--c-border);
+  border-radius: 3px;
+  overflow: hidden;
+  margin: 10px 0 6px;
+}
+.sla-progress-fill {
+  display: block;
+  height: 100%;
+  background: var(--c-primary);
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+.sla-progress.overdue .sla-progress-fill {
+  background: var(--c-danger);
+}
+.sla-progress-fill.is-full { width: 100%; }
+.sla-progress-fill.is-half { width: 60%; }
+.sla-deadline {
+  font-size: 12px;
+  margin: 0;
+  color: var(--c-text-secondary);
+}
+.sla-deadline.is-overdue { color: var(--c-danger); }
+.sla-empty {
+  font-size: 12.5px;
+  color: var(--c-text-secondary);
+  margin: 0;
+}
+
+/* ==========================================================================
    §7 表格操作列 · 统一分隔线
    --------------------------------------------------------------------------
    客户账期等 6 个页面（模板里带 .col-actions）自带「操作列左侧 1px 竖线」，
