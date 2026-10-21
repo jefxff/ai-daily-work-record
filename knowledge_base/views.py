@@ -1,6 +1,6 @@
 import markdown
 from datetime import timedelta
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseForbidden
 from django.shortcuts import render, get_object_or_404, redirect
 from django.core.paginator import Paginator
 from django.db.models import Count, F, Q, Sum
@@ -12,6 +12,7 @@ from .models import KnowledgeDocument, KnowledgeCategory, KnowledgeView
 from .forms import KnowledgeDocumentForm, KnowledgeCategoryForm
 from accounts.decorators import perm_required
 from accounts.security import client_ip
+from . import access
 
 
 def _is_ajax(request):
@@ -26,29 +27,40 @@ def _modal_form(request, template, context, *, ok=True):
 
 @perm_required("knowledge", "read")
 def document_list(request):
-    """文档列表"""
+    """文档列表（读路径改造：所有统计/标签/分类计数只算当前用户可见范围）"""
     category_id = request.GET.get('category')
     tag_filter = request.GET.get('tag')
-    documents = KnowledgeDocument.objects.filter(status='published')
-    
+    # 唯一入口 access.visible_docs：公开 + 本人文档；漏一处就是泄漏口
+    documents = access.visible_docs(request.user).filter(status='published')
+
     if category_id:
         documents = documents.filter(category_id=category_id)
-    
+
     if tag_filter:
         documents = documents.filter(tags__icontains=tag_filter)
-    
-    categories = KnowledgeCategory.objects.all()
-    
+
+    # 分类本身不隐藏（分类名不算敏感信息，全隐藏会导致新建文档选不到分类），
+    # 但计数只算可见的，否则「分类 42 篇」点进去只有 3 条，用户以为系统坏了
+    published_visible_q = Q(documents__status='published') & (
+        Q(documents__visibility=access.PUBLIC) | Q(documents__owner=request.user))
+    if access.can_read_private_of_others(request.user):
+        categories = KnowledgeCategory.objects.annotate(
+            doc_count=Count('documents', distinct=True))
+    else:
+        categories = KnowledgeCategory.objects.annotate(
+            doc_count=Count('documents', filter=published_visible_q, distinct=True))
+
     # 统计数据（聚合下推到数据库，避免把整表对象加载进 Python 求和）
-    total_documents = KnowledgeDocument.objects.filter(status='published').count()
+    visible = access.visible_docs(request.user).filter(status='published')
+    total_documents = visible.count()
     total_categories = KnowledgeCategory.objects.count()
-    total_views = KnowledgeDocument.objects.aggregate(total=Sum('view_count'))['total'] or 0
+    total_views = visible.aggregate(total=Sum('view_count'))['total'] or 0
     avg_views = total_views // total_documents if total_documents > 0 else 0
-    
+
     # 获取所有标签并统计数量（支持中文逗号和英文逗号分隔）
-    # 仅取 tags 单列（values_list），避免全表对象实例化
+    # 仅取 tags 单列（values_list），避免全表对象实例化；口径=可见文档
     all_tags = {}
-    for tags_text in KnowledgeDocument.objects.filter(status='published').values_list('tags', flat=True):
+    for tags_text in visible.values_list('tags', flat=True):
         if tags_text:
             # 先按中文逗号拆分，再按英文逗号拆分
             tags = []
@@ -137,8 +149,8 @@ def _sanitize_html(html: str) -> str:
 
 @perm_required("knowledge", "read")
 def document_detail(request, pk):
-    """文档详情"""
-    document = get_object_or_404(KnowledgeDocument, pk=pk)
+    """文档详情（无权访问一律 404：403 等于告诉对方「这篇存在，只是你没权限」）"""
+    document = get_object_or_404(access.visible_docs(request.user), pk=pk)
     is_ajax = _is_ajax(request)
     if not is_ajax:
         # 原子自增（F 表达式），避免并发浏览时的读-改-写覆盖导致计数丢失
@@ -163,8 +175,9 @@ def document_detail(request, pk):
         ]
     ))
 
-    # 获取相关文档（同分类或同标签）
-    related_docs = KnowledgeDocument.objects.filter(
+    # 获取相关文档（同分类或同标签；同样只从可见范围里挑，
+    # 否则会通过「相关文档」把私有文档的标题带出来）
+    related_docs = access.visible_docs(request.user).filter(
         Q(category=document.category) | Q(tags__icontains=document.tags.split(',')[0] if document.tags else '')
     ).exclude(pk=pk).distinct()[:5]
 
@@ -179,12 +192,18 @@ def document_detail(request, pk):
 
 @perm_required("knowledge", "create")
 def document_create(request):
-    """创建文档"""
+    """创建文档（写入时定所有权：owner 为空的文档连创建人自己都改不了）"""
     is_ajax = _is_ajax(request)
     if request.method == 'POST':
         form = KnowledgeDocumentForm(request.POST)
         if form.is_valid():
-            doc = form.save()
+            doc = form.save(commit=False)
+            # 可见性：表单单选框（批次 2 上 UI）；接口先落地，默认/非法值一律私有
+            target_visibility = request.POST.get('visibility')
+            doc.visibility = (target_visibility if target_visibility in access.VISIBILITY_LABELS
+                              else access.PRIVATE)
+            access.ensure_owner(doc, request.user)
+            doc.save()
             if is_ajax:
                 return JsonResponse({'ok': True, 'message': f'文档「{doc.title}」创建成功'})
             return redirect('knowledge_base:document_list')
@@ -204,14 +223,23 @@ def document_create(request):
 
 @perm_required("knowledge", "update")
 def document_edit(request, pk):
-    """编辑文档"""
-    document = get_object_or_404(KnowledgeDocument, pk=pk)
+    """编辑文档（owner 专属：公开文档他人只读；他人私有文档直接 404）"""
+    document = get_object_or_404(access.visible_docs(request.user), pk=pk)
+    if not access.can_edit(document, request.user):
+        message = '只能编辑自己创建的文档'
+        if _is_ajax(request):
+            return JsonResponse({'ok': False, 'message': message}, status=403)
+        return HttpResponseForbidden(message)
     is_ajax = _is_ajax(request)
 
     if request.method == 'POST':
         form = KnowledgeDocumentForm(request.POST, instance=document)
         if form.is_valid():
             form.save()
+            # 可见性单选框（批次 2 上 UI）：切换走唯一入口并留痕
+            target = request.POST.get('visibility')
+            if target in access.VISIBILITY_LABELS and access.can_manage_visibility(document, request.user):
+                access.set_visibility(document, target, request=request, source='编辑表单')
             if is_ajax:
                 return JsonResponse({'ok': True, 'message': '文档已更新'})
             return redirect('knowledge_base:document_detail', pk=pk)
@@ -234,13 +262,18 @@ def document_edit(request, pk):
 
 @perm_required("knowledge", "delete")
 def document_delete(request, pk):
-    """删除文档"""
-    document = get_object_or_404(KnowledgeDocument, pk=pk)
-    
+    """删除文档（owner 专属；否则任何有 knowledge.delete 的人都能删掉别人的私人笔记）"""
+    document = get_object_or_404(access.visible_docs(request.user), pk=pk)
+    if not access.can_delete(document, request.user):
+        message = '只能删除自己创建的文档'
+        if _is_ajax(request):
+            return JsonResponse({'ok': False, 'message': message}, status=403)
+        return HttpResponseForbidden(message)
+
     if request.method == 'POST':
         document.delete()
         return redirect('knowledge_base:document_list')
-    
+
     context = {
         'document': document,
     }
@@ -249,10 +282,10 @@ def document_delete(request, pk):
 
 @perm_required("knowledge", "read")
 def document_search(request):
-    """文档搜索"""
+    """文档搜索（搜索会命中正文，正文里有客户名、金额、人名——必须过滤）"""
     keyword = request.GET.get('keyword', '')
     if keyword:
-        documents = KnowledgeDocument.objects.filter(
+        documents = access.visible_docs(request.user).filter(
             Q(title__icontains=keyword) |
             Q(content__icontains=keyword) |
             Q(tags__icontains=keyword)
@@ -378,12 +411,15 @@ def knowledge_report(request):
     """
     days = _clamp_report_days(request.GET.get('days'))
     since = timezone.now() - timedelta(days=days)
-    qs = KnowledgeView.objects.filter(viewed_at__gte=since)
+    # 保守口径：榜单只统计公开文档 + 本人文档，不把他人私有文档标题摆出来
+    # （「看不到」一旦破了例，后面每加一个报表都要重新讨论一次）
+    qs = KnowledgeView.objects.filter(viewed_at__gte=since).filter(
+        access.doc_visibility_q(request.user, 'document__'))
 
     total_views = qs.count()
     unique_viewers = qs.exclude(viewer='').values('viewer').distinct().count()
     viewed_docs = qs.values('document_id').distinct().count()
-    published_docs = KnowledgeDocument.objects.filter(status='published').count()
+    published_docs = access.visible_docs(request.user).filter(status='published').count()
     unread_docs = max(published_docs - viewed_docs, 0)
 
     # 榜单：阅读次数最多的文档 / 阅读最活跃的人

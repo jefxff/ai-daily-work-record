@@ -485,6 +485,7 @@ def seed_knowledge():
             summary=summary,
             tags="演示,规范,流程",
             status="published" if i % 4 != 3 else "draft",
+            visibility="public",  # 演示数据等同存量文档口径：公开可见
             view_count=rnd.randint(3, 260),
         )
     return len(titles)

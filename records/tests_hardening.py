@@ -196,14 +196,14 @@ class StatsConsistencyTests(TestCase):
             sample_no="S-1", material_name="料", model="M", sample_date=date(2026, 1, 1)
         )
         Archive.objects.create(code="A-1", name="档案")
-        KnowledgeDocument.objects.create(title="文档", status="published")
+        KnowledgeDocument.objects.create(title="文档", status="published", visibility="public")
 
         from records import stats as stats_svc
         from accounts.services import visible_modules
 
         cats = stats_svc.decoration_stats()
         base = cats["total_decorations"] + stats_svc.regulation_count()
-        total = stats_svc.total_records(set(visible_modules(self.user)), base)
+        total = stats_svc.total_records(set(visible_modules(self.user)), base, user=self.user)
         self.assertEqual(total, 1 + 1 + 1 + 1)
 
     def test_price_reduction_matches_model_method(self):

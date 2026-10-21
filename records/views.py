@@ -400,8 +400,12 @@ def search(request):
         Q(remarks__icontains=search_term)
     )
 
-    # 搜索知识库文档（与列表行为一致，仅覆盖已发布文档）
-    knowledge_results = KnowledgeDocument.objects.select_related('category').filter(status='published').filter(
+    # 搜索知识库文档（与列表行为一致，仅覆盖已发布文档；
+    # 可见性过滤统一走 knowledge_base.access 唯一入口，防止他人私有文档进搜索结果）
+    from knowledge_base import access as kb_access
+    knowledge_results = kb_access.visible_docs(
+        request.user, KnowledgeDocument.objects.select_related('category')
+    ).filter(status='published').filter(
         Q(title__icontains=search_term) |
         Q(content__icontains=search_term) |
         Q(summary__icontains=search_term) |
@@ -1164,7 +1168,7 @@ def dashboard(request):
         + total_regulations + price_total_count + insurance_total_count + daily_total_count
     )
     _visible = set(visible_modules(request.user))
-    total_records = stats_svc.total_records(_visible, _records_total)
+    total_records = stats_svc.total_records(_visible, _records_total, user=request.user)
 
     # 看板 10 个模块卡中当前用户可见的数量（原为模板硬编码 8，新增模块/按权限过滤不计）
     _DASHBOARD_MODULE_KEYS = (

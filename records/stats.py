@@ -121,11 +121,12 @@ def metal_prices_today():
     return list(MetalPrice.objects.filter(crawl_date=last.crawl_date))
 
 
-def total_records(visible, base):
+def total_records(visible, base, user=None):
     """全站记录总数：口径统一在这里，漏模块的问题只会在这一处发生。
 
     base 为 records 各模块计数之和；visible 为用户可见模块集合，
     只在用户有权限时才把试样 / 档案 / 知识库的条数算进去（避免越权泄露规模）。
+    知识库分支按可见性口径统计（公开 + 本人文档），user 缺省时退回公开口径。
     """
     total = base
     if "samples" in visible:
@@ -137,7 +138,14 @@ def total_records(visible, base):
 
         total += Archive.objects.count()
     if "knowledge" in visible:
+        from django.db.models import Q
+
         from knowledge_base.models import KnowledgeDocument
 
-        total += KnowledgeDocument.objects.filter(status="published").count()
+        doc_q = Q(status="published")
+        if user is not None and getattr(user, "is_authenticated", False):
+            doc_q &= Q(visibility="public") | Q(owner=user)
+        else:
+            doc_q &= Q(visibility="public")
+        total += KnowledgeDocument.objects.filter(doc_q).count()
     return total

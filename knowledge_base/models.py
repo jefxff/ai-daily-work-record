@@ -48,10 +48,24 @@ class KnowledgeDocument(models.Model):
     updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
     view_count = models.IntegerField(default=0, verbose_name='浏览次数')
 
+    # —— 可见性（批次 1）：默认私有 + 主动公开 + 可随时收回，规则见 access.py ——
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name='创建人', null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='knowledge_docs')
+    visibility = models.CharField(
+        '可见性', max_length=10, default='private', db_index=True,
+        choices=[('private', '仅自己可见'), ('public', '全员可见')])
+    # 来源标记：沉淀容器等系统写入的文档带固定指纹，定位/清理以本字段为准，
+    # 不依赖标题字符串（用户改标题不影响同步逻辑）
+    source = models.CharField('来源标记', max_length=32, blank=True, default='')
+
     class Meta:
         verbose_name = '知识文档'
         verbose_name_plural = '知识文档'
         ordering = ['-updated_at']
+        indexes = [
+            models.Index(fields=['owner', 'visibility'], name='idx_kdoc_owner_vis'),
+        ]
 
     def __str__(self):
         return self.title

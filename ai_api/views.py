@@ -508,7 +508,11 @@ class KnowledgeCategoryViewSet(EnhancedModelViewSet):
 
 
 class KnowledgeDocumentViewSet(EnhancedModelViewSet):
-    """知识文档 API"""
+    """知识文档 API（可见性过滤：公开 + 本人文档，走 access 唯一入口）
+
+    不改这里，页面侧 1~7 处读路径全部白改：任何有 knowledge.read 的用户
+    走本接口可分页枚举所有人的私有文档标题+正文（serializer 含 content）。
+    """
     perm_module = 'knowledge'
     audit_label = '知识库'
     audit_object_name = '知识文档'
@@ -518,6 +522,10 @@ class KnowledgeDocumentViewSet(EnhancedModelViewSet):
     serializer_class = KnowledgeDocumentSerializer
     search_fields = ['title', 'content', 'summary', 'tags']
     ordering_fields = ['updated_at', 'view_count']
+
+    def get_queryset(self):
+        from knowledge_base import access as kb_access
+        return kb_access.visible_docs(self.request.user, KnowledgeDocument.objects.all())
 
 
 # ========== AI 友好接口 ==========
@@ -563,7 +571,9 @@ def ai_summary(request):
         totals['档案'] = Archive.objects.count()
         totals['证照'] = License.objects.count()
     if _can(request.user, 'knowledge', 'read'):
-        totals['知识文档'] = KnowledgeDocument.objects.count()
+        # 可见性口径：只统计公开 + 本人文档，不泄漏他人私有文档的规模
+        from knowledge_base import access as kb_access
+        totals['知识文档'] = kb_access.visible_docs(request.user).count()
     summary['总数据统计'] = totals
 
     # 今日数据
@@ -647,6 +657,9 @@ def ai_search(request):
 
     results = {}
 
+    # 知识库可见性过滤入口（供 models_to_search 使用）
+    from knowledge_base import access as kb_access
+
     # 根据 model 参数搜索指定模型，或搜索所有模型
     # 值为 (model, serializer[, base_queryset])；base_queryset 缺省为全表
     models_to_search = {
@@ -665,7 +678,11 @@ def ai_search(request):
         'audit_record': (AuditRecord, AuditRecordSerializer),
         'archive': (Archive, ArchiveSerializer),
         'license': (License, LicenseSerializer),
-        'knowledge_document': (KnowledgeDocument, KnowledgeDocumentSerializer),
+        # 知识文档按可见性过滤（公开 + 本人文档），防止私有文档经搜索通道外泄
+        'knowledge_document': (
+            KnowledgeDocument, KnowledgeDocumentSerializer,
+            kb_access.visible_docs(request.user),
+        ),
     }
 
     def _text_search(model_class, serializer_class, base_queryset, limit):
@@ -878,10 +895,13 @@ def ai_query(request):
             response['数据'] = LicenseSerializer(License.objects.all()[:10], many=True).data
 
         elif model_name == 'knowledge_document':
+            # 可见性口径：只返回公开 + 本人文档，私有文档正文不得经 AI 问答通道外泄
+            from knowledge_base import access as kb_access
+            visible_knowledge = kb_access.visible_docs(request.user)
             response['数据'] = KnowledgeDocumentSerializer(
-                KnowledgeDocument.objects.all()[:10], many=True
+                visible_knowledge[:10], many=True
             ).data
-            response['答案'] = f'共{KnowledgeDocument.objects.count()}篇知识文档'
+            response['答案'] = f'共{visible_knowledge.count()}篇知识文档'
     else:
         response['答案'] = (
             '请明确搜索内容，支持：保险、客诉、诉讼、账期、记录、装修、核价、金属、'
@@ -895,6 +915,7 @@ def ai_query(request):
 @permission_classes([IsAuthenticated])
 def model_list(request):
     """获取所有可用模型列表"""
+    from knowledge_base import access as kb_access
     models = {
         'decoration': {
             'name': '装修记录',
@@ -978,7 +999,8 @@ def model_list(request):
         },
         'knowledge_document': {
             'name': '知识文档',
-            'count': KnowledgeDocument.objects.count(),
+            # 可见性口径：文档总数不泄漏他人私有文档的规模
+            'count': kb_access.visible_docs(request.user).count(),
             'fields': [f.name for f in KnowledgeDocument._meta.get_fields() if hasattr(f, 'name')]
         },
     }

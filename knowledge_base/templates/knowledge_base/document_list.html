@@ -89,7 +89,7 @@
         </a>
         {% for category in categories %}
         <a href="{% url 'knowledge_base:document_list' %}?category={{ category.id }}" class="kb-side-list-item {% if selected_category == category.id|stringformat:'i' %}active{% endif %}">
-            <span>{{ category.name }}</span><span class="kb-side-list-count">{{ category.documents.count }}</span>
+            <span>{{ category.name }}</span><span class="kb-side-list-count">{{ category.doc_count }}</span>
         </a>
         {% empty %}
         <div class="kb-side-empty">暂无分类</div>

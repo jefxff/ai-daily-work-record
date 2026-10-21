@@ -452,3 +452,14 @@ REQUEST_METRICS_FLUSH_SIZE = 50
 REQUEST_METRICS_FLUSH_INTERVAL = 5
 REQUEST_METRICS_RETENTION_DAYS = int(os.environ.get('DJANGO_REQUEST_METRICS_RETENTION_DAYS', '30'))
 REQUEST_METRICS_CLEANUP_INTERVAL = 3600
+
+# === 知识库可见性（批次 1）===
+# 规则见 knowledge_base/access.py：新文档默认私有 + 主动公开 + 可随时收回。
+# KB_ADMIN_CAN_READ_PRIVATE：管理员能否读别人的私有文档。默认 False——
+#   「仅自己可见」是一句承诺，连超管也不破例；确实需要管理层可审计时再打开，
+#   打开后单选框文案自动变为「仅自己可见（管理员可审计）」。
+KB_ADMIN_CAN_READ_PRIVATE = os.environ.get('KB_ADMIN_CAN_READ_PRIVATE', '0') == '1'
+# 算作「管理员」的角色编码（配合上一开关；内置 admin 角色即可命中）
+KB_ADMIN_ROLE_CODES = ('admin',)
+# 管理员能否代改/代切换别人的文档（默认关闭，owner 专属）
+KB_ADMIN_CAN_EDIT_OTHERS = os.environ.get('KB_ADMIN_CAN_EDIT_OTHERS', '0') == '1'
