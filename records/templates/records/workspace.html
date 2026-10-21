@@ -13,11 +13,11 @@
     </select>
     <button type="submit" class="btn-transparent">筛选</button>
     {% if source_filter %}
-    <a href="?{% if urgency_filter %}urgency={{ urgency_filter }}{% endif %}" class="filter-chip" style="min-height:28px">清除来源 ✕</a>
+    <a href="?{% if urgency_filter %}urgency={{ urgency_filter }}{% endif %}" class="filter-chip">清除来源 ✕</a>
     {% endif %}
     {% for mod_key, mod_label in source_shortcuts %}
     <a href="?source={{ mod_key }}{% if urgency_filter %}&urgency={{ urgency_filter }}{% endif %}"
-       class="filter-chip" style="min-height:28px{% if source_filter == mod_key %};outline:2px solid var(--c-primary-active);outline-offset:1px;color:var(--c-primary);font-weight:600{% endif %}">{{ mod_label }}</a>
+       class="filter-chip{% if source_filter == mod_key %} is-active{% endif %}">{{ mod_label }}</a>
     {% endfor %}
 </form>
 {% endblock %}
@@ -88,7 +88,44 @@
 
 {% block extra_css %}
 <style>
-    /* 紧急度快捷筛选 chip —— 放在 page-header 右侧 filter-chips 容器内 */
+    /* === page-actions 内的所有控件统一规格（参照 .page-actions .btn-transparent） ===
+       .filter-chip 在 page-actions 里呈现为与 select / 按钮一样的 34px 高按钮外形；
+       但在 page-header 里仍保留小标签外观（color 由全局 .filter-chip 控制）。 */
+    .page-actions .filter-chip {
+        height: 34px !important;
+        min-height: 34px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        padding: 0 12px !important;
+        background: var(--c-surface) !important;
+        color: var(--c-text-secondary) !important;
+        border: 1px solid var(--c-border-strong) !important;
+        border-radius: 6px !important;
+        font-size: 13px !important;
+        font-weight: 500 !important;
+        text-decoration: none !important;
+        white-space: nowrap !important;
+        line-height: 1 !important;
+        transition: background-color var(--dur-fast) ease,
+                    color var(--dur-fast) ease,
+                    border-color var(--dur-fast) ease;
+    }
+    .page-actions .filter-chip:hover,
+    .page-actions .filter-chip:focus-visible {
+        background: var(--c-primary-subtle) !important;
+        color: var(--c-primary) !important;
+        border-color: var(--c-primary) !important;
+        text-decoration: none !important;
+    }
+    /* 当前激活的来源快捷筛选：主色 + 加粗 */
+    .page-actions .filter-chip.is-active {
+        background: var(--c-primary-subtle) !important;
+        color: var(--c-primary) !important;
+        border-color: var(--c-primary) !important;
+        font-weight: 600 !important;
+    }
+
+    /* 紧急度快捷筛选 chip —— page-header 右侧，保持胶囊标签外观 */
     .ws-chips { align-items: center; }
     .ws-chip {
         display: inline-flex;
