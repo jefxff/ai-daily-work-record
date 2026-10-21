@@ -1,10 +1,12 @@
 from django.urls import path
 from . import views
-from . import views_expiry, views_reports, views_audit
+from . import views_expiry, views_reports, views_audit, views_workspace
 
 urlpatterns = [
     # 首页
     path('', views.home, name='home'),
+    # 待办工作台
+    path('workspace/', views_workspace.workspace, name='workspace'),
     # 搜索
     path('search/', views.search, name='search'),
     

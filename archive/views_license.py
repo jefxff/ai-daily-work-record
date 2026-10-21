@@ -4,6 +4,7 @@
 URL 配置仍通过 views.py 门面 re-export 引用，URL 名称与行为完全不变。
 """
 
+import logging
 import os
 import re
 from datetime import date, datetime
@@ -31,6 +32,8 @@ from .services.license_query import annotate_status, status_aggregate
 
 # ==================== 证照管理子模块 ====================
 
+logger = logging.getLogger(__name__)
+
 
 def _license_log(request, op_type: str, obj_id: str, summary: str):
     """写入证照操作留痕。"""
@@ -41,6 +44,29 @@ def _license_log(request, op_type: str, obj_id: str, summary: str):
         object_identifier=obj_id,
         change_summary=summary,
     )
+
+
+def _notify_review_failed(lic, review):
+    """年审未通过后通知 archive.read 用户（失败仅记日志，不影响主流程）。"""
+    try:
+        from notifications import services as notify_svc
+
+        for user in notify_svc.users_with_perm("archive", "read"):
+            notify_svc.emit(
+                "license_review_failed",
+                recipient=user,
+                context={
+                    "license_name": lic.name,
+                    "code": lic.code,
+                    "review_date": review.review_date,
+                    "reviewer": review.reviewer,
+                    "remark": review.remark,
+                },
+                dedup_context=f"license_review_failed:{review.pk}",
+                link=f"/archive/licenses/{lic.pk}/",
+            )
+    except Exception:
+        logger.exception("年审未通过通知发送失败（已忽略，不影响主流程）: %s", lic.code)
 
 
 @login_required
@@ -202,6 +228,8 @@ def annual_review_create(request, license_pk):
             f"年审登记: {lic.code} - {review.get_result_display()}"
             + ("（续期至 %s）" % lic.expire_date if renewed else "（未变更有效期）"),
         )
+        if review.result == "failed":
+            _notify_review_failed(lic, review)
         if _is_ajax(request):
             return JsonResponse({"ok": True, "message": notice, "renewed": renewed})
         messages.info(request, notice)

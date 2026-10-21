@@ -198,7 +198,32 @@ def _resync_sample_status(sample, operator, ip=None, context=""):
         f"{context}，状态「{old_status_text}」→「{sample.get_status_display()}」",
         ip,
     )
+    if new_status == Sample.Status.TERMINATED:
+        notify_sample_terminated(sample)
     return True
+
+
+def notify_sample_terminated(sample):
+    """样品终止后通知 samples.read 用户（失败仅记日志，不影响主流程）。"""
+    try:
+        from notifications import services as notify_svc
+
+        for user in notify_svc.users_with_perm("samples", "read"):
+            notify_svc.emit(
+                "sample_terminated",
+                recipient=user,
+                context={
+                    "sample_no": sample.sample_no,
+                    "material_name": sample.material_name,
+                    "model": sample.model,
+                    "reason": sample.terminate_reason,
+                    "operator": sample.terminated_by,
+                },
+                dedup_context=f"sample_terminated:{sample.pk}",
+                link=f"/samples/{sample.pk}/",
+            )
+    except Exception:
+        logger.exception("样品终止通知发送失败（已忽略，不影响主流程）: %s", sample.sample_no)
 
 
 # ---------------------------------------------------------------------------
@@ -415,6 +440,7 @@ def terminate_sample(sample, operator, reason, ip=None):
         f"手动终止：状态「{old_status}」→「已终止」，终止原因：{reason}",
         ip,
     )
+    notify_sample_terminated(sample)
 
 
 # ---------------------------------------------------------------------------

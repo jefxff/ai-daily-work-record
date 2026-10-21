@@ -1,0 +1,142 @@
+{% extends 'records/base.html' %}
+{% load static %}
+
+{% block page_title %}待办工作台 - 每日工作记录管理网站{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h2>待办工作台<span class="total-hint">共 {{ total }} 项待办</span></h2>
+    </div>
+
+    <div class="workspace-summary">
+        <a href="?urgency=高{% if source_filter %}&source={{ source_filter }}{% endif %}" class="ws-chip danger{% if urgency_filter == '高' %} active{% endif %}">高紧急 {{ counts.高 }}</a>
+        <a href="?urgency=中{% if source_filter %}&source={{ source_filter }}{% endif %}" class="ws-chip warning{% if urgency_filter == '中' %} active{% endif %}">中紧急 {{ counts.中 }}</a>
+        <a href="?urgency=低{% if source_filter %}&source={{ source_filter }}{% endif %}" class="ws-chip info{% if urgency_filter == '低' %} active{% endif %}">低紧急 {{ counts.低 }}</a>
+        {% if urgency_filter %}<a href="?{% if source_filter %}source={{ source_filter }}{% endif %}" class="btn-transparent btn-sm">清除紧急度筛选</a>{% endif %}
+    </div>
+
+    <form class="table-container workspace-filter" method="GET">
+        <div class="workspace-filter-row">
+            <label>来源模块
+                <select name="source">
+                    <option value="">全部来源</option>
+                    {% for key, label in source_choices %}
+                    <option value="{{ key }}" {% if source_filter == key %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <button type="submit" class="btn-transparent">筛选</button>
+            {% if source_filter %}<a href="?{% if urgency_filter %}urgency={{ urgency_filter }}{% endif %}" class="btn-transparent btn-sm">清除来源筛选</a>{% endif %}
+        </div>
+    </form>
+
+    <div class="table-container">
+        <div class="table-responsive">
+            <table class="table--cards table workspace-table">
+                <thead>
+                    <tr>
+                        <th scope="col">紧急度</th>
+                        <th scope="col">待办事项</th>
+                        <th scope="col">来源</th>
+                        <th scope="col">经办/归属</th>
+                        <th scope="col">期限</th>
+                        <th scope="col">剩余天数</th>
+                        <th scope="col">状态</th>
+                        <th scope="col" class="col-actions">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for todo in todos %}
+                    <tr>
+                        <td data-label="紧急度"><span class="status-badge {{ todo.urgency_badge }}">{{ todo.urgency }}</span></td>
+                        <td data-label="待办事项" class="ws-title">{{ todo.title }}</td>
+                        <td data-label="来源">{{ todo.source_label }}</td>
+                        <td data-label="经办/归属">{{ todo.owner|default:'-' }}</td>
+                        <td data-label="期限">{% if todo.deadline %}{{ todo.deadline|date:'Y-m-d' }}{% else %}-{% endif %}</td>
+                        <td data-label="剩余天数">
+                            {% if todo.days_left is not None %}
+                                {% if todo.days_left < 0 %}<span class="ws-overdue">已过 {{ todo.days_left|stringformat:"d" }} 天</span>{% else %}{{ todo.days_left }} 天{% endif %}
+                            {% else %}-{% endif %}
+                        </td>
+                        <td data-label="状态">{{ todo.status }}</td>
+                        <td data-label="操作" class="col-actions">
+                            <a href="{{ todo.url }}" class="btn-transparent btn-sm">处理</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="empty-cell">🎉 当前筛选下暂无待办事项</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% include 'records/_pagination.html' with page_obj=page_obj %}
+    </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .workspace-summary {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+        margin: 1rem 0;
+    }
+    .ws-chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 12px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        text-decoration: none;
+        border: 1px solid transparent;
+    }
+    .ws-chip.danger  { color: var(--c-danger);  background: var(--c-danger-bg);  border-color: var(--c-danger-line); }
+    .ws-chip.warning { color: var(--c-warning); background: var(--c-warning-bg); border-color: var(--c-warning-line); }
+    .ws-chip.info    { color: var(--c-info);    background: var(--c-info-bg);    border-color: var(--c-info-line); }
+    .ws-chip.active { outline: 2px solid var(--c-primary-active); outline-offset: 1px; }
+    .workspace-filter { padding: 12px 16px; margin-bottom: 1rem; }
+    .workspace-filter-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: flex-end;
+    }
+    .workspace-filter-row label {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        font-size: 12px;
+        color: var(--c-text-secondary);
+        white-space: nowrap;
+    }
+    .workspace-filter-row select {
+        min-width: 140px;
+        height: 34px;
+        padding: 0 10px;
+        border: 1px solid var(--c-border-strong);
+        border-radius: 6px;
+        background: var(--c-surface);
+        color: var(--c-text);
+        font-size: 13px;
+    }
+    .workspace-table { table-layout: fixed; min-width: 960px; }
+    .workspace-table th:nth-child(1) { width: 8%; }   /* 紧急度 */
+    .workspace-table th:nth-child(2) { width: 34%; }  /* 待办事项 */
+    .workspace-table th:nth-child(3) { width: 10%; }  /* 来源 */
+    .workspace-table th:nth-child(4) { width: 12%; }  /* 经办/归属 */
+    .workspace-table th:nth-child(5) { width: 11%; }  /* 期限 */
+    .workspace-table th:nth-child(6) { width: 11%; }  /* 剩余天数 */
+    .workspace-table th:nth-child(7) { width: 8%; }   /* 状态 */
+    .workspace-table th:nth-child(8) { width: 6%; }   /* 操作 */
+    .ws-title { word-break: break-all; }
+    .ws-overdue { color: var(--c-danger); font-weight: 600; }
+    /* 小屏卡片模式下表头隐藏，列宽定义不影响布局 */
+    @media (max-width: 640px) {
+        .workspace-table { min-width: 0; }
+    }
+</style>
+{% endblock %}
