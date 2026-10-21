@@ -55,7 +55,21 @@
                 <div class="text-danger">{{ form.status.errors }}</div>
                 {% endif %}
             </div>
-            
+
+            <div class="form-group">
+                <label>可见性</label>
+                <div class="kb-vis-options" role="radiogroup" aria-label="可见性">
+                    {% for value, label in visibility_choices %}
+                    <label class="kb-vis-option">
+                        <input type="radio" name="visibility" value="{{ value }}"
+                               {% if current_visibility == value %}checked{% endif %}>
+                        <span>{{ label }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+                <p class="kb-vis-hint">新文档默认仅自己可见；设为全员可见后可随时收回，收回立即生效。</p>
+            </div>
+
             <div class="form-group d-flex gap-2">
                 <button type="submit" class="btn btn-primary">保存</button>
                 <a href="{% if document %}{% url 'knowledge_base:document_detail' document.pk %}{% else %}{% url 'knowledge_base:document_list' %}{% endif %}" class="btn btn-secondary">取消</a>
@@ -63,4 +77,11 @@
         </form>
     </div>
 </div>
+<style>
+    .card-body .kb-vis-options { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+    .card-body .kb-vis-option { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.75rem; border: 1px solid var(--c-border); border-radius: 6px; cursor: pointer; font-size: 0.875rem; color: var(--c-text); background: var(--c-surface); }
+    .card-body .kb-vis-option:has(input:checked) { border-color: var(--c-primary); background: var(--c-primary-subtle); color: var(--c-primary); font-weight: 500; }
+    .card-body .kb-vis-option input { accent-color: var(--c-primary); margin: 0; }
+    .card-body .kb-vis-hint { font-size: 0.78rem; color: var(--c-text-tertiary); margin: 0.35rem 0 0; }
+</style>
 {% endblock %}

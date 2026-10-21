@@ -147,6 +147,16 @@ def _sanitize_html(html: str) -> str:
     )
 
 
+def _vis_form_context(document=None, user=None):
+    """表单/详情模板共用的可见性上下文（单选框 + 徽章 + 切换按钮全用它）。"""
+    return {
+        'visibility_choices': access.visibility_choices_for_ui(),
+        'current_visibility': document.visibility if document is not None else access.PRIVATE,
+        'can_manage_vis': True if document is None else access.can_manage_visibility(document, user),
+        'visibility_label': access.visibility_label(document),
+    }
+
+
 @perm_required("knowledge", "read")
 def document_detail(request, pk):
     """文档详情（无权访问一律 404：403 等于告诉对方「这篇存在，只是你没权限」）"""
@@ -184,6 +194,7 @@ def document_detail(request, pk):
     context = {
         'document': document,
         'related_docs': related_docs,
+        **_vis_form_context(document, request.user),
     }
     if is_ajax:
         return _modal_form(request, 'knowledge_base/_document_detail_modal.html', context)
@@ -208,15 +219,18 @@ def document_create(request):
                 return JsonResponse({'ok': True, 'message': f'文档「{doc.title}」创建成功'})
             return redirect('knowledge_base:document_list')
         if is_ajax:
-            return _modal_form(request, 'knowledge_base/_document_form_modal.html', {'form': form}, ok=False)
+            return _modal_form(request, 'knowledge_base/_document_form_modal.html',
+                               {'form': form, **_vis_form_context(None, request.user)}, ok=False)
     else:
         form = KnowledgeDocumentForm()
 
     if is_ajax:
-        return _modal_form(request, 'knowledge_base/_document_form_modal.html', {'form': form})
+        return _modal_form(request, 'knowledge_base/_document_form_modal.html',
+                           {'form': form, **_vis_form_context(None, request.user)})
     context = {
         'form': form,
         'title': '创建文档',
+        **_vis_form_context(None, request.user),
     }
     return render(request, 'knowledge_base/document_form.html', context)
 
@@ -245,19 +259,47 @@ def document_edit(request, pk):
             return redirect('knowledge_base:document_detail', pk=pk)
         if is_ajax:
             return _modal_form(request, 'knowledge_base/_document_form_modal.html',
-                               {'form': form, 'document': document}, ok=False)
+                               {'form': form, 'document': document,
+                                **_vis_form_context(document, request.user)}, ok=False)
     else:
         form = KnowledgeDocumentForm(instance=document)
 
     if is_ajax:
         return _modal_form(request, 'knowledge_base/_document_form_modal.html',
-                           {'form': form, 'document': document})
+                           {'form': form, 'document': document,
+                            **_vis_form_context(document, request.user)})
     context = {
         'form': form,
         'title': '编辑文档',
         'document': document,
+        **_vis_form_context(document, request.user),
     }
     return render(request, 'knowledge_base/document_form.html', context)
+
+
+@perm_required("knowledge", "update")
+def document_visibility(request, pk):
+    """切换可见性（owner 专属；仅 POST；切换全程留痕）。"""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'message': '仅支持 POST 请求'}, status=405)
+    document = get_object_or_404(access.visible_docs(request.user), pk=pk)
+    if not access.can_manage_visibility(document, request.user):
+        return JsonResponse({'ok': False, 'message': '只有创建人可以修改可见性'}, status=403)
+    target = request.POST.get('visibility')
+    if target not in access.VISIBILITY_LABELS:
+        return JsonResponse({'ok': False, 'message': '非法的可见性取值'}, status=400)
+
+    changed = access.set_visibility(document, target, request=request, source='详情页切换')
+    if changed:
+        message = ('已设为全员可见，所有有知识库权限的同事现在可以阅读'
+                   if target == access.PUBLIC else '已收回为仅自己可见')
+    else:
+        message = '可见性未变化'
+    return JsonResponse({
+        'ok': True, 'message': message,
+        'visibility': document.visibility,
+        'visibility_label': access.visibility_label(document),
+    })
 
 
 @perm_required("knowledge", "delete")

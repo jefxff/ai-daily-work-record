@@ -25,6 +25,20 @@
     </div>
 
     <div class="kb-field">
+        <span class="form-label">可见性</span>
+        <div class="kb-vis-options" role="radiogroup" aria-label="可见性">
+            {% for value, label in visibility_choices %}
+            <label class="kb-vis-option" {% if not can_manage_vis %}aria-disabled="true"{% endif %}>
+                <input type="radio" name="visibility" value="{{ value }}"
+                       {% if current_visibility == value %}checked{% endif %}>
+                <span class="kb-vis-option-text">{{ label }}</span>
+            </label>
+            {% endfor %}
+        </div>
+        <p class="kb-vis-hint">新文档默认仅自己可见；设为全员可见后可随时收回，收回立即生效。</p>
+    </div>
+
+    <div class="kb-field">
         <label class="form-label">{{ form.summary.label }}</label>
         {{ form.summary }}
         {% if form.summary.errors %}<div class="kb-error">{{ form.summary.errors|join:'；' }}</div>{% endif %}
@@ -58,4 +72,9 @@
     #formModalBody .kb-row .kb-field { flex: 1; }
     #formModalBody .kb-error { color: var(--c-danger); font-size: 0.78rem; margin-top: 2px; }
     #formModalBody .kb-modal-alert { background: var(--c-danger-bg); border: 1px solid var(--c-danger-line); color: var(--c-danger); border-radius: 6px; padding: 0.6rem 0.85rem; margin-bottom: 1rem; font-size: 0.85rem; }
+    #formModalBody .kb-vis-options { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+    #formModalBody .kb-vis-option { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.75rem; border: 1px solid var(--c-border); border-radius: 6px; cursor: pointer; font-size: 0.85rem; color: var(--c-text); background: var(--c-surface); }
+    #formModalBody .kb-vis-option:has(input:checked) { border-color: var(--c-primary); background: var(--c-primary-subtle); color: var(--c-primary); font-weight: 500; }
+    #formModalBody .kb-vis-option input { accent-color: var(--c-primary); margin: 0; }
+    #formModalBody .kb-vis-hint { font-size: 0.75rem; color: var(--c-text-tertiary); margin: 0.35rem 0 0; }
 </style>

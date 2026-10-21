@@ -19,7 +19,9 @@
         {% for document in documents %}
         <a href="{% url 'knowledge_base:document_detail' document.pk %}" class="kb-doc-item" data-modal-detail data-modal-title="{{ document.title }}">
             <div class="kb-doc-item-head">
-                <h5 class="kb-doc-item-title">{{ document.title }}</h5>
+                <h5 class="kb-doc-item-title">{{ document.title }}
+                    {% if document.visibility == 'private' %}<span class="status-badge warning kb-vis-mini">仅自己可见</span>{% endif %}
+                </h5>
                 <span class="kb-doc-item-date">{{ document.updated_at|date:"Y-m-d H:i" }}</span>
             </div>
             <p class="kb-doc-item-summary">{{ document.summary|default:document.content|truncatechars:100 }}</p>

@@ -28,6 +28,9 @@
     </div>
     <div class="kb-doc-meta">
         创建：{{ document.created_at|date:"Y-m-d H:i" }} | 更新：{{ document.updated_at|date:"Y-m-d H:i" }} | 浏览 {{ document.view_count }} 次
+        {% if document.visibility == 'private' %}
+        <span class="status-badge warning" style="margin-left:0.4rem;">仅自己可见</span>
+        {% endif %}
     </div>
 </div>
 

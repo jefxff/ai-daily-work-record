@@ -357,3 +357,44 @@ class VisibilityMatrixTests(TestCase):
     def test_invalid_visibility_value_rejected(self):
         with self.assertRaises(ValueError):
             kb_access.set_visibility(self.private_doc, "everyone", actor=self.alice)
+
+    # ---- 批次 2：可见性 UI ----
+
+    def test_visibility_toggle_endpoint_roundtrip(self):
+        """详情页切换接口：GET 拒绝、owner POST 生效、非法值 400、他人 403。"""
+        url = reverse("knowledge_base:document_visibility", args=[self.private_doc.pk])
+        c = self._login(self.alice)
+        self.assertEqual(c.get(url).status_code, 405)
+
+        resp = c.post(url, {"visibility": "public"})
+        self.assertEqual(resp.status_code, 200)
+        self.private_doc.refresh_from_db()
+        self.assertEqual(self.private_doc.visibility, "public")
+
+        self.assertEqual(c.post(url, {"visibility": "everyone"}).status_code, 400)
+
+        resp = self._login(self.bob).post(
+            reverse("knowledge_base:document_visibility", args=[self.public_doc.pk]),
+            {"visibility": "private"})
+        self.assertEqual(resp.status_code, 403)
+        self.public_doc.refresh_from_db()
+        self.assertEqual(self.public_doc.visibility, "public")
+
+    def test_create_form_renders_visibility_radios(self):
+        resp = self._login(self.bob).get(reverse("knowledge_base:document_create"))
+        self.assertEqual(resp.status_code, 200)
+        body = resp.content.decode()
+        self.assertIn('name="visibility"', body)
+        self.assertIn("仅自己可见", body)
+
+    def test_detail_toggle_button_owner_only(self):
+        """切换按钮只有创建人能看到；他人连按钮都不渲染（而不是点了才 403）。"""
+        detail_private = reverse("knowledge_base:document_detail", args=[self.private_doc.pk])
+        body_alice = self._login(self.alice).get(detail_private).content.decode()
+        self.assertIn('id="kbVisToggle"', body_alice)
+
+        detail_public = reverse("knowledge_base:document_detail", args=[self.public_doc.pk])
+        body_bob = self._login(self.bob).get(detail_public).content.decode()
+        self.assertNotIn('id="kbVisToggle"', body_bob)
+        # bob 能看到公开文档上的可见性徽章
+        self.assertIn("全员可见", body_bob)

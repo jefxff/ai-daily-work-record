@@ -7,16 +7,30 @@
         <div class="d-flex justify-content-between align-items-start mb-4">
             <div>
                 <h1 class="card-title">{{ document.title }}</h1>
-                <div class="d-flex gap-2 mt-2">
+                <div class="d-flex gap-2 mt-2 align-items-center">
                     {% if document.category %}
                     <span class="badge badge-secondary">{{ document.category.name }}</span>
                     {% endif %}
                     {% for tag in document.tag_list %}
                     <span class="badge badge-info">{{ tag }}</span>
                     {% endfor %}
+                    <span class="status-badge {% if document.visibility == 'private' %}warning{% else %}info{% endif %}" id="kbVisBadge"
+                          title="{% if document.visibility == 'private' %}只有你能看到这篇文档{% else %}所有有知识库权限的同事都能看到这篇文档{% endif %}">
+                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="width:12px;height:12px;vertical-align:-1px;">{% if document.visibility == 'private' %}<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>{% else %}<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>{% endif %}</svg>
+                        <span id="kbVisBadgeText">{{ visibility_label }}</span>
+                    </span>
                 </div>
             </div>
             <div class="btn-group">
+                {% if can_manage_vis %}
+                <button type="button" class="btn btn-secondary" id="kbVisToggle"
+                        data-url="{% url 'knowledge_base:document_visibility' document.pk %}"
+                        data-current="{{ document.visibility }}"
+                        aria-live="polite">
+                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">{% if document.visibility == 'private' %}<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>{% else %}<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>{% endif %}</svg>
+                    <span id="kbVisToggleText">{% if document.visibility == 'private' %}设为全员可见{% else %}收回为仅自己可见{% endif %}</span>
+                </button>
+                {% endif %}
                 {% can "knowledge" "update" %}
                 <a href="{% url 'knowledge_base:document_edit' document.pk %}" class="btn btn-primary" data-modal-edit data-modal-title="编辑文档">
                     <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> 编辑
@@ -62,4 +76,72 @@
     </div>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    var toggle = document.getElementById('kbVisToggle');
+    if (!toggle) return;
+    var csrf = '{{ csrf_token }}';
+    var badge = document.getElementById('kbVisBadge');
+    var badgeText = document.getElementById('kbVisBadgeText');
+    var toggleText = document.getElementById('kbVisToggleText');
+
+    // 锁图标 / 群组图标（内联 SVG，随状态切换）
+    var ICON_LOCK = '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>';
+    var ICON_PEOPLE = '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>';
+
+    function renderState(vis, label) {
+        var isPrivate = vis === 'private';
+        toggle.dataset.current = vis;
+        toggleText.textContent = isPrivate ? '设为全员可见' : '收回为仅自己可见';
+        toggle.querySelector('svg').innerHTML = isPrivate ? ICON_PEOPLE : ICON_LOCK;
+        if (badge) {
+            badge.classList.toggle('warning', isPrivate);
+            badge.classList.toggle('info', !isPrivate);
+            badge.title = isPrivate ? '只有你能看到这篇文档' : '所有有知识库权限的同事都能看到这篇文档';
+            var svg = badge.querySelector('svg');
+            if (svg) svg.innerHTML = isPrivate ? ICON_LOCK : ICON_PEOPLE;
+        }
+        if (badgeText && label) badgeText.textContent = label;
+    }
+
+    toggle.addEventListener('click', function () {
+        var next = toggle.dataset.current === 'private' ? 'public' : 'private';
+        var body = new URLSearchParams();
+        body.set('visibility', next);
+        toggle.disabled = true;
+        fetch(toggle.dataset.url, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') || csrf, 'X-Requested-With': 'XMLHttpRequest' },
+            body: body.toString(),
+            keepalive: true
+        })
+        .then(function (resp) { return resp.json().then(function (data) { return { ok: resp.ok, data: data }; }); })
+        .then(function (result) {
+            // 先消费完响应体再更新界面，避免页面跳转时请求被中断
+            if (result.ok && result.data.ok) {
+                renderState(result.data.visibility, result.data.visibility_label);
+                if (window.showToast) window.showToast(result.data.message, 'success');
+            } else {
+                if (window.showToast) window.showToast((result.data && result.data.message) || '操作失败，请重试', 'error');
+            }
+        })
+        .catch(function () {
+            if (window.showToast) window.showToast('网络异常，请重试', 'error');
+        })
+        .finally(function () { toggle.disabled = false; });
+    });
+
+    function getCookie(name) {
+        var v = null;
+        document.cookie.split(';').forEach(function (c) {
+            var p = c.trim().split('=');
+            if (p[0] === name) v = decodeURIComponent(p[1]);
+        });
+        return v;
+    }
+})();
+</script>
 {% endblock %}

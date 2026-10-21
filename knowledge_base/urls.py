@@ -12,6 +12,8 @@ urlpatterns = [
     path('document/create/', views.document_create, name='document_create'),
     # 编辑文档
     path('document/<int:pk>/edit/', views.document_edit, name='document_edit'),
+    # 切换可见性（owner 专属，仅 POST）
+    path('document/<int:pk>/visibility/', views.document_visibility, name='document_visibility'),
     # 删除文档
     path('document/<int:pk>/delete/', views.document_delete, name='document_delete'),
     # 分类列表
