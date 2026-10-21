@@ -302,6 +302,51 @@ def document_visibility(request, pk):
     })
 
 
+def _doc_tree(document):
+    """文档 → 树 dict（接口/前端统一形状）。
+
+    editor_mode=outline 的文档从节点表组装；markdown 文档即时解析 content，
+    不落库（P1 只读阶段零数据变更；首次在编辑器保存后才转 outline，见 4b）。
+    """
+    from . import outline as kb_outline
+
+    if document.editor_mode == 'outline':
+        nodes = document.nodes.all().order_by('sort', 'id')
+        by_parent = {}
+        for n in nodes:
+            by_parent.setdefault(n.parent_id, []).append(n)
+
+        def build(parent_id):
+            return [{
+                'uid': n.uid,
+                'type': n.node_type,
+                'text': n.text,
+                'done': n.is_done,
+                'note': n.note,
+                'heading_level': n.heading_level,
+                'collapsed': n.collapsed,
+                'ref_module': n.ref_module,
+                'ref_object_id': n.ref_object_id,
+                'ref_label': n.ref_label,
+                'children': build(n.pk),
+            } for n in by_parent.get(parent_id, [])]
+
+        return build(None)
+    return kb_outline.md_to_tree(document.content)
+
+
+@perm_required("knowledge", "read")
+def api_doc_tree(request, pk):
+    """只读大纲/导图数据源（P1）。无权访问一律 404，不泄露文档存在性。"""
+    document = get_object_or_404(access.visible_docs(request.user), pk=pk)
+    return JsonResponse({
+        'ok': True,
+        'version': document.tree_version,
+        'editor_mode': document.editor_mode,
+        'tree': _doc_tree(document),
+    })
+
+
 @perm_required("knowledge", "delete")
 def document_delete(request, pk):
     """删除文档（owner 专属；否则任何有 knowledge.delete 的人都能删掉别人的私人笔记）"""

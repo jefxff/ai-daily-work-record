@@ -55,10 +55,27 @@
             <strong>摘要：</strong>{{ document.summary }}
         </div>
         {% endif %}
-        
-        <div class="content markdown-content">
+
+        <div class="kb-view-switch" role="tablist" aria-label="文档视图切换">
+            <button type="button" class="kb-view-tab is-active" data-view="read" role="tab" aria-selected="true" aria-controls="kbReadView">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                阅读
+            </button>
+            <button type="button" class="kb-view-tab" data-view="outline" role="tab" aria-selected="false" aria-controls="kbOutlineView">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                大纲
+            </button>
+            <button type="button" class="kb-view-tab" data-view="mindmap" role="tab" aria-selected="false" aria-controls="kbMindmapView">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="5" cy="6" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="12" cy="19" r="2"/><path d="M7 7.2 10.2 10.8"/><path d="M17 7.2 13.8 10.8"/><path d="M12 14v3"/></svg>
+                导图
+            </button>
+        </div>
+
+        <div class="content markdown-content" id="kbReadView" role="tabpanel">
             {{ document.content_html|safe }}
         </div>
+        <div id="kbOutlineView" class="kb-outline" role="tabpanel" hidden></div>
+        <div id="kbMindmapView" class="kb-mindmap" role="tabpanel" hidden></div>
     </div>
 </div>
 
@@ -76,6 +93,154 @@
     </div>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* —— 幕布化 P1：只读大纲 / 导图视图（页面级样式，全部使用设计令牌） —— */
+    .kb-view-switch {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+    }
+    .kb-view-tab {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        padding: 0.375rem 0.875rem;
+        border: 1px solid var(--c-border);
+        border-radius: 6px;
+        background: var(--c-surface);
+        color: var(--c-text-secondary);
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .kb-view-tab .icon { width: 14px; height: 14px; }
+    .kb-view-tab:hover { color: var(--c-text); border-color: var(--c-primary); }
+    .kb-view-tab.is-active {
+        background: var(--c-primary);
+        border-color: var(--c-primary);
+        color: var(--c-surface);
+    }
+
+    /* 只读大纲 */
+    .kb-outline { font-size: 0.9rem; }
+    .kb-outline ul {
+        list-style: none;
+        margin: 0;
+        padding-left: 1.25rem;
+    }
+    .kb-outline > ul { padding-left: 0; }
+    .kb-outline li { margin: 0.125rem 0; }
+    .kb-outline-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.375rem;
+        padding: 0.125rem 0.25rem;
+        border-radius: 4px;
+        color: var(--c-text);
+    }
+    .kb-outline-row:hover { background: var(--c-surface-sunken); }
+    .kb-caret {
+        flex: none;
+        width: 1.25rem;
+        height: 1.25rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        background: none;
+        color: var(--c-text-secondary);
+        cursor: pointer;
+        border-radius: 4px;
+        padding: 0;
+    }
+    .kb-caret:hover { background: var(--c-border); color: var(--c-text); }
+    .kb-caret .icon { width: 12px; height: 12px; transition: transform 0.15s ease; }
+    .kb-caret.is-open .icon { transform: rotate(90deg); }
+    .kb-caret-spacer { flex: none; width: 1.25rem; }
+    .kb-node-type {
+        flex: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.25rem;
+        height: 1.25rem;
+        color: var(--c-text-secondary);
+    }
+    .kb-node-type .icon { width: 13px; height: 13px; }
+    .kb-outline-text { min-width: 0; word-break: break-word; }
+    .kb-outline li.is-heading > .kb-outline-row { font-weight: 600; }
+    .kb-outline li.is-heading > .kb-outline-row .kb-outline-text { font-size: 1rem; }
+    .kb-outline li.is-done > .kb-outline-row .kb-outline-text {
+        color: var(--c-text-secondary);
+        text-decoration: line-through;
+    }
+    .kb-outline .kb-node-quote .kb-outline-text {
+        border-left: 3px solid var(--c-border);
+        padding-left: 0.5rem;
+        color: var(--c-text-secondary);
+    }
+    .kb-outline .kb-node-code .kb-outline-text {
+        font-family: var(--font-mono, monospace);
+        background: var(--c-surface-sunken);
+        border: 1px solid var(--c-border);
+        border-radius: 4px;
+        padding: 0 0.375rem;
+        font-size: 0.85em;
+    }
+
+    /* 导图：横向滚动容器，SVG 尺寸由 JS 按内容计算 */
+    .kb-mindmap {
+        overflow: auto;
+        border: 1px solid var(--c-border);
+        border-radius: 8px;
+        background: var(--c-surface-sunken);
+        padding: 1rem;
+        max-height: 70vh;
+    }
+    .kb-mindmap svg { display: block; }
+    .kb-mindmap .kb-mm-box {
+        fill: var(--c-surface);
+        stroke: var(--c-border);
+        stroke-width: 1;
+        rx: 6;
+        cursor: pointer;
+    }
+    .kb-mindmap .kb-mm-box.is-root { stroke: var(--c-primary); stroke-width: 1.5; }
+    .kb-mindmap .kb-mm-text {
+        fill: var(--c-text);
+        font-size: 12px;
+        pointer-events: none;
+    }
+    .kb-mindmap .kb-mm-text.is-muted {
+        fill: var(--c-text-secondary);
+        text-decoration: line-through;
+    }
+    .kb-mindmap .kb-mm-edge {
+        fill: none;
+        stroke: var(--c-border);
+        stroke-width: 1.5;
+    }
+    .kb-mindmap .kb-mm-collapse {
+        fill: var(--c-surface);
+        stroke: var(--c-border);
+        cursor: pointer;
+    }
+    .kb-mindmap .kb-mm-collapse-text {
+        fill: var(--c-text-secondary);
+        font-size: 10px;
+        pointer-events: none;
+    }
+    .kb-mm-empty { color: var(--c-text-secondary); padding: 2rem 0; text-align: center; }
+
+    @media (max-width: 640px) {
+        .kb-mindmap { padding: 0.5rem; max-height: 60vh; }
+        .kb-outline ul { padding-left: 0.875rem; }
+    }
+</style>
 {% endblock %}
 
 {% block extra_js %}
@@ -148,6 +313,243 @@
         });
         return v;
     }
+})();
+</script>
+
+<script>
+/* —— 幕布化 P1：只读大纲 / 导图视图（懒加载一次数据，纯渲染零写入） —— */
+(function () {
+    var tabs = document.querySelectorAll('.kb-view-tab');
+    var readView = document.getElementById('kbReadView');
+    var outlineView = document.getElementById('kbOutlineView');
+    var mindmapView = document.getElementById('kbMindmapView');
+    if (!tabs.length || !readView || !outlineView || !mindmapView) return;
+
+    var apiUrl = '{% url 'knowledge_base:api_doc_tree' document.pk %}';
+    var titleEl = document.querySelector('.card-title');
+    var docTitle = titleEl ? titleEl.textContent.trim() : '文档';
+    var treePromise = null;
+
+    function getTree() {
+        if (!treePromise) {
+            treePromise = fetch(apiUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function (resp) { return resp.json(); })
+                .then(function (data) {
+                    if (!data.ok) throw new Error('load failed');
+                    return data.tree || [];
+                })
+                .catch(function (err) { treePromise = null; throw err; });
+        }
+        return treePromise;
+    }
+
+    /* —— 只读大纲 —— */
+    var CARET = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="9 18 15 12 9 6"/></svg>';
+    var STROKE_ATTRS = 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"';
+    var TYPE_ICONS = {
+        todo: '<svg class="icon" viewBox="0 0 24 24" ' + STROKE_ATTRS + '><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>',
+        quote: '<svg class="icon" viewBox="0 0 24 24" ' + STROKE_ATTRS + '><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+        code: '<svg class="icon" viewBox="0 0 24 24" ' + STROKE_ATTRS + '><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
+        heading: '<svg class="icon" viewBox="0 0 24 24" ' + STROKE_ATTRS + '><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>',
+        divider: '<svg class="icon" viewBox="0 0 24 24" ' + STROKE_ATTRS + '><line x1="5" y1="12" x2="19" y2="12"/></svg>'
+    };
+
+    function buildOutlineList(nodes) {
+        var ul = document.createElement('ul');
+        nodes.forEach(function (node) {
+            var type = node.type || 'text';
+            var li = document.createElement('li');
+            li.className = 'is-' + type + (type === 'todo' && node.done ? ' is-done' : '');
+
+            var row = document.createElement('div');
+            row.className = 'kb-outline-row kb-node-' + type;
+
+            if (node.children && node.children.length) {
+                var caret = document.createElement('button');
+                caret.type = 'button';
+                caret.className = 'kb-caret is-open';
+                caret.setAttribute('aria-label', '折叠或展开子节点');
+                caret.innerHTML = CARET;
+                caret.addEventListener('click', function () {
+                    var open = caret.classList.toggle('is-open');
+                    var childUl = li.querySelector('ul');
+                    if (childUl) childUl.hidden = !open;
+                });
+                row.appendChild(caret);
+            } else {
+                var spacer = document.createElement('span');
+                spacer.className = 'kb-caret-spacer';
+                row.appendChild(spacer);
+            }
+
+            if (TYPE_ICONS[type]) {
+                var icon = document.createElement('span');
+                icon.className = 'kb-node-type';
+                icon.innerHTML = TYPE_ICONS[type];
+                row.appendChild(icon);
+            }
+
+            var text = document.createElement('span');
+            text.className = 'kb-outline-text';
+            if (type === 'code') {
+                var lines = (node.note || '').split('\n').length;
+                text.textContent = (node.text || '代码块') + (node.note ? '（' + lines + ' 行）' : '');
+            } else if (type === 'divider') {
+                text.textContent = '— — —';
+            } else {
+                text.textContent = node.text || '';
+            }
+            row.appendChild(text);
+            li.appendChild(row);
+
+            if (node.children && node.children.length) {
+                li.appendChild(buildOutlineList(node.children));
+            }
+            ul.appendChild(li);
+        });
+        return ul;
+    }
+
+    /* —— 导图（自研 SVG 布局，方案 03 第七节口径） —— */
+    var NS = 'http://www.w3.org/2000/svg';
+    var MM = { NODE_H: 34, GAP: 10, LEVEL_W: 200, PAD: 10, LIMIT: 182 };  // LIMIT≈26个ASCII宽
+
+    function textWidth(s) {
+        var w = 0;
+        for (var i = 0; i < s.length; i++) w += s.charCodeAt(i) > 255 ? 13 : 7;
+        return w;
+    }
+    function clip(s) {
+        s = (s || '').replace(/\s+/g, ' ').trim();
+        if (!s) return '（空）';
+        var w = 0, out = '';
+        for (var i = 0; i < s.length; i++) {
+            var cw = s.charCodeAt(i) > 255 ? 13 : 7;
+            if (w + cw > MM.LIMIT) return out + '…';
+            out += s[i]; w += cw;
+        }
+        return out;
+    }
+
+    function renderMindmap(nodes) {
+        mindmapView.innerHTML = '';
+        if (!nodes.length) {
+            var empty = document.createElement('div');
+            empty.className = 'kb-mm-empty';
+            empty.textContent = '本文档暂无大纲内容';
+            mindmapView.appendChild(empty);
+            return;
+        }
+        var root = { text: docTitle, type: 'root', children: nodes, collapsed: false };
+        var cursorY = 0;
+        (function place(node, depth) {
+            node._depth = depth;
+            node._label = clip(node.text);
+            node._w = Math.max(56, textWidth(node._label) + MM.PAD * 2);
+            node._h = MM.NODE_H;
+            node._kidsVisible = !node.collapsed && node.children && node.children.length > 0;
+            if (node._kidsVisible) {
+                node.children.forEach(function (c) { place(c, depth + 1); });
+                node._y = (node.children[0]._y + node.children[node.children.length - 1]._y) / 2;
+                node._subH = node.children[node.children.length - 1]._subH;
+            } else {
+                node._y = cursorY + node._h / 2;
+                cursorY += node._h + MM.GAP;
+                node._subH = node._h;
+            }
+            node._x = depth * MM.LEVEL_W;
+        })(root);
+
+        var width = 0, height = 0;
+        (function bounds(n) {
+            width = Math.max(width, n._x + n._w);
+            height = Math.max(height, n._subH);
+            if (n._kidsVisible) n.children.forEach(bounds);
+        })(root);
+
+        var svg = document.createElementNS(NS, 'svg');
+        svg.setAttribute('width', width + 8);
+        svg.setAttribute('height', height + 8);
+        svg.setAttribute('role', 'img');
+        svg.setAttribute('aria-label', docTitle + ' 思维导图');
+
+        function el(name, attrs) {
+            var e = document.createElementNS(NS, name);
+            for (var k in attrs) e.setAttribute(k, attrs[k]);
+            svg.appendChild(e);
+            return e;
+        }
+
+        (function draw(node) {
+            var x = node._x, yTop = node._y - node._h / 2;
+            if (node._parent) {
+                var px = node._parent._x + node._parent._w;
+                el('path', {
+                    'class': 'kb-mm-edge',
+                    d: 'M ' + px + ' ' + node._parent._y +
+                       ' C ' + (px + 40) + ' ' + node._parent._y +
+                       ', ' + (x - 40) + ' ' + node._y + ', ' + x + ' ' + node._y
+                });
+            }
+            var box = el('rect', {
+                'class': 'kb-mm-box' + (node.type === 'root' ? ' is-root' : ''),
+                x: x, y: yTop, width: node._w, height: node._h, rx: 6
+            });
+            var tip = el('title');
+            tip.textContent = node.text || '';
+            el('text', {
+                'class': 'kb-mm-text' + (node.type === 'todo' && node.done ? ' is-muted' : ''),
+                x: x + MM.PAD, y: node._y + 4
+            }).textContent = node._label;
+
+            if (node.collapsed && node.children && node.children.length) {
+                var cx = x + node._w + 12, cy = node._y;
+                var badge = el('circle', { 'class': 'kb-mm-collapse', cx: cx, cy: cy, r: 9 });
+                badge.addEventListener('click', function () {
+                    node.collapsed = false;
+                    renderMindmap(nodes);
+                });
+                el('text', { 'class': 'kb-mm-collapse-text', x: cx - 4, y: cy + 3.5 })
+                    .textContent = String(node.children.length);
+            }
+            box.addEventListener('click', function () {
+                if (node.children && node.children.length) {
+                    node.collapsed = !node.collapsed;
+                    renderMindmap(nodes);
+                }
+            });
+
+            if (node._kidsVisible) node.children.forEach(function (c) { c._parent = node; draw(c); });
+        })(root);
+
+        mindmapView.appendChild(svg);
+    }
+
+    /* —— 视图切换 —— */
+    tabs.forEach(function (tab) {
+        tab.addEventListener('click', function () {
+            var view = tab.dataset.view;
+            tabs.forEach(function (t) {
+                var active = t === tab;
+                t.classList.toggle('is-active', active);
+                t.setAttribute('aria-selected', active ? 'true' : 'false');
+            });
+            readView.hidden = view !== 'read';
+            outlineView.hidden = view !== 'outline';
+            mindmapView.hidden = view !== 'mindmap';
+            if (view === 'read') return;
+            getTree().then(function (tree) {
+                if (view === 'outline') {
+                    outlineView.innerHTML = '';
+                    outlineView.appendChild(buildOutlineList(tree));
+                } else {
+                    renderMindmap(tree);
+                }
+            }).catch(function () {
+                if (window.showToast) window.showToast('大纲数据加载失败，请重试', 'error');
+            });
+        });
+    });
 })();
 </script>
 {% endblock %}
