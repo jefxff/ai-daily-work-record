@@ -48,6 +48,7 @@ COMMAND_PARAMS = {
     "check_daily_incomplete": {"skip_history"},
     "notify_expire": {"purge_days"},
     "notify_stats": {"check"},
+    "notify_knowledge_todo": {"days", "overdue_days"},
 }
 
 
@@ -124,7 +125,7 @@ def _command_kwargs(task):
         value = params[key]
         if key in ("skip_history", "check"):
             kwargs[key] = bool(value)
-        elif key in ("days", "purge_days", "interval_minutes"):
+        elif key in ("days", "purge_days", "interval_minutes", "overdue_days"):
             try:
                 kwargs[key] = int(value)
             except (TypeError, ValueError):

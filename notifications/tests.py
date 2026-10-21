@@ -1,4 +1,4 @@
-﻿"""通知模块测试：模型约束 / emit 幂等聚合 / 渠道派发 / worker 生命周期 / 用户隔离 / RBAC。
+"""通知模块测试：模型约束 / emit 幂等聚合 / 渠道派发 / worker 生命周期 / 用户隔离 / RBAC。
 
 运行：python manage.py test notifications -v 2
 """
@@ -540,19 +540,22 @@ class ScheduledTaskTests(TestCase):
         self.staff = User.objects.create_user("staff", password="x12345678")
 
     def test_seed_tasks_exist(self):
-        """迁移种子：4 个内置任务存在且默认触发配置正确。"""
+        """迁移种子：5 个内置任务存在且默认触发配置正确。"""
         from notifications.models import ScheduledTask
 
         codes = set(ScheduledTask.objects.values_list("code", flat=True))
         self.assertEqual(codes, {
             "check_expiry_notices", "check_daily_incomplete",
-            "notify_expire", "notify_stats",
+            "notify_expire", "notify_stats", "notify_knowledge_todo",
         })
         expiry = ScheduledTask.objects.get(code="check_expiry_notices")
         self.assertTrue(expiry.enabled)
         self.assertEqual(expiry.trigger_type, ScheduledTask.TriggerType.DAILY)
         self.assertEqual(expiry.params["days"], 7)
         self.assertEqual(ScheduledTask.objects.get(code="notify_stats").interval_minutes, 720)
+        kb_todo = ScheduledTask.objects.get(code="notify_knowledge_todo")
+        self.assertTrue(kb_todo.enabled)
+        self.assertEqual(kb_todo.params["days"], 3)
 
     def test_list_page_shows_tasks(self):
         """通知中心页面展示定时任务区（含任务名与线程状态）。"""

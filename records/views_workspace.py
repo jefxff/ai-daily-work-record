@@ -28,6 +28,7 @@ SOURCE_META = {
     "lawsuit": {"module": "complaint", "label": "诉讼"},
     "sample_terminated": {"module": "samples", "label": "试样管理"},
     "daily_record": {"module": "daily_record", "label": "每日记录"},
+    "knowledge_todo": {"module": "knowledge", "label": "知识待办"},
 }
 
 URGENCY_RANK = {"高": 0, "中": 1, "低": 2}
@@ -178,6 +179,33 @@ def collect_todos(user, *, today=None, source_filter=None):
                 "未完成", f"/daily_record/detail/{r.pk}/", today,
             ))
 
+    # 7) 知识待办：大纲待办节点；可见性过滤必须走 access.doc_visibility_q
+    # （公开+本人文档，他人私有文档里的待办绝不出现）
+    if wanted("knowledge_todo") and has_perm(user, "knowledge", "read"):
+        from knowledge_base.access import doc_visibility_q
+        from knowledge_base.models import KnowledgeNode
+
+        threshold = today + timedelta(days=7)
+        nodes = (KnowledgeNode.objects
+                 .filter(node_type="todo", is_done=False,
+                         due_date__isnull=False, due_date__lte=threshold)
+                 .filter(doc_visibility_q(user, "document__"))
+                 .exclude(document__status="draft")
+                 .select_related("document")[:PER_SOURCE_LIMIT])
+        for n in nodes:
+            overdue = n.due_date < today
+            doc_title = n.document.title
+            text = n.text if len(n.text) <= 40 else n.text[:40] + "…"
+            todos.append(_todo(
+                "高" if overdue else "中",
+                f"{doc_title}：{text}",
+                "knowledge_todo",
+                n.document.owner.get_username() if n.document.owner else "-",
+                n.due_date,
+                "已逾期" if overdue else "进行中",
+                f"/knowledge/document/{n.document_id}/outline/?node={n.uid}", today,
+            ))
+
     # 期限空值排最后：用超大天数替代参与排序
     todos.sort(key=lambda t: (
         URGENCY_RANK[t["urgency"]],
@@ -201,14 +229,15 @@ def todo_counts(user, *, today=None):
 
 def _forbidden(request):
     return render(request, "accounts/403.html", {
-        "required_module": "archive/customer_complaint/complaint/samples/daily_record",
+        "required_module": "archive/customer_complaint/complaint/samples/"
+                           "daily_record/knowledge",
         "required_action": "read",
     }, status=403)
 
 
 @perm_required_any(
     ("archive", "read"), ("customer_complaint", "read"), ("complaint", "read"),
-    ("samples", "read"), ("daily_record", "read"),
+    ("samples", "read"), ("daily_record", "read"), ("knowledge", "read"),
 )
 def workspace(request):
     """待办工作台：统一待办列表 + 来源/紧急度筛选（后端分页）。"""
@@ -244,6 +273,7 @@ def workspace(request):
         ("complaint", "诉讼"),
         ("archive", "档案"),
         ("samples", "试样"),
+        ("knowledge", "知识库"),
     ]
     return render(request, "records/workspace.html", {
         "todos": page_obj,
