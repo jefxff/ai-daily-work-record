@@ -163,7 +163,7 @@
             return window.location.pathname.indexOf(p) === 0;
         });
         var open = stored ? (stored === 'open') : inSection;
-        if (open) { menu.classList.add('show'); }
+        menu.classList.toggle('show', open);
         btn.setAttribute('aria-expanded', open ? 'true' : 'false');
         btn.addEventListener('click', function () {
             var willOpen = !menu.classList.contains('show');
@@ -172,7 +172,7 @@
             try { localStorage.setItem(storageKey, willOpen ? 'open' : 'closed'); } catch (e) {}
         });
     }
-    initCollapse('workbenchDropdown', 'workbenchDropdownMenu', 'adw-sidebar-workbench', ['/', '/workspace', '/daily-record', '/decoration', '/customer-credit', '/customer-complaint', '/complaint', '/regulation', '/price-evaluation', '/insurance', '/metal_price', '/dashboard', '/data_download', '/knowledge', '/expiry']);
+    initCollapse('workbenchDropdown', 'workbenchDropdownMenu', 'adw-sidebar-workbench', ['/workspace', '/daily-record', '/decoration', '/customer-credit', '/customer-complaint', '/complaint', '/regulation', '/price-evaluation', '/insurance', '/metal_price', '/dashboard', '/data_download', '/knowledge', '/expiry']);
     initCollapse('samplesDropdown', 'samplesDropdownMenu', 'adw-sidebar-samples', ['/samples']);
     initCollapse('archiveDropdown', 'archiveDropdownMenu', 'adw-sidebar-archive', ['/archive']);
     initCollapse('systemsDropdown', 'systemsDropdownMenu', 'adw-sidebar-system', ['/system', '/accounts', '/operation_log']);

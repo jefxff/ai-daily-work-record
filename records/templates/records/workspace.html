@@ -5,19 +5,22 @@
 
 {% block page_actions %}
 <form class="d-flex gap-2 align-items-center flex-wrap" method="GET">
-    <label class="d-flex align-items-center gap-1 text-muted small mb-0">
-        来源模块
-        <select name="source" class="form-select form-select-sm" style="min-width:140px">
-            <option value="">全部来源</option>
-            {% for key, label in source_choices %}
-            <option value="{{ key }}" {% if source_filter == key %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-        </select>
-    </label>
+    <span class="text-muted small">来源模块</span>
+    <select name="source" class="form-select form-select-sm" style="height:34px;min-width:140px">
+        <option value="">全部来源</option>
+        {% for key, label in source_choices %}
+        <option value="{{ key }}" {% if source_filter == key %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
     <button type="submit" class="btn-transparent">筛选</button>
     {% if source_filter %}
-    <a href="?{% if urgency_filter %}urgency={{ urgency_filter }}{% endif %}" class="btn-transparent btn-sm">清除来源</a>
+    <a href="?{% if urgency_filter %}urgency={{ urgency_filter }}{% endif %}" class="filter-chip">清除来源 ✕</a>
     {% endif %}
+    <span class="mx-1 text-muted" style="opacity:.4">|</span>
+    {% for mod_key, mod_label in source_shortcuts %}
+    <a href="?source={{ mod_key }}{% if urgency_filter %}&urgency={{ urgency_filter }}{% endif %}"
+       class="filter-chip{% if source_filter == mod_key %} active{% endif %}">{{ mod_label }}</a>
+    {% endfor %}
 </form>
 {% endblock %}
 

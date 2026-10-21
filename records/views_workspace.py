@@ -57,13 +57,24 @@ def _todo(urgency, title, source, owner, deadline, status, url, today):
     }
 
 
+def _source_matches(source, source_filter):
+    """source_filter 既支持 source key（如 'license_due'）也支持 module 名（如 'archive'）。"""
+    if source_filter in (None, ""):
+        return True
+    if source == source_filter:
+        return True
+    if SOURCE_META.get(source, {}).get("module") == source_filter:
+        return True
+    return False
+
+
 def collect_todos(user, *, today=None, source_filter=None):
     """聚合当前用户有权读取的全部待办，按 紧急度, 期限(空值最后), 来源 排序。"""
     today = today or timezone.localdate()
     todos = []
 
     def wanted(source):
-        return source_filter in (None, "", source) or source_filter == source
+        return _source_matches(source, source_filter)
 
     # 1) 档案借阅：逾期未还为高，7 天内应还为中
     if wanted("borrow_overdue") and has_perm(user, "archive", "read"):
@@ -206,7 +217,10 @@ def workspace(request):
         return _forbidden(request)
 
     source_filter = request.GET.get("source") or None
-    if source_filter not in SOURCE_META:
+    # source_filter 既可以是 SOURCE_META 的 key（如 'license_due'），
+    # 也可以是 module 名（如 'archive'，用于一次匹配多个 source）。
+    _valid_sources = set(SOURCE_META.keys()) | {m["module"] for m in SOURCE_META.values()}
+    if source_filter not in _valid_sources:
         source_filter = None
     urgency_filter = request.GET.get("urgency") or None
     if urgency_filter not in URGENCY_RANK:
@@ -223,6 +237,14 @@ def workspace(request):
         counts[t["urgency"]] += 1
 
     page_obj = Paginator(todos, _per_page(request)).get_page(request.GET.get("page"))
+    # 快捷来源标签：按业务模块名（支持一个 module 覆盖多个 source key，如 archive 同时匹配借阅+证照）
+    source_shortcuts = [
+        ("daily_record", "每日记录"),
+        ("customer_complaint", "客诉"),
+        ("complaint", "诉讼"),
+        ("archive", "档案"),
+        ("samples", "试样"),
+    ]
     return render(request, "records/workspace.html", {
         "todos": page_obj,
         "page_obj": page_obj,
@@ -231,5 +253,6 @@ def workspace(request):
         "source_filter": source_filter,
         "urgency_filter": urgency_filter,
         "source_choices": [(k, m["label"]) for k, m in SOURCE_META.items()],
+        "source_shortcuts": source_shortcuts,
         "urgency_choices": list(URGENCY_RANK.keys()),
     })
