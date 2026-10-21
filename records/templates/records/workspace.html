@@ -4,9 +4,8 @@
 {% block page_title %}待办工作台 - 每日工作记录管理网站{% endblock %}
 
 {% block page_actions %}
-<form class="d-flex gap-2 align-items-center flex-wrap" method="GET">
-    <span class="text-muted small">来源模块</span>
-    <select name="source" class="form-select form-select-sm" style="height:34px;min-width:140px">
+<form class="d-flex gap-2 align-items-center flex-nowrap" method="GET">
+    <select name="source" class="form-select form-select-sm" style="height:34px;width:110px;min-width:110px;max-width:110px;flex:0 0 110px">
         <option value="">全部来源</option>
         {% for key, label in source_choices %}
         <option value="{{ key }}" {% if source_filter == key %}selected{% endif %}>{{ label }}</option>
@@ -14,12 +13,11 @@
     </select>
     <button type="submit" class="btn-transparent">筛选</button>
     {% if source_filter %}
-    <a href="?{% if urgency_filter %}urgency={{ urgency_filter }}{% endif %}" class="filter-chip">清除来源 ✕</a>
+    <a href="?{% if urgency_filter %}urgency={{ urgency_filter }}{% endif %}" class="filter-chip" style="min-height:28px">清除来源 ✕</a>
     {% endif %}
-    <span class="mx-1 text-muted" style="opacity:.4">|</span>
     {% for mod_key, mod_label in source_shortcuts %}
     <a href="?source={{ mod_key }}{% if urgency_filter %}&urgency={{ urgency_filter }}{% endif %}"
-       class="filter-chip{% if source_filter == mod_key %} active{% endif %}">{{ mod_label }}</a>
+       class="filter-chip" style="min-height:28px{% if source_filter == mod_key %};outline:2px solid var(--c-primary-active);outline-offset:1px;color:var(--c-primary);font-weight:600{% endif %}">{{ mod_label }}</a>
     {% endfor %}
 </form>
 {% endblock %}

@@ -142,6 +142,11 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
         .sidebar-menu-item a:hover svg, .sidebar-menu-item a.active svg { opacity: 1; }
         .sidebar-menu-item a.active::before { background: var(--c-primary); }
         .sidebar-menu-item .dropdown-toggle:hover { color: var(--c-primary); background: var(--c-surface-sunken); }
+        /* 工作台（.sidebar-section-toggle）与 dropdown-toggle 完全对齐的主题覆盖 */
+        .sidebar-section-toggle { color: var(--c-text-secondary); }
+        .sidebar-section-toggle:hover { color: var(--c-primary); background: var(--c-surface-sunken); }
+        .sidebar-section-toggle:focus-visible { outline: 2px solid var(--c-primary); outline-offset: -2px; }
+        .sidebar-section-toggle__chevron { color: inherit; opacity: 0.7; }
         .sidebar-dropdown { background: var(--c-surface-sunken); border-radius: 0; }
         .sidebar-dropdown a { color: var(--c-text-secondary); }
         .sidebar-dropdown a:hover { color: var(--c-primary); background: var(--c-primary-subtle); }
