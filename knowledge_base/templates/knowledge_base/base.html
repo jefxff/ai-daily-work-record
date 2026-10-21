@@ -29,7 +29,7 @@
         border: 1px solid var(--c-border) !important;
         border-radius: 8px !important;
         box-shadow: 0 2px 8px rgba(0,0,0,0.08) !important;
-        padding: 1.25rem !important;
+        padding: 0.9rem 1rem !important;
     }
     .knowledge-main-with-right {
         margin-right: 300px;
@@ -113,16 +113,32 @@
     }
 
     /* ===== 右侧栏分区式布局（替代嵌套卡片） ===== */
-    .kb-side-section { padding: 1rem 0; border-bottom: 1px solid var(--c-border); }
-    .fixed-right-sidebar .kb-side-section:first-child { padding-top: 0.25rem; }
-    .fixed-right-sidebar .kb-side-section:last-child { border-bottom: none; padding-bottom: 0.25rem; }
-    .kb-side-title { font-size: 0.78rem; font-weight: 600; color: var(--c-text-secondary); letter-spacing: 0.04em; margin-bottom: 0.75rem; }
-    .kb-stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
-    .kb-stat { background: var(--c-surface-sunken); border-radius: 6px; padding: 0.65rem 0.25rem; text-align: center; }
-    .kb-stat-value { font-size: 1.25rem; font-weight: 600; color: var(--c-text); line-height: 1.2; }
-    .kb-stat-label { font-size: 0.72rem; color: var(--c-text-secondary); margin-top: 2px; }
-    .kb-side-actions { display: flex; gap: 0.5rem; }
-    .kb-side-btn { flex: 1; text-align: center; padding: 5px 0; border-radius: 4px; font-size: 0.8rem; border: 1px solid var(--c-border-strong); color: var(--c-text-secondary); background: var(--c-surface); text-decoration: none; transition: all 0.2s ease; }
+    .kb-side-section { padding: 0.6rem 0; border-bottom: 1px solid var(--c-border); }
+    .fixed-right-sidebar .kb-side-section:first-child { padding-top: 0.15rem; }
+    .fixed-right-sidebar .kb-side-section:last-child { border-bottom: none; padding-bottom: 0.15rem; }
+    .kb-side-title { font-size: 0.78rem; font-weight: 600; color: var(--c-text-secondary); letter-spacing: 0.04em; margin-bottom: 0.4rem; }
+    /* 分区标题行：标题与行内操作（按钮）同一行，省一整行的高度 */
+    .kb-side-head { display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; margin-bottom: 0.4rem; }
+    .kb-side-head .kb-side-title { margin-bottom: 0; }
+    /* 统计：单行四格 + 细分隔线（原 2×2 卡片太高，压缩后分类筛选能上浮） */
+    .kb-stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; }
+    .kb-stat { text-align: center; padding: 0.1rem 0.05rem; position: relative; }
+    .kb-stat + .kb-stat { border-left: 1px solid var(--c-border); }
+    .kb-stat-value { font-size: 1.02rem; font-weight: 600; color: var(--c-text); line-height: 1.25; font-variant-numeric: tabular-nums; }
+    .kb-stat-label { font-size: 0.66rem; color: var(--c-text-tertiary); margin-top: 1px; }
+    /* 阅读报告入口：并入统计区底部的薄链接，不再单占一个分区 */
+    .kb-side-report-link {
+        display: flex; align-items: center; gap: 0.35rem; margin-top: 0.35rem;
+        padding: 3px 6px; border-radius: 4px; font-size: 0.78rem;
+        color: var(--c-text-secondary); text-decoration: none;
+        transition: color 0.2s ease, background 0.2s ease;
+    }
+    .kb-side-report-link .icon { width: 13px; height: 13px; }
+    .kb-side-report-link:hover { color: var(--c-primary); background: var(--c-surface-sunken); text-decoration: none; }
+    .kb-side-report-link .kb-side-report-arrow { margin-left: auto; color: var(--c-text-tertiary); }
+    .kb-side-actions { display: flex; gap: 0.35rem; }
+    .kb-side-btn { padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; border: 1px solid var(--c-border-strong); color: var(--c-text-secondary); background: var(--c-surface); text-decoration: none; display: inline-flex; align-items: center; gap: 3px; transition: all 0.2s ease; }
+    .kb-side-btn .icon { width: 12px; height: 12px; }
     .kb-side-btn:hover { color: var(--c-primary); border-color: var(--c-primary); text-decoration: none; }
     .kb-side-btn-primary { background: var(--c-primary); border-color: var(--c-primary); color: var(--c-surface); }
     .kb-side-btn-primary:hover { background: var(--c-primary-hover); border-color: var(--c-primary-hover); color: var(--c-surface); }

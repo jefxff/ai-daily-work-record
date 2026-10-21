@@ -4,10 +4,13 @@
 1. Markdown 阅读排版：标题/表格/引用/代码块正常渲染，GFM 任务列表转 checkbox；
    防回归重点：详情页自带 extra_css 会整块覆盖基座同名 block，
    `.markdown-content` 规则必须出现在本页样式里（曾经的「不美观」根因）。
-2. 思维导图舞台：画布容器 + 工具条（展开/折叠/缩放）就位，不再是小框。
+2. 思维导图舞台：画布容器 + 工具条（展开/折叠/缩放）就位，不再是小框；
+   舞台高度由 JS 按内容收紧（小图不再是一片大海）。
 3. 返回列表按钮：位于文档操作组第一位（「设为全员可见」旁边）。
-4. 文件夹系统：左栏分类树渲染；私有文档标题绝不泄漏给他人；
-   列表页右栏分类筛选同为树形，选中子分类时祖先链默认展开。
+4. 详情页单栏 + 右栏：原左栏文件夹系统已取消，改为与列表页共用的
+   右栏分类筛选树（_right_sidebar.html）；caret 折叠/展开即文件夹能力；
+   当前文档所在分类高亮且祖先链默认展开；分类树只含分类名与计数，
+   私有文档标题绝不泄漏；计数口径与列表一致（他人私有不计入）。
 
 运行：python manage.py test knowledge_base.tests_reader
 """
@@ -40,7 +43,11 @@ def grant(user, *pairs):
 
 
 class ReaderShellTests(TestCase):
-    """三栏骨架 + 视图切换 + 工具条的结构契约。"""
+    """单栏阅读区 + 右栏骨架 + 视图切换 + 工具条的结构契约。
+
+    详情页原左栏文件夹系统已取消（用户反馈三栏不美观、文件夹与列表页
+    分类重复）：正文区单栏铺开，右栏与列表页共用 _right_sidebar.html。
+    """
 
     def setUp(self):
         self.parent = KnowledgeCategory.objects.create(name="系列教程", sort_order=1)
@@ -63,10 +70,15 @@ class ReaderShellTests(TestCase):
     def tearDown(self):
         cache.clear()
 
-    def test_three_column_shell_renders(self):
-        for marker in ("kb-reader", "kb-folder-tree", "kb-reader-main",
-                       "kb-view-switch", "kbMindmapCanvas"):
+    def test_single_column_with_right_sidebar(self):
+        """单栏正文 + 右栏（统计/分类筛选树/标签云），不再有左栏文件夹。"""
+        for marker in ("kb-reader-body", "kb-view-switch", "kbMindmapCanvas",
+                       "fixed-right-sidebar", "kb-cat-tree", "kb-side-head",
+                       "kb-stats-grid", "kb-side-section", "标签云"):
             self.assertIn(marker, self.html, f"缺少骨架标记 {marker}")
+        # 左栏文件夹系统已取消，不得回流
+        self.assertNotIn("kb-folder-tree", self.html)
+        self.assertNotIn("kb-reader-main", self.html)
 
     def test_view_panels_default_state(self):
         """阅读视图默认可见，大纲/导图隐藏；分段控件三个 tab 就位。"""
@@ -83,6 +95,15 @@ class ReaderShellTests(TestCase):
         self.assertIn('data-mm-action="zoom-in"', self.html)
         self.assertIn('data-mm-action="zoom-out"', self.html)
         self.assertIn('id="kbMmZoom"', self.html)
+
+    def test_mindmap_stage_fits_content(self):
+        """问题 2（改版）：舞台不再固定 56vh——JS 按内容高度收紧（小图不再是
+        一片大海），内容更矮时垂直居中；CSS 仍保留 56vh 起步/76vh 封顶滚动。"""
+        self.assertIn("STAGE_MIN", self.html)               # 贴合时的最小高度常数
+        self.assertIn("stageMin < vh * 0.56", self.html)    # 仅在内容更矮时收紧
+        self.assertIn("mmCanvas.style.minHeight", self.html)
+        self.assertIn("min-height: 56vh", self.html)        # 大图：交还 CSS 滚动
+        self.assertIn("max-height: 76vh", self.html)
 
     def test_markdown_styles_defined_on_detail_page(self):
         """防回归：基座的 .markdown-content 规则不会继承过来（同名 block 被整块覆盖），
@@ -153,8 +174,13 @@ class MarkdownRenderingTests(TestCase):
         self.assertNotIn("[ ]", self.read)
 
 
-class FolderTreeTests(TestCase):
-    """问题 4：左栏文件夹树与私有文档隔离。"""
+class DetailSidebarTests(TestCase):
+    """问题 4（改版）：详情页右栏 = 列表页右栏，分类筛选树即文件夹能力。
+
+    原左栏文件夹系统取消后，私有隔离变成结构性保证：右栏只渲染分类名与
+    可见口径计数，文档标题根本不出现在树里；计数口径与列表一致，他人
+    私有文档不计入（否则「分类 N 篇」点进去对不上，用户以为系统坏了）。
+    """
 
     def setUp(self):
         self.series = KnowledgeCategory.objects.create(name="Django 学习", sort_order=5)
@@ -165,52 +191,71 @@ class FolderTreeTests(TestCase):
             status="published", visibility="public")
         self.owner = User.objects.create_user("kbowner", "owner@e.com", PWD, is_active=True)
         self.stranger = User.objects.create_user("kbstrange", "s@e.com", PWD, is_active=True)
+        self.third = User.objects.create_user("kbthird", "t@e.com", PWD, is_active=True)
         grant(self.owner, ("knowledge", "read"))
         grant(self.stranger, ("knowledge", "read"))
+        grant(self.third, ("knowledge", "read"))
         self.own_private = KnowledgeDocument.objects.create(
             title="我的私有笔记", category=self.basic, content="私有内容",
             status="published", visibility="private", owner=self.owner)
         self.other_private = KnowledgeDocument.objects.create(
             title="他人的私有笔记", category=self.basic, content="他人私有",
-            status="published", visibility="private", owner=self.stranger)
+            status="published", visibility="private", owner=self.third)
 
     def tearDown(self):
         cache.clear()
 
-    def _tree_html(self, user, doc):
+    def _detail_html(self, user, doc):
         c = Client()
         c.force_login(user)
-        html = c.get(reverse("knowledge_base:document_detail", args=[doc.pk])).content.decode("utf-8")
-        start = html.find('class="kb-folder-tree"')
-        return html[start:html.find('class="kb-reader-main"')]
+        return c.get(
+            reverse("knowledge_base:document_detail", args=[doc.pk])).content.decode("utf-8")
 
-    def test_tree_shows_series_and_docs(self):
-        tree = self._tree_html(self.owner, self.public_doc)
-        self.assertIn("Django 学习", tree)
-        self.assertIn("基础篇", tree)
-        self.assertIn("公开教程", tree)
+    def _sidebar_html(self, user, doc):
+        """详情页右栏「分类筛选」树片段（属性锚点避开 <style> 里的选择器，
+        以「标签云」标题为下界——树区在统计区与标签云之间）。"""
+        html = self._detail_html(user, doc)
+        start = html.find('class="kb-cat-tree"')
+        self.assertGreaterEqual(start, 0, "详情页右栏缺少分类筛选树")
+        end = html.find("标签云", start)
+        self.assertGreater(end, start, "分类树之后缺少标签云分区")
+        return html[start:end]
 
-    def test_tree_hides_other_users_private_docs(self):
-        """铁律：他人私有文档标题绝不经过文件夹树泄漏。"""
-        tree = self._tree_html(self.owner, self.public_doc)
-        self.assertNotIn("他人的私有笔记", tree)
+    def test_right_sidebar_renders_on_detail_page(self):
+        """详情页也有右栏：分类树（含分类管理按钮）+ 统计四联。"""
+        html = self._detail_html(self.owner, self.public_doc)
+        self.assertIn("kb-side-head", html)     # 管理/新建按钮并入分类筛选标题行
+        self.assertIn("kb-stats-grid", html)    # 统计四联（单行压缩版）
+        seg = self._sidebar_html(self.owner, self.public_doc)
+        self.assertIn("Django 学习", seg)
+        self.assertIn("基础篇", seg)
+        self.assertIn("kb-cat-caret", seg)      # caret 折叠/展开 = 原文件夹能力
 
-    def test_tree_shows_own_private_doc_with_lock(self):
-        tree = self._tree_html(self.owner, self.public_doc)
-        self.assertIn("我的私有笔记", tree)
-        self.assertIn("kb-folder-doc-lock", tree)
+    def test_current_category_highlighted_and_ancestors_expanded(self):
+        """当前文档所在分类高亮（active），其祖先链默认展开（is-open、无 hidden）。"""
+        seg = self._sidebar_html(self.owner, self.public_doc)
+        self.assertIn(
+            '?category=%d" class="kb-side-list-item kb-cat-link active' % self.basic.pk,
+            seg, "当前文档所在分类未高亮")
+        self.assertIn("is-open", seg)       # 父级「Django 学习」caret 展开态
+        self.assertNotIn(" hidden", seg)    # 子树容器未折叠
 
-    def test_current_doc_marked_in_tree(self):
-        tree = self._tree_html(self.owner, self.public_doc)
-        self.assertIn("kb-folder-doc is-current", tree)
-        self.assertIn('aria-current="page"', tree)
+    def test_category_count_uses_visibility_scope(self):
+        """计数口径与列表一致：owner 计入自己的私有（2），陌生人只看公开（1）。"""
+        seg = self._sidebar_html(self.owner, self.public_doc)
+        self.assertIn(
+            '<span>基础篇</span><span class="kb-side-list-count">2</span>', seg)
+        seg = self._sidebar_html(self.stranger, self.public_doc)
+        self.assertIn(
+            '<span>基础篇</span><span class="kb-side-list-count">1</span>', seg)
 
-    def test_uncategorized_group_renders(self):
-        loose = KnowledgeDocument.objects.create(
-            title="游离文档", content="无分类", status="published", visibility="public")
-        tree = self._tree_html(self.owner, loose)
-        self.assertIn("未分类", tree)
-        self.assertIn("游离文档", tree)
+    def test_private_doc_titles_never_leak(self):
+        """铁律：分类树只含分类名与计数，任何私有文档标题都不经过右栏。"""
+        for viewer, leaked in ((self.owner, "他人的私有笔记"),
+                               (self.stranger, "我的私有笔记"),
+                               (self.stranger, "他人的私有笔记")):
+            seg = self._sidebar_html(viewer, self.public_doc)
+            self.assertNotIn(leaked, seg)
 
 
 class ListCategoryTreeTests(TestCase):

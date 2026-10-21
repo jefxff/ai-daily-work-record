@@ -3,154 +3,106 @@
 
 {% block knowledge_content %}
 {% comment %}
-详情页「书房化」三栏：左文件夹树 / 中阅读区（阅读·大纲·导图）。
-样式全部走 tokens.css 令牌；本页自带 extra_css 覆盖基座模板同名块，
-.markdown-content 排版在此页内完整定义（基座里那份不会继承过来）。
+知识库详情页：单栏阅读区 + 右栏（统计/分类筛选树/标签云，与列表页同款）。
+原左栏文件夹系统已取消——分类筛选树的折叠/展开即文件夹能力，
+右栏树会自动展开并高亮当前文档所在分类（views._sidebar_context）。
 {% endcomment %}
-<div class="kb-reader">
-    <!-- ═══ 左栏：文件夹树 ═══ -->
-    <aside class="kb-folder" aria-label="知识库目录">
-        <div class="kb-folder-head">
-            <span class="kb-folder-title">
-                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-                知识库
-            </span>
-            <a href="{% url 'knowledge_base:document_list' %}" class="kb-folder-all">全部文档</a>
-        </div>
-        <nav class="kb-folder-tree" aria-label="分类与文档">
-            <a href="{% url 'knowledge_base:document_list' %}" class="kb-folder-name kb-folder-root-link">
-                <svg class="icon kb-folder-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-                <span class="kb-folder-label">全部文档</span>
-            </a>
-            {% include 'knowledge_base/_folder_node.html' with nodes=category_tree.roots current_doc=document %}
-            {% if category_tree.uncategorized %}
-            <div class="kb-folder-group">
-                <div class="kb-folder-row">
-                    <span class="kb-folder-caret kb-folder-caret-spacer" aria-hidden="true"></span>
-                    <span class="kb-folder-name kb-folder-name-static">
-                        <svg class="icon kb-folder-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-                        <span class="kb-folder-label">未分类</span>
-                        <span class="kb-folder-count">{{ category_tree.uncategorized|length }}</span>
-                    </span>
-                </div>
-                <ul class="kb-folder-docs">
-                    {% for doc in category_tree.uncategorized %}
-                    <li>
-                        <a href="{% url 'knowledge_base:document_detail' doc.pk %}" class="kb-folder-doc{% if doc.pk == document.pk %} is-current{% endif %}"{% if doc.pk == document.pk %} aria-current="page"{% endif %}>
-                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                            <span class="kb-folder-doc-title">{{ doc.title }}</span>
-                            {% if doc.visibility == 'private' %}<span class="kb-folder-doc-lock" title="仅自己可见">
-                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                            </span>{% endif %}
-                        </a>
-                    </li>
-                    {% endfor %}
-                </ul>
-            </div>
-            {% endif %}
-        </nav>
-    </aside>
+<!-- 面包屑：分类路径 -->
+<nav class="kb-crumb" aria-label="当前位置">
+    <a href="{% url 'knowledge_base:document_list' %}">知识库</a>
+    {% for cat in category_path %}
+    <span class="kb-crumb-sep" aria-hidden="true">/</span>
+    <a href="{% url 'knowledge_base:document_list' %}?category={{ cat.pk }}">{{ cat.name }}</a>
+    {% endfor %}
+</nav>
 
-    <!-- ═══ 中栏：阅读区 ═══ -->
-    <div class="kb-reader-main">
-        <!-- 面包屑：分类路径 -->
-        <nav class="kb-crumb" aria-label="当前位置">
-            <a href="{% url 'knowledge_base:document_list' %}">知识库</a>
-            {% for cat in category_path %}
-            <span class="kb-crumb-sep" aria-hidden="true">/</span>
-            <a href="{% url 'knowledge_base:document_list' %}?category={{ cat.pk }}">{{ cat.name }}</a>
-            {% endfor %}
-        </nav>
-
-        <!-- 文档头 -->
-        <header class="kb-doc-head">
-            <h1 class="kb-doc-title-serif">{{ document.title }}</h1>
-            <div class="kb-doc-meta">
-                {% if document.category %}<span class="kb-chip kb-chip-cat">{{ document.category.name }}</span>{% endif %}
-                {% for tag in document.tag_list %}<span class="kb-chip">{{ tag }}</span>{% endfor %}
-                <span class="status-badge {% if document.visibility == 'private' %}warning{% else %}info{% endif %}" id="kbVisBadge"
-                      title="{% if document.visibility == 'private' %}只有你能看到这篇文档{% else %}所有有知识库权限的同事都能看到这篇文档{% endif %}">
-                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="width:12px;height:12px;vertical-align:-1px;">{% if document.visibility == 'private' %}<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>{% else %}<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>{% endif %}</svg>
-                    <span id="kbVisBadgeText">{{ visibility_label }}</span>
-                </span>
-                <span class="kb-doc-meta-text">创建 {{ document.created_at|date:"Y-m-d" }} · 更新 {{ document.updated_at|date:"Y-m-d H:i" }}</span>
-                <span class="kb-doc-meta-text"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> {{ document.view_count }} 次浏览</span>
-            </div>
-            <div class="kb-doc-actions">
-                <a href="{% url 'knowledge_base:document_list' %}" class="btn-transparent">
-                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="15 18 9 12 15 6"/></svg>
-                    返回列表
-                </a>
-                {% if can_manage_vis %}
-                <button type="button" class="btn-transparent" id="kbVisToggle"
-                        data-url="{% url 'knowledge_base:document_visibility' document.pk %}"
-                        data-current="{{ document.visibility }}"
-                        aria-live="polite">
-                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">{% if document.visibility == 'private' %}<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>{% else %}<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>{% endif %}</svg>
-                    <span id="kbVisToggleText">{% if document.visibility == 'private' %}设为全员可见{% else %}收回为仅自己可见{% endif %}</span>
-                </button>
-                {% endif %}
-                {% if can_edit_doc %}
-                <a href="{% url 'knowledge_base:outline_editor' document.pk %}" class="btn-transparent">
-                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-                    编辑大纲
-                </a>
-                {% endif %}
-                {% can "knowledge" "update" %}
-                <a href="{% url 'knowledge_base:document_edit' document.pk %}" class="btn-primary" data-modal-edit data-modal-title="编辑文档">
-                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    编辑
-                </a>
-                {% endcan %}
-                {% can "knowledge" "delete" %}
-                <a href="{% url 'knowledge_base:document_delete' document.pk %}" class="btn-transparent btn-delete">
-                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
-                    删除
-                </a>
-                {% endcan %}
-            </div>
-        </header>
-
-        {% if document.summary %}
-        <p class="kb-doc-summary"><span class="kb-doc-summary-label">摘要</span>{{ document.summary }}</p>
+<!-- 文档头 -->
+<header class="kb-doc-head">
+    <h1 class="kb-doc-title-serif">{{ document.title }}</h1>
+    <div class="kb-doc-meta">
+        {% if document.category %}<span class="kb-chip kb-chip-cat">{{ document.category.name }}</span>{% endif %}
+        {% for tag in document.tag_list %}<span class="kb-chip">{{ tag }}</span>{% endfor %}
+        <span class="status-badge {% if document.visibility == 'private' %}warning{% else %}info{% endif %}" id="kbVisBadge"
+              title="{% if document.visibility == 'private' %}只有你能看到这篇文档{% else %}所有有知识库权限的同事都能看到这篇文档{% endif %}">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="width:12px;height:12px;vertical-align:-1px;">{% if document.visibility == 'private' %}<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>{% else %}<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>{% endif %}</svg>
+            <span id="kbVisBadgeText">{{ visibility_label }}</span>
+        </span>
+        <span class="kb-doc-meta-text">创建 {{ document.created_at|date:"Y-m-d" }} · 更新 {{ document.updated_at|date:"Y-m-d H:i" }}</span>
+        <span class="kb-doc-meta-text"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> {{ document.view_count }} 次浏览</span>
+    </div>
+    <div class="kb-doc-actions">
+        <a href="{% url 'knowledge_base:document_list' %}" class="btn-transparent">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="15 18 9 12 15 6"/></svg>
+            返回列表
+        </a>
+        {% if can_manage_vis %}
+        <button type="button" class="btn-transparent" id="kbVisToggle"
+                data-url="{% url 'knowledge_base:document_visibility' document.pk %}"
+                data-current="{{ document.visibility }}"
+                aria-live="polite">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">{% if document.visibility == 'private' %}<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>{% else %}<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>{% endif %}</svg>
+            <span id="kbVisToggleText">{% if document.visibility == 'private' %}设为全员可见{% else %}收回为仅自己可见{% endif %}</span>
+        </button>
         {% endif %}
+        {% if can_edit_doc %}
+        <a href="{% url 'knowledge_base:outline_editor' document.pk %}" class="btn-transparent">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            编辑大纲
+        </a>
+        {% endif %}
+        {% can "knowledge" "update" %}
+        <a href="{% url 'knowledge_base:document_edit' document.pk %}" class="btn-primary" data-modal-edit data-modal-title="编辑文档">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            编辑
+        </a>
+        {% endcan %}
+        {% can "knowledge" "delete" %}
+        <a href="{% url 'knowledge_base:document_delete' document.pk %}" class="btn-transparent btn-delete">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+            删除
+        </a>
+        {% endcan %}
+    </div>
+</header>
 
-        <!-- 视图切换（分段控件） -->
-        <div class="kb-view-switch" role="tablist" aria-label="文档视图切换">
-            <button type="button" class="kb-view-tab is-active" data-view="read" role="tab" aria-selected="true" aria-controls="kbReadView">
-                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-                阅读
-            </button>
-            <button type="button" class="kb-view-tab" data-view="outline" role="tab" aria-selected="false" aria-controls="kbOutlineView">
-                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-                大纲
-            </button>
-            <button type="button" class="kb-view-tab" data-view="mindmap" role="tab" aria-selected="false" aria-controls="kbMindmapView">
-                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="5" cy="6" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="12" cy="19" r="2"/><path d="M7 7.2 10.2 10.8"/><path d="M17 7.2 13.8 10.8"/><path d="M12 14v3"/></svg>
-                导图
-            </button>
-        </div>
+{% if document.summary %}
+<p class="kb-doc-summary"><span class="kb-doc-summary-label">摘要</span>{{ document.summary }}</p>
+{% endif %}
 
-        <div class="kb-reader-body">
-            <div class="content markdown-content" id="kbReadView" role="tabpanel">
-                {{ document.content_html|safe }}
-            </div>
-            <div id="kbOutlineView" class="kb-outline" role="tabpanel" hidden></div>
-            <div class="kb-mindmap-stage" id="kbMindmapView" role="tabpanel" hidden>
-                <div class="kb-mm-toolbar">
-                    <span class="kb-mm-toolbar-title">思维导图</span>
-                    <span class="kb-mm-toolbar-spacer"></span>
-                    <button type="button" class="kb-mm-tool" data-mm-action="expand" title="展开全部">展开</button>
-                    <button type="button" class="kb-mm-tool" data-mm-action="collapse" title="折叠全部">折叠</button>
-                    <span class="kb-mm-zoom-group">
-                        <button type="button" class="kb-mm-tool kb-mm-zoom-btn" data-mm-action="zoom-out" title="缩小" aria-label="缩小">−</button>
-                        <span class="kb-mm-zoom-value" id="kbMmZoom">100%</span>
-                        <button type="button" class="kb-mm-tool kb-mm-zoom-btn" data-mm-action="zoom-in" title="放大" aria-label="放大">＋</button>
-                    </span>
-                </div>
-                <div class="kb-mindmap" id="kbMindmapCanvas"></div>
-            </div>
+<!-- 视图切换（分段控件） -->
+<div class="kb-view-switch" role="tablist" aria-label="文档视图切换">
+    <button type="button" class="kb-view-tab is-active" data-view="read" role="tab" aria-selected="true" aria-controls="kbReadView">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        阅读
+    </button>
+    <button type="button" class="kb-view-tab" data-view="outline" role="tab" aria-selected="false" aria-controls="kbOutlineView">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        大纲
+    </button>
+    <button type="button" class="kb-view-tab" data-view="mindmap" role="tab" aria-selected="false" aria-controls="kbMindmapView">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="5" cy="6" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="12" cy="19" r="2"/><path d="M7 7.2 10.2 10.8"/><path d="M17 7.2 13.8 10.8"/><path d="M12 14v3"/></svg>
+        导图
+    </button>
+</div>
+
+<div class="kb-reader-body">
+    <div class="content markdown-content" id="kbReadView" role="tabpanel">
+        {{ document.content_html|safe }}
+    </div>
+    <div id="kbOutlineView" class="kb-outline" role="tabpanel" hidden></div>
+    <div class="kb-mindmap-stage" id="kbMindmapView" role="tabpanel" hidden>
+        <div class="kb-mm-toolbar">
+            <span class="kb-mm-toolbar-title">思维导图</span>
+            <span class="kb-mm-toolbar-spacer"></span>
+            <button type="button" class="kb-mm-tool" data-mm-action="expand" title="展开全部">展开</button>
+            <button type="button" class="kb-mm-tool" data-mm-action="collapse" title="折叠全部">折叠</button>
+            <span class="kb-mm-zoom-group">
+                <button type="button" class="kb-mm-tool kb-mm-zoom-btn" data-mm-action="zoom-out" title="缩小" aria-label="缩小">−</button>
+                <span class="kb-mm-zoom-value" id="kbMmZoom">100%</span>
+                <button type="button" class="kb-mm-tool kb-mm-zoom-btn" data-mm-action="zoom-in" title="放大" aria-label="放大">＋</button>
+            </span>
         </div>
+        <div class="kb-mindmap" id="kbMindmapCanvas"></div>
     </div>
 </div>
 
@@ -170,145 +122,19 @@
 {% endif %}
 {% endblock %}
 
+{% block right_sidebar %}
+{% include 'knowledge_base/_right_sidebar.html' %}
+{% endblock %}
+
 {% block extra_css %}
 <style>
 /* ═══════════════════════════════════════════════════════════════
-   知识库详情页 ·「书房」阅读体验
+   知识库详情页 ·「书房」阅读体验（单栏 + 右栏）
    定调：杂志编辑 × 书房气质——衬线展示字（--font-display）做标题层级，
-   无衬线做正文；三栏结构（文件夹树 / 阅读区 / 上下文）；
+   无衬线做正文；右栏与列表页共用 _right_sidebar.html。
    一次编排的入场动效，prefers-reduced-motion 全量降级。
    全部颜色/间距/时长走 tokens.css 令牌，零字面值。
    ═══════════════════════════════════════════════════════════════ */
-
-/* ── 三栏布局 ── */
-.kb-reader {
-    display: grid;
-    grid-template-columns: 248px minmax(0, 1fr);
-    gap: var(--sp-7);
-    align-items: start;
-}
-.kb-reader-main { min-width: 0; }
-
-/* ── 左栏：文件夹树 ── */
-.kb-folder {
-    position: sticky;
-    top: calc(var(--top-nav-h, 72px) + var(--sp-4));
-    max-height: calc(100vh - var(--top-nav-h, 72px) - var(--sp-8));
-    overflow-y: auto;
-    padding: var(--sp-4) var(--sp-2) var(--sp-4) 0;
-    border-right: 1px solid var(--c-border);
-    scrollbar-width: thin;
-}
-.kb-folder-head {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    padding: 0 var(--sp-2) var(--sp-3);
-    margin-bottom: var(--sp-2);
-    border-bottom: 1px solid var(--c-border);
-}
-.kb-folder-title {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--sp-2);
-    font-family: var(--font-display);
-    font-size: 1.05rem;
-    font-weight: 700;
-    letter-spacing: 0.01em;
-    color: var(--c-text);
-}
-.kb-folder-title .icon { width: 16px; height: 16px; color: var(--c-primary); }
-.kb-folder-all {
-    font-size: 0.78rem;
-    color: var(--c-text-secondary);
-    text-decoration: none;
-    transition: color var(--dur-fast) var(--ease-out);
-}
-.kb-folder-all:hover { color: var(--c-primary); text-decoration: none; }
-
-.kb-folder-tree { display: flex; flex-direction: column; gap: 2px; padding-right: var(--sp-1); }
-.kb-folder-group { display: flex; flex-direction: column; }
-.kb-folder-row { display: flex; align-items: center; gap: 2px; }
-.kb-folder-caret {
-    flex: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 22px;
-    height: 26px;
-    padding: 0;
-    border: none;
-    background: none;
-    color: var(--c-text-tertiary);
-    cursor: pointer;
-    border-radius: 4px;
-    transition: transform var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
-}
-.kb-folder-caret:hover { color: var(--c-primary); }
-.kb-folder-caret.is-open { transform: rotate(90deg); }
-.kb-folder-caret .icon { width: 12px; height: 12px; }
-.kb-folder-caret-spacer { cursor: default; }
-.kb-folder-name {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    gap: var(--sp-2);
-    padding: 5px var(--sp-2);
-    border-radius: 6px;
-    font-size: 0.88rem;
-    font-weight: 500;
-    color: var(--c-text);
-    text-decoration: none;
-    transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
-}
-.kb-folder-name:hover { background: var(--c-surface-sunken); color: var(--c-primary); text-decoration: none; }
-.kb-folder-name-static { cursor: default; }
-.kb-folder-name-static:hover { background: none; color: var(--c-text); }
-.kb-folder-icon { width: 15px; height: 15px; flex: none; color: var(--c-text-tertiary); }
-.kb-folder-name:hover .kb-folder-icon { color: var(--c-primary); }
-.kb-folder-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.kb-folder-count {
-    flex: none;
-    font-size: 0.72rem;
-    color: var(--c-text-tertiary);
-    font-variant-numeric: tabular-nums;
-    background: var(--c-surface-sunken);
-    border-radius: 8px;
-    padding: 0 6px;
-    line-height: 16px;
-}
-.kb-folder-children {
-    margin-left: 11px;
-    padding-left: var(--sp-2);
-    border-left: 1px solid var(--c-border);
-}
-.kb-folder-children[hidden] { display: none; }
-
-/* 文件夹下的文档 */
-.kb-folder-docs { list-style: none; margin: 2px 0 4px; padding: 0; display: flex; flex-direction: column; gap: 1px; }
-.kb-folder-doc {
-    display: flex;
-    align-items: center;
-    gap: var(--sp-2);
-    padding: 4px var(--sp-2) 4px var(--sp-5);
-    border-radius: 6px;
-    font-size: 0.82rem;
-    color: var(--c-text-secondary);
-    text-decoration: none;
-    transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
-}
-.kb-folder-doc .icon { width: 13px; height: 13px; flex: none; opacity: 0.75; }
-.kb-folder-doc:hover { background: var(--c-surface-sunken); color: var(--c-primary); text-decoration: none; }
-.kb-folder-doc.is-current {
-    background: var(--c-primary-subtle);
-    color: var(--c-primary);
-    font-weight: 600;
-}
-.kb-folder-doc-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.kb-folder-doc-lock { flex: none; display: inline-flex; }
-.kb-folder-doc-lock .icon { width: 11px; height: 11px; color: var(--c-warning); opacity: 1; }
-.kb-folder-empty { font-size: 0.78rem; color: var(--c-text-tertiary); padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-6); }
 
 /* ── 面包屑 ── */
 .kb-crumb {
@@ -422,7 +248,7 @@
 }
 .kb-view-tab:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 1px; }
 
-/* ═════�══ Markdown 阅读排版（问题 1 核心）═════════════════════
+/* ═══════════ Markdown 阅读排版（问题 1 核心）═════════════════════
    杂志编辑手法：衬线标题 + 主色细节 + 精确的行长与行高。
    （基座模板的同名规则不会继承到本页——本页自带 extra_css 块。） */
 .markdown-content {
@@ -599,7 +425,7 @@
 .markdown-content hr { border: none; height: 1px; background: var(--c-border); margin: var(--sp-8) 0; }
 .markdown-content img { max-width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--c-border); }
 
-/* ════════════ 大纲模式（问题 4·参照参考图：大号笔记） ════════════ */
+/* ════════════ 大纲模式（参照参考图：大号笔记） ════════════ */
 .kb-outline { font-size: 15px; line-height: 1.7; }
 .kb-outline ul {
     list-style: none;
@@ -709,7 +535,7 @@
 }
 .kb-outline-due.is-overdue { color: var(--c-danger); font-weight: 600; }
 
-/* ════════════ 导图模式（问题 2·参照参考图：思维导图） ════════════ */
+/* ════════════ 导图模式（参照参考图：思维导图） ════════════ */
 .kb-mindmap-stage {
     border: 1px solid var(--c-border);
     border-radius: 12px;
@@ -759,7 +585,8 @@
     font-variant-numeric: tabular-nums;
 }
 
-/* 画布：氛围层 = 主色微光 + 细点阵（参考图的「纸感」底色） */
+/* 画布：氛围层 = 主色微光 + 细点阵（参考图的「纸感」底色）。
+   min-height 由 JS 按内容高度收紧（小图不再是一片大海），封顶 76vh 滚动。 */
 .kb-mindmap {
     position: relative;
     min-height: 56vh;
@@ -832,9 +659,9 @@
     font-size: 0.9rem;
 }
 
-/* ── 入场编排：一次排好的序列（文件夹 → 面包屑 → 文档头 → 切换 → 内容） ── */
+/* ── 入场编排：一次排好的序列（面包屑 → 文档头 → 切换 → 内容） ── */
 @media (prefers-reduced-motion: no-preference) {
-    .kb-folder, .kb-crumb, .kb-doc-head, .kb-doc-summary, .kb-view-switch, .kb-reader-body {
+    .kb-crumb, .kb-doc-head, .kb-doc-summary, .kb-view-switch, .kb-reader-body {
         animation: kbReaderIn var(--dur-slow) var(--ease-out) both;
     }
     .kb-crumb { animation-delay: 60ms; }
@@ -855,24 +682,7 @@
     }
 }
 
-/* ── 响应式：中屏收窄左栏，小屏折叠为顶部横滑条 ── */
-@media (max-width: 1280px) {
-    .kb-reader { grid-template-columns: 216px minmax(0, 1fr); gap: var(--sp-5); }
-    .kb-doc-title-serif { font-size: 1.65rem; }
-}
-@media (max-width: 960px) {
-    .kb-reader { grid-template-columns: minmax(0, 1fr); }
-    .kb-folder {
-        position: static;
-        max-height: none;
-        border-right: none;
-        border-bottom: 1px solid var(--c-border);
-        padding: var(--sp-3) 0;
-        margin-bottom: var(--sp-4);
-    }
-    .kb-folder-tree { max-height: 260px; overflow-y: auto; }
-    .kb-doc-title-serif { font-size: 1.5rem; }
-}
+/* ── 响应式：小屏导图舞台降高 ── */
 @media (max-width: 640px) {
     .kb-mindmap { min-height: 48vh; padding: var(--sp-4); }
     .kb-view-switch { width: 100%; }
@@ -957,10 +767,11 @@
 </script>
 
 <script>
-/* ═══ 脚本二：书房阅读器 —— 视图切换 / 只读大纲 / 思维导图 / 文件夹树 ═══
+/* ═══ 脚本二：书房阅读器 —— 视图切换 / 只读大纲 / 思维导图 ═══
    大纲与导图共用同一份懒加载树数据（api_doc_tree，GET 只读零写入）。
    导图用 canvas measureText 精确测宽（中文不再按 13px 估算导致裁切/溢出），
-   右向分层布局 + 贝塞尔连线 + 折叠徽章 + 缩放 + 错峰入场。 */
+   右向分层布局 + 贝塞尔连线 + 折叠徽章 + 缩放 + 错峰入场；
+   舞台高度按内容收紧（小图不再是一片大海），内容更矮时垂直居中。 */
 (function () {
     var tabs = document.querySelectorAll('.kb-view-tab');
     var readView = document.getElementById('kbReadView');
@@ -987,17 +798,6 @@
         }
         return treePromise;
     }
-
-    /* ── 左栏文件夹树：caret 折叠（服务端直出，静态绑定即可） ── */
-    document.querySelectorAll('.kb-folder-tree .kb-folder-caret:not(.kb-folder-caret-spacer)').forEach(function (caret) {
-        caret.addEventListener('click', function () {
-            var open = caret.classList.toggle('is-open');
-            caret.setAttribute('aria-expanded', open ? 'true' : 'false');
-            var group = caret.closest('.kb-folder-group');
-            var kids = group && group.querySelector(':scope > .kb-folder-children');
-            if (kids) kids.hidden = !open;
-        });
-    });
 
     /* ═══════════ 只读大纲（参照参考图：大号笔记 + #标签徽章） ═══════════ */
     var CARET = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="9 18 15 12 9 6"/></svg>';
@@ -1119,8 +919,10 @@
     /* ═══════════ 思维导图（参照参考图：根胶囊 + 主色一级 + 折叠徽章） ═══════════ */
     var NS = 'http://www.w3.org/2000/svg';
     var MM = {
-        ROOT_H: 42, L1_H: 34, NODE_H: 30, GAP: 8,
-        LEVEL_W: 224, PAD: 14, CLIP: 210
+        ROOT_H: 46, L1_H: 36, NODE_H: 32, GAP: 9,
+        LEVEL_W: 232, PAD: 15, CLIP: 220,
+        STAGE_PAD: 48,       /* .kb-mindmap 上下 padding 合计（--sp-6 × 2） */
+        STAGE_MIN: 260       /* 舞台贴合内容时的最小高度 */
     };
     var measureCtx = document.createElement('canvas').getContext('2d');
     var FONT_NODE = '13px sans-serif';
@@ -1139,6 +941,7 @@
 
     function renderMindmap(nodes) {
         mmCanvas.innerHTML = '';
+        mmCanvas.style.minHeight = '';
         mmState.svg = null;
         if (!nodes.length) {
             var empty = document.createElement('div');
@@ -1267,6 +1070,16 @@
             groups.forEach(function (g, i) {
                 setTimeout(function () { g.classList.add('is-in'); }, Math.min(i * 40, 640));
             });
+        }
+
+        /* 舞台贴合内容：内容矮于 56vh 时收紧舞台（小图不再是一片大海），
+           更高时交还 CSS（56vh 起步、76vh 封顶滚动）；有富余则垂直居中。 */
+        var vh = window.innerHeight || 800;
+        var stageMin = Math.max(MM.STAGE_MIN, height + MM.STAGE_PAD + 16);
+        if (stageMin < vh * 0.56) {
+            mmCanvas.style.minHeight = stageMin + 'px';
+            var slack = stageMin - MM.STAGE_PAD - height;
+            if (slack > 0) svg.style.marginTop = Math.round(slack / 2) + 'px';
         }
         applyZoom();
         mmCanvas.appendChild(svg);

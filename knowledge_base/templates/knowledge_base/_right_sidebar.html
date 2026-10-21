@@ -1,0 +1,71 @@
+{% load accounts_tags %}
+{% comment %}
+知识库右栏（列表页与详情页共用，取代原详情页左栏文件夹系统）。
+
+上下文契约（views._sidebar_context 提供）：
+    total_documents / total_categories / total_views / avg_views
+    category_tree.roots / open_ids / selected_category
+    tag_list / selected_tag
+
+压缩口径（用户反馈「分类筛选被挤到最下面」）：
+    1. 统计区由 2×2 卡片改单行四格 + 细分隔线；
+    2. 阅读分析不再单占分区，作为统计区底部的薄链接；
+    3. 分类管理按钮并入「分类筛选」标题行（行内操作）。
+{% endcomment %}
+<!-- 知识库统计（阅读报告入口并入底部） -->
+<div class="kb-side-section">
+    <div class="kb-side-title">知识库统计</div>
+    <div class="kb-stats-grid">
+        <div class="kb-stat"><div class="kb-stat-value">{{ total_documents }}</div><div class="kb-stat-label">文档</div></div>
+        <div class="kb-stat"><div class="kb-stat-value">{{ total_categories }}</div><div class="kb-stat-label">分类</div></div>
+        <div class="kb-stat"><div class="kb-stat-value">{{ total_views }}</div><div class="kb-stat-label">浏览</div></div>
+        <div class="kb-stat"><div class="kb-stat-value">{{ avg_views }}</div><div class="kb-stat-label">平均</div></div>
+    </div>
+    {% can "system" "read" %}
+    <a href="{% url 'knowledge_report' %}" class="kb-side-report-link">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><line x1="3" y1="21" x2="21" y2="21"/><rect x="5" y="11" width="3.5" height="7" rx="1"/><rect x="10.25" y="6" width="3.5" height="12" rx="1"/><rect x="15.5" y="14" width="3.5" height="4" rx="1"/></svg>
+        <span>阅读报告</span>
+        <svg class="icon kb-side-report-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="9 18 15 12 9 6"/></svg>
+    </a>
+    {% endcan %}
+</div>
+
+<!-- 分类筛选（树形：系列文档的父子分类缩进 + caret 折叠；管理按钮并入标题行） -->
+<div class="kb-side-section">
+    <div class="kb-side-head">
+        <div class="kb-side-title">分类筛选</div>
+        <div class="kb-side-actions">
+            {% can "knowledge" "update" %}
+            <a href="{% url 'knowledge_base:category_list' %}" class="kb-side-btn">管理</a>
+            {% endcan %}
+            {% can "knowledge" "create" %}
+            <a href="{% url 'knowledge_base:category_create' %}" class="kb-side-btn kb-side-btn-primary" data-modal-add data-modal-title="新建分类">新建</a>
+            {% endcan %}
+        </div>
+    </div>
+    <div class="kb-cat-tree">
+        <a href="{% url 'knowledge_base:document_list' %}" class="kb-side-list-item {% if not selected_category %}active{% endif %}">
+            <span>全部文档</span><span class="kb-side-list-count">{{ total_documents }}</span>
+        </a>
+        {% include 'knowledge_base/_category_tree_node.html' with nodes=category_tree.roots %}
+        {% if not category_tree.roots %}
+        <div class="kb-side-empty">暂无分类</div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 标签云 -->
+<div class="kb-side-section">
+    <div class="kb-side-title">标签云</div>
+    {% if tag_list %}
+    <div class="tag-cloud">
+        {% for tag_item in tag_list %}
+        <a href="{% url 'knowledge_base:document_list' %}?tag={{ tag_item.name }}" class="tag-item{% if selected_tag == tag_item.name %} active{% endif %}">
+            <span class="tag-dot" data-color="{{ tag_item.color }}"></span>{{ tag_item.name }}
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="kb-side-empty">暂无标签</div>
+    {% endif %}
+</div>
