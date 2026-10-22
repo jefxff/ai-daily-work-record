@@ -16,4 +16,4 @@ bleach==6.1.0
 qrcode==7.4.2
 Pillow==11.0.0
 # 备份中心 AES（Fernet）加密与 API Token 摘要
-cryptography==42.0.2
+cryptography==50.0.2
