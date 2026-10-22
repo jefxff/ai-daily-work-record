@@ -7,12 +7,20 @@ AiProviderConfig —— 用于保存周报 / 年度总结 AI 润色的接入参�
 
 from django.db import models
 
+from .crypto import decrypt_key, encrypt_key, mask_key
+
 
 class AiProviderConfig(models.Model):
     """AI 接入配置（周报 / 年度总结润色）。
 
     单例式：全站仅一条当前生效配置，取 ``current()``。密钥属敏感字段，
     仅系统管理员（system.update）可在配置页查看与修改。
+
+    api_key 字段数据库存 Fernet 加密值（'fernet:' 前缀），明文
+    由以下 property / setter 透明处理：
+    - ``api_key_plain``  — 解密后的明文（供 client.py 实际调用）
+    - ``api_key_masked`` — 掩码（供配置页展示，如 'sk-...****'）
+    - ``set_api_key(s)`` — 加密后落库（供保存逻辑调用）
     """
 
     class Provider(models.TextChoices):
@@ -57,3 +65,19 @@ class AiProviderConfig(models.Model):
     def effective_base_url(self):
         """未显式填写地址时，回退到该提供商的默认地址。"""
         return (self.base_url or "").strip() or self.DEFAULT_BASE_URL.get(self.provider, "")
+
+    # ---------- API 密钥透明加解密 ----------
+
+    @property
+    def api_key_plain(self) -> str:
+        """解密后的明文密钥（供 client.py 实际调用 API 时使用）。"""
+        return decrypt_key(self.api_key or "")
+
+    @property
+    def api_key_masked(self) -> str:
+        """掩码显示（供配置页展示，如 'sk-...****'）。"""
+        return mask_key(self.api_key or "")
+
+    def set_api_key(self, plaintext: str):
+        """加密后存入 api_key 字段。空值原样存空字符串。"""
+        self.api_key = encrypt_key((plaintext or "").strip())

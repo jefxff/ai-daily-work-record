@@ -104,3 +104,50 @@ class BackupPackageValidationTests(TestCase):
 
         self.assertTrue(Group.objects.filter(pk=sentinel.pk).exists())
         self.assertEqual(Group.objects.count(), before)
+
+
+class ZipSlipPathFenceTests(TestCase):
+    """SEC-H1 回归：备份恢复 Zip Slip 路径穿越防护。"""
+
+    def test_safe_rel_rejects_parent_dir_traversal(self):
+        # ../ 穿越
+        self.assertIsNone(services._safe_rel("../../../etc/passwd"))
+        self.assertIsNone(services._safe_rel("subdir/../../../tmp/x"))
+
+    def test_safe_rel_rejects_absolute_path(self):
+        self.assertIsNone(services._safe_rel("/etc/passwd"))
+        self.assertIsNone(services._safe_rel("\\Windows\\System32\\evil"))
+
+    def test_safe_rel_rejects_anti_slash_traversal(self):
+        # 反斜杠穿越：攻击者可能用 Windows 分隔符绕过
+        self.assertIsNone(services._safe_rel("..\\..\\..\\etc\\passwd"))
+        self.assertIsNone(services._safe_rel("media\\..\\..\\templates\\x.html"))
+
+    def test_safe_rel_rejects_empty_and_dot_only(self):
+        self.assertIsNone(services._safe_rel(""))
+        self.assertIsNone(services._safe_rel("."))
+        self.assertIsNone(services._safe_rel("././"))
+
+    def test_safe_rel_passes_normal_paths(self):
+        self.assertEqual(services._safe_rel("proofs/a/b.jpg"), "proofs/a/b.jpg")
+        self.assertEqual(services._safe_rel("proofs/./a/../b.jpg"), "proofs/b.jpg")
+
+    def test_inspect_backup_rejects_package_with_traversal_entries(self):
+        meta = {"schema_version": services.SCHEMA_VERSION,
+                "django_version": services._django_version(),
+                "media": {"files": ["../../etc/passwd"]}}
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "evil.zip"
+            with zipfile.ZipFile(path, "w") as zf:
+                zf.writestr(services.META_ENTRY, json.dumps(meta))
+                zf.writestr(services.DB_ENTRY, b"")
+                # 恶意条目：看起来以 media/ 开头，但实际 ../ 穿越
+                zf.writestr("media/../../../etc/passwd", b"malicious content")
+            _, errors = services._inspect_backup(path)
+        self.assertTrue(any("可疑条目" in e or "路径穿越" in e for e in errors),
+                        f"未捕获到 Zip Slip，实际 errors={errors}")
+
+    def test_write_storage_file_raises_on_traversal_rel(self):
+        from django.core.exceptions import SuspiciousOperation
+        with self.assertRaises(SuspiciousOperation):
+            services._write_storage_file("../../../etc/passwd", None)

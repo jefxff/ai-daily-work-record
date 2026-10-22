@@ -214,16 +214,28 @@ _ALLOWED_ATTRS = {
     "img": ["src", "alt", "title", "width", "height"],
     "th": ["align"], "td": ["align"],
     "span": ["class"], "div": ["class"], "code": ["class"], "pre": ["class"],
+    # 允许标题 id：用于 Markdown 自动生成的目录锚点 (#heading)
+    "h1": ["id"], "h2": ["id"], "h3": ["id"],
+    "h4": ["id"], "h5": ["id"], "h6": ["id"],
 }
+
+
+# 裸 rel="noopener noreferrer" 常量（目标 _blank 统一补齐）
+_NOOPENER_RE = re.compile(r'(<a\b[^>]*?\btarget=["\']_blank["\'][^>]*?)\srel=["\'][^"\']*["\']', re.IGNORECASE)
+_NO_REL_PATTERN = re.compile(r'(<a\b[^>]*?\btarget=["\']_blank["\'])(?![^>]*\brel=)', re.IGNORECASE)
 
 
 def _sanitize_html(html: str) -> str:
     import bleach
 
-    return bleach.clean(
+    cleaned = bleach.clean(
         html, tags=_ALLOWED_TAGS, attributes=_ALLOWED_ATTRS,
         protocols=["http", "https", "mailto"], strip=True,
     )
+    # L2：target=_blank 必须带 rel="noopener noreferrer"，否则新窗口能通过 window.opener 反向控制父页面
+    cleaned = _NOOPENER_RE.sub(r'\1 rel="noopener noreferrer"', cleaned)      # 已有 rel 属性 → 覆盖
+    cleaned = _NO_REL_PATTERN.sub(r'\1 rel="noopener noreferrer"', cleaned)  # 没有 rel → 追加
+    return cleaned
 
 
 def _vis_form_context(document=None, user=None):
@@ -301,9 +313,12 @@ def document_detail(request, pk):
 
     # 获取相关文档（同分类或同标签；同样只从可见范围里挑，
     # 否则会通过「相关文档」把私有文档的标题带出来）
-    related_docs = access.visible_docs(request.user).filter(
-        Q(category=document.category) | Q(tags__icontains=document.tags.split(',')[0] if document.tags else '')
-    ).exclude(pk=pk).distinct()[:5]
+    # L4：document.tags 为空时跳过标签分支——icontains='' 会匹配全表，导致相关文档杂乱
+    related_q = Q(category=document.category)
+    first_tag = (document.tags or "").split(",")[0].strip()
+    if first_tag:
+        related_q |= Q(tags__icontains=first_tag)
+    related_docs = access.visible_docs(request.user).filter(related_q).exclude(pk=pk).distinct()[:5]
 
     context = {
         'document': document,

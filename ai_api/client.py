@@ -65,8 +65,8 @@ def chat(messages, config):
 
     url = _endpoint(config)
     headers = {"Content-Type": "application/json"}
-    if config.api_key:
-        headers["Authorization"] = f"Bearer {config.api_key}"
+    if config.api_key_plain:
+        headers["Authorization"] = f"Bearer {config.api_key_plain}"
 
     if config.provider == "ollama":
         # Ollama 用 options 传采样参数，且不接收 max_tokens 顶层字段

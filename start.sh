@@ -35,7 +35,8 @@ echo -e "API地址: http://localhost:8000/api"
 echo -e ""
 echo -e "按 Ctrl+C 停止服务"
 
-# settings.py 默认 DEBUG=0（安全默认值）；本机/内网运行显式开启 DEBUG=1，
-# 以保留 runserver 自动服务静态文件与详细报错页。
-export DJANGO_DEBUG=1
+# settings.py 默认 DEBUG=0（安全默认值）。启动脚本走生产模式，显式列出可访问主机。
+# _detect_allowed_hosts() 会自动探测当前机器的内网 IP 追加进来，DHCP 换 IP 无需改配置。
+export DJANGO_DEBUG=0
+export DJANGO_ALLOWED_HOSTS="localhost,127.0.0.1"
 python manage.py runserver 0.0.0.0:8000

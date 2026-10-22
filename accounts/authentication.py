@@ -9,11 +9,15 @@ Session 认证完全一致 —— 外部 Agent 无需人工在场即可完成身
 from rest_framework.authentication import BaseAuthentication, get_authorization_header
 from rest_framework.exceptions import AuthenticationFailed
 
-from .models import ApiToken
+from .models import ApiToken, _hash_token_key
 
 
 class ApiTokenAuthentication(BaseAuthentication):
-    """按 ApiToken 表中的长期 Token 认证。"""
+    """按 ApiToken 表中的长期 Token 认证。
+
+    优先比对 key_hash（sha256 加盐），找不到再 fallback 明文 key（过渡期兼容存量记录）。
+    后续新签发 Token key_hash 必填，存量 Token 由迁移脚本批量回填。
+    """
 
     keyword = "Token"
 
@@ -29,7 +33,12 @@ class ApiTokenAuthentication(BaseAuthentication):
         except UnicodeError:
             raise AuthenticationFailed("Token 请求头格式无效。")
 
-        token = ApiToken.objects.select_related("user").filter(key=key).first()
+        # 优先按 hash 比对（安全路径），fallback 到明文 key（过渡期兼容存量）
+        h = _hash_token_key(key)
+        token = (
+            ApiToken.objects.select_related("user").filter(key_hash=h).first()
+            or ApiToken.objects.select_related("user").filter(key=key).first()
+        )
         if token is None or not token.is_valid:
             raise AuthenticationFailed("Token 无效或已过期。")
         if not token.user.is_active:

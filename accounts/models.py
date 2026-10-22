@@ -4,6 +4,7 @@
 用户可绑定多个启用中的角色，有效权限取并集；is_superuser 恒为全权限。
 """
 
+import hashlib
 import secrets
 from datetime import timedelta
 
@@ -14,6 +15,16 @@ from django.utils import timezone
 # 长期 Token：随机串字节数与有效期（天）
 TOKEN_KEY_BYTES = 48
 TOKEN_TTL_DAYS = 365
+
+
+def _hash_token_key(raw_key: str) -> str:
+    """Token key 哈希：sha256(明文 + SECRET_KEY salt)。
+
+    存入 key_hash 字段，认证时比对哈希。key 字段保留明文用于过渡期 fallback，
+    后续可逐步清理。
+    """
+    secret = settings.SECRET_KEY.encode("utf-8")
+    return hashlib.sha256(raw_key.encode("utf-8") + secret).hexdigest()
 
 
 class Permission(models.Model):
@@ -148,6 +159,10 @@ class ApiToken(models.Model):
         related_name="api_tokens",
     )
     key = models.CharField("Token", max_length=128, unique=True, db_index=True)
+    key_hash = models.CharField(
+        "Token 哈希", max_length=64, blank=True, default="", db_index=True,
+        help_text="sha256(key + SECRET_KEY)，认证时优先比对此字段；key 字段保留明文用于过渡期 fallback",
+    )
     created_at = models.DateTimeField("创建时间", auto_now_add=True)
     expires_at = models.DateTimeField("过期时间", null=True, blank=True)
     is_active = models.BooleanField("启用", default=True, db_index=True)
@@ -206,10 +221,16 @@ class ApiToken(models.Model):
 
     @classmethod
     def issue(cls, user, *, ip=None, ttl_days=TOKEN_TTL_DAYS):
-        """为用户签发一枚新的长期 Token（不撤销既有 Token，保留完整历史）。"""
+        """为用户签发一枚新的长期 Token（不撤销既有 Token，保留完整历史）。
+
+        返回 Token 对象，调用方应在**唯一一次**响应中把明文 key 展示给用户——
+        入库后 key_hash 即可覆盖 key 的安全兜底（过渡期两者同时存在）。
+        """
+        raw_key = secrets.token_urlsafe(TOKEN_KEY_BYTES)
         return cls.objects.create(
             user=user,
-            key=secrets.token_urlsafe(TOKEN_KEY_BYTES),
+            key=raw_key,
+            key_hash=_hash_token_key(raw_key),
             expires_at=timezone.now() + timedelta(days=ttl_days),
             created_ip=ip,
             # 记录签发时的密码指纹：改密/重置后据此令本 Token 失效

@@ -112,10 +112,16 @@ if os.environ.get('DJANGO_BEHIND_HTTPS_PROXY', '0') == '1':
         if o.strip()
     ]
 
-# 仅在生产模式（DEBUG=0）加固 Cookie；本机 http 访问不受影响
-if not DEBUG:
-    SESSION_COOKIE_HTTPONLY = True
-    SESSION_COOKIE_SAMESITE = 'Lax'
+# Cookie 加固：HttpOnly / SameSite 与 DEBUG 解耦，无条件开启。
+# 本站 JS 不直接读 cookie，HttpOnly 零成本；SameSite=Lax 不破坏普通导航，仅挡跨站 POST。
+# SESSION_COOKIE_SECURE 保持默认 False，直到迁移到 HTTPS。
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+
+# 全局安全响应头（与 DEBUG 解耦，零副作用，低风险高收益）
+SECURE_CONTENT_TYPE_NOSNIFF = True        # 防 MIME 嗅探
+SECURE_REFERRER_POLICY = 'same-origin'     # 仅同源发送 Referer
+X_FRAME_OPTIONS = 'DENY'                  # 禁止任何 iframe 嵌入
 
 # 全站 HTTPS 部署开关（默认关闭）。
 # 现状：系统在内网以 http://IP:8000 直连访问，因此下面这些项默认不开启——

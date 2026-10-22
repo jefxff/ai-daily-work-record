@@ -17,6 +17,7 @@ Including another URLconf
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.http import FileResponse, Http404
+from django.shortcuts import render
 from django.urls import path, re_path, include
 from django.utils._os import safe_join
 from django.contrib import admin
@@ -115,3 +116,21 @@ if not settings.DEBUG:
     urlpatterns += [
         re_path(r'^static/(?P<path>.*)$', staticfiles_serve, {'insecure': True}),
     ]
+
+
+# ---------- 自定义错误页 ----------
+# 模板位于 templates/404.html / 500.html（项目级），handler 必须为模块级可调用对象。
+# DEBUG=1 时 Django 默认渲染调试页（含完整 traceback），这是设计意图——DEBUG 下的
+# handler404/500 行为可通过 DEBUG_PROPAGATE_EXCEPTIONS 调整，但为避免误伤调试场景，
+# 这里 handler 始终指向项目级模板，DEBUG=1 下如需调试 traceback 可临时注释掉。
+
+def error_404(request, exception):
+    return render(request, '404.html', status=404)
+
+
+def error_500(request):
+    return render(request, '500.html', status=500)
+
+
+handler404 = error_404
+handler500 = error_500

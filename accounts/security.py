@@ -32,6 +32,11 @@ def clear_failures(ip, username):
     cache.delete(_cache_key(ip, username))
 
 
+def get_failure_count(ip, username):
+    """返回当前失败次数（不递增，仅查询）。"""
+    return cache.get(_cache_key(ip, username), 0)
+
+
 def client_ip(request):
     """取客户端真实 IP。
 

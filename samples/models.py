@@ -13,6 +13,9 @@
 上传人字段统一改为开放填写的 CharField，与全站其他模块保持一致。
 """
 
+import os
+import uuid
+
 from django.db import models
 from django.utils import timezone
 
@@ -258,9 +261,11 @@ class BatchRecord(TimeStampedModel):
 
 
 def audit_file_path(instance, filename):
-    """审厂记录文件按 供应商编号/原文件名 分目录存储。"""
+    """审厂记录文件按 供应商编号/uuid4 分目录存储（原始文件名不入路径，避免特殊字符与路径穿越）。"""
     partner_code = instance.partner.partner_code if instance.partner_id else "unbound"
-    return f"audits/{partner_code}/{filename}"
+    ext = os.path.splitext(filename)[1].lower()
+    safe_name = f"{uuid.uuid4().hex}{ext}"
+    return f"audits/{partner_code}/{safe_name}"
 
 
 class AuditRecord(TimeStampedModel):
@@ -317,9 +322,11 @@ class AuditRecord(TimeStampedModel):
 
 
 def proof_upload_path(instance, filename):
-    """证明材料按 样品编号/阶段/原文件名 分目录存储。"""
+    """证明材料按 样品编号/阶段/uuid4 分目录存储（原始文件名不入路径）。"""
     sample_no = instance.sample.sample_no if instance.sample_id else "unbound"
-    return f"proofs/{sample_no}/{instance.stage}/{filename}"
+    ext = os.path.splitext(filename)[1].lower()
+    safe_name = f"{uuid.uuid4().hex}{ext}"
+    return f"proofs/{sample_no}/{instance.stage}/{safe_name}"
 
 
 class ProofAttachment(TimeStampedModel):

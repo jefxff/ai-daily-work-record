@@ -25,6 +25,7 @@ from pathlib import Path
 
 from django.apps import apps
 from django.conf import settings
+from django.core.exceptions import SuspiciousOperation
 from django.core.files.storage import default_storage
 from django.utils import timezone
 
@@ -562,6 +563,20 @@ def _inspect_backup(zip_path: Path):
             missing = [f for f in manifest if (MEDIA_PREFIX + f) not in names]
             if missing:
                 errors.append(f"附件清单缺失 {len(missing)} 个文件，如：{missing[:5]}")
+
+            # 所有 zip 条目名路径围栏预检——任何越界条目直接判包不合法
+            suspicious_paths = []
+            for entry in names:
+                if not entry.startswith(MEDIA_PREFIX) or entry.endswith("/"):
+                    continue
+                rel = entry[len(MEDIA_PREFIX):]
+                if _safe_rel(rel) is None:
+                    suspicious_paths.append(entry)
+            if suspicious_paths:
+                errors.append(
+                    f"备份包中存在 {len(suspicious_paths)} 个可疑条目（可能包含路径穿越），"
+                    f"示例：{suspicious_paths[:3]}"
+                )
     return meta, errors
 
 
@@ -665,8 +680,47 @@ def _run_restore(task_id, zip_path: Path, operator):
         _cleanup_tmp(tmp_dir)
 
 
+def _safe_rel(rel: str) -> str | None:
+    """对 zip 条目截取得到的相对路径做围栏校验。
+
+    返回规范化后的安全相对路径；越界 / 绝对路径 / 非法输入返回 None。
+
+    使用栈模拟路径遍历：遇到 '.' 跳过、遇到 '..' 弹出上一段，
+    若弹出时栈已空说明路径在 zip 内已越出 media 根目录。
+    """
+    if not rel:
+        return None
+    # 拒绝以 / 或 \ 开头的绝对路径
+    if rel.startswith(("/", "\\")):
+        return None
+    # 统一分隔符为 /
+    normalized = rel.replace("\\", "/")
+    stack: list[str] = []
+    for seg in normalized.split("/"):
+        if seg in ("", "."):
+            continue
+        if seg == "..":
+            if not stack:
+                # 弹出时栈已空——说明从一开始就在试图穿越根目录
+                return None
+            stack.pop()
+        else:
+            stack.append(seg)
+    if not stack:
+        return None
+    return "/".join(stack)
+
+
 def _write_storage_file(rel, src_fh):
-    """将 zip 内文件对象写入 storage（本地直写路径；云存储走 save 接口）。"""
+    """将 zip 内文件对象写入 storage（本地直写路径；云存储走 save 接口）。
+
+    rel 来自 zip 条目名，必须先通过 _safe_rel 路径围栏校验。
+    """
+    safe = _safe_rel(rel)
+    if safe is None:
+        raise SuspiciousOperation(f"非法备份条目路径：{rel!r}（可能包含路径穿越或空片段）")
+    rel = safe
+
     if hasattr(default_storage, "path"):
         try:
             full = Path(default_storage.path(rel))

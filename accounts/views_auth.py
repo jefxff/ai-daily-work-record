@@ -3,6 +3,7 @@
 用户/角色/会话/日志等管理视图位于 views_admin.py。
 """
 
+import time
 from urllib.parse import urlparse
 
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
@@ -12,7 +13,7 @@ from django.views.decorators.http import require_http_methods
 
 from .forms import LoginForm, RegisterForm
 from .models import LoginLog, UserProfile
-from .security import clear_failures, client_ip, is_locked, record_failure
+from .security import clear_failures, client_ip, get_failure_count, is_locked, record_failure
 
 
 def _log(request, *, user, username, success, reason="", login_type=LoginLog.LoginType.LOGIN):
@@ -71,16 +72,18 @@ def login_view(request):
                     _log(request, user=user, username=username, success=True)
                     return redirect(_safe_next(request.GET.get("next") or request.POST.get("next")))
 
-                # 明确区分：待审核/停用账号
-                existing = User.objects.filter(username__iexact=username).first()
-                if existing is not None and not existing.is_active:
-                    error_msg = "账号待管理员审核或已停用，暂无法登录。"
-                    reason = "账号未激活/已停用"
-                else:
-                    error_msg = "用户名或密码不正确。"
-                    reason = "用户名或密码错误"
+                # 统一错误文案——不暴露账号是否存在、是否待审核/已停用（防用户名枚举）
+                error_msg = "用户名或密码不正确。"
+                reason = "用户名或密码错误"
+
+                # 递增延迟：第 3 次失败起，每次 sleep (count - 2) * 2 秒，纯服务端零前端成本
+                count = get_failure_count(ip, username)
+                if count >= 3:
+                    delay = (count - 2) * 2
+                    time.sleep(delay)
+
                 record_failure(ip, username)
-                _log(request, user=existing, username=username, success=False, reason=reason)
+                _log(request, user=None, username=username, success=False, reason=reason)
 
     return render(
         request,

@@ -50,7 +50,7 @@ def _apply_form(config, data):
         config.provider = AiProviderConfig.Provider.MINIMAX
 
     config.base_url = (data.get("base_url") or "").strip()
-    config.api_key = (data.get("api_key") or "").strip()
+    config.set_api_key(data.get("api_key") or "")   # 保存前加密
     config.model = (data.get("model") or "").strip()
     config.temperature = _float(data.get("temperature"), 0.3)
     config.max_tokens = _positive_int(data.get("max_tokens"), 800)
@@ -74,6 +74,7 @@ def _render(request):
         "providers": AiProviderConfig.Provider.choices,
         "default_base_urls": AiProviderConfig.DEFAULT_BASE_URL,
         "effective_base_url": config.effective_base_url(),
+        "api_key_masked": config.api_key_masked,   # 掩码显示，模板用此字段
     })
 
 

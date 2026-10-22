@@ -179,26 +179,9 @@ class AuditRecordForm(BootstrapModelForm):
         }
 
     def clean_file(self):
+        from .validators import validate_upload
         f = self.cleaned_data.get("file")
-        if not f:
-            raise forms.ValidationError("请上传审核记录文件以证明现场审核情况。")
-        ext = os.path.splitext(f.name)[1].lower()
-        allowed = list(getattr(settings, "PROOF_ALLOWED_EXT", []))
-        if not allowed:
-            allowed = [
-                ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp",
-                ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
-                ".txt", ".csv", ".zip", ".rar", ".7z",
-            ]
-        if ext not in allowed:
-            raise forms.ValidationError(
-                f"不支持的文件类型「{ext or '未知'}」，支持图片、PDF、Office文档、文本、压缩包。"
-            )
-        max_size = getattr(settings, "PROOF_MAX_SIZE", 20 * 1024 * 1024)
-        if f.size > max_size:
-            mb = round(max_size / 1024 / 1024, 1)
-            raise forms.ValidationError(f"文件大小超过上限（{mb}MB）。")
-        return f
+        return validate_upload(f, field_label="审核记录文件")
 
 
 class TerminateForm(forms.Form):
@@ -256,23 +239,6 @@ class ProofAttachmentForm(forms.ModelForm):
         }
 
     def clean_file(self):
+        from .validators import validate_upload
         f = self.cleaned_data.get("file")
-        if not f:
-            raise forms.ValidationError("请选择要上传的证明文件。")
-        ext = os.path.splitext(f.name)[1].lower()
-        allowed = list(getattr(settings, "PROOF_ALLOWED_EXT", []))
-        if not allowed:
-            allowed = [
-                ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp",
-                ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
-                ".txt", ".csv", ".zip", ".rar", ".7z",
-            ]
-        if ext not in allowed:
-            raise forms.ValidationError(
-                f"不支持的文件类型「{ext or '未知'}」，支持图片、PDF、Office文档、文本、压缩包。"
-            )
-        max_size = getattr(settings, "PROOF_MAX_SIZE", 20 * 1024 * 1024)
-        if f.size > max_size:
-            mb = round(max_size / 1024 / 1024, 1)
-            raise forms.ValidationError(f"文件大小超过上限（{mb}MB），请压缩或截取关键区域后重试。")
-        return f
+        return validate_upload(f, field_label="证明文件")
