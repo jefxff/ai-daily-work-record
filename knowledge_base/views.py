@@ -196,7 +196,6 @@ def document_list(request):
         'documents': page_obj,
         'page_obj': page_obj,
         'per_page': per_page,
-        'folder_tree_data': kb_folders.folder_tree(request.user),
         'current_folder': current_folder,
         **_sidebar_context(request.user, category_id, tag_filter),
     }

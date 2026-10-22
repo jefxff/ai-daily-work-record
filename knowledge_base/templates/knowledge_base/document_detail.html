@@ -8,6 +8,7 @@
 右栏树会自动展开并高亮当前文档所在分类（views._sidebar_context）。
 {% endcomment %}
 <!-- 面包屑：分类路径 +（仅 owner 可见的）个人书架路径 -->
+<div class="kb-detail-card">
 <nav class="kb-crumb" aria-label="当前位置">
     <a href="{% url 'knowledge_base:document_list' %}">知识库</a>
     {% for cat in category_path %}
@@ -116,6 +117,7 @@
         <div class="kb-mindmap" id="kbMindmapCanvas"></div>
     </div>
 </div>
+</div>
 
 {% if related_docs %}
 <div class="card kb-related">
@@ -151,6 +153,14 @@
    （.fixed-right-sidebar / .knowledge-main-with-right）与侧栏样式，
    本块整块覆盖会让右栏掉到文档流下方（2026-10-22 用户截图事故）。
    ═══════════════════════════════════════════════════════════════ */
+
+/* ── 主内容白卡：与列表页 kb-doc-card / 右栏卡片同一观感（2026-10-22）── */
+.kb-detail-card {
+    background: var(--c-surface);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    padding: 20px;
+}
 
 /* ── 面包屑 ── */
 .kb-crumb {
