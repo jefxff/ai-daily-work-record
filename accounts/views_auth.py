@@ -79,13 +79,13 @@ def login_view(request):
                 error_msg = "用户名或密码不正确。"
                 reason = "用户名或密码错误"
 
-                # 递增延迟：第 3 次失败起，每次 sleep (count - 2) * 2 秒，纯服务端零前端成本
+                # 先记账再延迟：避免 sleep 期间并发请求重复尝试绕过计数。
+                record_failure(ip, username)
+                # 固定 0.3s 延迟（审计 P3-5）：原有 (count-2)*2 秒在 5 次后可达 6s，
+                # 既占用 worker 又无额外收益；防爆破主要依赖 5 次 / 15 分钟锁定。
                 count = get_failure_count(ip, username)
                 if count >= 3:
-                    delay = (count - 2) * 2
-                    time.sleep(delay)
-
-                record_failure(ip, username)
+                    time.sleep(0.3)
                 _log(request, user=None, username=username, success=False, reason=reason)
 
     return render(

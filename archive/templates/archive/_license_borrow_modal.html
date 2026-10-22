@@ -6,12 +6,12 @@
     </div>
     <div class="lbr-grid">
         <div class="lbr-field">
-            <label class="form-label">借阅人 <span style="color:var(--c-danger)">*</span></label>
+            <label class="form-label">借阅人 <span class="u-text-danger">*</span></label>
             {{ form.borrower }}
             {% for e in form.borrower.errors %}<div class="lbr-error">{{ e }}</div>{% endfor %}
         </div>
         <div class="lbr-field">
-            <label class="form-label">应归还日期 <span style="color:var(--c-danger)">*</span></label>
+            <label class="form-label">应归还日期 <span class="u-text-danger">*</span></label>
             {{ form.due_time }}
             {% for e in form.due_time.errors %}<div class="lbr-error">{{ e }}</div>{% endfor %}
         </div>
@@ -22,12 +22,12 @@
         </div>
     </div>
     {% if form.non_field_errors %}
-    <div class="lbr-error" style="margin-top:0.75rem;">
+    <div class="lbr-error u-mt-3">
         {% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}
     </div>
     {% endif %}
     {% if error_message %}
-    <div class="lbr-error" style="margin-top:0.75rem;">{{ error_message }}</div>
+    <div class="lbr-error u-mt-3">{{ error_message }}</div>
     {% endif %}
     <div class="form-modal-actions">
         <button type="button" class="btn-transparent" data-modal-close>取消</button>

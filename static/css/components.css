@@ -840,3 +840,56 @@ td[data-label="操作"] > div { justify-content: center; }
     border-left: 0 !important;
   }
 }
+
+/* ============================================================================
+   工具类：内联样式清偿（审计 FE-01）
+   模板中重复出现的颜色/字号/间距一律走这里，全部引用设计令牌；
+   布局型内联样式（含 display 切换、动态宽度）仍保留在模板中。
+   ========================================================================== */
+.u-text-danger { color: var(--c-danger); }
+.u-hint-danger { color: var(--c-danger); font-size: .78rem; margin-top: 2px; }
+.u-form-label { font-size: .875rem; color: var(--c-text-secondary); font-weight: 500; }
+.u-hint-meta { color: var(--c-text-secondary); font-size: .76rem; margin-top: 2px; }
+.u-hint-tertiary { color: var(--c-text-tertiary); font-size: .78rem; }
+.u-form-help { color: var(--c-text-secondary); font-size: .875rem; margin-top: -.75rem; margin-bottom: 1.25rem; }
+.u-alert-danger {
+  background: var(--c-danger-bg); border: 1px solid var(--c-danger-line);
+  color: var(--c-danger); border-radius: 6px; padding: .6rem .85rem;
+  margin-bottom: 1rem; font-size: .85rem;
+}
+.u-alert-success {
+  background: var(--c-success-bg); border: 1px solid var(--c-success-line);
+  color: var(--c-success); border-radius: 6px; padding: .75rem 1rem; margin-bottom: 1rem;
+}
+.u-alert-warning {
+  background: var(--c-warning-bg); border: 1px solid var(--c-warning-line);
+  color: var(--c-warning); border-radius: 6px; padding: .6rem .85rem;
+  margin-bottom: 1rem; font-size: .84rem;
+}
+.u-btn-danger { background: var(--c-danger) !important; border-color: var(--c-danger) !important; }
+.u-field-danger { border-color: var(--c-danger-line); color: var(--c-danger); }
+.u-field-success { border-color: var(--c-success-line); color: var(--c-success); }
+.u-bold { font-weight: 600; }
+.u-bolder { font-weight: 700; }
+.u-nowrap { white-space: nowrap; }
+.u-mb-3 { margin-bottom: .75rem; }
+.u-mb-4 { margin-bottom: 1.25rem; }
+.u-mt-3 { margin-top: .75rem; }
+.u-mb-0 { margin-bottom: 0; }
+.u-ml-2 { margin-left: .5rem; }
+.u-fs-sm { font-size: .85rem; }
+.u-no-underline { text-decoration: none; }
+.u-w-72-center { width: 72px; text-align: center; }
+.u-toolbar-inline { display: flex; gap: .25rem; align-items: center; flex-wrap: nowrap; }
+.u-inline { display: inline; }
+.u-mb-2 { margin-bottom: 1rem; }
+.u-fs-76 { font-size: .76rem; }
+.u-fs-78 { font-size: .78rem; }
+.u-fs-82 { font-size: .82rem; }
+.u-fs-115 { font-size: 1.15rem; }
+.u-fs-125 { font-size: 1.25rem; }
+.u-max-500 { max-width: 500px; }
+.u-max-560 { max-width: 560px; }
+.u-max-600 { max-width: 600px; }
+.u-panel-12 { border: none; border-radius: 12px; }
+

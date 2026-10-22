@@ -20,7 +20,7 @@
                 <td data-label="市场来源">长江有色</td>
                 <td data-label="商品名">{{ latest_price.metal_name }}</td>
                 <td data-label="更新日期">{{ latest_price.crawl_date|date:"Y-m-d" }}</td>
-                <td data-label="价格" style="font-weight:700;">{{ latest_price.price|floatformat:0 }}</td>
+                <td class="u-bolder" data-label="价格">{{ latest_price.price|floatformat:0 }}</td>
                 <td data-label="涨跌" class="{% if latest_price.price_change > 0 %}text-danger{% elif latest_price.price_change < 0 %}text-success{% endif %}">
                     {% if latest_price.price_change > 0 %}▲ {{ latest_price.price_change|floatformat:0 }}{% elif latest_price.price_change < 0 %}▼ {{ latest_price.price_change|floatformat:0 }}{% else %}- 0{% endif %}
                 </td>
@@ -39,7 +39,7 @@
             {% for price in price_history %}
             <tr>
                 <td data-label="日期">{{ price.crawl_date|date:"Y-m-d" }}</td>
-                <td data-label="价格" style="font-weight:600;">{{ price.price|floatformat:0 }}</td>
+                <td class="u-bold" data-label="价格">{{ price.price|floatformat:0 }}</td>
                 <td data-label="涨跌" class="{% if price.price_change > 0 %}text-danger{% elif price.price_change < 0 %}text-success{% endif %}">
                     {% if price.price_change > 0 %}▲ {{ price.price_change|floatformat:0 }}{% elif price.price_change < 0 %}▼ {{ price.price_change|floatformat:0 }}{% else %}- 0{% endif %}
                 </td>
@@ -52,7 +52,7 @@
     </table>
     </div>
 </div>
-<script src="{% static 'js/chart.min.js' %}"></script>
+<script src="{% static 'js/chart.min.js' %}?v=4.5.1"></script>
 {{ chart_labels|json_script:"mpChartLabels" }}
 {{ chart_data|json_script:"mpChartData" }}
 <script>

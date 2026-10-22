@@ -172,7 +172,7 @@
                     </td>
                     <td data-label="登记人" class="col-optional">{{ sample.registrar|default:'—' }}</td>
                     <td data-label="操作" class="actions-cell">
-                        <div style="display:flex; gap:0.25rem; align-items:center; flex-wrap:nowrap;">
+                        <div class="u-toolbar-inline">
                             <a href="{% url 'samples:detail' sample.pk %}" class="btn-transparent btn-sm btn-detail">详细</a>
                             {% if sample.is_deleted %}
                             {% can "samples" "update" %}

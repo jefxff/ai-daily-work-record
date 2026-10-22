@@ -17,6 +17,7 @@ from datetime import timedelta
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError, connection, transaction
 from django.test import TestCase, override_settings
 from django.test.utils import CaptureQueriesContext
@@ -25,7 +26,7 @@ from django.utils import timezone
 
 from accounts.models import Permission, Role
 
-from .forms import CategoryForm
+from .forms import CategoryForm, LicenseForm
 from .models import Archive, BorrowRecord, Cabinet, Category, License, LicenseBorrowRecord
 from .services.license_query import annotate_status, status_aggregate
 
@@ -333,6 +334,67 @@ class ProtectedMediaTests(TestCase):
         user = User.objects.create_superuser("m_root2", "m4@e.com", "x12345678")
         self.client.force_login(user)
         self.assertEqual(self.client.get("/media/archives/nope.txt").status_code, 404)
+
+    def test_html_file_is_forced_attachment(self):
+        """审计 P1-2：用户上传的 .html 不得在同源下被浏览器执行。"""
+        from django.conf import settings
+
+        path = os.path.join(settings.MEDIA_ROOT, "archives", "evil.html")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write("<script>alert(1)</script>")
+        user = User.objects.create_superuser("m_root3", "m5@e.com", "x12345678")
+        self.client.force_login(user)
+        resp = self.client.get("/media/archives/evil.html")
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp["Content-Disposition"].startswith("attachment"))
+        self.assertEqual(resp["X-Content-Type-Options"], "nosniff")
+
+    def test_pdf_is_inline_with_sameorigin_for_iframe(self):
+        """审计 P2-3：PDF 需允许同源 iframe 预览，同时用 CSP 兜底。"""
+        from django.conf import settings
+
+        path = os.path.join(settings.MEDIA_ROOT, "archives", "preview.pdf")
+        with open(path, "wb") as fh:
+            fh.write(b"%PDF-1.4\n%%EOF")
+        user = User.objects.create_superuser("m_root4", "m6@e.com", "x12345678")
+        self.client.force_login(user)
+        resp = self.client.get("/media/archives/preview.pdf")
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp["Content-Disposition"].startswith("inline"))
+        self.assertEqual(resp["X-Frame-Options"], "SAMEORIGIN")
+        self.assertIn("frame-ancestors 'self'", resp["Content-Security-Policy"])
+
+
+class LicenseScanValidationTests(TestCase):
+    """审计 P1-2：证照扫描件必须校验扩展名、文件头与大小。"""
+
+    def _form(self, name, content):
+        return LicenseForm(
+            data={"code": "LIC-T1", "name": "营业执照", "review_cycle": "0"},
+            files={"scan_file": SimpleUploadedFile(name, content)},
+        )
+
+    def test_html_extension_is_rejected(self):
+        form = self._form("evil.html", b"<script>alert(1)</script>")
+        self.assertFalse(form.is_valid())
+        self.assertIn("scan_file", form.errors)
+
+    def test_svg_extension_is_rejected(self):
+        form = self._form("evil.svg", b"<svg onload=alert(1)></svg>")
+        self.assertFalse(form.is_valid())
+
+    def test_extension_magic_mismatch_is_rejected(self):
+        form = self._form("fake.jpg", b"<html>not an image</html>")
+        self.assertFalse(form.is_valid())
+        self.assertIn("内容与扩展名不符", str(form.errors["scan_file"]))
+
+    def test_valid_pdf_passes(self):
+        form = self._form("scan.pdf", b"%PDF-1.4\n%%EOF")
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_valid_png_passes(self):
+        form = self._form("scan.png", b"\x89PNG\r\n\x1a\n" + b"0" * 16)
+        self.assertTrue(form.is_valid(), form.errors)
 
 
 class ArchiveLocationUniqueTests(TestCase):

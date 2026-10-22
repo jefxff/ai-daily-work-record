@@ -7,6 +7,7 @@ URL 名称与行为完全不变。
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
+from django.db.models import Count
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
@@ -21,7 +22,13 @@ from .services.common import _is_ajax, _log
 @login_required
 @perm_required("archive", "read")
 def category_list(request):
-    qs = Category.objects.all().order_by("sort_order", "id")
+    # 审计 P2-5：先聚合档案数、预取父链，避免每行 count()/parent 各查一次库。
+    # 业务最大层级为 3，select_related 取到第三级父类足以覆盖 full_path。
+    qs = (
+        Category.objects.select_related("parent__parent__parent")
+        .annotate(archive_count=Count("archives"))
+        .order_by("sort_order", "id")
+    )
     # 后端分页（10/30/50）
     per_page = _per_page(request)
     page_obj = Paginator(qs, per_page).get_page(request.GET.get("page"))

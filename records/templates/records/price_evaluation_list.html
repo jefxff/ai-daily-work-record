@@ -74,13 +74,13 @@
                         <td data-label="内控审核价">¥{{ evaluation.internal_control_price|floatformat:2 }}</td>
                         <td data-label="核减金额">¥{{ evaluation.get_reduction_amount|floatformat:2 }}</td>
                         <td data-label="操作" class="col-actions">
-                    <div style="display: flex; gap: 0.25rem; align-items: center; flex-wrap: nowrap;">
+                    <div class="u-toolbar-inline">
                         <a href="{% url 'price_evaluation_detail' evaluation.id %}" class="btn-transparent btn-sm" data-modal-detail data-modal-title="核价详情">详细</a>
                         {% can "price_evaluation" "update" %}
                         <a href="{% url 'price_evaluation_edit' evaluation.id %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑核价">编辑</a>
                         {% endcan %}
                         {% can "price_evaluation" "delete" %}
-                        <form method="post" action="{% url 'price_evaluation_delete' evaluation.id %}" style="display:inline" data-confirm="确定要删除这条记录吗？">{% csrf_token %}<button type="submit" class="btn-transparent btn-sm btn-delete">删除</button></form>
+                        <form class="u-inline" method="post" action="{% url 'price_evaluation_delete' evaluation.id %}"  data-confirm="确定要删除这条记录吗？">{% csrf_token %}<button type="submit" class="btn-transparent btn-sm btn-delete">删除</button></form>
                         {% endcan %}
                     </div>
                 </td>

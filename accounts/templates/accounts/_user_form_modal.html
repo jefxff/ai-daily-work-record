@@ -7,12 +7,12 @@
 
     {% if mode == 'create' %}
     <div class="ac-field">
-        <label class="form-label">用户名 <span style="color:var(--c-danger);">*</span></label>
+        <label class="form-label">用户名 <span class="u-text-danger">*</span></label>
         <input type="text" name="username" class="form-control" value="{{ form.username.value|default:'' }}" maxlength="150" required>
         {% if form.username.errors %}<div class="ac-error">{{ form.username.errors|join:'；' }}</div>{% endif %}
     </div>
     <div class="ac-field">
-        <label class="form-label">初始密码 <span style="color:var(--c-danger);">*</span></label>
+        <label class="form-label">初始密码 <span class="u-text-danger">*</span></label>
         <input type="password" name="password" class="form-control" autocomplete="new-password" required>
         {% if form.password.errors %}<div class="ac-error">{{ form.password.errors|join:'；' }}</div>{% endif %}
     </div>

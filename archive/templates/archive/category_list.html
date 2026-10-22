@@ -28,7 +28,7 @@
                 <td data-label="完整路径">{{ c.full_path }}</td>
                 <td data-label="父类别">{{ c.parent.name|default:"—" }}</td>
                 <td data-label="排序">{{ c.sort_order }}</td>
-                <td data-label="档案数">{{ c.archives.count }}</td>
+                <td data-label="档案数">{{ c.archive_count }}</td>
                 <td data-label="操作">
                     {% can "archive" "update" %}
                     <a href="{% url 'archive:category_edit' c.pk %}" class="btn btn-sm btn-outline-secondary" data-modal-edit data-modal-title="编辑类别">编辑</a>

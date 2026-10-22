@@ -94,7 +94,7 @@
     .record-title { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
     .record-title h3 { font-size: 1rem; font-weight: 600; color: var(--c-text); margin: 0; display: flex; align-items: center; gap: 0.5rem; }
     .record-title h3::before { content: ''; width: 4px; height: 15px; border-radius: 2px; background: var(--c-primary); flex-shrink: 0; }
-    .deleted-banner { background: var(--c-danger-bg); border: 1px solid #ffccc7; color: var(--c-danger); border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; }
+    .deleted-banner { background: var(--c-danger-bg); border: 1px solid var(--c-danger-line); color: var(--c-danger); border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; }
 
     /* 证明材料卡片 */
     .proof-banner { background: var(--c-primary-subtle); border: 1px solid var(--c-border-hover); border-radius: 8px; padding: 10px 14px; font-size: 0.82rem; color: var(--c-text); margin-bottom: 1rem; line-height: 1.6; }
@@ -211,7 +211,7 @@
         <div class="info-item"><div class="info-label">正式导入</div><div class="info-value">{{ sample.imported_by|default:'—' }} · {{ sample.imported_at|date:'Y-m-d H:i' }}</div></div>
         {% endif %}
         {% if sample.status == 'terminated' %}
-        <div class="info-item"><div class="info-label">终止信息</div><div class="info-value" style="color:var(--c-danger);">{{ sample.terminate_reason }}（{{ sample.terminated_by|default:'—' }} · {{ sample.terminated_at|date:'Y-m-d H:i' }}）</div></div>
+        <div class="info-item"><div class="info-label">终止信息</div><div class="info-value u-text-danger">{{ sample.terminate_reason }}（{{ sample.terminated_by|default:'—' }} · {{ sample.terminated_at|date:'Y-m-d H:i' }}）</div></div>
         {% endif %}
     </div>
 </div>
@@ -232,7 +232,7 @@
     </div>
     {% if sample.status == 'terminated' %}
     <div class="step-item terminated">
-        <div class="step-dot">⛔</div><span class="step-label" style="color:var(--c-danger);">已终止</span>
+        <div class="step-dot">⛔</div><span class="step-label u-text-danger">已终止</span>
     </div>
     {% else %}
     <div class="step-item {% if status_index >= 3 %}done{% endif %} {% if status_index == 3 %}current{% endif %}">
@@ -264,13 +264,13 @@
                     {% if event.is_proof and event.proof_thumbs %}
                     <div class="tl-thumbs">
                         {% for thumb in event.proof_thumbs %}
-                            {% if thumb.is_image %}<a href="{{ thumb.url }}" target="_blank"><img src="{{ thumb.url }}" alt="{{ thumb.name }}" title="{{ thumb.name }}"></a>
-                            {% else %}<a class="tl-file-chip" href="{{ thumb.url }}" target="_blank">📄 {{ thumb.name|truncatechars:16 }}</a>{% endif %}
+                            {% if thumb.is_image %}<a href="{{ thumb.url }}" target="_blank" rel="noopener noreferrer"><img src="{{ thumb.url }}" alt="{{ thumb.name }}" title="{{ thumb.name }}"></a>
+                            {% else %}<a class="tl-file-chip" href="{{ thumb.url }}" target="_blank" rel="noopener noreferrer">📄 {{ thumb.name|truncatechars:16 }}</a>{% endif %}
                         {% endfor %}
                     </div>
                     {% endif %}
                     {% if event.is_proof and event.proof_pending %}
-                    <div style="margin-top:0.4rem;"><a class="tl-file-chip" href="#proof-card-{{ event.proof_stage }}" style="text-decoration:none;">→ 去上传</a></div>
+                    <div style="margin-top:0.4rem;"><a class="tl-file-chip u-no-underline" href="#proof-card-{{ event.proof_stage }}">→ 去上传</a></div>
                     {% endif %}
                 </div>
                 {% endfor %}
@@ -304,7 +304,7 @@
                             <td data-label="通知" class="col-optional">{% if record.notified %}<span class="mark-yes">✓</span>{% else %}<span class="mark-no">—</span>{% endif %}</td>
                             <td data-label="操作人" class="col-optional">{{ record.operator|default:'—' }}</td>
                             <td data-label="操作">
-                                <div style="display:flex; gap:0.25rem; align-items:center; flex-wrap:nowrap;">
+                                <div class="u-toolbar-inline">
                                     {% can "samples" "update" %}
                                     <a href="{% url 'samples:test_edit' sample.pk record.pk %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑第{{ record.round_no }}轮试样记录">编辑</a>
                                     {% endcan %}
@@ -346,7 +346,7 @@
                             <td data-label="录入金蝶">{% if record.kingdee_entered %}<span class="mark-yes">✓</span>{% else %}<span class="mark-no">—</span>{% endif %}</td>
                             <td data-label="操作人" class="col-optional">{{ record.operator|default:'—' }}</td>
                             <td data-label="操作">
-                                <div style="display:flex; gap:0.25rem; align-items:center; flex-wrap:nowrap;">
+                                <div class="u-toolbar-inline">
                                     {% can "samples" "update" %}
                                     <a href="{% url 'samples:batch_edit' sample.pk record.pk %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑第{{ record.round_no }}批小批量记录">编辑</a>
                                     {% endcan %}
@@ -389,9 +389,9 @@
                             <td data-label="审厂结果"><span class="status-badge {{ record.result_badge }}">{{ record.get_audit_result_display }}</span></td>
                             <td data-label="操作人" class="col-optional">{{ record.auditor|default:'—' }}</td>
                             <td data-label="备注" class="col-optional td-ellipsis" title="{{ record.audit_remark }}">{{ record.audit_remark|default:'—' }}</td>
-                            <td data-label="审核文件">{% if record.file %}<a href="{{ record.file.url }}" target="_blank">📎 查看</a>{% else %}—{% endif %}</td>
+                            <td data-label="审核文件">{% if record.file %}<a href="{{ record.file.url }}" target="_blank" rel="noopener noreferrer">📎 查看</a>{% else %}—{% endif %}</td>
                             <td data-label="操作">
-                                <div style="display:flex; gap:0.25rem; align-items:center; flex-wrap:nowrap;">
+                                <div class="u-toolbar-inline">
                                     {% can "samples" "update" %}
                                     <a href="{% url 'samples:audit_edit' sample.supplier.pk record.pk %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑第{{ record.round_no }}轮审厂记录">编辑</a>
                                     {% endcan %}
@@ -412,7 +412,7 @@
         {% endif %}
 
         <!-- 证明材料 -->
-        <div class="record-card" id="proofs" style="margin-bottom:0;">
+        <div class="record-card u-mb-0" id="proofs">
             <div class="record-title">
                 <h3>📎 业务流程证明材料</h3>
                 <span class="cover-hint">已覆盖阶段：{{ proof_completed }} / {{ proof_total }}</span>
@@ -433,12 +433,12 @@
                         {% for att in stage.attachments %}
                         <div class="proof-file">
                             {% if att.is_image %}
-                            <a href="{{ att.file.url }}" target="_blank"><img src="{{ att.file.url }}" alt="{{ att.original_name }}"></a>
+                            <a href="{{ att.file.url }}" target="_blank" rel="noopener noreferrer"><img src="{{ att.file.url }}" alt="{{ att.original_name }}"></a>
                             {% else %}
-                            <a class="proof-file-icon" href="{{ att.file.url }}" target="_blank" style="text-decoration:none;">📄</a>
+                            <a class="proof-file-icon u-no-underline" href="{{ att.file.url }}" target="_blank" rel="noopener noreferrer">📄</a>
                             {% endif %}
                             <div class="proof-file-meta">
-                                <div class="proof-file-name"><a href="{{ att.file.url }}" target="_blank">{{ att.original_name }}</a></div>
+                                <div class="proof-file-name"><a href="{{ att.file.url }}" target="_blank" rel="noopener noreferrer">{{ att.original_name }}</a></div>
                                 <div class="proof-file-sub">{{ att.uploaded_by|default:'—' }} · {{ att.created_at|date:'Y-m-d H:i' }}{% if att.remark %} · {{ att.remark }}{% endif %}</div>
                             </div>
                             {% if can_upload_proof and request.user|can_do:'samples.delete' %}

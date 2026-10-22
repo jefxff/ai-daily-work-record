@@ -40,7 +40,7 @@
             <td data-label="轮次"><div class="pt-rd">第{{ r.round_no }}轮</div><div class="pt-rs">{{ r.audit_no }}</div></td>
             <td data-label="审厂日期">{{ r.audit_date|date:'Y-m-d' }}</td>
             <td data-label="审厂结果"><span class="status-badge {{ r.result_badge }}">{{ r.get_audit_result_display }}</span></td>
-            <td data-label="审核文件">{% if r.file %}<a href="{{ r.file.url }}" target="_blank">📎 {{ r.file.name|cut:'audits/'|truncatechars:18 }}</a>{% else %}—{% endif %}</td>
+            <td data-label="审核文件">{% if r.file %}<a href="{{ r.file.url }}" target="_blank" rel="noopener noreferrer">📎 {{ r.file.name|cut:'audits/'|truncatechars:18 }}</a>{% else %}—{% endif %}</td>
             <td data-label="备注">{{ r.audit_remark|truncatechars:24|default:'—' }}</td>
             <td data-label="操作人">{{ r.auditor|default:'—' }}</td>
         </tr>
@@ -51,7 +51,7 @@
     </table></div>
 </div>
 
-<div class="pt-rc" style="margin-bottom:0;">
+<div class="pt-rc u-mb-0">
     <div class="pt-rt"><h4>📦 关联样品（共 {{ samples_count }} 条）</h4></div>
     <div class="table-responsive"><table class="table--cards table">
         <thead><tr><th scope="col">样品编号</th><th scope="col">物料名称</th><th scope="col">型号</th><th scope="col">当前状态</th><th scope="col">供应商类型</th><th scope="col">登记时间</th></tr></thead>

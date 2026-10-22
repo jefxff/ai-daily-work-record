@@ -6,17 +6,17 @@
     </div>
     <div class="rev-grid">
         <div class="rev-field">
-            <label class="form-label">年审日期 <span style="color:var(--c-danger)">*</span></label>
+            <label class="form-label">年审日期 <span class="u-text-danger">*</span></label>
             {{ form.review_date }}
             {% for e in form.review_date.errors %}<div class="rev-error">{{ e }}</div>{% endfor %}
         </div>
         <div class="rev-field">
-            <label class="form-label">年审结果 <span style="color:var(--c-danger)">*</span></label>
+            <label class="form-label">年审结果 <span class="u-text-danger">*</span></label>
             {{ form.result }}
             {% for e in form.result.errors %}<div class="rev-error">{{ e }}</div>{% endfor %}
         </div>
         <div class="rev-field">
-            <label class="form-label">经办人 <span style="color:var(--c-danger)">*</span></label>
+            <label class="form-label">经办人 <span class="u-text-danger">*</span></label>
             {{ form.reviewer }}
             {% for e in form.reviewer.errors %}<div class="rev-error">{{ e }}</div>{% endfor %}
         </div>
@@ -33,7 +33,7 @@
         </div>
     </div>
     {% if form.non_field_errors %}
-    <div class="rev-error" style="margin-top:0.75rem;">
+    <div class="rev-error u-mt-3">
         {% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}
     </div>
     {% endif %}

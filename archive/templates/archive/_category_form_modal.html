@@ -3,14 +3,14 @@
     <div class="arc-form-grid">
         {% for field in form.visible_fields %}
         <div class="arc-field">
-            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span style="color:var(--c-danger)">*</span>{% endif %}</label>
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="u-text-danger">*</span>{% endif %}</label>
             {{ field }}
             {% for error in field.errors %}<div class="arc-error">{{ error }}</div>{% endfor %}
         </div>
         {% endfor %}
     </div>
     {% if form.non_field_errors %}
-    <div class="arc-error" style="margin-bottom:0.75rem;">
+    <div class="arc-error u-mb-3">
         {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
     </div>
     {% endif %}

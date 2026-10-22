@@ -1,0 +1,7 @@
+# 提交前密钥扫描：阻止 SECRET_KEY / Token / 私钥再次进入仓库（审计 BE-09）
+# 使用方式：pip install pre-commit && pre-commit install
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks

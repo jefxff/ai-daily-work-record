@@ -4,17 +4,17 @@
 {% block content %}
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <h4 class="mb-0" style="font-weight:700;">长期 Token</h4>
-        <div class="text-muted" style="font-size:.82rem;">
+        <h4 class="mb-0 u-bolder">长期 Token</h4>
+        <div class="text-muted u-fs-82">
             供外部 Agent 以请求头 <code>Authorization: Token &lt;key&gt;</code> 免交互调用项目接口
         </div>
     </div>
 
     <!-- 获取最新长期 Token -->
-    <div class="card mb-3 shadow-sm" style="border:none;border-radius:12px;">
+    <div class="card mb-3 shadow-sm u-panel-12">
         <div class="card-body">
-            <h6 class="mb-2" style="font-weight:600;">获取最新长期 Token</h6>
-            <p class="text-muted mb-3" style="font-size:.85rem;">
+            <h6 class="mb-2 u-bold">获取最新长期 Token</h6>
+            <p class="text-muted mb-3 u-fs-sm">
                 点击下方按钮生成一枚新的长期 Token（有效期 {{ token_ttl_days }} 天）。
                 生成后请立即复制并妥善保管，切勿泄露给无关人员。
             </p>
@@ -27,7 +27,7 @@
                     <button class="btn btn-sm btn-outline-primary" id="btnCopyNew" type="button">复制</button>
                 </div>
                 <div class="token-value" id="newTokenValue"></div>
-                <div class="text-muted mt-1" style="font-size:.78rem;">
+                <div class="text-muted mt-1 u-fs-78">
                     创建时间：<span id="newTokenCreated"></span> · 过期时间：<span id="newTokenExpires"></span>
                 </div>
             </div>
@@ -35,14 +35,14 @@
     </div>
 
     <!-- 历史 Token 记录 -->
-    <div class="card shadow-sm" style="border:none;border-radius:12px;">
+    <div class="card shadow-sm u-panel-12">
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
-                <h6 class="mb-0" style="font-weight:600;">历史 Token 记录</h6>
+                <h6 class="mb-0 u-bold">历史 Token 记录</h6>
                 <span class="text-muted" style="font-size:.8rem;">共 {{ total }} 条</span>
             </div>
             <div class="table-responsive">
-                <table class="table--cards table table-sm table-hover align-middle mb-0" style="font-size:.85rem;">
+                <table class="table--cards table table-sm table-hover align-middle mb-0 u-fs-sm">
                     <thead>
                         <tr>
                             <th scope="col" style="min-width:260px;">Token 值</th>

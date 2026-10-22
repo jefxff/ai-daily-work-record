@@ -782,6 +782,8 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
         .bg-warning { background: var(--c-warning); }
         .bg-success { background: var(--c-success); }
         .bg-danger { background: var(--c-danger); }
+        /* Bootstrap .bg-primary 的字面色值 #0d6efd 绕过令牌，统一收敛到主色 */
+        .badge.bg-primary { background: var(--c-primary) !important; color: #fff; }
         .text-warning { color: var(--c-warning); }
         .text-success { color: var(--c-success); }
 

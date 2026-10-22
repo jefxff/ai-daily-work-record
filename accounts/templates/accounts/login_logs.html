@@ -35,7 +35,7 @@
         <tbody>
             {% for log in page %}
             <tr>
-                <td data-label="时间" style="white-space:nowrap;">{{ log.created_at|date:'Y-m-d H:i:s' }}</td>
+                <td class="u-nowrap" data-label="时间">{{ log.created_at|date:'Y-m-d H:i:s' }}</td>
                 <td data-label="用户名">{{ log.username }}</td>
                 <td data-label="类型">{{ log.get_login_type_display }}</td>
                 <td data-label="结果">

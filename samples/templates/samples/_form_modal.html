@@ -3,7 +3,7 @@
     <div class="smp-form-grid">
         {% for field in form.visible_fields %}
         <div class="smp-field{% if field.field.widget.input_type == 'file' %} smp-field-full{% endif %}">
-            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span style="color:var(--c-danger)">*</span>{% endif %}</label>
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="u-text-danger">*</span>{% endif %}</label>
             {{ field }}
             {% if field.help_text %}<div class="smp-hint">{{ field.help_text }}</div>{% endif %}
             {% for error in field.errors %}<div class="smp-error">{{ error }}</div>{% endfor %}
@@ -11,12 +11,12 @@
         {% endfor %}
     </div>
     {% if form.non_field_errors %}
-    <div class="smp-error" style="margin-bottom:0.75rem;">
+    <div class="smp-error u-mb-3">
         {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
     </div>
     {% endif %}
     {% if error_message %}
-    <div class="smp-error" style="margin-bottom:0.75rem;">{{ error_message }}</div>
+    <div class="smp-error u-mb-3">{{ error_message }}</div>
     {% endif %}
     <div class="form-modal-actions">
         <button type="button" class="btn-transparent" data-modal-close>取消</button>

@@ -78,12 +78,12 @@
                             <span class="badge" style="background:var(--c-primary-subtle);color:var(--c-primary-active);font-weight:500;">类型 {{ license.scan_ext }}</span>
                         </div>
                         <div class="d-flex gap-2 mb-2">
-                            <a href="{{ license.scan_file.url }}" target="_blank" class="btn btn-sm btn-outline-primary">在线预览</a>
+                            <a href="{{ license.scan_file.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary">在线预览</a>
                             <a href="{{ license.scan_file.url }}" download class="btn btn-sm btn-primary">下载</a>
                         </div>
                         {% if license.is_image %}
                         <div class="text-center lic-preview-box">
-                            <a href="{{ license.scan_file.url }}" target="_blank"><img src="{{ license.scan_file.url }}" alt="证照扫描件"></a>
+                            <a href="{{ license.scan_file.url }}" target="_blank" rel="noopener noreferrer"><img src="{{ license.scan_file.url }}" alt="证照扫描件"></a>
                         </div>
                         {% elif license.is_pdf %}
                         <iframe src="{{ license.scan_file.url }}" title="PDF预览" class="lic-pdf-frame"></iframe>

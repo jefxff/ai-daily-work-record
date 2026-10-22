@@ -3,7 +3,7 @@
 {% block auth_title %}注册 - 每日工作记录{% endblock %}
 
 {% block auth_content %}
-<h2>注册申请</h2>
+<h1>注册申请</h1>
 {% if submitted %}
 <div class="auth-alert auth-alert-success">
     ✅ 注册申请已提交，账号将等待管理员审核激活，通过后方可登录。请耐心等待，或联系管理员处理。
@@ -22,9 +22,9 @@
     {% csrf_token %}
     {% for field in form %}
     <div class="mb-3">
-        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %}<span style="color:var(--c-danger);"> *</span>{% endif %}</label>
+        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %}<span class="u-text-danger"> *</span>{% endif %}</label>
         {{ field }}
-        {% if field.errors %}<div style="color:var(--c-danger); font-size:0.78rem; margin-top:2px;">{{ field.errors|join:'；' }}</div>{% endif %}
+        {% if field.errors %}<div class="u-hint-danger">{{ field.errors|join:'；' }}</div>{% endif %}
     </div>
     {% endfor %}
     <button type="submit" class="btn btn-primary">提交注册申请</button>

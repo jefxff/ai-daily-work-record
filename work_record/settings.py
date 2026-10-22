@@ -141,9 +141,21 @@ if os.environ.get('DJANGO_HTTPS_ONLY', '0') == '1':
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    SECURE_HSTS_SECONDS = int(os.environ.get('DJANGO_HSTS_SECONDS', '31536000'))
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
+    # __Host- 前缀要求 Secure + Path=/ 且无 Domain，只在 HTTPS 模式启用；
+    # 内网 HTTP 部署若强行使用会导致浏览器拒收 cookie、全员无法登录。
+    SESSION_COOKIE_NAME = '__Host-sessionid'
+    CSRF_COOKIE_NAME = '__Host-csrftoken'
+
+# HSTS 独立于 HTTPS 开关：默认 0（不发送），由运维逐步放量（审计 P3-1）。
+SECURE_HSTS_SECONDS = int(os.environ.get('DJANGO_HSTS_SECONDS', '0'))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = SECURE_HSTS_SECONDS > 0
+SECURE_HSTS_PRELOAD = SECURE_HSTS_SECONDS > 0
+
+# 会话绝对有效期（秒），默认 12 小时；滑动过期仍保持 8 小时。
+SESSION_ABSOLUTE_MAX_AGE = int(os.environ.get('SESSION_ABSOLUTE_MAX_AGE', str(12 * 3600)))
+
+# CSP 模式：report-only（默认，只上报不拦截）/ enforce（全量收紧）/ off
+CSP_MODE = os.environ.get('DJANGO_CSP_MODE', 'report-only').lower()
 
 
 
@@ -173,11 +185,17 @@ MIDDLEWARE = [
     'notifications.middleware.RequestMetricsMiddleware',
     'django.middleware.gzip.GZipMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    # 安全响应头：CSP（默认 report-only，逐项放量后可通过 DJANGO_CSP_MODE=enforce 收紧）
+    'work_record.csp.CSPMiddleware',
+    # 静态资源缓存：/static/ 命中 ?v= 时下发 immutable + gzip（审计 FE-06）
+    'work_record.static_cache.StaticCacheMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    # 会话绝对有效期（滑动 8h 之外再加一道上限，防会话被无限续期）
+    'accounts.middleware.SessionAbsoluteTimeoutMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     # 全站登录拦截（必须在 AuthenticationMiddleware 之后执行 process_request）
@@ -326,7 +344,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # 数据备份中心：允许操作的根目录白名单（sysbackup 模块的下载/删除/恢复/扫描/备份目标
 # 均必须落在这些目录之内，防止任意路径读写）。如需备份到项目外的目录（如 D:\backups），
 # 设置环境变量 BACKUP_ALLOWED_ROOTS（Windows 下多个路径用分号分隔）。
+# 默认备份目录放在用户主目录（项目外），可用 BACKUP_DIR 覆盖。
+BACKUP_DIR = os.environ.get('BACKUP_DIR') or str(Path.home() / 'WorkRecordBackups')
 BACKUP_ALLOWED_ROOTS = [
+    BACKUP_DIR,
     str(BASE_DIR),
     *[p.strip() for p in os.environ.get('BACKUP_ALLOWED_ROOTS', '').split(';') if p.strip()],
 ]
@@ -365,6 +386,18 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
+    # 限流：登录用户 300 次/分钟，匿名 60 次/分钟（审计 P2-2）。
+    # 用数据库缓存（CACHES）存储计数，服务重启后计数仍在，避免重启绕过。
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.UserRateThrottle',
+        'rest_framework.throttling.AnonRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'user': os.environ.get('DRF_USER_THROTTLE_RATE', '300/min'),
+        'anon': os.environ.get('DRF_ANON_THROTTLE_RATE', '60/min'),
+    },
+    # 统一错误响应结构（保留 detail/error 兼容字段，避免破坏现有前端）
+    'EXCEPTION_HANDLER': 'work_record.error_handler.unified_exception_handler',
 }
 
 # Logging settings：django 内置 logger 降为 INFO（不再逐条落盘 SQL，日志量大幅下降）。

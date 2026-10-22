@@ -12,7 +12,7 @@
 </div>
 <div style="max-width:640px; background:var(--c-surface); border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.08); padding:1.75rem;">
     {% if form.non_field_errors %}
-    <div style="background:var(--c-danger-bg); border:1px solid var(--c-danger-line); color:var(--c-danger); border-radius:6px; padding:0.6rem 0.85rem; margin-bottom:1rem; font-size:0.85rem;">
+    <div class="u-alert-danger">
         {{ form.non_field_errors|join:'；' }}
     </div>
     {% endif %}
@@ -21,14 +21,14 @@
 
         {% if mode == 'create' %}
         <div class="mb-3">
-            <label class="form-label" for="id_username" style="font-size:0.875rem; color:var(--c-text-secondary); font-weight:500;">用户名 <span style="color:var(--c-danger);">*</span></label>
+            <label class="form-label u-form-label" for="id_username">用户名 <span class="u-text-danger">*</span></label>
             <input type="text" id="id_username" name="username" class="form-control" value="{{ form.username.value|default:'' }}" maxlength="150" autocomplete="username" required>
-            {% if form.username.errors %}<div style="color:var(--c-danger); font-size:0.78rem; margin-top:2px;">{{ form.username.errors|join:'；' }}</div>{% endif %}
+            {% if form.username.errors %}<div class="u-hint-danger">{{ form.username.errors|join:'；' }}</div>{% endif %}
         </div>
         <div class="mb-3">
-            <label class="form-label" for="id_password" style="font-size:0.875rem; color:var(--c-text-secondary); font-weight:500;">初始密码 <span style="color:var(--c-danger);">*</span></label>
+            <label class="form-label u-form-label" for="id_password">初始密码 <span class="u-text-danger">*</span></label>
             <input type="password" id="id_password" name="password" class="form-control" autocomplete="new-password" required>
-            {% if form.password.errors %}<div style="color:var(--c-danger); font-size:0.78rem; margin-top:2px;">{{ form.password.errors|join:'；' }}</div>{% endif %}
+            {% if form.password.errors %}<div class="u-hint-danger">{{ form.password.errors|join:'；' }}</div>{% endif %}
         </div>
         {% else %}
         <div class="mb-3" style="font-size:0.85rem; color:var(--c-text-secondary);">
@@ -37,19 +37,19 @@
         {% endif %}
 
         <div class="mb-3">
-            <label class="form-label" for="id_real_name" style="font-size:0.875rem; color:var(--c-text-secondary); font-weight:500;">姓名</label>
+            <label class="form-label u-form-label" for="id_real_name">姓名</label>
             <input type="text" id="id_real_name" name="real_name" class="form-control" value="{{ form.real_name.value|default:'' }}" maxlength="50">
-            {% if form.real_name.errors %}<div style="color:var(--c-danger); font-size:0.78rem; margin-top:2px;">{{ form.real_name.errors|join:'；' }}</div>{% endif %}
+            {% if form.real_name.errors %}<div class="u-hint-danger">{{ form.real_name.errors|join:'；' }}</div>{% endif %}
         </div>
         <div class="mb-3">
-            <label class="form-label" for="id_department" style="font-size:0.875rem; color:var(--c-text-secondary); font-weight:500;">部门</label>
+            <label class="form-label u-form-label" for="id_department">部门</label>
             <input type="text" id="id_department" name="department" class="form-control" value="{{ form.department.value|default:'' }}" maxlength="100">
-            {% if form.department.errors %}<div style="color:var(--c-danger); font-size:0.78rem; margin-top:2px;">{{ form.department.errors|join:'；' }}</div>{% endif %}
+            {% if form.department.errors %}<div class="u-hint-danger">{{ form.department.errors|join:'；' }}</div>{% endif %}
         </div>
         <div class="mb-3">
-            <label class="form-label" for="id_position" style="font-size:0.875rem; color:var(--c-text-secondary); font-weight:500;">岗位</label>
+            <label class="form-label u-form-label" for="id_position">岗位</label>
             <input type="text" id="id_position" name="position" class="form-control" value="{{ form.position.value|default:'' }}" maxlength="100">
-            {% if form.position.errors %}<div style="color:var(--c-danger); font-size:0.78rem; margin-top:2px;">{{ form.position.errors|join:'；' }}</div>{% endif %}
+            {% if form.position.errors %}<div class="u-hint-danger">{{ form.position.errors|join:'；' }}</div>{% endif %}
         </div>
 
         <div class="mb-3">
@@ -61,7 +61,7 @@
                            {% if r.id in selected_role_ids %}checked{% endif %}>
                     {{ r.name }}
                     {% if r.is_builtin %}<span class="status-badge default">内置</span>{% endif %}
-                    <span style="color:var(--c-text-tertiary); font-size:0.78rem;">{{ r.description }}</span>
+                    <span class="u-hint-tertiary">{{ r.description }}</span>
                 </label>
                 {% endfor %}
             </div>

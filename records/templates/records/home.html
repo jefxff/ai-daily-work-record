@@ -15,7 +15,7 @@
     </p>
     <div class="state__actions">
         <a class="btn-transparent btn-sm" href="{% url 'accounts:password' %}">修改密码</a>
-        <form method="post" action="{% url 'accounts:logout' %}" style="display:inline;">
+        <form class="u-inline" method="post" action="{% url 'accounts:logout' %}">
             {% csrf_token %}
             <button type="submit" class="btn-transparent btn-sm">退出登录</button>
         </form>

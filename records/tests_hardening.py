@@ -10,7 +10,9 @@ import tempfile
 import time
 from datetime import date, timedelta
 from io import StringIO
+from pathlib import Path
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.core.management import call_command
@@ -214,6 +216,45 @@ class StatsConsistencyTests(TestCase):
         from records import stats as stats_svc
 
         self.assertEqual(stats_svc.price_stats()["total_price_reduction"], 30)
+
+
+class ComplaintAdvanceCsrfTests(TestCase):
+    """审计 P1-3：诉讼推进表单必须带 CSRF token，否则功能被 403 阻断。"""
+
+    def setUp(self):
+        self.user = User.objects.create_superuser("ca_root", "ca@e.com", "x12345678")
+        grant("complaint", ("read", "update"), self.user)
+        self.complaint = Complaint.objects.create(
+            dispute_type="合同", defendant="被告公司", case_number="(2026)9号",
+            amount=100, court="某法院", lawyer="王律师", progress="立案",
+        )
+        self.client = Client(enforce_csrf_checks=True)
+        self.client.force_login(self.user)
+
+    def test_detail_page_renders_csrf_token(self):
+        resp = self.client.get(reverse("complaint_detail", args=[self.complaint.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'name="csrfmiddlewaretoken"')
+
+    def test_post_without_csrf_token_is_rejected(self):
+        resp = self.client.post(
+            reverse("complaint_advance", args=[self.complaint.pk]),
+            {"progress": "审理中"},
+        )
+        self.assertEqual(resp.status_code, 403)
+        self.complaint.refresh_from_db()
+        self.assertEqual(self.complaint.progress, "立案")
+
+    def test_post_with_csrf_token_succeeds(self):
+        self.client.get(reverse("complaint_detail", args=[self.complaint.pk]))
+        token = self.client.cookies["csrftoken"].value
+        resp = self.client.post(
+            reverse("complaint_advance", args=[self.complaint.pk]),
+            {"progress": "审理中", "csrfmiddlewaretoken": token},
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.complaint.refresh_from_db()
+        self.assertEqual(self.complaint.progress, "审理中")
 
 
 class LoggingTests(TestCase):
@@ -429,3 +470,78 @@ class PartnerSearchPermissionTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.context["search_counts"]["partners"], 0)
         self.assertNotIn("洪兴五金", resp.content.decode())
+
+
+class AuthPageSemanticsTests(TestCase):
+    """FE-03：认证页必须有 h1，登录输入框必须声明 autocomplete。"""
+
+    def test_login_page_has_h1_and_autocomplete(self):
+        resp = self.client.get(reverse("accounts:login"))
+        self.assertEqual(resp.status_code, 200)
+        html = resp.content.decode()
+        self.assertIn("<h1>账号登录</h1>", html)
+        self.assertIn('autocomplete="username"', html)
+        self.assertIn('autocomplete="current-password"', html)
+
+
+class ExternalLinkRelTests(TestCase):
+    """FE-02：全库 target="_blank" 必须同时声明 rel="noopener noreferrer"。"""
+
+    def test_target_blank_always_has_rel(self):
+        templates_root = Path(settings.BASE_DIR)
+        offenders = []
+        for path in templates_root.rglob("*.html"):
+            if ".git" in path.parts or "node_modules" in path.parts:
+                continue
+            text = path.read_text(encoding="utf-8", errors="ignore")
+            for idx, chunk in enumerate(text.split('target="_blank"')):
+                if idx == 0:
+                    continue
+                if 'rel="noopener noreferrer"' not in chunk[:60]:
+                    offenders.append(str(path.relative_to(templates_root)))
+                    break
+        self.assertEqual(offenders, [], f"以下模板 target=_blank 缺少 rel：{offenders}")
+
+
+class PageContractSmokeTests(TestCase):
+    """X-06：关键页面渲染冒烟——模型字段改名/模板取错属性时页面关键字缺失。"""
+
+    def setUp(self):
+        self.user = User.objects.create_superuser("smoke_root", "s@e.com", "x12345678")
+        self.client.force_login(self.user)
+
+    def test_login_page_renders(self):
+        self.client.logout()
+        resp = self.client.get(reverse("accounts:login"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("每日工作记录管理系统", resp.content.decode())
+
+    def test_home_renders(self):
+        resp = self.client.get(reverse("home"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("每日工作记录", resp.content.decode())
+
+    def test_dashboard_renders(self):
+        resp = self.client.get(reverse("dashboard"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("数据展示", resp.content.decode())
+
+    def test_daily_record_list_renders_record_content(self):
+        marker = "契约冒烟唯一内容ZZ-42"
+        DailyRecord.objects.create(
+            user=self.user, department="测试部", work_content=marker, status="未完成",
+        )
+        resp = self.client.get(reverse("daily_record_list"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(marker, resp.content.decode(),
+                      "列表页必须渲染 work_content，字段改名/取值错误会静默为空")
+
+    def test_insurance_subject_list_renders(self):
+        resp = self.client.get(reverse("insurance_subject_list"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("保险标的", resp.content.decode())
+
+    def test_knowledge_list_renders(self):
+        resp = self.client.get(reverse("knowledge_base:document_list"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("知识库", resp.content.decode())

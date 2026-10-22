@@ -132,13 +132,13 @@
                         <td data-label="部门">{{ insurance.department }}</td>
                         <td data-label="备注" class="col-optional">{{ insurance.remarks|default:''|truncatechars:30 }}</td>
                         <td data-label="操作" class="col-actions">
-                            <div style="display: flex; gap: 0.25rem; align-items: center; flex-wrap: nowrap;">
+                            <div class="u-toolbar-inline">
                                 <a href="{% url 'insurance_detail' insurance.pk %}" class="btn-transparent btn-sm" data-modal-detail data-modal-title="保险详情">详细</a>
                                 {% can "insurance" "update" %}
                                 <a href="{% url 'insurance_edit' insurance.pk %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑保险">编辑</a>
                                 {% endcan %}
                                 {% can "insurance" "delete" %}
-                                <form method="post" action="{% url 'insurance_delete' insurance.pk %}" style="display:inline" data-confirm="确定要删除这条记录吗？">{% csrf_token %}<button type="submit" class="btn-transparent btn-sm btn-delete">删除</button></form>
+                                <form class="u-inline" method="post" action="{% url 'insurance_delete' insurance.pk %}"  data-confirm="确定要删除这条记录吗？">{% csrf_token %}<button type="submit" class="btn-transparent btn-sm btn-delete">删除</button></form>
                                 {% endcan %}
                             </div>
                         </td>

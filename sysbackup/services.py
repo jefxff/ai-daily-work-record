@@ -14,7 +14,9 @@
 import json
 import logging
 import os
+import shutil
 import sqlite3
+import tempfile
 import threading
 import time
 import traceback
@@ -40,7 +42,18 @@ MEDIA_PREFIX = "media/"
 # 排除在备份之外的目录（相对 MEDIA_ROOT；缓存类内容可随时再生）
 MEDIA_EXCLUDE_DIRS = set()
 
-DEFAULT_BACKUP_DIR = Path(settings.BASE_DIR) / "backups"
+# 默认备份目录移到项目外（用户主目录），避免备份包与代码/数据库同处一棵目录树
+# 被一块拖走或误提交；可用环境变量 BACKUP_DIR 覆盖。
+DEFAULT_BACKUP_DIR = Path(
+    os.environ.get("BACKUP_DIR") or (Path.home() / "WorkRecordBackups")
+)
+
+# 备份包默认 Fernet 加密；密钥优先取环境变量，否则落盘到项目外/内的密钥文件。
+BACKUP_KEY_ENV = "BACKUP_ENCRYPTION_KEY"
+BACKUP_KEY_FILE = Path(
+    os.environ.get("BACKUP_KEY_FILE") or (Path(settings.BASE_DIR) / ".backup_key")
+)
+ENCRYPTED_SUFFIX = ".zip.enc"
 
 
 # ---------- 路径白名单 ----------
@@ -132,6 +145,47 @@ def default_dir():
     """默认备份存储路径（项目根 backups/）。"""
     DEFAULT_BACKUP_DIR.mkdir(parents=True, exist_ok=True)
     return str(DEFAULT_BACKUP_DIR)
+
+
+def _fernet():
+    """返回备份包加解密用的 Fernet 实例（密钥持久化，重启后仍可解密旧包）。"""
+    from cryptography.fernet import Fernet
+
+    key = os.environ.get(BACKUP_KEY_ENV)
+    if not key:
+        if BACKUP_KEY_FILE.is_file():
+            key = BACKUP_KEY_FILE.read_text(encoding="utf-8").strip()
+        else:
+            key = Fernet.generate_key().decode("ascii")
+            BACKUP_KEY_FILE.parent.mkdir(parents=True, exist_ok=True)
+            BACKUP_KEY_FILE.write_text(key, encoding="utf-8")
+            try:
+                os.chmod(BACKUP_KEY_FILE, 0o600)
+            except OSError:
+                pass
+    if isinstance(key, str):
+        key = key.encode("utf-8")
+    try:
+        return Fernet(key)
+    except Exception as e:  # 非法密钥不能静默降级为明文
+        raise ValueError(f"备份加密密钥无效（{BACKUP_KEY_ENV}）：{e}")
+
+
+def _encrypt_file(src: Path, dst: Path):
+    """把 zip 明文加密为 .zip.enc（Fernet：AES128-CBC + HMAC）。"""
+    dst.write_bytes(_fernet().encrypt(src.read_bytes()))
+
+
+def _decrypt_file(src: Path, dst: Path):
+    """把 .zip.enc 解密为临时 zip 明文。"""
+    try:
+        dst.write_bytes(_fernet().decrypt(src.read_bytes()))
+    except Exception as e:
+        raise ValueError(f"备份包解密失败（密钥不匹配或文件损坏）：{e}")
+
+
+def _is_encrypted(path: Path) -> bool:
+    return str(path).lower().endswith(ENCRYPTED_SUFFIX)
 
 
 def _human_size(n):
@@ -275,7 +329,7 @@ def _run_backup(task_id, dest: Path, operator):
     backup_name = ""
     try:
         tmp_dir.mkdir(parents=True, exist_ok=True)
-        backup_name = f"backup_{timezone.localtime().strftime('%Y%m%d_%H%M%S')}.zip"
+        backup_name = f"backup_{timezone.localtime().strftime('%Y%m%d_%H%M%S')}{ENCRYPTED_SUFFIX}"
         final_path = dest / backup_name
 
         # 1) 数据库在线快照（表结构 + 全部数据）
@@ -310,7 +364,7 @@ def _run_backup(task_id, dest: Path, operator):
 
         # 4) 打包 zip（DB + SQL + media + meta）
         _progress(task_id, 30, "打包备份文件")
-        tmp_zip = tmp_dir / backup_name
+        tmp_zip = tmp_dir / "package.zip"
         media_total = 0
         with zipfile.ZipFile(tmp_zip, "w", zipfile.ZIP_DEFLATED, allowZip64=True) as zf:
             zf.write(db_tmp, DB_ENTRY)
@@ -352,9 +406,11 @@ def _run_backup(task_id, dest: Path, operator):
             )
             zf.write(tmp_dir / META_ENTRY, META_ENTRY)
 
-        # 5) 原子落盘到目标路径
-        _progress(task_id, 97, "写入目标路径")
-        os.replace(str(tmp_zip), str(final_path))
+        # 5) 加密后原子落盘到目标路径（明文 zip 只存在于临时目录，结束即清理）
+        _progress(task_id, 97, "加密并写入目标路径")
+        tmp_enc = tmp_dir / "package.zip.enc"
+        _encrypt_file(tmp_zip, tmp_enc)
+        os.replace(str(tmp_enc), str(final_path))
         _log(task_id, f"备份包已生成：{final_path}（{_human_size(final_path.stat().st_size)}）")
 
         # 6) 操作留痕（先写记录，再标记任务完成，保证轮询到任务结束时记录已存在）
@@ -527,7 +583,10 @@ def sync_logs_from_file():
 def start_restore(zip_path, operator=""):
     """启动全量恢复异步任务，返回 task_id。路径非法时抛 ValueError。"""
     p = Path(zip_path)
-    if not p.is_absolute() or not p.is_file() or p.suffix.lower() != ".zip":
+    name = p.name.lower()
+    if not p.is_absolute() or not p.is_file() or not (
+        name.endswith(".zip") or name.endswith(ENCRYPTED_SUFFIX)
+    ):
         raise ValueError("备份包路径无效")
     ensure_path_allowed(p)
     if not _acquire_slot():
@@ -583,7 +642,14 @@ def _inspect_backup(zip_path: Path):
 def _run_restore(task_id, zip_path: Path, operator):
     tmp_dir = Path(settings.BASE_DIR) / "backups" / f".tmp_{task_id[:8]}"
     try:
-        meta, errors = _inspect_backup(zip_path)
+        tmp_dir.mkdir(parents=True, exist_ok=True)
+        package_zip = zip_path
+        if _is_encrypted(zip_path):
+            _progress(task_id, 3, "解密备份包")
+            package_zip = tmp_dir / "package.zip"
+            _decrypt_file(zip_path, package_zip)
+            _log(task_id, "备份包已解密，开始结构校验")
+        meta, errors = _inspect_backup(package_zip)
         if errors:
             raise ValueError("备份包校验未通过：\n" + "\n".join(errors))
 
@@ -610,7 +676,7 @@ def _run_restore(task_id, zip_path: Path, operator):
         # 2) 解出备份中的 db 并通过在线备份 API 导入当前数据库（不覆盖文件，规避占用）
         _progress(task_id, 20, "恢复数据库")
         db_tmp = tmp_dir / DB_ENTRY
-        with zipfile.ZipFile(zip_path) as zf:
+        with zipfile.ZipFile(package_zip) as zf:
             zf.extract(DB_ENTRY, tmp_dir)
         src = sqlite3.connect(str(db_tmp))
         dst = sqlite3.connect(str(settings.DATABASES["default"]["NAME"]))
@@ -626,7 +692,7 @@ def _run_restore(task_id, zip_path: Path, operator):
 
         # 3) 恢复附件：解压覆盖 + 清理备份时点之后新增的文件
         manifest = set(meta["media"]["files"])
-        with zipfile.ZipFile(zip_path) as zf:
+        with zipfile.ZipFile(package_zip) as zf:
             media_entries = [n for n in zf.namelist()
                              if n.startswith(MEDIA_PREFIX) and not n.endswith("/")]
             total = len(media_entries)
@@ -745,7 +811,12 @@ def scan_backups(dir_path=None):
     if not base.is_dir():
         return [], str(base)
     items = []
-    for f in base.glob("*.zip"):
+    for f in base.iterdir():
+        if not f.is_file():
+            continue
+        name = f.name.lower()
+        if not (name.endswith(".zip") or name.endswith(ENCRYPTED_SUFFIX)):
+            continue
         info = _read_backup_summary(f)
         if info:
             items.append(info)
@@ -755,7 +826,15 @@ def scan_backups(dir_path=None):
 
 def _read_backup_summary(f: Path):
     try:
-        with zipfile.ZipFile(f) as zf:
+        summary_zip = f
+        tmp_name = None
+        if _is_encrypted(f):
+            # 加密包无明文索引，解密到临时文件读 meta 后立即删除
+            fd, tmp_name = tempfile.mkstemp(suffix=".zip")
+            os.close(fd)
+            summary_zip = Path(tmp_name)
+            _decrypt_file(f, summary_zip)
+        with zipfile.ZipFile(summary_zip) as zf:
             if META_ENTRY not in zf.namelist():
                 return None
             meta = json.loads(zf.read(META_ENTRY).decode("utf-8"))
@@ -773,14 +852,24 @@ def _read_backup_summary(f: Path):
             "db_rows": meta.get("database", {}).get("rows"),
             "media_files": meta.get("media", {}).get("file_count"),
             "schema_version": meta.get("schema_version"),
+            "encrypted": _is_encrypted(f),
         }
     except Exception:
         return None
+    finally:
+        if tmp_name:
+            try:
+                os.unlink(tmp_name)
+            except OSError:
+                pass
 
 
 def delete_backup(zip_path):
     p = Path(zip_path)
-    if not p.is_absolute() or p.suffix.lower() != ".zip" or not p.is_file():
+    name = p.name.lower()
+    if not p.is_absolute() or not p.is_file() or not (
+        name.endswith(".zip") or name.endswith(ENCRYPTED_SUFFIX)
+    ):
         raise ValueError("备份包路径无效")
     ensure_path_allowed(p)
     p.unlink()

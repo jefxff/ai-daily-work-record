@@ -15,7 +15,7 @@
 {% block content %}
 <div class="form-container">
     <h1 class="form-title">{% if record %}编辑第 {{ record.round_no }} 轮试样记录{% else %}新增第 {{ next_round }} 轮试样记录{% endif %}</h1>
-    <p style="color:var(--c-text-secondary); font-size:0.875rem; margin-top:-0.75rem; margin-bottom:1.25rem;">
+    <p class="u-form-help">
         样品：<a href="{% url 'samples:detail' sample.pk %}">{{ sample.sample_no }}</a> · {{ sample.material_name }} / {{ sample.model }} · 当前状态：<span class="status-badge {{ sample.status_badge_class }}">{{ sample.get_status_display }}</span>
     </p>
     <form method="POST" novalidate>
@@ -37,7 +37,7 @@
             {% endfor %}
         </div>
         {% if form.non_field_errors %}
-        <div class="field-error" style="margin-bottom:1rem;">
+        <div class="field-error u-mb-2">
             {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
         </div>
         {% endif %}

@@ -165,7 +165,21 @@ def make_export_view(*, model=None, perm_module, sheet_title, filename_base,
     @perm_required(perm_module, "read")
     def _export_view(request):
         objs = queryset(request) if queryset else model.objects.all()
-        if not objs.exists():
+        # 归属隔离兜底：含 user 字段的模型（如每日记录）即便未来加入导出清单，
+        # 也不会把其他用户的记录导出给普通用户。
+        if model is not None:
+            has_owner = any(
+                getattr(f, 'name', '') == 'user' and getattr(f, 'is_relation', False)
+                for f in model._meta.get_fields()
+            )
+            user = getattr(request, 'user', None)
+            if has_owner and user is not None and getattr(user, 'is_authenticated', False) \
+                    and not getattr(user, 'is_superuser', False):
+                objs = objs.filter(user=user)
+
+        # 提前取总数：迭代后再 count() 会触发额外全表扫描（审计 BE-14）
+        total = objs.count()
+        if not total:
             return HttpResponse(empty_text)
 
         wb = Workbook()
@@ -176,8 +190,8 @@ def make_export_view(*, model=None, perm_module, sheet_title, filename_base,
         for col, header in enumerate(headers, 1):
             ws.cell(row=1, column=col, value=header)
 
-        # 数据行
-        for serial, obj in enumerate(objs, 1):
+        # 数据行：分块迭代，避免 QuerySet 结果集全量驻留内存
+        for serial, obj in enumerate(objs.iterator(chunk_size=2000), 1):
             for col, value in enumerate(row_values(obj, serial), 1):
                 ws.cell(row=serial + 1, column=col, value=value)
 
@@ -196,7 +210,7 @@ def make_export_view(*, model=None, perm_module, sheet_title, filename_base,
         wb.save(response)
         # 导出行为留痕（operation_type='导出'）：供审计异常检测识别批量导出
         log_operation(request, audit_label, '导出', f'[{audit_label}]下的导出',
-                      f'导出{audit_label}: {objs.count()} 条')
+                      f'导出{audit_label}: {total} 条')
         return response
 
     return _export_view

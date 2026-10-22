@@ -11,7 +11,7 @@
     </p>
     <div style="display:flex; gap:0.75rem; justify-content:center;">
         <a class="btn-transparent btn-sm" href="/">返回首页</a>
-        <form method="post" action="{% url 'accounts:logout' %}" style="display:inline;">
+        <form class="u-inline" method="post" action="{% url 'accounts:logout' %}">
             {% csrf_token %}
             <button type="submit" class="btn-transparent btn-sm" style="border:none; cursor:pointer;">退出登录</button>
         </form>

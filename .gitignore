@@ -51,6 +51,7 @@ temp/
 
 # 本地自动生成的 Django 密钥（不入库）
 .secret_key
+.backup_key
 
 # collectstatic 输出
 staticfiles/
@@ -61,6 +62,12 @@ _build/
 # Testing
 .coverage
 .pytest_cache/
+
+# 视觉回归/无障碍（FE-04）：依赖与登录态不入库，基线截图入库
+node_modules/
+tests/visual/.auth/
+tests/visual/test-results/
+tests/visual/playwright-report/
 
 # Package files
 *.egg

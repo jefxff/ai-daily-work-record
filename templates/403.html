@@ -7,7 +7,7 @@
     <p class="state__desc">当前账号未被授予所需权限。如需开通，请联系系统管理员分配相应角色。</p>
     <div class="state__actions">
         <a class="btn-transparent btn-sm" href="/">返回首页</a>
-        <form method="post" action="{% url 'accounts:logout' %}" style="display:inline;">
+        <form class="u-inline" method="post" action="{% url 'accounts:logout' %}">
             {% csrf_token %}
             <button type="submit" class="btn-transparent btn-sm">退出登录</button>
         </form>

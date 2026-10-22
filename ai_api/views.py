@@ -685,6 +685,21 @@ def ai_search(request):
         ),
     }
 
+    def _owner_scoped(model_class, base_queryset):
+        """对含 user 归属字段的模型追加本人过滤，防止全局检索通道越权读取他人数据。
+
+        审计 P1：daily_record 未在入口处过滤 user，任何登录用户都能通过
+        /api/ai/search/?q= 检索到全站所有人的每日记录。
+        """
+        user_field = next(
+            (f for f in model_class._meta.get_fields()
+             if getattr(f, 'name', '') == 'user' and getattr(f, 'is_relation', False)),
+            None,
+        )
+        if user_field is not None:
+            return base_queryset.filter(user=request.user)
+        return base_queryset
+
     def _text_search(model_class, serializer_class, base_queryset, limit):
         """对模型全部文本字段做 OR 模糊匹配，返回序列化结果。"""
         text_fields = [f.name for f in model_class._meta.get_fields()
@@ -704,6 +719,7 @@ def ai_search(request):
         entry = models_to_search[model]
         model_class, serializer_class = entry[0], entry[1]
         base_queryset = entry[2] if len(entry) > 2 else model_class.objects.all()
+        base_queryset = _owner_scoped(model_class, base_queryset)
         results[model] = _text_search(model_class, serializer_class, base_queryset, 20)
     else:
         # 搜索所有有权限的模型
@@ -712,6 +728,7 @@ def ai_search(request):
                 continue
             model_class, serializer_class = entry[0], entry[1]
             base_queryset = entry[2] if len(entry) > 2 else model_class.objects.all()
+            base_queryset = _owner_scoped(model_class, base_queryset)
             data = _text_search(model_class, serializer_class, base_queryset, 10)
             if data:
                 results[name] = data

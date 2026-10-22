@@ -6,12 +6,46 @@
 但 /api/ 下携带 Authorization 头（长期 Token）的请求会放行，由 DRF 处理认证。
 """
 
+import time
 from urllib.parse import quote
 
 from django.conf import settings
 from django.contrib.auth import logout as auth_logout
 from django.http import JsonResponse, HttpResponseRedirect
 from django.urls import resolve
+
+from work_record.error_handler import error_payload
+
+
+class SessionAbsoluteTimeoutMiddleware:
+    """会话绝对有效期：无论是否活跃，超过上限一律强制重新登录。
+
+    Django 原生只有滑动过期（SESSION_COOKIE_AGE + SESSION_SAVE_EVERY_REQUEST），
+    会话被持续使用时可无限续期。这里在首次认证请求时记录起点，超过
+    SESSION_ABSOLUTE_MAX_AGE（默认 12h）即登出（审计 P3-3）。
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+        self.max_age = int(getattr(settings, "SESSION_ABSOLUTE_MAX_AGE", 12 * 3600))
+
+    def __call__(self, request):
+        user = getattr(request, "user", None)
+        if user is not None and getattr(user, "is_authenticated", False):
+            now = int(time.time())
+            started = request.session.get("_abs_start")
+            if not started:
+                request.session["_abs_start"] = now
+            elif now - int(started) > self.max_age:
+                auth_logout(request)
+                if (request.path or "").startswith("/api/") or \
+                        request.headers.get("x-requested-with") == "XMLHttpRequest":
+                    return JsonResponse(
+                        {"detail": "会话已超过最长有效期，请重新登录。"}, status=401
+                    )
+                next_url = quote(request.get_full_path(), safe="/?&=")
+                return HttpResponseRedirect(f"{settings.LOGIN_URL}?next={next_url}")
+        return self.get_response(request)
 
 
 class LoginRequiredMiddleware:
@@ -53,7 +87,7 @@ class LoginRequiredMiddleware:
             if stored_pwd and stored_pwd != user.password:
                 auth_logout(request)
                 if request.path.startswith("/api/"):
-                    return JsonResponse({"detail": "登录状态已失效，请重新登录。"}, status=401)
+                    return JsonResponse(error_payload("登录状态已失效，请重新登录。", 401), status=401)
                 return HttpResponseRedirect(settings.LOGIN_URL)
             return self.get_response(request)
 
@@ -66,7 +100,7 @@ class LoginRequiredMiddleware:
             # 无该头时维持原有 401 行为（浏览器 AJAX 需先登录）。
             if request.headers.get("Authorization"):
                 return self.get_response(request)
-            return JsonResponse({"detail": "身份验证未通过，请先登录。"}, status=401)
+            return JsonResponse(error_payload("身份验证未通过，请先登录。", 401), status=401)
 
         next_url = quote(request.get_full_path(), safe="/?&=")
         return HttpResponseRedirect(f"{settings.LOGIN_URL}?next={next_url}")

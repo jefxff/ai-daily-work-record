@@ -106,6 +106,54 @@ class BackupPackageValidationTests(TestCase):
         self.assertEqual(Group.objects.count(), before)
 
 
+class BackupEncryptionTests(TestCase):
+    """审计 P2-4：备份包必须加密落盘，且旧明文包仍可识别/恢复。"""
+
+    def test_encrypt_decrypt_roundtrip(self):
+        with tempfile.TemporaryDirectory() as d:
+            key_file = Path(d) / "backup.key"
+            src = Path(d) / "package.zip"
+            enc = Path(d) / "package.zip.enc"
+            out = Path(d) / "restored.zip"
+            src.write_bytes(b"PK\x03\x04secret-database")
+            with mock.patch.object(services, "BACKUP_KEY_FILE", key_file):
+                services._encrypt_file(src, enc)
+                self.assertNotEqual(enc.read_bytes()[:4], b"PK\x03\x04")
+                services._decrypt_file(enc, out)
+            self.assertEqual(out.read_bytes(), src.read_bytes())
+
+    def test_scan_summary_reads_encrypted_package(self):
+        with tempfile.TemporaryDirectory() as d:
+            key_file = Path(d) / "backup.key"
+            plain = Path(d) / "backup_20260101_000000.zip"
+            enc = Path(d) / "backup_20260101_000000.zip.enc"
+            meta = {
+                "schema_version": 1,
+                "django_version": "4.2.0",
+                "database": {"tables": 1, "rows": 2},
+                "media": {"file_count": 0, "files": []},
+                "created_at": "2026-01-01T00:00:00",
+            }
+            with zipfile.ZipFile(plain, "w") as zf:
+                zf.writestr(services.META_ENTRY, json.dumps(meta))
+            with mock.patch.object(services, "BACKUP_KEY_FILE", key_file):
+                services._encrypt_file(plain, enc)
+                info = services._read_backup_summary(enc)
+            self.assertIsNotNone(info)
+            self.assertTrue(info["encrypted"])
+            self.assertEqual(info["db_tables"], 1)
+
+    def test_start_restore_accepts_encrypted_suffix(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "backup_20260101_000000.zip.enc"
+            p.write_bytes(b"not-a-real-package")
+            # 只验证后缀白名单放行；实际恢复线程由 _run_restore 校验并失败
+            with mock.patch.object(services, "ensure_path_allowed"), \
+                    mock.patch.object(services.threading, "Thread"):
+                task_id = services.start_restore(str(p))
+            self.assertTrue(task_id)
+
+
 class ZipSlipPathFenceTests(TestCase):
     """SEC-H1 回归：备份恢复 Zip Slip 路径穿越防护。"""
 

@@ -123,7 +123,22 @@ python manage.py runserver 0.0.0.0:8080
 
 **自动化校验（CI）**
 `.github/workflows/ci.yml` 在 push / PR 到 `main` 时执行：
-`pip install -r requirements.txt` → `python manage.py check` → `python manage.py test`。
+`pip install -r requirements.txt` → `pip check` → `manage.py check` →
+`check --deploy`（生产形态）→ `makemigrations --check` → ruff / bandit / pip-audit →
+`coverage run manage.py test`。所有 Action 固定到 commit SHA，Dependabot 每周检查依赖更新。
+
+## 安全与合规说明
+
+- **密钥管理**：现网 `SECRET_KEY` 由首次启动生成到 `.secret_key`（已 gitignore），
+  与 git 历史提交 `5d3f40f` 中的硬编码值不同，历史密钥**已作废**，任何旧部署都必须重新生成。
+  仓库不保存 `.env` / `.secret_key` / 私钥；`.pre-commit-config.yaml` 启用 gitleaks 阻止密钥再次入库。
+- **语言策略**：本项目面向中文单语内网用户，**不做 i18n 多语言改造**（`USE_I18N` 保留 Django 默认行为，
+  模板不使用 `{% trans %}`）；如未来需要多语言，再统一抽取 `{% trans %}` 与 `locale/`。
+- **依赖锁定**：`requirements.txt` 为精确版本；带哈希的 `requirements.lock` 需在可联网环境执行
+  `pip-compile --generate-hashes` 生成后使用 `pip install --require-hashes -r requirements.lock`。
+- **备份加密**：备份包默认以 Fernet 加密为 `.zip.enc`，密钥来自 `BACKUP_KEY` 环境变量或 `.backup_key` 文件；
+  旧 `.zip` 明文包仍可读取。默认备份目录为 `%USERPROFILE%\WorkRecordBackups`，可用 `BACKUP_DIR` 覆盖。
+
 
 **档案管理验收后开放普通角色权限**
 ```bash
@@ -145,5 +160,5 @@ python manage.py sync_rbac
 
 ---
 **项目版本**: 1.0.0  
-**最后更新**: 2026-10-19  
+**最后更新**: 2026-10-22  
 **维护团队**: 开发团队

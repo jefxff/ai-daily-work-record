@@ -85,7 +85,7 @@
                                 <a href="{% url 'decoration_edit' decoration.id %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑装修">编辑</a>
                                 {% endcan %}
                                 {% can "decoration" "delete" %}
-                                <form method="post" action="{% url 'decoration_delete' decoration.id %}" style="display:inline" data-confirm="确定要删除这条记录吗？">{% csrf_token %}<button type="submit" class="btn-transparent btn-sm btn-delete">删除</button></form>
+                                <form class="u-inline" method="post" action="{% url 'decoration_delete' decoration.id %}"  data-confirm="确定要删除这条记录吗？">{% csrf_token %}<button type="submit" class="btn-transparent btn-sm btn-delete">删除</button></form>
                                 {% endcan %}
                             </div>
                         </td>

@@ -4,20 +4,20 @@
     <div class="arc-form-grid">
         {% for field in form.visible_fields %}
         <div class="arc-field">
-            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span style="color:var(--c-danger)">*</span>{% endif %}</label>
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="u-text-danger">*</span>{% endif %}</label>
             {{ field }}
             {% if field.help_text %}<div class="arc-hint">{{ field.help_text }}</div>{% endif %}
             {% for error in field.errors %}<div class="arc-error">{{ error }}</div>{% endfor %}
         </div>
         {% endfor %}
     </div>
-    <div class="arc-field" style="margin-top:0.75rem;">
+    <div class="arc-field u-mt-3">
         <label style="display:block;font-weight:600;color:var(--c-text);font-size:0.85rem;margin-bottom:0.25rem;">各层格数（每层可不同）</label>
         <div id="layerCellsRow" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
         <div class="arc-hint">从第 1 层开始逐层填写格数；某层留空按 10 格处理。修改层数后自动增减输入框。</div>
     </div>
     {% if form.non_field_errors %}
-    <div class="arc-error" style="margin-bottom:0.75rem;">
+    <div class="arc-error u-mb-3">
         {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
     </div>
     {% endif %}

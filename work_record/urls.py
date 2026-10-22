@@ -26,6 +26,8 @@ from pathlib import Path
 
 from accounts.services import has_perm
 from accounts.views_token import obtain_api_token
+from work_record.csp import csp_report
+from work_record.export_utils import content_disposition
 from ai_api import views_config as ai_config_views
 from knowledge_base import views as kb_views
 from notifications import views_health, views_tasks, views_metrics
@@ -71,11 +73,30 @@ def protected_media(request, path):
     content_type = mimetypes.guess_type(str(full_path))[0] or "application/octet-stream"
     response = FileResponse(full_path.open("rb"), content_type=content_type)
     response["X-Content-Type-Options"] = "nosniff"
+
+    # 仅图片与 PDF 允许浏览器内联渲染；其余（含 HTML/SVG/Office）一律强制下载，
+    # 避免用户上传的 .html/.svg 在同源下被当作页面执行（存储型 XSS，审计 P1-2）。
+    ext = full_path.suffix.lstrip(".").upper()
+    if ext in {"PNG", "JPG", "JPEG", "GIF", "BMP", "WEBP", "PDF"}:
+        ascii_name = f"preview.{ext.lower()}"
+        response["Content-Disposition"] = content_disposition(
+            full_path.name, ascii_fallback=ascii_name, inline=True
+        )
+        if ext == "PDF":
+            # PDF 需允许同源 iframe 预览，同时用 CSP frame-ancestors 兜底（审计 P2-3）
+            response["X-Frame-Options"] = "SAMEORIGIN"
+            response["Content-Security-Policy"] = "frame-ancestors 'self'"
+    else:
+        suffix = full_path.suffix.lower()
+        response["Content-Disposition"] = content_disposition(
+            full_path.name, ascii_fallback=f"download{suffix}", inline=False
+        )
     return response
 
 
 
 urlpatterns = [
+    path('csp-report/', csp_report, name='csp_report'),
     path('admin/', admin.site.urls),
     # 长期 Token 签发接口（供外部 Agent 免交互取用，视图内自行鉴权）
     path('api-token-auth/', obtain_api_token, name='api_token_auth'),

@@ -20,22 +20,22 @@
 {% block content %}
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <h4 class="mb-0" style="font-weight:700;">数据备份与恢复</h4>
-        <div class="text-muted" style="font-size:.82rem;">
+        <h4 class="mb-0 u-bolder">数据备份与恢复</h4>
+        <div class="text-muted u-fs-82">
             备份内容：全部业务数据库表（结构 + 数据）· 全部附件文件 · SQL 导出 · 元信息
         </div>
     </div>
 
     <!-- 创建备份 -->
-    <div class="card mb-3 shadow-sm" style="border:none;border-radius:12px;">
+    <div class="card mb-3 shadow-sm u-panel-12">
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
                 <div style="min-width:280px;flex:1;">
-                    <h6 class="mb-2" style="font-weight:600;">创建全量备份</h6>
+                    <h6 class="mb-2 u-bold">创建全量备份</h6>
                     <div class="form-check">
                         <input class="form-check-input" type="radio" name="destOption" id="destDefault" value="default" checked>
                         <label class="form-check-label" for="destDefault" style="font-size:.88rem;">
-                            默认存储路径 <code class="text-muted" id="defaultDirText" style="font-size:.78rem;">{{ default_dir }}</code>
+                            默认存储路径 <code class="text-muted u-fs-78" id="defaultDirText">{{ default_dir }}</code>
                         </label>
                     </div>
                     <div class="form-check mb-2">
@@ -44,23 +44,23 @@
                         <input type="text" class="form-control form-control-sm mt-1" id="customDirInput"
                                placeholder="例如 D:\backup 或 /data/backup（绝对路径，不存在将自动创建）" disabled>
                     </div>
-                    <div class="text-muted" style="font-size:.76rem;">备份在后台异步执行，可关闭提示后继续使用其他页面（恢复操作期间除外）。</div>
+                    <div class="text-muted u-fs-76">备份在后台异步执行，可关闭提示后继续使用其他页面（恢复操作期间除外）。</div>
                 </div>
                 <div class="d-flex flex-column align-items-stretch justify-content-center gap-1">
                     <button class="btn btn-primary" id="btnStartBackup" style="min-width:150px;">
                         一键备份
                     </button>
-                    {% if running %}<div class="text-warning" style="font-size:.78rem;">⚠️ 有任务正在运行</div>{% endif %}
+                    {% if running %}<div class="text-warning u-fs-78">⚠️ 有任务正在运行</div>{% endif %}
                 </div>
             </div>
         </div>
     </div>
 
     <!-- 备份包列表 -->
-    <div class="card shadow-sm" style="border:none;border-radius:12px;">
+    <div class="card shadow-sm u-panel-12">
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
-                <h6 class="mb-0" style="font-weight:600;">备份包列表</h6>
+                <h6 class="mb-0 u-bold">备份包列表</h6>
                 <form class="d-flex gap-2" id="scanForm" style="max-width:520px;flex:1;">
                     <input type="text" class="form-control form-control-sm" id="scanDirInput"
                            value="{{ scanned_dir }}" placeholder="扫描目录（绝对路径）">
@@ -68,7 +68,7 @@
                 </form>
             </div>
             <div class="table-responsive">
-                <table class="table--cards table table-sm table-hover align-middle mb-0" style="font-size:.85rem;">
+                <table class="table--cards table table-sm table-hover align-middle mb-0 u-fs-sm">
                     <thead>
                         <tr>
                             <th scope="col" style="min-width:220px;">备份包</th>
@@ -84,7 +84,7 @@
                         {% for b in backups %}
                         <tr data-path="{{ b.path|escapejs }}" data-name="{{ b.name|escapejs }}">
                             <td data-label="备份包" class="text-break">
-                                <span style="font-weight:600;">{{ b.name }}</span>
+                                <span class="u-bold">{{ b.name }}</span>
                                 {% if b.schema_version != 1 %}<span class="badge bg-secondary">版本未知</span>{% endif %}
                             </td>
                             <td data-label="备份时间">{{ b.created_at|default:b.mtime }}</td>
@@ -105,17 +105,17 @@
                     </tbody>
                 </table>
             </div>
-            <div class="text-muted mt-2" style="font-size:.76rem;">
+            <div class="text-muted mt-2 u-fs-76">
                 当前扫描目录：<code id="scannedDirText">{{ scanned_dir }}</code>
             </div>
         </div>
     </div>
 
     <!-- 操作记录 -->
-    <div class="card mt-3 shadow-sm" style="border:none;border-radius:12px;">
+    <div class="card mt-3 shadow-sm u-panel-12">
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
-                <h6 class="mb-0" style="font-weight:600;">操作记录</h6>
+                <h6 class="mb-0 u-bold">操作记录</h6>
                 <form class="log-filter" id="logFilterForm">
                     <input type="date" class="search-input" id="logStart" title="开始日期" aria-label="开始日期" style="width:140px;">
                     <span class="log-filter-sep">至</span>
@@ -136,7 +136,7 @@
                 </li>
             </ul>
             <div class="table-responsive">
-                <table class="table--cards table table-sm table-hover align-middle mb-0" style="font-size:.85rem;">
+                <table class="table--cards table table-sm table-hover align-middle mb-0 u-fs-sm">
                     <thead>
                         <tr>
                             <th scope="col">操作类型</th>
@@ -168,7 +168,7 @@
                     <ul class="pagination" id="logPagination"></ul>
                 </div>
             </div>
-            <div class="text-muted mt-1" style="font-size:.76rem;">
+            <div class="text-muted mt-1 u-fs-76">
                 完整留存全部数据备份导出与数据恢复操作轨迹（含失败记录），数据持久化存储、实时更新。
             </div>
         </div>
@@ -178,7 +178,7 @@
 <!-- 恢复/删除确认弹窗（本页专属：确认后走 AJAX） -->
 <div id="riskBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:var(--z-modal);align-items:center;justify-content:center;">
     <div style="background:var(--c-surface);border-radius:12px;max-width:520px;width:92%;padding:1.5rem;">
-        <h6 class="mb-3" style="font-weight:700;" id="riskTitle">操作确认</h6>
+        <h6 class="mb-3 u-bolder"  id="riskTitle">操作确认</h6>
         <div id="riskBody" style="font-size:.86rem;"></div>
         <div id="riskAckRow" class="form-check mt-3">
             <input class="form-check-input" type="checkbox" id="riskAck">
@@ -194,16 +194,16 @@
 <!-- 任务进度弹窗 -->
 <div id="taskBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:var(--z-modal);align-items:center;justify-content:center;">
     <div style="background:var(--c-surface);border-radius:12px;max-width:640px;width:94%;padding:1.5rem;">
-        <h6 class="mb-3" style="font-weight:700;" id="taskTitle">任务进行中</h6>
+        <h6 class="mb-3 u-bolder"  id="taskTitle">任务进行中</h6>
         <div class="d-flex align-items-center gap-2 mb-2">
             <div class="progress flex-grow-1" style="height:10px;">
                 <div class="progress-bar bg-primary" id="taskBar" role="progressbar" style="width:0%;"></div>
             </div>
             <span style="font-weight:700;min-width:48px;text-align:right;" id="taskPercent">0%</span>
         </div>
-        <div class="text-muted mb-2" style="font-size:.85rem;" id="taskStage">准备中…</div>
+        <div class="text-muted mb-2 u-fs-sm"  id="taskStage">准备中…</div>
         <div id="taskResult" style="display:none;border-radius:8px;padding:.75rem;font-size:.84rem;margin-bottom:.75rem;"></div>
-        <pre id="taskLog" style="display:none;max-height:220px;overflow:auto;background:#f6f8fa;border-radius:8px;padding:.75rem;font-size:.72rem;margin-bottom:.75rem;white-space:pre-wrap;word-break:break-all;"></pre>
+        <pre id="taskLog" style="display:none;max-height:220px;overflow:auto;background:var(--c-surface-sunken);border-radius:8px;padding:.75rem;font-size:.72rem;margin-bottom:.75rem;white-space:pre-wrap;word-break:break-all;"></pre>
         <div class="d-flex justify-content-end gap-2">
             <button class="btn btn-sm btn-outline-secondary d-none" id="taskLogToggle">查看日志</button>
             <button class="btn btn-sm btn-primary" id="taskClose">后台运行</button>
@@ -215,7 +215,7 @@
 <div id="logDetailBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:var(--z-modal);align-items:center;justify-content:center;">
     <div style="background:var(--c-surface);border-radius:12px;max-width:640px;width:94%;padding:1.5rem;">
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h6 class="mb-0" style="font-weight:700;">操作记录详情</h6>
+            <h6 class="mb-0 u-bolder">操作记录详情</h6>
             <button type="button" class="btn-close" id="logDetailClose" aria-label="关闭"></button>
         </div>
         <div id="logDetailBody" style="font-size:.86rem;"></div>
@@ -391,7 +391,7 @@
                 openRisk({
                     title: '确认恢复数据？',
                     body:
-                        '<div class="alert alert-danger py-2 px-3 mb-2" style="font-size:.82rem;">' +
+                        '<div class="alert alert-danger py-2 px-3 mb-2 u-fs-82">' +
                         '⚠️ 即将使用备份包 <strong>' + name + '</strong> <strong>全量覆盖</strong>当前系统：</div>' +
                         '<ul class="mb-2 pl-3" style="padding-left:1.1rem;">' +
                         '<li>全部数据库表数据将回退到备份时点，备份之后新增/修改的记录将<b>永久丢失</b>；</li>' +
@@ -455,7 +455,7 @@
             d.backups.forEach(function (b) {
                 tb.insertAdjacentHTML('beforeend',
                     '<tr data-path="' + esc(b.path) + '" data-name="' + esc(b.name) + '">' +
-                    '<td data-label="备份包" class="text-break" style="font-weight:600;">' + esc(b.name) +
+                    '<td data-label="备份包" class="text-break u-bold">' + esc(b.name) +
                     (b.schema_version !== 1 ? ' <span class="badge bg-secondary">版本未知</span>' : '') + '</td>' +
                     '<td data-label="备份时间">' + esc(b.created_at || b.mtime) + '</td>' +
                     '<td data-label="操作人">' + esc(b.created_by || '—') + '</td>' +

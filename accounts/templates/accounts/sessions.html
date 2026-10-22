@@ -38,7 +38,7 @@
                     {% else %}
                     <form method="post" action="{% url 'accounts:session_revoke' s.key %}" data-confirm="确定下线该会话吗？">
                         {% csrf_token %}
-                        <button type="submit" class="btn-transparent btn-sm" style="border-color:var(--c-danger-line); color:var(--c-danger);">下线</button>
+                        <button type="submit" class="btn-transparent btn-sm u-field-danger">下线</button>
                     </form>
                     {% endif %}
                 </td>

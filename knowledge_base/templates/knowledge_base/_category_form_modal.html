@@ -7,7 +7,7 @@
 
     <div class="kb-row">
         <div class="kb-field">
-            <label class="form-label">{{ form.name.label }} <span style="color:var(--c-danger);">*</span></label>
+            <label class="form-label">{{ form.name.label }} <span class="u-text-danger">*</span></label>
             {{ form.name }}
             {% if form.name.errors %}<div class="kb-error">{{ form.name.errors|join:'；' }}</div>{% endif %}
         </div>

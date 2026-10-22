@@ -3,9 +3,9 @@
 {% block page_title %}删除样品 - 试样管理{% endblock %}
 
 {% block content %}
-<div class="detail-card" style="max-width:560px;">
-    <h1 class="detail-title" style="font-size:1.25rem;">删除样品确认</h1>
-    <div style="background:var(--c-danger-bg); border:1px solid #ffccc7; color:var(--c-danger); border-radius:6px; padding:0.9rem 1rem; margin-bottom:1.25rem; font-size:0.875rem; line-height:1.8;">
+<div class="detail-card u-max-560">
+    <h1 class="detail-title u-fs-125">删除样品确认</h1>
+    <div style="background:var(--c-danger-bg); border:1px solid var(--c-danger-line); color:var(--c-danger); border-radius:6px; padding:0.9rem 1rem; margin-bottom:1.25rem; font-size:0.875rem; line-height:1.8;">
         ⚠️ 确定要删除样品 <strong>{{ sample.sample_no }}</strong>（{{ sample.material_name }} / {{ sample.model }}）吗？<br>
         删除为软删除，样品不再出现在台账列表中，可在列表勾选「含已删除」后恢复。
     </div>
@@ -13,7 +13,7 @@
         {% csrf_token %}
         <div class="form-actions" style="border-top:none; padding-top:0;">
             <a class="btn-secondary" href="{% url 'samples:detail' sample.pk %}">取消</a>
-            <button type="submit" class="btn-primary" style="background:var(--c-danger) !important; border-color:var(--c-danger) !important;">确认删除</button>
+            <button type="submit" class="btn-primary u-btn-danger">确认删除</button>
         </div>
     </form>
 </div>

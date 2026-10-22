@@ -6,7 +6,7 @@
     {% endif %}
 
     <div class="kb-field">
-        <label class="form-label">{{ form.title.label }} <span style="color:var(--c-danger);">*</span></label>
+        <label class="form-label">{{ form.title.label }} <span class="u-text-danger">*</span></label>
         {{ form.title }}
         {% if form.title.errors %}<div class="kb-error">{{ form.title.errors|join:'；' }}</div>{% endif %}
     </div>
@@ -45,7 +45,7 @@
     </div>
 
     <div class="kb-field">
-        <label class="form-label">{{ form.content.label }}（支持 Markdown） <span style="color:var(--c-danger);">*</span></label>
+        <label class="form-label">{{ form.content.label }}（支持 Markdown） <span class="u-text-danger">*</span></label>
         {{ form.content }}
         {% if form.content.errors %}<div class="kb-error">{{ form.content.errors|join:'；' }}</div>{% endif %}
     </div>

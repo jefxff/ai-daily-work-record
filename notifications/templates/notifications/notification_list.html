@@ -149,7 +149,7 @@
                 {% if request.user.is_superuser %}
                 <td data-label="操作">
                     <div class="sched-actions">
-                        <form method="post" action="{% url 'notifications:task_run' item.task.pk %}" style="display:inline;">
+                        <form class="u-inline" method="post" action="{% url 'notifications:task_run' item.task.pk %}">
                             {% csrf_token %}
                             <button type="submit" class="btn-transparent btn-sm"
                                {% if item.task.last_status == 'running' %}disabled style="opacity:.5;"{% endif %}
@@ -227,14 +227,14 @@
                data-read-url="{% url 'notifications:read' notification.pk %}"
                onclick="openNotifDetail(event, this)">查看</button>
             {% if not notification.is_read %}
-            <form method="post" action="{% url 'notifications:read' notification.pk %}" class="notif-read-form" style="display:inline;">
+            <form method="post" action="{% url 'notifications:read' notification.pk %}" class="notif-read-form u-inline">
                 {% csrf_token %}
                 <button type="submit" class="btn-secondary btn-sm">标为已读</button>
             </form>
             {% endif %}
             {% can_view "system" %}
             {% if notification.can_revoke %}
-            <form method="post" action="{% url 'notifications:revoke' notification.pk %}" style="display:inline;">
+            <form class="u-inline" method="post" action="{% url 'notifications:revoke' notification.pk %}">
                 {% csrf_token %}
                 <button type="submit" class="btn-transparent btn-sm btn-delete" data-confirm="确定撤回该通知吗？撤回后接收者将不再可见。">撤回</button>
             </form>

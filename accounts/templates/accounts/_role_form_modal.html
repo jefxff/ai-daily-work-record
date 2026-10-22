@@ -65,10 +65,10 @@
                 <thead>
                     <tr>
                         <th scope="col" style="min-width:180px;">模块</th>
-                        <th scope="col" style="width:72px; text-align:center;">新增</th>
-                        <th scope="col" style="width:72px; text-align:center;">读取</th>
-                        <th scope="col" style="width:72px; text-align:center;">编辑</th>
-                        <th scope="col" style="width:72px; text-align:center;">删除</th>
+                        <th class="u-w-72-center" scope="col">新增</th>
+                        <th class="u-w-72-center" scope="col">读取</th>
+                        <th class="u-w-72-center" scope="col">编辑</th>
+                        <th class="u-w-72-center" scope="col">删除</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -93,7 +93,7 @@
                 </tbody>
             </table>
         </div>
-        <p class="ac-help" style="margin-bottom:0;">
+        <p class="ac-help u-mb-0">
             说明：勾选"读取"后该模块才会出现在用户侧边栏；金属价格仅支持读取/编辑，数据展示仅支持读取（由系统统一规定，不可越权勾选）。
             {% if mode == 'edit' and role.is_builtin %}内置角色仅可调整权限矩阵，名称/说明/启停不可修改。{% endif %}
         </p>

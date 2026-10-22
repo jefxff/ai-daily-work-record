@@ -3,6 +3,7 @@
 import os
 
 from django import forms
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 
 from .models import (
@@ -27,6 +28,43 @@ def validate_archive_file(f) -> str:
     if f.size > ARCHIVE_FILE_MAX_SIZE:
         return f"文件大小 {f.size / 1024 / 1024:.1f}MB 超过上限 50MB"
     return ""
+
+
+# 证照扫描件：仅允许图片/PDF，禁止 HTML/SVG 等可执行内容（审计 P1-2）
+LICENSE_SCAN_ALLOWED_EXTS = {"PNG", "JPG", "JPEG", "GIF", "BMP", "WEBP", "PDF"}
+LICENSE_SCAN_MAX_SIZE = 20 * 1024 * 1024
+
+# 扩展名 -> 文件头（magic byte），双重校验避免仅改后缀绕过
+_SCAN_MAGIC_PREFIXES = {
+    "PDF": (b"%PDF",),
+    "PNG": (b"\x89PNG\r\n\x1a\n",),
+    "JPG": (b"\xff\xd8\xff",),
+    "JPEG": (b"\xff\xd8\xff",),
+    "GIF": (b"GIF87a", b"GIF89a"),
+    "BMP": (b"BM",),
+}
+
+
+def validate_license_scan(f) -> None:
+    """校验证照扫描件：扩展名白名单 + 文件头 + 大小。"""
+    ext = os.path.splitext(getattr(f, "name", "") or "")[1].lstrip(".").upper()
+    if ext not in LICENSE_SCAN_ALLOWED_EXTS:
+        raise ValidationError(
+            f"不支持的文件类型「{ext or '无扩展名'}」（仅允许图片/PDF）"
+        )
+    if f.size > LICENSE_SCAN_MAX_SIZE:
+        raise ValidationError(
+            f"文件大小 {f.size / 1024 / 1024:.1f}MB 超过上限 "
+            f"{LICENSE_SCAN_MAX_SIZE // 1024 // 1024}MB"
+        )
+    head = f.read(16)
+    f.seek(0)
+    if ext == "WEBP":
+        ok = head[:4] == b"RIFF" and head[8:12] == b"WEBP"
+    else:
+        ok = any(head.startswith(prefix) for prefix in _SCAN_MAGIC_PREFIXES[ext])
+    if not ok:
+        raise ValidationError("文件内容与扩展名不符，已拒绝上传")
 
 
 class LedgerForm(forms.ModelForm):
@@ -218,6 +256,7 @@ class LicenseForm(forms.ModelForm):
         for f in ("holder", "issuer", "issue_date", "expire_date",
                   "next_review_date", "scan_file", "remark"):
             self.fields[f].required = False
+        self.fields["scan_file"].validators.append(validate_license_scan)
 
 
 class AnnualReviewForm(forms.ModelForm):

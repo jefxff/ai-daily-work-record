@@ -24,7 +24,7 @@
     .kpi-card.c-blue::after { background: var(--c-primary); }
     .kpi-card.c-cyan::after { background: #13c2c2; }
     .kpi-card.c-green::after { background: var(--c-success); }
-    .kpi-card.c-geek::after { background: #2f54eb; }
+    .kpi-card.c-geek::after { background: var(--c-primary); }
     .kpi-card.c-orange::after { background: var(--c-warning); }
     .kpi-card.c-red::after { background: var(--c-danger); }
     .kpi-head { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem; }
@@ -124,7 +124,7 @@
     </div>
     <div class="kpi-card c-geek">
         <div class="kpi-head"><span class="kpi-icon">📈</span><span class="kpi-label">通过率</span></div>
-        <div class="kpi-value" style="color:#2f54eb;">{{ data.pass_rate }}%</div>
+        <div class="kpi-value" style="color:var(--c-primary);">{{ data.pass_rate }}%</div>
         <div class="kpi-sub">已通过 ÷ 样品总数</div>
     </div>
     <div class="kpi-card c-orange">
@@ -134,7 +134,7 @@
     </div>
     <div class="kpi-card c-red">
         <div class="kpi-head"><span class="kpi-icon">⛔</span><span class="kpi-label">已终止</span></div>
-        <div class="kpi-value" style="color:var(--c-danger);">{{ data.terminated }}</div>
+        <div class="kpi-value u-text-danger">{{ data.terminated }}</div>
         <div class="kpi-sub">周期内终止样品数</div>
     </div>
 </div>

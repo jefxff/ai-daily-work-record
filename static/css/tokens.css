@@ -2,10 +2,9 @@
    tokens.css · 设计令牌层
    ai-daily-work-record 前端重构 · 单一事实来源
 
-   色值经 WCAG 实测（主色沿用品牌蓝 #1890ff，作为链接为 3.24:1；
-   小字号文本改用 --c-primary-active #096dd9，5.0:1）：
+   色值经 WCAG 实测（主色 #096dd9，作为链接/按钮白字为 5.0:1，满足 AA）：
      正文         ≥ 4.5:1
-     状态徽章     ≥ 3.3:1（配 600 字重 + 淡底）
+     状态徽章     ≥ 4.5:1（12px 小字，不适用大文本 3:1 门槛）
      输入框边框   ≥ 3.0:1（SC 1.4.11 非文本对比）
      焦点圈       ≥ 3.0:1
 
@@ -15,17 +14,16 @@
 :root {
   /* ---------- 色彩：结构层 ---------- */
   /* 主色只承担"可交互"语义：链接、主按钮、选中态、焦点
-     取值：项目原有的 Ant Design 蓝 #1890ff，保持上线版本的品牌观感。
+     取值：Ant Design 蓝的深一档 #096dd9，对白底 5.0:1，满足 WCAG 2.2 AA 4.5:1
+     （原 #1890ff 仅 3.24:1，15px/600 不属于"大文本"，不能用 3:1 门槛）。
      蓝色本身承担"可点击"语义，因此链接不需要下划线兜底。
-     深一档的变体供小字号文本使用：#096dd9 对白底 5.0:1，满足 AA；
-     主按钮白字压在 #1890ff 上为 3.24:1，按钮按 15px/600 字重呈现，
-     若需严格 AA 可把 --c-primary 整体切到 --c-primary-active。 */
-  --c-primary:          #1890ff;
-  --c-primary-hover:    #40a9ff;
-  --c-primary-active:   #096dd9;
+     hover 回到品牌色 #1890ff，按下再深一档 #0050b3。 */
+  --c-primary:          #096dd9;
+  --c-primary-hover:    #1890ff;
+  --c-primary-active:   #0050b3;
   --c-primary-subtle:   #e6f7ff;   /* 选中行/悬停底 */
-  --c-primary-ring:     rgba(24, 144, 255, 0.20);
-  --c-link-underline:   rgba(24, 144, 255, 0.40);   /* 链接下划线的默认色 */
+  --c-primary-ring:     rgba(9, 109, 217, 0.24);
+  --c-link-underline:   rgba(9, 109, 217, 0.40);   /* 链接下划线的默认色 */
 
   /* 强调色：全站唯一，只表示"到期 / 待处理"这一种业务语义 */
   --c-accent:           #b45309;   /* 4.71:1 on #fff7e6 */
@@ -42,7 +40,7 @@
   /* ---------- 色彩：文字层 ---------- */
   --c-text:             #1f1f1f;   /* 16.5:1 —— 沿用原有正文色，不用纯黑 */
   --c-text-secondary:   #5c6370;   /* 6.05:1 —— 替换原 #8c8c8c（3.36，不合格） */
-  --c-text-tertiary:    #6b7280;   /* 4.83:1 —— 占位符也满足正文对比 */
+  --c-text-tertiary:    #626a77;   /* 4.86:1 on #f0f2f5 —— 12px 说明文字也满足正文对比 */
   --c-text-disabled:    #a0a6b0;
   --c-text-inverse:     #f4f6f9;
   --c-text-inverse-dim: #9aa3b2;   /* 反色块上的次级文字 */
@@ -62,15 +60,15 @@
   --c-sidebar-dim:     #5c6370;   /* 分组标题：6.05:1 */
   --c-sidebar-hover:   #f4f5f7;
   --c-sidebar-active:  #e6f7ff;   /* 选中底：主色淡底 */
-  --c-sidebar-bar:     #1890ff;   /* 选中左侧 3px 竖条（沿用现有 ::before 写法） */
+  --c-sidebar-bar:     #096dd9;   /* 选中左侧 3px 竖条（沿用现有 ::before 写法） */
 
   /* ---------- 色彩：状态（深字浅底） ---------- */
   /* 回归项目原有的 Ant 色板：红/橙/绿/蓝的观感与上线版本一致，
      文字色取 6 号色（而非 1 号色），保证在白底与淡底上仍可辨读。 */
   --c-danger:           #cf1322;   --c-danger-bg:   #fff1f0;  --c-danger-line:  #ffccc7;
   --c-warning:          #b45309;   --c-warning-bg:  #fff7e6;  --c-warning-line: #ffd591;
-  --c-success:          #389e0d;   --c-success-bg:  #f6ffed;  --c-success-line: #b7eb8f;
-  --c-info:             #096dd9;   --c-info-bg:     #e6f7ff;  --c-info-line:    #91d5ff;
+  --c-success:          #237804;   --c-success-bg:  #f6ffed;  --c-success-line: #b7eb8f;
+  --c-info:             #0050b3;   --c-info-bg:     #e6f7ff;  --c-info-line:    #91d5ff;
   --c-neutral:          #5c6370;   --c-neutral-bg:  #fafafa;  --c-neutral-line: #d9d9d9;
   /* 借出中状态（档案证照借阅），全站唯一，只表示"证照处于借出"这一种业务语义 */
   --c-borrowed:         #722ed1;   --c-borrowed-bg: #f9f0ff;  --c-borrowed-line: #d3adf7;

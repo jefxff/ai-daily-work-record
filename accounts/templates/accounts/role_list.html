@@ -44,7 +44,7 @@
                     <span class="status-badge danger">停用</span>
                     {% endif %}
                 </td>
-                <td data-label="操作" style="white-space:nowrap;">
+                <td class="u-nowrap" data-label="操作">
                     {% can "system" "update" %}
                     <a class="btn-transparent btn-sm" href="{% url 'accounts:role_edit' r.id %}" data-modal-edit data-modal-title="编辑角色：{{ r.name }}">权限矩阵/编辑</a>
                     {% endcan %}
@@ -53,10 +53,10 @@
                     <button type="button" class="btn-transparent btn-sm" disabled
                             title="内置角色不可删除" style="opacity:0.45; cursor:not-allowed;">删除</button>
                     {% else %}
-                    <form method="post" action="{% url 'accounts:role_delete' r.id %}" style="display:inline;"
+                    <form class="u-inline" method="post" action="{% url 'accounts:role_delete' r.id %}" 
                           data-confirm="确定删除角色「{{ r.name }}」吗？该角色当前关联 {{ r.user_count }} 个用户，删除后将解除全部关联，相关用户立即失去对应权限。">
                         {% csrf_token %}
-                        <button type="submit" class="btn-transparent btn-sm" style="border-color:var(--c-danger-line); color:var(--c-danger);">删除</button>
+                        <button type="submit" class="btn-transparent btn-sm u-field-danger">删除</button>
                     </form>
                     {% endif %}
                     {% endcan %}

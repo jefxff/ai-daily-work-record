@@ -161,13 +161,13 @@
                             {% endif %}
                         </td>
                         <td data-label="操作" class="col-actions">
-                    <div style="display: flex; gap: 0.25rem; align-items: center; flex-wrap: nowrap;">
+                    <div class="u-toolbar-inline">
                         <a href="{% url 'customer_credit_detail' credit.id %}" class="btn-transparent btn-sm" data-modal-detail data-modal-title="客户账期详情">详细</a>
                         {% can "customer_credit" "update" %}
                         <a href="{% url 'customer_credit_edit' credit.id %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑客户账期">编辑</a>
                         {% endcan %}
                         {% can "customer_credit" "delete" %}
-                        <form method="post" action="{% url 'customer_credit_delete' credit.id %}" style="display:inline" data-confirm="确定要删除这条记录吗？">{% csrf_token %}<button type="submit" class="btn-transparent btn-sm btn-delete">删除</button></form>
+                        <form class="u-inline" method="post" action="{% url 'customer_credit_delete' credit.id %}"  data-confirm="确定要删除这条记录吗？">{% csrf_token %}<button type="submit" class="btn-transparent btn-sm btn-delete">删除</button></form>
                         {% endcan %}
                     </div>
                 </td>

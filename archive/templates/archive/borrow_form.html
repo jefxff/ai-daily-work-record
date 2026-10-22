@@ -1,7 +1,7 @@
 {% extends "records/base.html" %}
 {% block page_title %}借阅登记{% endblock %}
 {% block content %}
-<div class="container" style="max-width:500px">
+<div class="container u-max-500">
     <h1 class="page-title mb-4">借阅登记 - {{ archive.code }}</h1>
     <form method="POST" novalidate>
         {% csrf_token %}

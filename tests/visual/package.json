@@ -1,0 +1,9 @@
+{
+  "name": "adw-visual-a11y",
+  "private": true,
+  "description": "视觉回归与无障碍基线（审计 FE-04）",
+  "devDependencies": {
+    "@axe-core/playwright": "^4.10.2",
+    "@playwright/test": "^1.64.0"
+  }
+}

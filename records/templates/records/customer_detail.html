@@ -137,8 +137,8 @@
 
         <div class="col-lg-5">
             <!-- SLA 计时 -->
-            <div class="detail-card" style="margin-bottom:1.25rem;">
-                <div class="detail-title" style="font-size:1.15rem;">SLA 计时</div>
+            <div class="detail-card u-mb-4">
+                <div class="detail-title u-fs-115">SLA 计时</div>
                 {% if complaint.sla_hours %}
                 <div class="sla-row">
                     <span class="sla-figure {% if complaint.is_sla_overdue %}is-overdue{% elif complaint.is_closed %}is-closed{% else %}is-normal{% endif %}">
@@ -159,8 +159,8 @@
             </div>
 
             <!-- 处理时间线 -->
-            <div class="detail-card" style="margin-bottom:1.25rem;">
-                <div class="detail-title" style="font-size:1.15rem;">处理时间线</div>
+            <div class="detail-card u-mb-4">
+                <div class="detail-title u-fs-115">处理时间线</div>
                 {% include 'records/_timeline.html' with steps=complaint.closure_timeline_steps %}
             </div>
 
@@ -168,7 +168,7 @@
             {% if not complaint.is_closed %}
             {% can "customer_complaint" "update" %}
             <div class="detail-card" id="closurePanel">
-                <div class="detail-title" style="font-size:1.15rem;">闭环操作区</div>
+                <div class="detail-title u-fs-115">闭环操作区</div>
                 <form method="post" action="{% url 'customer_complaint_close' complaint.id %}">
                     {% csrf_token %}
                     <div style="margin-bottom:10px;">

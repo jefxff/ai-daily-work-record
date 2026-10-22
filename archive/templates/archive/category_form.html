@@ -1,7 +1,7 @@
 {% extends "records/base.html" %}
 {% block page_title %}{% if mode == 'edit' %}编辑{% else %}新建{% endif %}类别{% endblock %}
 {% block content %}
-<div class="container" style="max-width:600px">
+<div class="container u-max-600">
     <h1 class="page-title mb-4">{% if mode == 'edit' %}编辑{% else %}新建{% endif %}类别</h1>
     {% include "archive/_category_form_modal.html" %}
 </div>

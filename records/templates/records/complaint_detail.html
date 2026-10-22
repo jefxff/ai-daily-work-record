@@ -10,7 +10,7 @@
     <a href="{% url 'complaint_edit' complaint.id %}" class="btn-transparent" data-modal-edit data-modal-title="编辑诉讼">编辑记录</a>
     {% endcan %}
     {% can "complaint" "delete" %}
-    <form method="post" action="{% url 'complaint_delete' complaint.id %}" style="display:inline" data-confirm="确定要删除这条记录吗？">{% csrf_token %}<button type="submit" class="btn-transparent btn-delete">删除记录</button></form>
+    <form class="u-inline" method="post" action="{% url 'complaint_delete' complaint.id %}"  data-confirm="确定要删除这条记录吗？">{% csrf_token %}<button type="submit" class="btn-transparent btn-delete">删除记录</button></form>
     {% endcan %}
 {% endblock %}
 
@@ -21,7 +21,7 @@
     </div>
 
     <!-- 案件进程 -->
-    <section class="detail-card" style="margin-bottom:1.25rem;" aria-label="案件进程">
+    <section class="detail-card u-mb-4"  aria-label="案件进程">
         <div class="detail-title">案件进程</div>
 
         <ol class="case-flow">
@@ -53,7 +53,7 @@
 
         {% if complaint.progress != '结案' %}
         {% can "complaint" "update" %}
-        <form method="post" action="{% url 'complaint_advance' complaint.id %}" class="case-advance">
+        <form method="post" action="{% url 'complaint_advance' complaint.id %}" class="case-advance">{% csrf_token %}
             <div class="case-advance-field">
                 <label for="caseAdvanceSelect">推进状态</label>
                 <select id="caseAdvanceSelect" name="progress" class="form-select">
@@ -72,7 +72,7 @@
     <div class="row g-4">
         <div class="col-lg-7">
             <!-- 案件信息 -->
-            <div class="detail-card" style="margin-bottom:1.25rem;">
+            <div class="detail-card u-mb-4">
                 <div class="detail-title">案件信息</div>
 
                 <div class="detail-row">
@@ -118,15 +118,15 @@
 
             <!-- 状态时间线 -->
             <div class="detail-card">
-                <div class="detail-title" style="font-size:1.15rem;">状态时间线</div>
+                <div class="detail-title u-fs-115">状态时间线</div>
                 {% include 'records/_timeline.html' with steps=complaint.timeline_steps %}
             </div>
         </div>
 
         <div class="col-lg-5">
             <!-- 关键日期 -->
-            <div class="detail-card" style="margin-bottom:1.25rem;">
-                <div class="detail-title" style="font-size:1.15rem;">关键日期</div>
+            <div class="detail-card u-mb-4">
+                <div class="detail-title u-fs-115">关键日期</div>
                 <div class="detail-row">
                     <span class="detail-label">立案日期：</span>
                     <span class="detail-value">{{ complaint.filed_at|date:'Y-m-d'|default:'—' }}</span>

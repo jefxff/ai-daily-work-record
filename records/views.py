@@ -216,7 +216,11 @@ def home(request):
 
     if 'insurance' in mods:
         today = timezone.localdate()
-        records = list(Insurance.objects.all())
+        # 审计 P2-6：仅取聚合所需字段，避免把备注等大字段整表载入
+        records = list(Insurance.objects.only(
+            "id", "title", "issue_date", "end_date", "premium",
+            "company_name", "department",
+        ))
         subjects = insurance_grouping.build_subjects(records, today=today)
         summary = insurance_grouping.summarize(subjects)
         expiring_subjects = [s for s in subjects if s.status == 'expiring'][:5]
@@ -1166,7 +1170,11 @@ def dashboard(request):
     
     # 保险统计（标的聚合口径）
     today = date.today()
-    _insurance_records = list(insurances)
+    # 审计 P2-6：聚合只取必要字段；列表展示仍按需切片，不整表载入
+    _insurance_records = list(Insurance.objects.only(
+        "id", "title", "issue_date", "end_date", "premium",
+        "company_name", "department",
+    ))
     _insurance_subjects = insurance_grouping.build_subjects(_insurance_records, today=today)
     _insurance_summary = insurance_grouping.summarize(_insurance_subjects)
     insurance_total_count = _insurance_summary['total']

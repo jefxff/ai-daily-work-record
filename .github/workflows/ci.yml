@@ -6,13 +6,26 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   check-and-test:
     runs-on: ubuntu-latest
+    env:
+      # 生产形态的安全检查：HTTPS 相关开关打开后才做 check --deploy
+      DJANGO_HTTPS_ONLY: "1"
+      DJANGO_BEHIND_HTTPS_PROXY: "1"
+      DJANGO_HSTS_SECONDS: "31536000"
+      DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1"
+      DJANGO_DEBUG: "0"
     steps:
-      - uses: actions/checkout@v4
+      # Action 固定到 40 位 commit SHA：浮动 tag 可被上游重写，属于供应链投毒入口
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b  # v5.3.0
         with:
           python-version: "3.11"
           cache: pip
@@ -20,8 +33,32 @@ jobs:
       - name: 安装依赖
         run: pip install -r requirements.txt
 
+      - name: 安装质量与安全工具
+        run: pip install ruff bandit pip-audit coverage
+
+      - name: 依赖完整性
+        run: python -m pip check
+
       - name: Django 系统检查
         run: python manage.py check
 
-      - name: 运行测试
-        run: python manage.py test
+      - name: 部署基线检查（生产形态）
+        run: python manage.py check --deploy --fail-level WARNING
+
+      - name: 迁移文件一致性
+        run: python manage.py makemigrations --check --dry-run
+
+      - name: Python 语法与未定义名称
+        run: python -m ruff check . --select E9,F63,F7,F82
+
+      - name: 安全扫描（高危）
+        run: python -m bandit -r . -lll -x ./tests,./migrations,./.git -q
+
+      - name: 依赖漏洞审计（发现上游未修复项时仅告警）
+        continue-on-error: true
+        run: python -m pip_audit -r requirements.txt --strict
+
+      - name: 运行测试并统计覆盖率
+        run: |
+          python -m coverage run manage.py test
+          python -m coverage report -m

@@ -3,7 +3,7 @@
     <div class="lic-form-grid">
         {% for field in form.visible_fields %}
         <div class="lic-field{% if field.field.widget.input_type == 'file' %} lic-field-full{% endif %}">
-            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span style="color:var(--c-danger)">*</span>{% endif %}</label>
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="u-text-danger">*</span>{% endif %}</label>
             {{ field }}
             {% if field.help_text %}<div class="lic-hint">{{ field.help_text }}</div>{% endif %}
             {% for error in field.errors %}<div class="lic-error">{{ error }}</div>{% endfor %}
@@ -11,7 +11,7 @@
         {% endfor %}
     </div>
     {% if form.non_field_errors %}
-    <div class="lic-error" style="margin-bottom:0.75rem;">
+    <div class="lic-error u-mb-3">
         {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
     </div>
     {% endif %}

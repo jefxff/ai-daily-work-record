@@ -69,31 +69,31 @@
                     <span class="status-badge danger">⚠️ 待审核/停用</span>
                     {% endif %}
                 </td>
-                <td data-label="创建时间" style="white-space:nowrap;">{{ u.date_joined|date:'Y-m-d H:i' }}</td>
-                <td data-label="操作" style="white-space:nowrap;">
+                <td class="u-nowrap" data-label="创建时间">{{ u.date_joined|date:'Y-m-d H:i' }}</td>
+                <td class="u-nowrap" data-label="操作">
                     {% can "system" "update" %}
                     {% if u.is_superuser and not request.user.is_superuser %}
-                    <span style="color:var(--c-text-tertiary); font-size:0.78rem;">无权操作超管</span>
+                    <span class="u-hint-tertiary">无权操作超管</span>
                     {% else %}
                     {% if not u.is_active %}
-                    <form method="post" action="{% url 'accounts:user_approve' u.id %}" style="display:inline;"
+                    <form class="u-inline" method="post" action="{% url 'accounts:user_approve' u.id %}" 
                           data-confirm="确定审核通过「{{ u.username }}」并激活账号吗？">
                         {% csrf_token %}
-                        <button type="submit" class="btn-transparent btn-sm" style="border-color:var(--c-success-line); color:var(--c-success);">通过</button>
+                        <button type="submit" class="btn-transparent btn-sm u-field-success">通过</button>
                     </form>
                     {% endif %}
                     <a class="btn-transparent btn-sm" href="{% url 'accounts:user_edit' u.id %}" data-modal-edit data-modal-title="编辑用户：{{ u.username }}">编辑/角色</a>
                     <a class="btn-transparent btn-sm" href="{% url 'accounts:user_reset_password' u.id %}">重置密码</a>
                     {% if u.id != request.user.id %}
                         {% if u.is_active %}
-                        <form method="post" action="{% url 'accounts:user_toggle' u.id %}" style="display:inline;"
+                        <form class="u-inline" method="post" action="{% url 'accounts:user_toggle' u.id %}" 
                               data-confirm="确定停用「{{ u.username }}」吗？停用后该账号将立即无法登录。">
                             {% csrf_token %}
                             <input type="hidden" name="active" value="false">
-                            <button type="submit" class="btn-transparent btn-sm" style="border-color:var(--c-danger-line); color:var(--c-danger);">停用</button>
+                            <button type="submit" class="btn-transparent btn-sm u-field-danger">停用</button>
                         </form>
                         {% else %}
-                        <form method="post" action="{% url 'accounts:user_toggle' u.id %}" style="display:inline;"
+                        <form class="u-inline" method="post" action="{% url 'accounts:user_toggle' u.id %}" 
                               data-confirm="确定启用「{{ u.username }}」吗？">
                             {% csrf_token %}
                             <input type="hidden" name="active" value="true">
@@ -101,7 +101,7 @@
                         </form>
                         {% endif %}
                     {% else %}
-                    <span style="color:var(--c-text-tertiary); font-size:0.78rem;">当前账号</span>
+                    <span class="u-hint-tertiary">当前账号</span>
                     {% endif %}
                     {% endif %}
                     {% endcan %}

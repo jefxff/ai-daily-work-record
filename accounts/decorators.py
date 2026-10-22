@@ -18,6 +18,7 @@ from django.http import JsonResponse
 from django.shortcuts import redirect, render
 
 from .services import has_perm, visible_modules
+from work_record.error_handler import error_payload
 
 
 def login_exempt(view_func):
@@ -49,14 +50,14 @@ def perm_required(module, action):
             if not getattr(user, "is_authenticated", False):
                 if _is_json_request(request):
                     return JsonResponse(
-                        {"detail": "身份验证未通过，请先登录。"}, status=401
+                        error_payload("身份验证未通过，请先登录。", 401), status=401
                     )
                 next_url = quote(request.get_full_path(), safe="/?&=")
                 return redirect(f"{settings.LOGIN_URL}?next={next_url}")
             if not has_perm(user, module, action):
                 if _is_json_request(request):
                     return JsonResponse(
-                        {"detail": "权限不足，无法执行该操作。"}, status=403
+                        error_payload("权限不足，无法执行该操作。", 403), status=403
                     )
                 return render(
                     request,
@@ -88,14 +89,14 @@ def perm_required_any(*perms):
             if not getattr(user, "is_authenticated", False):
                 if _is_json_request(request):
                     return JsonResponse(
-                        {"detail": "身份验证未通过，请先登录。"}, status=401
+                        error_payload("身份验证未通过，请先登录。", 401), status=401
                     )
                 next_url = quote(request.get_full_path(), safe="/?&=")
                 return redirect(f"{settings.LOGIN_URL}?next={next_url}")
             if not any(has_perm(user, module, action) for module, action in perms):
                 if _is_json_request(request):
                     return JsonResponse(
-                        {"detail": "权限不足，无法执行该操作。"}, status=403
+                        error_payload("权限不足，无法执行该操作。", 403), status=403
                     )
                 return render(
                     request,
@@ -129,12 +130,16 @@ def require_any_module(view_func):
         user = getattr(request, "user", None)
         if not getattr(user, "is_authenticated", False):
             if _is_json_request(request):
-                return JsonResponse({"detail": "身份验证未通过，请先登录。"}, status=401)
+                return JsonResponse(
+                    error_payload("身份验证未通过，请先登录。", 401), status=401
+                )
             next_url = quote(request.get_full_path(), safe="/?&=")
             return redirect(f"{settings.LOGIN_URL}?next={next_url}")
         if not visible_modules(user):
             if _is_json_request(request):
-                return JsonResponse({"detail": "权限不足，无法执行该操作。"}, status=403)
+                return JsonResponse(
+                    error_payload("权限不足，无法执行该操作。", 403), status=403
+                )
             return render(
                 request,
                 "accounts/403.html",

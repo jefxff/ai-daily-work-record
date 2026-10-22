@@ -1,15 +1,19 @@
+# 直接依赖：全部锁定到与生产运行环境一致的精确版本（审计 BE-07）。
+# 升级流程：先在测试环境验证，再同步修改本文件与 requirements.lock。
+# 带哈希的锁文件由 scripts/gen_requirements_lock.py 在可联网环境生成，
+# 安装时使用：pip install --require-hashes -r requirements.lock
 django==4.2.24
-djangorestframework==3.15.2
-django-cors-headers==4.4.0
-openpyxl==3.1.5
+djangorestframework==3.17.1
+django-cors-headers==4.9.0
+openpyxl==3.1.2
 # .xls 老格式解析（openpyxl 只支持 .xlsx）；xlrd 2.x 不再支持 .xlsx
 xlrd==2.0.1
-requests==2.32.3
-beautifulsoup4==4.12.3
+requests==2.31.0
+beautifulsoup4==4.12.2
 markdown==3.7
 bleach==6.1.0
-# 档案管理模块依赖
-qrcode[pil]==7.4.2
-# 以下依赖当前未使用（通知模块为自研 notify_worker，非 celery），保留备用：
-# celery>=5.3
-# redis>=5.0
+# 档案管理模块依赖；Pillow 同时是图像上传攻击面，必须显式锁定（勿依赖 qrcode[pil] 间接引入）
+qrcode==7.4.2
+Pillow==11.0.0
+# 备份中心 AES（Fernet）加密与 API Token 摘要
+cryptography==42.0.2

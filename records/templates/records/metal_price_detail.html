@@ -281,7 +281,7 @@
 
 {% block extra_js %}
 <!-- Chart.js -->
-<script src="{% static 'js/chart.min.js' %}"></script>
+<script src="{% static 'js/chart.min.js' %}?v=4.5.1"></script>
 {{ chart_labels|json_script:"mpChartLabels" }}
 {{ chart_data|json_script:"mpChartData" }}
 <script>
