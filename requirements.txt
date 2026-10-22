@@ -14,6 +14,6 @@ markdown==3.7
 bleach==6.1.0
 # 档案管理模块依赖；Pillow 同时是图像上传攻击面，必须显式锁定（勿依赖 qrcode[pil] 间接引入）
 qrcode==7.4.2
-Pillow==11.0.0
+Pillow==13.0.0
 # 备份中心 AES（Fernet）加密与 API Token 摘要
 cryptography==42.0.2
