@@ -121,14 +121,12 @@ def perf_dashboard(request):
 def probe(request):
     """外部独立探针：不触碰数据库，仅证明 Web 进程存活。
 
-    供内网/外部监控独立轮询（如 uptime 监控）；返回固定结构 JSON，
-    不泄露版本、配置等敏感信息。
+    供内网/外部监控独立轮询（如 uptime 监控）。
+
+    L9：匿名响应只返回 {"status": "ok"}——原先返回的 service 名 / 时间戳 /
+    进程运行时长可被未授权者用于指纹识别与推断重启（补丁）周期；
+    这类信息改由登录后、需 system.read 权限的 /system/health 完整版提供。
     """
-    response = JsonResponse({
-        "status": "ok",
-        "service": "daily-work-record",
-        "timestamp": timezone.now().isoformat(),
-        "uptime_seconds": int(time.monotonic() - _PROCESS_START),
-    })
+    response = JsonResponse({"status": "ok"})
     response["Cache-Control"] = "no-store"
     return response

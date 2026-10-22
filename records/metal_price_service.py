@@ -58,12 +58,12 @@ def crawl_metal_prices():
             fluctuat_inside = soup.select_one('body > div.contentBar > div > div.content1 > div.fluctuat > div.fluctuat_box.left > div.fluctuat_inside')
             
             if fluctuat_inside:
-                print("成功定位到fluctuat_inside元素")
+                logger.info("成功定位到fluctuat_inside元素")
                 
                 # 查找所有包含金属价格的元素（class="fluctuat_content"的div）
                 metal_items = fluctuat_inside.find_all('div', class_='fluctuat_content')
                 
-                print(f"找到 {len(metal_items)} 个金属元素")
+                logger.info(f"找到 {len(metal_items)} 个金属元素")
                 
                 # 提取金属名称和价格
                 for item in metal_items:
@@ -105,13 +105,13 @@ def crawl_metal_prices():
                             'crawl_date': datetime.now().date(),
                             'crawl_time': datetime.now()
                         })
-                        print(f"提取到 {metal_name}: {price} {target_metals[metal_name]} (涨跌: {price_change})")
+                        logger.info(f"提取到 {metal_name}: {price} {target_metals[metal_name]} (涨跌: {price_change})")
                     except Exception as e:
-                        print(f"提取金属价格时出错: {str(e)}")
+                        logger.warning(f"提取金属价格时出错: {str(e)}")
             
             # 如果通过CSS选择器没有找到数据，尝试从整个页面中提取
             if not metal_prices:
-                print("CSS选择器未找到数据，尝试从整个页面提取")
+                logger.warning("CSS选择器未找到数据，尝试从整个页面提取")
                 
                 # 从整个页面中查找金属数据
                 all_text = soup.get_text()
@@ -133,22 +133,22 @@ def crawl_metal_prices():
                                 'crawl_date': datetime.now().date(),
                                 'crawl_time': datetime.now()
                             })
-                            print(f"从页面文本提取到 {metal_name}: {price} {target_metals[metal_name]}")
+                            logger.info(f"从页面文本提取到 {metal_name}: {price} {target_metals[metal_name]}")
                         except Exception as e:
-                            print(f"提取 {metal_name} 价格时出错: {str(e)}")
+                            logger.warning(f"提取 {metal_name} 价格时出错: {str(e)}")
             
-            print(f"成功从长江有色金属网爬取 {len(metal_prices)} 条金属价格数据")
+            logger.info(f"成功从长江有色金属网爬取 {len(metal_prices)} 条金属价格数据")
             
             # 如果没有爬取到数据，使用备用数据
             if not metal_prices:
-                print("未能从网站爬取数据，使用备用数据")
+                logger.warning("未能从网站爬取数据，使用备用数据")
                 return get_sample_metal_prices()
                 
     except Exception as e:
-        print(f"爬取金属价格时出错: {str(e)}")
+        logger.warning(f"爬取金属价格时出错: {str(e)}")
         import traceback
         traceback.print_exc()
-        print("使用备用数据")
+        logger.info("使用备用数据")
         return get_sample_metal_prices()
     
     return metal_prices
@@ -192,7 +192,7 @@ def crawl_gold_price():
                         # 验证价格合理性（黄金价格通常在300-2000元/克之间）
                         if 300 <= price_val <= 2000:
                             gold_price = price_val
-                            print(f"从CSS选择器找到黄金价格: {gold_price}")
+                            logger.info(f"从CSS选择器找到黄金价格: {gold_price}")
                             
                             # 找到对应的li元素，提取昨收价
                             parent_li = price_span.find_parent('li')
@@ -203,9 +203,9 @@ def crawl_gold_price():
                                     prec_match = re.search(r'([\d.]+)', prec_text)
                                     if prec_match:
                                         prev_close = float(prec_match.group(1))
-                                        print(f"从CSS选择器父级找到昨收价: {prev_close}")
+                                        logger.info(f"从CSS选择器父级找到昨收价: {prev_close}")
             except Exception as e:
-                print(f"使用CSS选择器查找黄金价格时出错: {str(e)}")
+                logger.warning(f"使用CSS选择器查找黄金价格时出错: {str(e)}")
             
             # 方法2: 查找ul列表中的黄金价格
             if not gold_price:
@@ -223,7 +223,7 @@ def crawl_gold_price():
                                 # 验证价格合理性
                                 if 300 <= price_val <= 2000:
                                     gold_price = price_val
-                                    print(f"从ul列表找到黄金价格: {gold_price}")
+                                    logger.info(f"从ul列表找到黄金价格: {gold_price}")
                             
                             # 提取昨收价 (prec class)
                             prec_div = li.find('div', class_='prec')
@@ -232,7 +232,7 @@ def crawl_gold_price():
                                 prec_match = re.search(r'([\d.]+)', prec_text)
                                 if prec_match:
                                     prev_close = float(prec_match.group(1))
-                                    print(f"找到昨收价: {prev_close}")
+                                    logger.info(f"找到昨收价: {prev_close}")
                             break
                     if gold_price:
                         break
@@ -251,7 +251,7 @@ def crawl_gold_price():
                                 # 验证价格合理性
                                 if 300 <= price_val <= 2000:
                                     gold_price = price_val
-                                    print(f"从金店价格找到黄金价格: {gold_price}")
+                                    logger.info(f"从金店价格找到黄金价格: {gold_price}")
                                     break
                     if gold_price:
                         break
@@ -271,7 +271,7 @@ def crawl_gold_price():
                         price_val = float(match.group(1))
                         if 300 <= price_val <= 2000:
                             gold_price = price_val
-                            print(f"从页面文本找到黄金价格: {gold_price}")
+                            logger.info(f"从页面文本找到黄金价格: {gold_price}")
                             break
             
             # 如果找到黄金价格，添加到结果
@@ -280,7 +280,7 @@ def crawl_gold_price():
                 price_change = 0
                 if prev_close:
                     price_change = gold_price - prev_close
-                    print(f"根据昨收价计算涨跌: {prev_close} -> {gold_price}, 涨跌: {price_change}")
+                    logger.info(f"根据昨收价计算涨跌: {prev_close} -> {gold_price}, 涨跌: {price_change}")
                 else:
                     # 尝试从数据库获取昨天的价格来计算涨跌
                     from records.models import MetalPrice
@@ -292,7 +292,7 @@ def crawl_gold_price():
                     ).first()
                     if yesterday_gold:
                         price_change = gold_price - float(yesterday_gold.price)
-                        print(f"根据昨日价格计算涨跌: {yesterday_gold.price} -> {gold_price}, 涨跌: {price_change}")
+                        logger.info(f"根据昨日价格计算涨跌: {yesterday_gold.price} -> {gold_price}, 涨跌: {price_change}")
                 
                 gold_prices.append({
                     'metal_name': '黄金',
@@ -302,9 +302,9 @@ def crawl_gold_price():
                     'crawl_date': datetime.now().date(),
                     'crawl_time': datetime.now()
                 })
-                print(f"成功获取黄金价格: {gold_price} 元/克, 涨跌: {round(price_change, 2)}")
+                logger.info(f"成功获取黄金价格: {gold_price} 元/克, 涨跌: {round(price_change, 2)}")
             else:
-                print("未找到黄金价格，使用默认值（示例数据）")
+                logger.warning("未找到黄金价格，使用默认值（示例数据）")
                 gold_prices.append({
                     'metal_name': '黄金',
                     'price': None,  # None 表示数据无效（爬取失败时的占位）
@@ -316,7 +316,7 @@ def crawl_gold_price():
                 })
         
     except Exception as e:
-        print(f"爬取黄金价格时出错: {str(e)}")
+        logger.warning(f"爬取黄金价格时出错: {str(e)}")
         import traceback
         traceback.print_exc()
         # 出错时使用示例数据占位，不写入硬编码价格
@@ -379,7 +379,7 @@ def save_metal_prices_to_db(prices_data):
     cutoff_date = today - timedelta(days=30)
     deleted_count, _ = MetalPrice.objects.filter(crawl_date__lt=cutoff_date).delete()
     if deleted_count > 0:
-        print(f"清理历史数据: 删除 {cutoff_date} 之前的 {deleted_count} 条记录")
+        logger.info(f"清理历史数据: 删除 {cutoff_date} 之前的 {deleted_count} 条记录")
     
     for data in prices_data:
         try:
@@ -395,7 +395,7 @@ def save_metal_prices_to_db(prices_data):
             )
             saved_prices.append(metal_price)
         except Exception as e:
-            print(f"保存 {data['metal_name']} 价格时出错: {str(e)}")
+            logger.warning(f"保存 {data['metal_name']} 价格时出错: {str(e)}")
     
     return saved_prices
 
@@ -452,7 +452,7 @@ def clean_old_prices():
             for price in today_prices[1:]:
                 price.delete()
     
-    print("已清理旧的金属价格数据，每个金属每天只保留最新的一条记录")
+    logger.info("已清理旧的金属价格数据，每个金属每天只保留最新的一条记录")
 
 
 def fetch_and_save_prices(use_sample=False):
@@ -466,12 +466,12 @@ def fetch_and_save_prices(use_sample=False):
     
     today = date.today()
     
-    print(f"开始获取金属价格数据，日期: {today}")
+    logger.info(f"开始获取金属价格数据，日期: {today}")
     
     # 先删除当天的所有旧数据，确保每天只保留最新的一次刷新数据
     deleted_count, _ = MetalPrice.objects.filter(crawl_date=today).delete()
     if deleted_count > 0:
-        print(f"已删除当天的 {deleted_count} 条旧价格数据")
+        logger.info(f"已删除当天的 {deleted_count} 条旧价格数据")
     
     if use_sample:
         prices_data = get_sample_metal_prices()
@@ -481,11 +481,11 @@ def fetch_and_save_prices(use_sample=False):
         
         # 如果爬取失败，使用示例数据
         if not prices_data:
-            print("金属价格爬取失败，使用备用数据")
+            logger.warning("金属价格爬取失败，使用备用数据")
             prices_data = get_sample_metal_prices()
         
         # 获取黄金价格
-        print("开始获取黄金价格...")
+        logger.info("开始获取黄金价格...")
         gold_prices = crawl_gold_price()
         
         # 将黄金价格添加到价格数据中
@@ -496,16 +496,16 @@ def fetch_and_save_prices(use_sample=False):
                 # 更新现有的黄金价格
                 existing_gold[0]['price'] = gold_prices[0]['price']
                 existing_gold[0]['price_change'] = gold_prices[0]['price_change']
-                print(f"更新黄金价格: {gold_prices[0]['price']} 元/克")
+                logger.info(f"更新黄金价格: {gold_prices[0]['price']} 元/克")
             else:
                 # 添加新的黄金价格
                 prices_data.extend(gold_prices)
-                print(f"添加黄金价格: {gold_prices[0]['price']} 元/克")
+                logger.info(f"添加黄金价格: {gold_prices[0]['price']} 元/克")
     
     # 保存新数据到数据库
-    print(f"准备保存 {len(prices_data)} 种金属的价格数据")
+    logger.info(f"准备保存 {len(prices_data)} 种金属的价格数据")
     saved_prices = save_metal_prices_to_db(prices_data)
     
-    print(f"成功保存 {len(saved_prices)} 种金属的最新价格数据")
+    logger.info(f"成功保存 {len(saved_prices)} 种金属的最新价格数据")
     
     return saved_prices

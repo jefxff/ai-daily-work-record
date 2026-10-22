@@ -37,6 +37,24 @@ def get_failure_count(ip, username):
     return cache.get(_cache_key(ip, username), 0)
 
 
+def register_throttled(ip, limit=5):
+    """注册限流：同一 IP 每小时最多 limit 次提交，返回 (是否超限, 已用次数)。
+
+    注册是匿名可写入口，不设限会被刷号（每次创建 User + UserProfile 两条记录）。
+    """
+    key = f"register-throttle:{ip or 'unknown'}"
+    used = cache.get(key, 0)
+    return used >= limit, used
+
+
+def record_register(ip):
+    """记录一次注册提交，返回累计次数。"""
+    key = f"register-throttle:{ip or 'unknown'}"
+    used = cache.get(key, 0) + 1
+    cache.set(key, used, 3600)
+    return used
+
+
 def client_ip(request):
     """取客户端真实 IP。
 

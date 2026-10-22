@@ -12,6 +12,9 @@
     <a class="btn btn-secondary" href="{% url 'accounts:login' %}">返回登录</a>
 </div>
 {% else %}
+{% if throttle_error %}
+<div class="auth-alert auth-alert-error">{{ throttle_error }}</div>
+{% endif %}
 {% if form.non_field_errors %}
 <div class="auth-alert auth-alert-error">{{ form.non_field_errors|join:'；' }}</div>
 {% endif %}

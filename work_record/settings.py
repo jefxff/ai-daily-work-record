@@ -123,6 +123,14 @@ SECURE_CONTENT_TYPE_NOSNIFF = True        # 防 MIME 嗅探
 SECURE_REFERRER_POLICY = 'same-origin'     # 仅同源发送 Referer
 X_FRAME_OPTIONS = 'DENY'                  # 禁止任何 iframe 嵌入
 
+# 图片「解压炸弹」防护（Pillow）：限制单图最大像素数，避免小体积文件解压后
+# 撑爆内存（如 50000x50000 的 PNG 解压需数十 GB）。用于附件缩略图生成。
+try:
+    from PIL import Image as _PIL_Image
+    _PIL_Image.MAX_IMAGE_PIXELS = 64_000_000  # 约 8000x8000，超出 Pillow 抛 DecompressionBombError
+except ImportError:
+    pass
+
 # 全站 HTTPS 部署开关（默认关闭）。
 # 现状：系统在内网以 http://IP:8000 直连访问，因此下面这些项默认不开启——
 # 一旦开启而没有真实 TLS，浏览器会因为 Secure cookie 收不到而定不上登录态。
@@ -324,9 +332,15 @@ BACKUP_ALLOWED_ROOTS = [
 ]
 
 # CORS settings
+# 说明（SEC-L8）：本站为「Django 模板 + 同源 AJAX」的单体应用，页面不存在跨域
+# 调用；corsheaders 仅为将来可能的独立前端预留。为避免误开凭证造成跨域窃取，
+# 这里显式关闭凭证携带，并把来源收敛到本机（未列入的 Origin 一律不放行）。
+CORS_ALLOW_CREDENTIALS = False
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:8000",
     "http://127.0.0.1:8000",
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
 ]
 
 CORS_ALLOW_METHODS = [

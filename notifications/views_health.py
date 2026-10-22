@@ -11,6 +11,7 @@
 """
 import os
 import shutil
+import time
 from datetime import datetime
 
 from django.conf import settings
@@ -23,6 +24,7 @@ from work_record.health import probe_health
 
 from . import scheduler
 from .models import ScheduledTask
+from .views_metrics import _PROCESS_START
 
 _CHECK_LABELS = {
     "database": "数据库连接",
@@ -43,6 +45,19 @@ def _human_size(num):
             return f"{size:.1f} {unit}"
         size /= 1024
     return f"{size:.1f} TB"
+
+
+def _fmt_uptime(seconds):
+    """秒数格式化为「X天X小时X分」；用于进程运行时长展示。"""
+    seconds = max(0, int(seconds))
+    days, rem = divmod(seconds, 86400)
+    hours, rem = divmod(rem, 3600)
+    minutes = rem // 60
+    if days:
+        return f"{days} 天 {hours} 小时 {minutes} 分"
+    if hours:
+        return f"{hours} 小时 {minutes} 分"
+    return f"{minutes} 分"
 
 
 def _dir_size(path):
@@ -136,5 +151,8 @@ def system_health(request):
         "backups_dir_size": _human_size(_dir_size(backups_dir)),
         "media_root": media_root,
         "media_root_size": _human_size(_dir_size(media_root)),
+        # L9：进程运行时长从匿名探针迁到本页（仅 system.read 管理员可见）
+        "uptime_seconds": int(time.monotonic() - _PROCESS_START),
+        "uptime_text": _fmt_uptime(int(time.monotonic() - _PROCESS_START)),
         "now": timezone.now(),
     })

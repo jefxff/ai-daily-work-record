@@ -165,11 +165,11 @@ class ProbeViewTests(TestCase):
         self.assertEqual(resp["Cache-Control"], "no-store")
         data = resp.json()
         self.assertEqual(data["status"], "ok")
-        self.assertEqual(data["service"], "daily-work-record")
-        self.assertIn("timestamp", data)
-        self.assertIn("uptime_seconds", data)
-        # 不泄露版本 / 配置等敏感信息
-        for leak in ("version", "settings", "secret", "db"):
+        # L9：匿名探针只返回 status，不再暴露 service/timestamp/uptime
+        self.assertEqual(set(data.keys()), {"status"})
+        # 不泄露版本 / 配置 / 运行时长等敏感信息
+        for leak in ("version", "settings", "secret", "db", "uptime_seconds",
+                     "service", "timestamp"):
             self.assertNotIn(leak, data)
 
 

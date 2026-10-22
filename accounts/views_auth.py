@@ -13,7 +13,10 @@ from django.views.decorators.http import require_http_methods
 
 from .forms import LoginForm, RegisterForm
 from .models import LoginLog, UserProfile
-from .security import clear_failures, client_ip, get_failure_count, is_locked, record_failure
+from .security import (
+    clear_failures, client_ip, get_failure_count, is_locked,
+    record_failure, record_register, register_throttled,
+)
 
 
 def _log(request, *, user, username, success, reason="", login_type=LoginLog.LoginType.LOGIN):
@@ -107,7 +110,18 @@ def register_view(request):
     if request.user.is_authenticated:
         return redirect("/")
     submitted = False
+    ip = client_ip(request)
     if request.method == "POST":
+        # L7：注册限流——同一 IP 每小时最多 5 次提交，防刷号
+        throttled, _used = register_throttled(ip)
+        if throttled:
+            form = RegisterForm()
+            return render(request, "accounts/register.html", {
+                "form": form,
+                "submitted": False,
+                "throttle_error": "提交过于频繁，请一小时后再试。",
+            }, status=429)
+        record_register(ip)
         form = RegisterForm(request.POST)
         if form.is_valid():
             data = form.cleaned_data
