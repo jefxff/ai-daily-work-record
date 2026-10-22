@@ -461,11 +461,11 @@
                     <div class="module-sub-stats">
                         <div class="sub-stat">
                             <div class="sub-stat-value">{{ insurance_total_count }}</div>
-                            <div class="sub-stat-label">总记录数</div>
+                            <div class="sub-stat-label">标的总数</div>
                         </div>
                         <div class="sub-stat">
                             <div class="sub-stat-value">{{ insurance_not_expired_count }}</div>
-                            <div class="sub-stat-label">未到期保险</div>
+                            <div class="sub-stat-label">在保标的</div>
                         </div>
                     </div>
                 </div>
@@ -474,28 +474,28 @@
                     <table>
                         <thead>
                             <tr>
-                                <th scope="col">公司名称</th>
-                                <th scope="col">标题</th>
-                                <th scope="col">截止日期</th>
+                                <th scope="col">标的</th>
+                                <th scope="col">当前保司</th>
+                                <th scope="col">到期日</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {% for insurance in insurances|slice:':5' %}
+                            {% for subject in insurance_subjects %}
                             <tr>
-                                <td data-label="公司名称">{{ insurance.company_name }}</td>
-                                <td data-label="标题">{{ insurance.title }}</td>
-                                <td data-label="截止日期">{{ insurance.end_date|date:"Y-m-d" }}</td>
+                                <td data-label="标的">{{ subject.label }}</td>
+                                <td data-label="当前保司">{{ subject.latest_insurer }}</td>
+                                <td data-label="到期日">{{ subject.latest.end|date:"Y-m-d" }}</td>
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="3" class="empty-cell">📭 暂无数据</td>
+                                <td colspan="3" class="empty-cell">📭 暂无临期标的</td>
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
                 <div class="module-footer">
-                    <a href="{% url 'insurance_list' %}" class="view-more-btn">查看更多</a>
+                    <a href="{% url 'insurance_subject_list' %}" class="view-more-btn">查看更多</a>
                 </div>
             </div>
 

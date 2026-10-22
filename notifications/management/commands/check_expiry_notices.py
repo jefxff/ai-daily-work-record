@@ -1,13 +1,15 @@
-"""到期提醒扫描：保险 / 证照 / 档案合同 / 借阅归还。
+"""到期提醒扫描：证照 / 档案合同 / 借阅归还。
 
-用法（Windows 计划任务 / cron 每日执行）：
+保险到期/续保预警已独立为 check_insurance_renewal（按标的与保单年度聚合，
+避免同一标的同年度多条保单重复提醒）。
+
+用法（进程内调度器 / cron 每日执行）：
     python manage.py check_expiry_notices              # 默认提前 7 天
     python manage.py check_expiry_notices --days 14
 幂等：dedup_context 含对象主键与日期，同日重跑不会重复发送。
 
 通知对象（模块无归属用户字段，按 RBAC 权限定位接收人）：
-- 保险/档案合同：拥有对应模块 read 权限的用户
-- 证照/借阅：拥有 archive.read 权限的用户
+- 证照/借阅/档案合同：拥有 archive.read 权限的用户
 """
 from datetime import timedelta
 
@@ -18,7 +20,7 @@ from notifications import services
 
 
 class Command(BaseCommand):
-    help = "到期提醒扫描：保险 / 证照 / 档案合同 / 借阅归还"
+    help = "到期提醒扫描：证照 / 档案合同 / 借阅归还"
 
     def add_arguments(self, parser):
         parser.add_argument("--days", type=int, default=7,
@@ -29,7 +31,6 @@ class Command(BaseCommand):
         deadline = today + timedelta(days=opts["days"])
         stats = []
 
-        stats.append(self._insurance(today, deadline))
         stats.append(self._licenses(today, deadline))
         stats.append(self._archive_contracts(today, deadline))
         stats.append(self._borrows(today))
@@ -38,31 +39,6 @@ class Command(BaseCommand):
             self.stdout.write(f"{label}: 新建 {created} 条")
 
     # ---- 各场景 ----
-
-    def _insurance(self, today, deadline):
-        from records.models import Insurance
-
-        created = 0
-        targets = Insurance.objects.filter(
-            end_date__gte=today, end_date__lte=deadline,
-        )
-        recipients = list(services.users_with_perm("insurance", "read"))
-        for item in targets:
-            for user in recipients:
-                if services.emit(
-                    "insurance_expiry",
-                    recipient=user,
-                    context={
-                        "title": item.title,
-                        "company_name": item.company_name,
-                        "end_date": item.end_date,
-                        "days_left": (item.end_date - today).days,
-                    },
-                    dedup_context=f"insurance:{item.pk}:{today}",
-                    link=f"/insurance/detail/{item.pk}/",
-                ):
-                    created += 1
-        return "保险到期", created
 
     def _licenses(self, today, deadline):
         from archive.models import License

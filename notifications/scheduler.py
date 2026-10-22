@@ -45,6 +45,7 @@ _FAIL_STREAK = {}
 # 各命令允许的参数白名单（任务 code → 参数键）
 COMMAND_PARAMS = {
     "check_expiry_notices": {"days"},
+    "check_insurance_renewal": {"days"},
     "check_daily_incomplete": {"skip_history"},
     "notify_expire": {"purge_days"},
     "notify_stats": {"check"},

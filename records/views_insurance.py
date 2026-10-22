@@ -6,10 +6,13 @@
 - 续保视图：以上期保单为模板预填，保存后自动挂接标的/保单年度并留痕。
 """
 
+from urllib.parse import quote
+
 from django.core.paginator import Paginator
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
+from django.urls import reverse
 from django.utils import timezone
 
 from accounts.decorators import perm_required
@@ -22,6 +25,14 @@ from .models import Insurance
 
 
 PER_PAGE_CHOICES = (10, 30, 50)
+
+
+def _annotate_one_off(subjects):
+    """给聚合结果补一次性标记，供模板展示与过滤。"""
+    keys = insurance_services.one_off_keys()
+    for subject in subjects:
+        subject.is_one_off = subject.key in keys
+    return subjects
 
 
 def _per_page(request):
@@ -39,7 +50,8 @@ def _all_records():
 @perm_required('insurance', 'read')
 def insurance_subject_list(request):
     today = timezone.localdate()
-    subjects = grouping.build_subjects(_all_records(), today=today)
+    subjects = _annotate_one_off(
+        grouping.build_subjects(_all_records(), today=today))
     summary = grouping.summarize(subjects)
 
     q = (request.GET.get('q') or '').strip()
@@ -48,7 +60,12 @@ def insurance_subject_list(request):
     sort = request.GET.get('sort') or 'expiry'
 
     filtered = grouping.filter_subjects(subjects, q=q, kind=kind, status=status)
+    if status == 'expired':
+        filtered = [s for s in filtered if not s.is_one_off]
     filtered = grouping.sort_subjects(filtered, sort=sort)
+
+    summary['expired'] = sum(
+        1 for s in subjects if s.status == 'expired' and not s.is_one_off)
 
     paginator = Paginator(filtered, _per_page(request))
     page_obj = paginator.get_page(request.GET.get('page') or 1)
@@ -70,7 +87,8 @@ def insurance_subject_detail(request):
     key = (request.GET.get('key') or '').strip()
     if not key:
         raise Http404('缺少保险标的参数')
-    subjects = grouping.build_subjects(_all_records(), today=timezone.localdate())
+    subjects = _annotate_one_off(
+        grouping.build_subjects(_all_records(), today=timezone.localdate()))
     subject = next((s for s in subjects if s.key == key), None)
     if subject is None:
         raise Http404('保险标的不存在')
@@ -82,13 +100,53 @@ def insurance_subject_detail(request):
 @perm_required('insurance', 'read')
 def insurance_renewal_report(request):
     today = timezone.localdate()
-    subjects = grouping.build_subjects(_all_records(), today=today)
+    subjects = _annotate_one_off(
+        grouping.build_subjects(_all_records(), today=today))
     report = grouping.build_report(subjects)
     summary = grouping.summarize(subjects)
+
+    report['should_renew'] = [s for s in report['should_renew'] if not s.is_one_off]
+    report['upcoming'] = [s for s in report['upcoming'] if not s.is_one_off]
+    report['should_renew_count'] = len(report['should_renew'])
+    report['upcoming_count'] = len(report['upcoming'])
+    summary['expired'] = sum(
+        1 for s in subjects if s.status == 'expired' and not s.is_one_off)
+
     return render(request, 'records/insurance_renewal_report.html', {
         'report': report,
         'summary': summary,
     })
+
+
+@perm_required('insurance', 'update')
+def insurance_subject_one_off(request):
+    """把标的标记为一次性保险 / 恢复续保监控。
+
+    一次性标的不会再出现在应续未续、临期报告与定时提醒中；
+    标记与恢复均写操作留痕，便于回溯误操作。
+    """
+    if request.method != 'POST':
+        raise Http404('仅支持 POST')
+    key = (request.POST.get('key') or '').strip()
+    subject = insurance_services.subject_by_key(key)
+    if subject is None:
+        raise Http404('保险标的不存在')
+
+    action = request.POST.get('action')
+    if action not in ('mark', 'unmark'):
+        raise Http404('未知操作')
+    subject.is_one_off = action == 'mark'
+    subject.save(update_fields=['is_one_off', 'updated_at'])
+    log_operation(
+        request, '保险',
+        '标记一次性' if subject.is_one_off else '恢复续保监控',
+        f'保险标的#{subject.id}',
+        f'{subject.label}：{"不再续保，停止提醒" if subject.is_one_off else "恢复续保提醒"}',
+    )
+
+    if request.POST.get('next') == 'detail':
+        return redirect(f"{reverse('insurance_subject_detail')}?key={quote(key)}")
+    return redirect('insurance_renewal_report')
 
 
 @perm_required('insurance', 'create')

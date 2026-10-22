@@ -91,6 +91,7 @@
                         <td data-label="标的">
                             <a class="ins-subject-link" href="{% url 'insurance_subject_detail' %}?key={{ s.key|urlencode }}">{{ s.label }}</a>
                             <span class="status-badge {{ s.kind_badge_class }}">{{ s.kind_label }}</span>
+                            {% if s.is_one_off %}<span class="status-badge">一次性</span>{% endif %}
                         </td>
                         <td data-label="当前保司">{{ s.latest_insurer }}</td>
                         <td data-label="当前保单期间">
@@ -98,7 +99,9 @@
                             {% if s.latest.record_count > 1 %}<span class="ins-muted">（{{ s.latest.record_count }} 条）</span>{% endif %}
                         </td>
                         <td data-label="到期状态">
-                            {% if s.status == 'expired' %}
+                            {% if s.is_one_off %}
+                            <span class="status-badge">一次性保险 · 不再续保</span>
+                            {% elif s.status == 'expired' %}
                             <span class="status-badge danger">应续未续 · 过期 {{ s.expired_days }} 天</span>
                             {% elif s.status == 'expiring' %}
                             <span class="status-badge warning">即将到期 · 剩 {{ s.days_left }} 天</span>
@@ -128,7 +131,9 @@
                             <a class="btn-transparent btn-sm" href="{% url 'insurance_subject_detail' %}?key={{ s.key|urlencode }}">时间线</a>
                             <a class="btn-transparent btn-sm" href="{% url 'insurance_detail' s.latest.primary_record.id %}" data-modal-detail data-modal-title="保险详情">当前保单</a>
                             {% can "insurance" "create" %}
+                            {% if not s.is_one_off %}
                             <a class="btn-transparent btn-sm" href="{% url 'insurance_renew' %}?from_record={{ s.latest.primary_record.id }}" data-modal-add data-modal-title="续保保险 · {{ s.label }}">续保</a>
+                            {% endif %}
                             {% endcan %}
                         </td>
                     </tr>

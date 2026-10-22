@@ -1,4 +1,5 @@
 {% extends 'records/base.html' %}
+{% load accounts_tags %}
 
 {% block page_title %}保险续保报告 - 每日工作记录管理网站{% endblock %}
 
@@ -72,6 +73,18 @@
                         <td data-label="操作" class="col-actions">
                             <a class="btn-transparent btn-sm" href="{% url 'insurance_subject_detail' %}?key={{ s.key|urlencode }}">时间线</a>
                             <a class="btn-transparent btn-sm" href="{% url 'insurance_detail' s.latest.primary_record.id %}" data-modal-detail data-modal-title="保险详情">最后保单</a>
+                            {% can "insurance" "create" %}
+                            <a class="btn-transparent btn-sm" href="{% url 'insurance_renew' %}?from_record={{ s.latest.primary_record.id }}" data-modal-add data-modal-title="续保保险 · {{ s.label }}">续保</a>
+                            {% endcan %}
+                            {% can "insurance" "update" %}
+                            <form method="post" action="{% url 'insurance_subject_one_off' %}" class="d-inline" onsubmit="return confirm('标记为一次性保险后，该标的将不再出现在应续未续与到期提醒中。确定吗？');">
+                                {% csrf_token %}
+                                <input type="hidden" name="key" value="{{ s.key }}">
+                                <input type="hidden" name="action" value="mark">
+                                <input type="hidden" name="next" value="report">
+                                <button type="submit" class="btn-transparent btn-sm">列为一次性</button>
+                            </form>
+                            {% endcan %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -154,6 +167,18 @@
                         <td data-label="剩余"><span class="status-badge warning">{{ s.days_left }} 天</span></td>
                         <td data-label="操作" class="col-actions">
                             <a class="btn-transparent btn-sm" href="{% url 'insurance_subject_detail' %}?key={{ s.key|urlencode }}">时间线</a>
+                            {% can "insurance" "create" %}
+                            <a class="btn-transparent btn-sm" href="{% url 'insurance_renew' %}?from_record={{ s.latest.primary_record.id }}" data-modal-add data-modal-title="续保保险 · {{ s.label }}">续保</a>
+                            {% endcan %}
+                            {% can "insurance" "update" %}
+                            <form method="post" action="{% url 'insurance_subject_one_off' %}" class="d-inline" onsubmit="return confirm('标记为一次性保险后，该标的将不再出现在应续未续与到期提醒中。确定吗？');">
+                                {% csrf_token %}
+                                <input type="hidden" name="key" value="{{ s.key }}">
+                                <input type="hidden" name="action" value="mark">
+                                <input type="hidden" name="next" value="report">
+                                <button type="submit" class="btn-transparent btn-sm">列为一次性</button>
+                            </form>
+                            {% endcan %}
                         </td>
                     </tr>
                     {% endfor %}

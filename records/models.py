@@ -275,6 +275,10 @@ class InsuranceSubject(models.Model):
     insurance_type = models.CharField(max_length=100, verbose_name='险种')
     department = models.CharField(max_length=50, blank=True, default='', verbose_name='默认部门')
     remarks = models.TextField(null=True, blank=True, verbose_name='备注')
+    is_one_off = models.BooleanField(
+        default=False, verbose_name='一次性保险',
+        help_text='旅游意外、诉前保全、工程施工等不续保的标的，勾选后不再提醒续保',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

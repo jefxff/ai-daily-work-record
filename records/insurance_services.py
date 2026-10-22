@@ -114,6 +114,77 @@ def detach_record(record):
     cleanup_year(record.policy_year_id)
 
 
+def subject_key(subject):
+    """标的主档对应的聚合键（与 insurance_grouping 的 key 口径一致）。"""
+    if subject.kind == 'car':
+        return f'car:{subject.plate}'
+    return f'noncar:{subject.insurance_type}'
+
+
+def subject_by_key(key):
+    """按聚合键取标的主档，供一次性标记等操作使用。"""
+    if key.startswith('car:'):
+        return InsuranceSubject.objects.filter(kind='car', plate=key[4:]).first()
+    if key.startswith('noncar:'):
+        return InsuranceSubject.objects.filter(
+            kind='non_car', insurance_type=key[7:]).first()
+    return None
+
+
+def one_off_keys():
+    """已标记为一次性保险的标的聚合键集合。"""
+    return {
+        (f'car:{s.plate}' if s.kind == 'car' else f'noncar:{s.insurance_type}')
+        for s in InsuranceSubject.objects.filter(is_one_off=True)
+    }
+
+
+def renewal_alerts(days=30, today=None):
+    """按标的汇总临期待续与应续未续（阶段 3 预警口径）。
+
+    以每个标的的最新保单年度为准，避免同年度多条保单重复提醒：
+    - 应续未续：最新年度截止日早于今天（之后没有新的年度覆盖今日）；
+    - 临期待续：最新年度覆盖今天，且剩余天数不超过 ``days``。
+
+    返回 {'due': [...], 'lapsed': [...], ...}；每个元素含 subject/year/record
+    与 days_left、overdue_days，供定时提醒与页面展示共用。
+    """
+    from datetime import date
+
+    today = today or date.today()
+    due, lapsed = [], []
+    for subject in InsuranceSubject.objects.filter(is_one_off=False):
+        year = subject.policy_years.order_by('-end_date', '-id').first()
+        if year is None:
+            continue
+        record = year.records.order_by('-end_date', '-id').first()
+        if record is None:
+            continue
+        item = {
+            'subject': subject,
+            'year': year,
+            'record': record,
+            'days_left': (year.end_date - today).days,
+            'overdue_days': max(0, (today - year.end_date).days),
+        }
+        if year.end_date < today:
+            lapsed.append(item)
+        elif item['days_left'] <= days:
+            due.append(item)
+
+    due.sort(key=lambda i: (i['days_left'], i['subject'].label))
+    lapsed.sort(key=lambda i: (-i['overdue_days'], i['subject'].label))
+    return {
+        'due': due,
+        'lapsed': lapsed,
+        'days': days,
+        'today': today,
+        'due_count': len(due),
+        'lapsed_count': len(lapsed),
+        'due_premium': sum((i['year'].premium for i in due), Decimal('0')),
+    }
+
+
 def renewal_initial(record):
     """续保预填数据：沿用上期保司/标题/部门/备注/保费，日期顺推一年。"""
     from datetime import timedelta

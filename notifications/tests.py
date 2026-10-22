@@ -463,18 +463,20 @@ class ScanCommandTests(TestCase):
         )
 
     def test_insurance_expiry_notice(self):
-        """保险临期：有 insurance.read 权限的用户收到提醒。"""
+        """保险临期：有 insurance.read 权限的用户收到提醒（按标的年度聚合）。"""
+        from records.insurance_services import attach_record
         from records.models import Insurance
         from django.core.management import call_command
 
         grant_perms(self.user, "insurance.read")
-        Insurance.objects.create(
+        record = Insurance.objects.create(
             company_name="测试保险", title="财产险", premium=100,
             issue_date=timezone.now().date() - timedelta(days=300),
             end_date=timezone.now().date() + timedelta(days=3),
             department="行政部",
         )
-        call_command("check_expiry_notices")
+        attach_record(record)
+        call_command("check_insurance_renewal")
         self.assertEqual(
             Notification.objects.filter(template__code="insurance_expiry").count(), 1,
         )
@@ -540,18 +542,22 @@ class ScheduledTaskTests(TestCase):
         self.staff = User.objects.create_user("staff", password="x12345678")
 
     def test_seed_tasks_exist(self):
-        """迁移种子：5 个内置任务存在且默认触发配置正确。"""
+        """迁移种子：6 个内置任务存在且默认触发配置正确。"""
         from notifications.models import ScheduledTask
 
         codes = set(ScheduledTask.objects.values_list("code", flat=True))
         self.assertEqual(codes, {
-            "check_expiry_notices", "check_daily_incomplete",
-            "notify_expire", "notify_stats", "notify_knowledge_todo",
+            "check_expiry_notices", "check_insurance_renewal",
+            "check_daily_incomplete", "notify_expire", "notify_stats",
+            "notify_knowledge_todo",
         })
         expiry = ScheduledTask.objects.get(code="check_expiry_notices")
         self.assertTrue(expiry.enabled)
         self.assertEqual(expiry.trigger_type, ScheduledTask.TriggerType.DAILY)
         self.assertEqual(expiry.params["days"], 7)
+        renewal = ScheduledTask.objects.get(code="check_insurance_renewal")
+        self.assertTrue(renewal.enabled)
+        self.assertEqual(renewal.params["days"], 30)
         self.assertEqual(ScheduledTask.objects.get(code="notify_stats").interval_minutes, 720)
         kb_todo = ScheduledTask.objects.get(code="notify_knowledge_todo")
         self.assertTrue(kb_todo.enabled)

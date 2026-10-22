@@ -431,7 +431,7 @@
 
         // 按任务编码显示对应的参数项
         function setParamFields(code) {
-            paramDays.style.display = code === 'check_expiry_notices' ? '' : 'none';
+            paramDays.style.display = (code === 'check_expiry_notices' || code === 'check_insurance_renewal') ? '' : 'none';
             paramSkip.style.display = code === 'check_daily_incomplete' ? '' : 'none';
             paramPurge.style.display = code === 'notify_expire' ? '' : 'none';
             paramCheck.style.display = code === 'notify_stats' ? '' : 'none';

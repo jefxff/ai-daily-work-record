@@ -127,11 +127,11 @@
         {% endcan_view %}
 
         {% can_view "insurance" %}
-        <a class="home-module" href="{% url 'insurance_list' %}">
+        <a class="home-module" href="{% url 'insurance_subject_list' %}">
             <div class="home-module__top"><span class="home-module__icon">🛡️</span><span class="home-module__name">保险</span></div>
             <div class="home-module__main">{{ total_insurance }}</div>
             <div class="home-module__sub"><span>30 天内到期</span><b>{{ insurance_due_soon_count }}</b></div>
-            <div class="home-module__sub"><span>已过期</span><b>{{ insurance_expired_count }}</b></div>
+            <div class="home-module__sub"><span>应续未续</span><b>{{ insurance_expired_count }}</b></div>
         </a>
         {% endcan_view %}
 
@@ -243,36 +243,31 @@
     {% if 'insurance' in mods %}
     <div id="homePaneInsurance" role="tabpanel" aria-labelledby="homeTabInsurance" data-home-pane="insurance" {% if focus_tab != 'insurance' %}hidden{% endif %}>
         <ul class="home-rows">
-            {% for insurance in insurance_due_soon %}
+            {% for subject in insurance_due_soon %}
             <li class="home-rows__item">
-                {% if request.user|can_do:'insurance.update' %}
-                <a class="home-row{% if insurance.days_level == 'danger' %} home-row--danger{% elif insurance.days_level == 'warning' %} home-row--warning{% endif %}"
-                   href="{% url 'insurance_edit' insurance.pk %}" data-modal-edit data-modal-title="编辑保险">
-                {% else %}
-                <a class="home-row{% if insurance.days_level == 'danger' %} home-row--danger{% elif insurance.days_level == 'warning' %} home-row--warning{% endif %}"
-                   href="{% url 'insurance_list' %}">
-                {% endif %}
+                <a class="home-row{% if subject.days_level == 'danger' %} home-row--danger{% elif subject.days_level == 'warning' %} home-row--warning{% endif %}"
+                   href="{% url 'insurance_subject_detail' %}?key={{ subject.key|urlencode }}">
                     <span class="home-row__flag" aria-hidden="true"></span>
                     <div class="home-row__main">
-                        <p class="home-row__title" title="{{ insurance.title }}">{{ insurance.title }} · {{ insurance.company_name }}</p>
+                        <p class="home-row__title" title="{{ subject.label }}">{{ subject.label }} · {{ subject.kind_label }}</p>
                         <div class="home-row__meta">
-                            <span>{{ insurance.department }}</span>
+                            <span>{{ subject.latest_insurer }}</span>
                             <span class="home-row__sep" aria-hidden="true">·</span>
-                            <span>截止 {{ insurance.end_date|date:"Y-m-d" }}</span>
+                            <span>截止 {{ subject.latest.end|date:"Y-m-d" }}</span>
                         </div>
                     </div>
                     <div class="home-row__right">
-                        <span class="home-tag {% if insurance.days_level == 'danger' %}home-tag--danger{% elif insurance.days_level == 'warning' %}home-tag--warning{% else %}home-tag--gray{% endif %}">{{ insurance.days_text }}</span>
+                        <span class="home-tag {% if subject.days_level == 'danger' %}home-tag--danger{% elif subject.days_level == 'warning' %}home-tag--warning{% else %}home-tag--gray{% endif %}">{{ subject.days_text }}</span>
                         <span class="home-row__arrow" aria-hidden="true">›</span>
                     </div>
                 </a>
             </li>
             {% empty %}
-            <li class="home-empty">近 30 天无临期保险{% if insurance_later_count %}，另有 {{ insurance_later_count }} 份未到期{% endif %}</li>
+            <li class="home-empty">近 30 天无临期标的{% if insurance_later_count %}，另有 {{ insurance_later_count }} 个在保标的{% endif %}</li>
             {% endfor %}
         </ul>
         <div class="home-rows__more">
-            <a class="home-panel__link" href="{% url 'insurance_list' %}">查看全部 {{ insurance_due_soon_count }} 份临期保险 →</a>
+            <a class="home-panel__link" href="{% url 'insurance_subject_list' %}">查看全部保险标的 →</a>
         </div>
     </div>
     {% endif %}

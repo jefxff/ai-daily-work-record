@@ -289,6 +289,11 @@ def _parse_task_params(code, post):
             if not 1 <= days <= 365:
                 return None, "提前提醒天数需在 1~365 之间"
             return {"days": days}, None
+        if code == "check_insurance_renewal":
+            days = int(post.get("days", 30))
+            if not 1 <= days <= 365:
+                return None, "提前提醒天数需在 1~365 之间"
+            return {"days": days}, None
         if code == "check_daily_incomplete":
             return {"skip_history": post.get("skip_history") == "on"}, None
         if code == "notify_expire":

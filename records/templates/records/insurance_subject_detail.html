@@ -12,8 +12,21 @@
     <a href="{% url 'insurance_list' %}?search={{ subject.label|urlencode }}" class="btn-transparent">保单明细</a>
     <a href="{% url 'insurance_renewal_report' %}" class="btn-transparent">续保报告</a>
     {% can "insurance" "create" %}
+    {% if not subject.is_one_off %}
     <a href="{% url 'insurance_renew' %}?from_record={{ subject.latest.primary_record.id }}" class="btn-primary" data-modal-add data-modal-title="续保保险 · {{ subject.label }}">续保</a>
+    {% endif %}
     {% endcan %}
+    {% if subject.is_one_off %}
+    {% can "insurance" "update" %}
+    <form method="post" action="{% url 'insurance_subject_one_off' %}" class="d-inline">
+        {% csrf_token %}
+        <input type="hidden" name="key" value="{{ subject.key }}">
+        <input type="hidden" name="action" value="unmark">
+        <input type="hidden" name="next" value="detail">
+        <button type="submit" class="btn-transparent">恢复续保监控</button>
+    </form>
+    {% endcan %}
+    {% endif %}
 {% endblock %}
 
 {% block content %}
@@ -26,7 +39,11 @@
             <h2>{{ subject.label }}</h2>
             <div class="ins-badges">
                 <span class="status-badge {{ subject.kind_badge_class }}">{{ subject.kind_label }}</span>
+                {% if subject.is_one_off %}
+                <span class="status-badge">一次性保险</span>
+                {% else %}
                 <span class="status-badge {{ subject.badge_class }}">{{ subject.status_label }}</span>
+                {% endif %}
                 {% if subject.has_gap %}<span class="status-badge warning">断档 {{ subject.max_gap_days }} 天</span>{% endif %}
                 {% if subject.has_overlap %}<span class="status-badge info">期间有重叠</span>{% endif %}
                 {% if subject.insurer_changed %}<span class="status-badge info">最近一次换保司</span>{% endif %}
@@ -35,7 +52,9 @@
         <div class="ins-detail-meta">
             <span>当前保司：{{ subject.latest_insurer }}</span>
             <span>当前期间：{{ subject.latest_period }}</span>
-            {% if subject.status == 'expired' %}
+            {% if subject.is_one_off %}
+            <span>一次性保险，不再续保，也不会计入续保提醒</span>
+            {% elif subject.status == 'expired' %}
             <span class="ins-up">已过期 {{ subject.expired_days }} 天，尚未录入续保</span>
             {% elif subject.status == 'pending' %}
             <span>尚未生效</span>

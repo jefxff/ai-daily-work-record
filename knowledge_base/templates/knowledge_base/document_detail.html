@@ -834,7 +834,7 @@
     var mmCanvas = document.getElementById('kbMindmapCanvas');
     if (!tabs.length || !readView || !outlineView || !mindmapView || !mmCanvas) return;
 
-    var apiUrl = '{% url 'knowledge_base:api_doc_tree' document.pk %}';
+    var apiUrl = "{% url 'knowledge_base:api_doc_tree' document.pk %}";
     var titleEl = document.querySelector('.kb-doc-title-serif');
     var docTitle = titleEl ? titleEl.textContent.trim() : '文档';
     var treePromise = null;
@@ -854,20 +854,49 @@
     }
 
     /* 导图树：结构化文档（outline 模式）直接用节点树；
-       markdown 文档的 md_to_tree 是扁平列表（标题和段落同级），按标题层级
-       分组成树，非标题节点不进导图——导图展示的是文档结构，不是全文。 */
+       markdown 文档的 md_to_tree 是扁平列表（标题和段落同级），这里按标题
+       层级分组成树，**所有非标题节点（段落 / 列表项 / todo / 引用 / 代码块）
+       都挂到它前面最近的那个祖先标题下当叶子子节点**——确保导图覆盖全文。
+       divider 节点不进导图（纯视觉分隔，没有实质内容）。 */
     function buildMapTree(data) {
         var nodes = (data && data.tree) || [];
         if (data && data.editor_mode === 'outline') return nodes;
-        var roots = [], stack = [];
+        var roots = [], stack = [];  // stack: [{ level, node }]
+        var lastHeadingNode = null;  // 最近一次见到的标题节点（供正文挂载）
         nodes.forEach(function (n) {
-            if (n.type !== 'heading') return;
-            var level = n.heading_level || 1;
-            while (stack.length && stack[stack.length - 1].level >= level) stack.pop();
-            var item = { text: n.text, type: 'heading', children: [], collapsed: false };
-            if (stack.length) stack[stack.length - 1].node.children.push(item);
-            else roots.push(item);
-            stack.push({ level: level, node: item });
+            if (n.type === 'divider') return;
+            if (n.type === 'heading') {
+                var level = n.heading_level || 1;
+                while (stack.length && stack[stack.length - 1].level >= level) stack.pop();
+                var item = {
+                    text: n.text || '', type: 'heading', heading_level: level,
+                    children: [], collapsed: false
+                };
+                if (stack.length) stack[stack.length - 1].node.children.push(item);
+                else roots.push(item);
+                stack.push({ level: level, node: item });
+                lastHeadingNode = item;
+            } else {
+                // 正文节点：优先挂到最近的标题下；没有前置标题时挂根层
+                var leaf = {
+                    text: n.text || '', type: n.type || 'text',
+                    done: !!n.done, due: n.due || '',
+                    children: [], collapsed: false
+                };
+                // 代码块没有 text 正文存在 note 里，导图里显示 info string + 行数
+                if (n.type === 'code') {
+                    var lines = (n.note || '').split('\n').length;
+                    leaf.text = (n.text || '代码块') + '（' + lines + ' 行）';
+                }
+                // ref：优先显示标签
+                if (n.type === 'ref') leaf.text = n.ref_label || n.text || '';
+
+                if (lastHeadingNode) {
+                    lastHeadingNode.children.push(leaf);
+                } else {
+                    roots.push(leaf);
+                }
+            }
         });
         return roots;
     }

@@ -134,6 +134,12 @@ def emit(template_code, *, recipient, context=None, dedup_context=None,
     )
 
 
+def has_emitted(template_code, recipient, dedup_context):
+    """按业务幂等键判断是否已触发过（供定时任务统计真实新建数）。"""
+    key = _hash(template_code, recipient.pk, dedup_context)
+    return Notification.objects.filter(dedup_key=key).exists()
+
+
 def announce(title, content, *, created_by, link="", priority="normal",
              expires_days=None, recipients=None):
     """管理员系统公告批量推送（模板 system_announcement，无幂等/聚合）。

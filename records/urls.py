@@ -73,6 +73,7 @@ urlpatterns = [
     path('insurance/subjects/detail/', views_insurance.insurance_subject_detail, name='insurance_subject_detail'),
     path('insurance/renewal_report/', views_insurance.insurance_renewal_report, name='insurance_renewal_report'),
     path('insurance/renew/', views_insurance.insurance_renew, name='insurance_renew'),
+    path('insurance/subjects/one-off/', views_insurance.insurance_subject_one_off, name='insurance_subject_one_off'),
     
     # 金属价格详情
     path('metal_price/<str:metal_name>/', views.metal_price_detail, name='metal_price_detail'),

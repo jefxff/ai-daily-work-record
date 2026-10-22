@@ -216,31 +216,26 @@ def home(request):
 
     if 'insurance' in mods:
         today = timezone.localdate()
-        soon_qs = Insurance.objects.filter(
-            end_date__gte=today, end_date__lte=today + timedelta(days=30)
-        ).order_by('end_date')
-        agg = Insurance.objects.aggregate(
-            total=Count('id'),
-            not_expired=Count('id', filter=Q(end_date__gt=today)),
-            due_soon=Count('id', filter=Q(end_date__gte=today, end_date__lte=today + timedelta(days=30))),
-            expired=Count('id', filter=Q(end_date__lt=today)),
-        )
-        soon = list(soon_qs[:5])
-        for ins in soon:
-            ins.days_left = (ins.end_date - today).days
-            if ins.days_left <= 7:
-                ins.days_level = 'danger'
-            elif ins.days_left <= 30:
-                ins.days_level = 'warning'
+        records = list(Insurance.objects.all())
+        subjects = insurance_grouping.build_subjects(records, today=today)
+        summary = insurance_grouping.summarize(subjects)
+        expiring_subjects = [s for s in subjects if s.status == 'expiring'][:5]
+        for s in expiring_subjects:
+            if s.days_left <= 7:
+                s.days_level = 'danger'
             else:
-                ins.days_level = 'normal'
-            ins.days_text = f'剩 {ins.days_left} 天' if ins.days_left > 0 else '今天到期'
-        context['insurance_due_soon'] = soon
-        context['insurance_due_soon_count'] = agg['due_soon']
-        context['insurance_not_expired_count'] = agg['not_expired']
-        context['insurance_later_count'] = agg['not_expired'] - agg['due_soon']
-        context['total_insurance'] = agg['total']
-        context['insurance_expired_count'] = agg['expired']
+                s.days_level = 'warning'
+            s.days_text = f'剩 {s.days_left} 天' if s.days_left > 0 else '今天到期'
+        expired_subjects_count = sum(
+            1 for s in subjects
+            if s.status == 'expired' and not insurance_services.one_off_keys().intersection({s.key})
+        )
+        context['insurance_due_soon'] = expiring_subjects
+        context['insurance_due_soon_count'] = summary['expiring']
+        context['insurance_not_expired_count'] = summary['active']
+        context['insurance_later_count'] = max(0, summary['active'] - summary['expiring'])
+        context['total_insurance'] = summary['total']
+        context['insurance_expired_count'] = expired_subjects_count
 
     if 'complaint' in mods:
         today = timezone.localdate()
@@ -1169,14 +1164,13 @@ def dashboard(request):
     price_total_count = price_evaluations.count()
     price_reduction_total = sum(eval.get_reduction_amount() for eval in price_evaluations)
     
-    # 保险统计
+    # 保险统计（标的聚合口径）
     today = date.today()
-    insurance_stats = insurances.aggregate(
-        total=Count('id'),
-        not_expired=Count('id', filter=Q(end_date__gt=today)),
-    )
-    insurance_total_count = insurance_stats['total']
-    insurance_not_expired_count = insurance_stats['not_expired']
+    _insurance_records = list(insurances)
+    _insurance_subjects = insurance_grouping.build_subjects(_insurance_records, today=today)
+    _insurance_summary = insurance_grouping.summarize(_insurance_subjects)
+    insurance_total_count = _insurance_summary['total']
+    insurance_not_expired_count = _insurance_summary['active']
     
     # 每日记录统计
     daily_stats = daily_records.aggregate(
@@ -1294,11 +1288,14 @@ def dashboard(request):
         if answer_deadline and 0 <= (answer_deadline - today_d).days <= 3:
             lawsuit_answer_soon_count += 1
 
-    # 保险：已过期 / 30 天内到期（分开口径，避免把过期混算成临期）
-    insurance_expired_count = insurances.filter(end_date__lt=today_d).count()
-    insurance_expiring_count = insurances.filter(
-        end_date__gte=today_d, end_date__lte=today_d + timedelta(days=30)
-    ).count()
+    # 保险：标的聚合口径
+    _one_off_keys = insurance_services.one_off_keys()
+    insurance_expiring_count = sum(1 for s in _insurance_subjects if s.status == 'expiring')
+    insurance_expired_count = sum(
+        1 for s in _insurance_subjects
+        if s.status == 'expired' and not _one_off_keys.intersection({s.key})
+    )
+    insurance_expiring_subjects = [s for s in _insurance_subjects if s.status == 'expiring'][:5]
 
     # 每日记录：已过截止日期仍未完成
     daily_overdue_count = daily_records.filter(
@@ -1333,8 +1330,8 @@ def dashboard(request):
         'insurance': {
             'level': 'error' if insurance_expired_count else ('warning' if insurance_expiring_count else 'normal'),
             'text': (
-                f'{insurance_expired_count} 份已过期' if insurance_expired_count
-                else (f'{insurance_expiring_count} 份临期' if insurance_expiring_count else '正常')
+                f'{insurance_expired_count} 个应续未续' if insurance_expired_count
+                else (f'{insurance_expiring_count} 个临期' if insurance_expiring_count else '正常')
             ),
             'url': '',
         },
@@ -1462,6 +1459,7 @@ def dashboard(request):
         'regulations': regulations.order_by('-id')[:5],
         'price_evaluations': price_evaluations.order_by('-id')[:5],
         'insurances': insurances[:5],
+        'insurance_subjects': insurance_expiring_subjects,
         'daily_records': daily_records[:5],
         'weekly_trend': weekly_trend,
         'trend_max': max([x['c'] for x in weekly_trend] + [1]),
