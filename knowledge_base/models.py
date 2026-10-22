@@ -66,6 +66,12 @@ class KnowledgeDocument(models.Model):
         help_text='首次在编辑器中保存后转为 outline')
     tree_version = models.PositiveIntegerField('树版本(乐观锁)', default=1)
 
+    # —— 文件夹树（方案 04 / 批次 6）：个人书架，不做权限边界 ——
+    # SET_NULL：文件夹删除时文档永远不跟着删，回到「未归档」（内容安全优先）
+    folder = models.ForeignKey(
+        'KnowledgeFolder', verbose_name='所属文件夹', null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='documents')
+
     class Meta:
         verbose_name = '知识文档'
         verbose_name_plural = '知识文档'
@@ -170,3 +176,33 @@ class KnowledgeNode(models.Model):
 
     def __str__(self):
         return f"节点#{self.pk}({self.node_type})@文档#{self.document_id}"
+
+
+class KnowledgeFolder(models.Model):
+    """知识库文件夹（方案 04）：个人书架，按 owner 隔离，不做权限边界。
+
+    - 可见性只在文档级（private/public），文件夹不叠加一层权限矩阵；
+    - owner CASCADE：文件夹是空壳，用户注销随之清理；文档由孤儿规则接管；
+    - 删除 = 内容上提（服务层 folders.delete_folder），本表外键只兜底。
+    """
+
+    name = models.CharField('文件夹名', max_length=50)
+    parent = models.ForeignKey(
+        'self', verbose_name='父文件夹', null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='children')
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name='所有者',
+        on_delete=models.CASCADE, related_name='knowledge_folders')
+    sort = models.IntegerField('排序', default=0)
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
+
+    class Meta:
+        verbose_name = '知识库文件夹'
+        verbose_name_plural = '知识库文件夹'
+        ordering = ['sort', 'id']
+        indexes = [
+            models.Index(fields=['owner'], name='knowledge_folder_owner_idx'),
+        ]
+
+    def __str__(self):
+        return f"{self.name}（{self.owner.get_username() if self.owner else '-'}）"

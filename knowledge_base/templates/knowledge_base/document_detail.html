@@ -7,13 +7,24 @@
 原左栏文件夹系统已取消——分类筛选树的折叠/展开即文件夹能力，
 右栏树会自动展开并高亮当前文档所在分类（views._sidebar_context）。
 {% endcomment %}
-<!-- 面包屑：分类路径 -->
+<!-- 面包屑：分类路径 +（仅 owner 可见的）个人书架路径 -->
 <nav class="kb-crumb" aria-label="当前位置">
     <a href="{% url 'knowledge_base:document_list' %}">知识库</a>
     {% for cat in category_path %}
     <span class="kb-crumb-sep" aria-hidden="true">/</span>
     <a href="{% url 'knowledge_base:document_list' %}?category={{ cat.pk }}">{{ cat.name }}</a>
     {% endfor %}
+    {% if document.owner_id == user.id %}
+    <span class="kb-crumb-sep" aria-hidden="true">·</span>
+    {% if folder_breadcrumbs %}
+    {% for f in folder_breadcrumbs %}
+    {% if not forloop.first %}<span class="kb-crumb-sep" aria-hidden="true">/</span>{% endif %}
+    <a href="{% url 'knowledge_base:document_list' %}?folder={{ f.id }}" title="我的书架">{{ f.name }}</a>
+    {% endfor %}
+    {% else %}
+    <a href="{% url 'knowledge_base:document_list' %}?folder=0" title="我的书架">未归档</a>
+    {% endif %}
+    {% endif %}
 </nav>
 
 <!-- 文档头 -->

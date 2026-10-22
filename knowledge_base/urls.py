@@ -30,4 +30,12 @@ urlpatterns = [
     path('category/<int:pk>/delete/', views.category_delete, name='category_delete'),
     # 搜索
     path('search/', views.document_search, name='document_search'),
+    # —— 文件夹树（批次 6 / 方案 04）：GET 树 + POST 新建同路径分发 ——
+    path('api/folders/', views.api_folders, name='api_folders'),
+    # 项目硬约束：删除类操作一律 POST（方案04的 PATCH/DELETE 改为 POST 子路由）
+    path('api/folders/<int:pk>/rename/', views.api_folder_rename, name='api_folder_rename'),
+    path('api/folders/<int:pk>/move/', views.api_folder_move, name='api_folder_move'),
+    path('api/folders/<int:pk>/delete/', views.api_folder_delete, name='api_folder_delete'),
+    # 文档归档/移出（拖拽落点）
+    path('api/docs/<int:pk>/move/', views.api_doc_move, name='api_doc_move'),
 ]

@@ -1,0 +1,60 @@
+{% load accounts_tags %}
+{% comment %}
+左侧文件夹树侧栏（批次6 / 方案04：个人书架）。
+数据源：views.document_list 注入的 folder_tree_data = kb_folders.folder_tree(user)。
+交互 JS 在 document_list.html 的 extra_js 块，事件全部委托到 #kbFt。
+「未归档」约定 folder_id=0（与视图 ?folder=0 对齐）。
+{% endcomment %}
+<aside class="kb-ft" id="kbFt" aria-label="我的文档文件夹树">
+    <div class="kb-ft-head">
+        <input type="text" class="kb-ft-search" id="kbFtSearch"
+               placeholder="筛选我的文档..." autocomplete="off" aria-label="筛选我的文档">
+        {% can "knowledge" "create" %}
+        <a href="{% url 'knowledge_base:document_create' %}" class="kb-ft-iconbtn"
+           data-modal-add data-modal-title="新建文档" title="新建文档" aria-label="新建文档">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </a>
+        {% endcan %}
+    </div>
+    <nav class="kb-ft-tree" id="kbFtTree" aria-label="文件夹树">
+        <div data-ft-section="folders">
+            {% include 'knowledge_base/_folder_tree.html' with folders=folder_tree_data.tree %}
+            {% if not folder_tree_data.tree %}
+            <div class="kb-ft-empty">还没有文件夹</div>
+            {% endif %}
+        </div>
+        <div data-ft-section="unarchived">
+            <a href="?folder=0" class="kb-ft-row"
+               data-drop="folder" data-drop-id="0"
+               {% if current_folder == 'unarchived' %}aria-current="page"{% endif %}>
+                <span class="kb-ft-twist-spacer" aria-hidden="true"></span>
+                <span class="kb-ft-ficon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></span>
+                <span class="kb-ft-name">未归档</span>
+                <span class="kb-ft-count">{{ folder_tree_data.unarchived_count }}</span>
+            </a>
+            <div class="kb-ft-kids">
+                {% for doc in folder_tree_data.unarchived %}
+                <a href="{% url 'knowledge_base:document_detail' doc.id %}" class="kb-ft-row"
+                   draggable="true" data-drag="doc" data-doc-id="{{ doc.id }}" data-title="{{ doc.title }}"
+                   title="{{ doc.title }}">
+                    <span class="kb-ft-twist-spacer" aria-hidden="true"></span>
+                    <span class="kb-ft-ficon" aria-hidden="true">{% if doc.visibility == 'public' %}<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>{% else %}<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>{% endif %}</span>
+                    <span class="kb-ft-name">{{ doc.title }}</span>
+                </a>
+                {% empty %}
+                <div class="kb-ft-empty">无未归档文档</div>
+                {% endfor %}
+            </div>
+        </div>
+        <div data-ft-section="flat" hidden>
+            <div id="kbFtFlat"></div>
+            <div id="kbFtFlatEmpty" class="kb-ft-empty" hidden>没有匹配的文档</div>
+        </div>
+    </nav>
+    <div class="kb-ft-foot">
+        <button type="button" class="kb-ft-newfolder" id="kbFtNewRoot">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            新建文件夹
+        </button>
+    </div>
+</aside>

@@ -20,6 +20,7 @@ from accounts.decorators import perm_required
 from accounts.security import client_ip
 from accounts.services import has_perm
 from . import access
+from . import folders as kb_folders
 from . import outline as kb_outline
 
 
@@ -168,6 +169,19 @@ def document_list(request):
     # 唯一入口 access.visible_docs：公开 + 本人文档；漏一处就是泄漏口
     documents = access.visible_docs(request.user).filter(status='published')
 
+    # —— 文件夹过滤（批次 6）：侧栏是「我的文档」树，过滤只作用于本人文档；
+    #    别人的文件夹 id 一律忽略（不报错不泄露），回落到不过滤的全量视图
+    folder_id = request.GET.get('folder')
+    current_folder = None
+    if folder_id == '0':   # 约定 0 = 未归档
+        documents = documents.filter(owner=request.user, folder__isnull=True)
+        current_folder = 'unarchived'
+    elif folder_id:
+        folder = kb_folders._owned_folder(request.user, folder_id)
+        if folder is not None:
+            documents = documents.filter(folder=folder)
+            current_folder = folder
+
     if category_id:
         documents = documents.filter(category_id=category_id)
 
@@ -182,6 +196,8 @@ def document_list(request):
         'documents': page_obj,
         'page_obj': page_obj,
         'per_page': per_page,
+        'folder_tree_data': kb_folders.folder_tree(request.user),
+        'current_folder': current_folder,
         **_sidebar_context(request.user, category_id, tag_filter),
     }
     return render(request, 'knowledge_base/document_list.html', context)
@@ -295,6 +311,8 @@ def document_detail(request, pk):
         'related_docs': related_docs,
         'category_path': _category_path(document.category),
         'can_edit_doc': access.can_edit(document, request.user),
+        # 个人书架路径（批次 6）：仅 owner 自己的文件夹链；他人的文件夹一律 []
+        'folder_breadcrumbs': kb_folders.breadcrumbs(document.folder_id, request.user),
         # 右栏与列表页同款（_right_sidebar.html）：统计/分类筛选树/标签云；
         # 选中项=当前文档所在分类，树会自动展开其祖先链并高亮；
         # current_doc_id 让树里的当前文档行也高亮
@@ -635,6 +653,75 @@ def outline_editor(request, pk):
         **_vis_form_context(document, request.user),
     }
     return render(request, 'knowledge_base/outline_editor.html', context)
+
+
+# —— 文件夹树接口（批次 6 / 方案 04）：读 GET、变更一律 POST（删除禁止 GET）——
+
+def _folder_payload(request):
+    try:
+        data = json.loads(request.body or b'{}')
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+@perm_required("knowledge", "read")
+def api_folders(request):
+    """GET 返回整棵树 + 未归档；POST 新建文件夹（400 带 FolderError 文案）。"""
+    if request.method == 'POST':
+        data = _folder_payload(request)
+        try:
+            folder = kb_folders.create_folder(
+                request.user, data.get('name'), data.get('parent_id'))
+        except kb_folders.FolderError as e:
+            return JsonResponse({'ok': False, 'message': str(e)}, status=400)
+        return JsonResponse({'ok': True, 'id': folder.pk, 'name': folder.name})
+    tree = kb_folders.folder_tree(request.user)
+    return JsonResponse({'ok': True, **tree})
+
+
+@perm_required("knowledge", "update")
+def api_folder_rename(request, pk):
+    data = _folder_payload(request)
+    try:
+        folder = kb_folders.rename_folder(request.user, pk, data.get('name'))
+    except kb_folders.FolderError as e:
+        return JsonResponse({'ok': False, 'message': str(e)}, status=400)
+    return JsonResponse({'ok': True, 'id': folder.pk, 'name': folder.name})
+
+
+@perm_required("knowledge", "update")
+def api_folder_move(request, pk):
+    data = _folder_payload(request)
+    try:
+        folder = kb_folders.move_folder(request.user, pk, data.get('parent_id'))
+    except kb_folders.FolderError as e:
+        return JsonResponse({'ok': False, 'message': str(e)}, status=400)
+    return JsonResponse({'ok': True, 'id': folder.pk, 'parent_id': folder.parent_id})
+
+
+@perm_required("knowledge", "update")
+def api_folder_delete(request, pk):
+    """只删壳：子文件夹与文档上提一层，返回受影响文档数。"""
+    try:
+        moved_docs = kb_folders.delete_folder(request.user, pk)
+    except kb_folders.FolderError as e:
+        return JsonResponse({'ok': False, 'message': str(e)}, status=400)
+    return JsonResponse({'ok': True, 'moved_docs': moved_docs})
+
+
+@perm_required("knowledge", "update")
+def api_doc_move(request, pk):
+    """文档归档/移出：can_edit（owner 专属）失败 403，文件夹非法 400。"""
+    document = get_object_or_404(access.visible_docs(request.user), pk=pk)
+    if not access.can_edit(document, request.user):
+        return JsonResponse({'ok': False, 'message': '只能移动自己创建的文档'}, status=403)
+    data = _folder_payload(request)
+    try:
+        kb_folders.move_doc(request.user, document, data.get('folder_id'))
+    except kb_folders.FolderError as e:
+        return JsonResponse({'ok': False, 'message': str(e)}, status=400)
+    return JsonResponse({'ok': True})
 
 
 @perm_required("knowledge", "delete")
