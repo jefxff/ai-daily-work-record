@@ -1,0 +1,92 @@
+{% if show_head %}
+<div class="ins-timeline-head">
+    <div class="ins-badges">
+        <strong>{{ subject.label }}</strong>
+        <span class="status-badge {{ subject.badge_class }}">{{ subject.status_label }}</span>
+        <span class="status-badge {{ subject.kind_badge_class }}">{{ subject.kind_label }}</span>
+        {% if subject.has_gap %}<span class="status-badge warning">断档 {{ subject.max_gap_days }} 天</span>{% endif %}
+    </div>
+    <div class="ins-timeline-meta">
+        <span>当前保司：{{ subject.latest_insurer }}</span>
+        <span>当前期间：{{ subject.latest_period }}</span>
+        <span>共 {{ subject.record_count }} 条保单 / {{ subject.term_count }} 个年度</span>
+    </div>
+</div>
+{% endif %}
+{% if compact %}
+<ul class="ins-timeline-list">
+    {% for term in subject.terms %}
+    <li class="{% if term.is_current %}is-current{% endif %}{% if highlight_id and highlight_id in term.record_ids %} is-highlight{% endif %}">
+        <div class="ins-timeline-list-main">
+            <strong>{{ term.year }} 年度</strong>
+            <span class="status-badge {% if term.status == 'active' %}success{% elif term.status == 'pending' %}info{% else %}default{% endif %}">{{ term.status_label }}</span>
+            {% if term.continuity == 'gap' %}<span class="status-badge warning">{{ term.continuity_label }}</span>{% endif %}
+            {% if term.continuity == 'overlap' %}<span class="status-badge info">{{ term.continuity_label }}</span>{% endif %}
+        </div>
+        <div class="ins-muted">
+            {{ term.start|date:'Y-m-d' }} ~ {{ term.end|date:'Y-m-d' }} · {{ term.insurers|join:'、' }} · ¥{{ term.premium|floatformat:2 }}{% if term.record_count > 1 %}（{{ term.record_count }} 条）{% endif %}{% if term.yoy_pct != None %} · 同比 {{ term.yoy_pct|floatformat:1 }}%{% endif %}
+        </div>
+        <div class="ins-timeline-list-links">
+            {% for rec in term.records %}
+            <a href="{% url 'insurance_detail' rec.id %}" data-modal-detail data-modal-title="保险详情">{{ rec.title|truncatechars:24 }}</a>{% if not forloop.last %}<span class="ins-muted"> · </span>{% endif %}
+            {% endfor %}
+        </div>
+    </li>
+    {% empty %}
+    <li class="ins-muted">暂无保单记录</li>
+    {% endfor %}
+</ul>
+{% else %}
+<div class="table-responsive">
+    <table class="table table--cards ins-table ins-timeline-table">
+        <thead>
+            <tr>
+                <th>保单年度</th>
+                <th>保障期间</th>
+                <th>保司</th>
+                <th>保费</th>
+                <th>同比</th>
+                <th>与上期衔接</th>
+                <th>状态</th>
+                <th>保单明细</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for term in subject.terms %}
+            <tr class="{% if term.is_current %}is-current{% endif %}{% if highlight_id and highlight_id in term.record_ids %} is-highlight{% endif %}">
+                <td data-label="保单年度">{{ term.year }} 年度</td>
+                <td data-label="保障期间">{{ term.start|date:'Y-m-d' }} ~ {{ term.end|date:'Y-m-d' }}</td>
+                <td data-label="保司">{{ term.insurers|join:'、' }}</td>
+                <td data-label="保费">
+                    ¥{{ term.premium|floatformat:2 }}
+                    {% if term.record_count > 1 %}<span class="ins-muted">（{{ term.record_count }} 条）</span>{% endif %}
+                </td>
+                <td data-label="同比">
+                    {% if term.yoy_pct != None %}
+                    <span class="{% if term.yoy > 0 %}ins-up{% elif term.yoy < 0 %}ins-down{% endif %}">{{ term.yoy_pct|floatformat:1 }}%</span>
+                    {% else %}—{% endif %}
+                    {% if term.insurer_changed %}<span class="ins-muted"> · 换保司</span>{% endif %}
+                </td>
+                <td data-label="与上期衔接">
+                    {% if term.continuity == 'gap' %}
+                    <span class="status-badge warning">{{ term.continuity_label }}</span>
+                    {% elif term.continuity == 'overlap' %}
+                    <span class="status-badge info">{{ term.continuity_label }}</span>
+                    {% else %}{{ term.continuity_label }}{% endif %}
+                </td>
+                <td data-label="状态">
+                    <span class="status-badge {% if term.status == 'active' %}success{% elif term.status == 'pending' %}info{% else %}default{% endif %}">{{ term.status_label }}</span>
+                </td>
+                <td data-label="保单明细">
+                    {% for rec in term.records %}
+                    <a href="{% url 'insurance_detail' rec.id %}" data-modal-detail data-modal-title="保险详情">{{ rec.title|truncatechars:16 }}</a>{% if not forloop.last %}<span class="ins-muted"> · </span>{% endif %}
+                    {% endfor %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="8" class="empty-cell">暂无保单记录</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}

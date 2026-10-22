@@ -1,0 +1,273 @@
+{% extends 'records/base.html' %}
+
+{% block page_title %}保险续保报告 - 每日工作记录管理网站{% endblock %}
+
+{% block extra_css %}
+{% include 'records/_insurance_aggregation_css.html' %}
+{% endblock %}
+
+{% block top_nav_actions %}
+    <a href="{% url 'insurance_subject_list' %}" class="btn-transparent">返回续保视图</a>
+    <a href="{% url 'insurance_list' %}" class="btn-transparent">保单明细</a>
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h2>保险续保报告<span class="total-hint">只读聚合 · 截至今日</span></h2>
+    </div>
+
+    <div class="ins-dashboard">
+        <div class="ins-stat-card expired">
+            <div class="ins-stat-value">{{ report.should_renew_count }}</div>
+            <div class="ins-stat-label">应续未续标的</div>
+        </div>
+        <div class="ins-stat-card gap">
+            <div class="ins-stat-value">{{ report.gap_count }}</div>
+            <div class="ins-stat-label">存在断档标的</div>
+        </div>
+        <div class="ins-stat-card expiring">
+            <div class="ins-stat-value">{{ report.upcoming_count }}</div>
+            <div class="ins-stat-label">30 天内到期</div>
+        </div>
+        <div class="ins-stat-card">
+            <div class="ins-stat-value">{{ report.overlap_count }}</div>
+            <div class="ins-stat-label">期间存在重叠</div>
+        </div>
+        <div class="ins-stat-card">
+            <div class="ins-stat-value">{{ report.missing_order_count }}</div>
+            <div class="ins-stat-label">单号缺失保单</div>
+        </div>
+        <div class="ins-stat-card">
+            <div class="ins-stat-value">{{ report.multi_item_count }}</div>
+            <div class="ins-stat-label">同年度多条年度</div>
+        </div>
+    </div>
+
+    <div class="ins-section">
+        <div class="ins-section-head">
+            <h3>应续未续</h3>
+            <span class="count">{{ report.should_renew_count }} 个标的</span>
+        </div>
+        {% if report.should_renew %}
+        <div class="table-responsive">
+            <table class="table table--cards ins-report-table">
+                <thead>
+                    <tr>
+                        <th scope="col">标的</th>
+                        <th scope="col">类型</th>
+                        <th scope="col">最后保司</th>
+                        <th scope="col">最后保障期间</th>
+                        <th scope="col">已过期</th>
+                        <th scope="col" class="col-actions">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in report.should_renew %}
+                    <tr>
+                        <td data-label="标的"><a class="ins-subject-link" href="{% url 'insurance_subject_detail' %}?key={{ s.key|urlencode }}">{{ s.label }}</a></td>
+                        <td data-label="类型">{{ s.kind_label }}</td>
+                        <td data-label="最后保司">{{ s.latest_insurer }}</td>
+                        <td data-label="最后保障期间">{{ s.latest.start|date:'Y-m-d' }} ~ {{ s.latest.end|date:'Y-m-d' }}</td>
+                        <td data-label="已过期"><span class="status-badge danger">{{ s.expired_days }} 天</span></td>
+                        <td data-label="操作" class="col-actions">
+                            <a class="btn-transparent btn-sm" href="{% url 'insurance_subject_detail' %}?key={{ s.key|urlencode }}">时间线</a>
+                            <a class="btn-transparent btn-sm" href="{% url 'insurance_detail' s.latest.primary_record.id %}" data-modal-detail data-modal-title="保险详情">最后保单</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-cell">暂无应续未续标的</div>
+        {% endif %}
+    </div>
+
+    <div class="ins-section">
+        <div class="ins-section-head">
+            <h3>断档</h3>
+            <span class="count">{{ report.gap_count }} 个标的</span>
+        </div>
+        {% if report.gaps %}
+        <div class="table-responsive">
+            <table class="table table--cards ins-report-table">
+                <thead>
+                    <tr>
+                        <th scope="col">标的</th>
+                        <th scope="col">类型</th>
+                        <th scope="col">断档次数</th>
+                        <th scope="col">最长断档</th>
+                        <th scope="col">断档明细</th>
+                        <th scope="col" class="col-actions">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in report.gaps %}
+                    <tr>
+                        <td data-label="标的"><a class="ins-subject-link" href="{% url 'insurance_subject_detail' %}?key={{ s.key|urlencode }}">{{ s.label }}</a></td>
+                        <td data-label="类型">{{ s.kind_label }}</td>
+                        <td data-label="断档次数">{{ s.gap_terms|length }} 次</td>
+                        <td data-label="最长断档"><span class="status-badge warning">{{ s.max_gap_days }} 天</span></td>
+                        <td data-label="断档明细">
+                            {% for t in s.gap_terms %}
+                            {{ t.year }} 年度起断档 {{ t.gap_days_before }} 天{% if not forloop.last %}；{% endif %}
+                            {% endfor %}
+                        </td>
+                        <td data-label="操作" class="col-actions">
+                            <a class="btn-transparent btn-sm" href="{% url 'insurance_subject_detail' %}?key={{ s.key|urlencode }}">时间线</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-cell">暂无断档标的</div>
+        {% endif %}
+    </div>
+
+    <div class="ins-section">
+        <div class="ins-section-head">
+            <h3>即将到期（30 天内）</h3>
+            <span class="count">{{ report.upcoming_count }} 个标的</span>
+        </div>
+        {% if report.upcoming %}
+        <div class="table-responsive">
+            <table class="table table--cards ins-report-table">
+                <thead>
+                    <tr>
+                        <th scope="col">标的</th>
+                        <th scope="col">类型</th>
+                        <th scope="col">当前保司</th>
+                        <th scope="col">到期日</th>
+                        <th scope="col">剩余</th>
+                        <th scope="col" class="col-actions">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in report.upcoming %}
+                    <tr>
+                        <td data-label="标的"><a class="ins-subject-link" href="{% url 'insurance_subject_detail' %}?key={{ s.key|urlencode }}">{{ s.label }}</a></td>
+                        <td data-label="类型">{{ s.kind_label }}</td>
+                        <td data-label="当前保司">{{ s.latest_insurer }}</td>
+                        <td data-label="到期日">{{ s.latest.end|date:'Y-m-d' }}</td>
+                        <td data-label="剩余"><span class="status-badge warning">{{ s.days_left }} 天</span></td>
+                        <td data-label="操作" class="col-actions">
+                            <a class="btn-transparent btn-sm" href="{% url 'insurance_subject_detail' %}?key={{ s.key|urlencode }}">时间线</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-cell">未来 30 天内没有到期标的</div>
+        {% endif %}
+    </div>
+
+    <div class="ins-section">
+        <div class="ins-section-head">
+            <h3>数据提示</h3>
+            <span class="count">归一化过程中发现的口径问题</span>
+        </div>
+
+        <div class="ins-card">
+            <h3>期间重叠（{{ report.overlap_count }}）</h3>
+            {% if report.overlaps %}
+            <div class="table-responsive">
+                <table class="table table--cards ins-report-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">标的</th>
+                            <th scope="col">重叠年度</th>
+                            <th scope="col">重叠明细</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in report.overlaps %}
+                        <tr>
+                            <td data-label="标的"><a class="ins-subject-link" href="{% url 'insurance_subject_detail' %}?key={{ s.key|urlencode }}">{{ s.label }}</a></td>
+                            <td data-label="重叠年度">{{ s.overlap_terms|length }} 个</td>
+                            <td data-label="重叠明细">
+                                {% for t in s.overlap_terms %}
+                                {{ t.year }} 年度：{{ t.continuity_label }}{% if not forloop.last %}；{% endif %}
+                                {% endfor %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-cell">未发现期间重叠</div>
+            {% endif %}
+        </div>
+
+        <div class="ins-card">
+            <h3>单号缺失（{{ report.missing_order_count }}）</h3>
+            {% if report.missing_order %}
+            <div class="table-responsive">
+                <table class="table table--cards ins-report-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">标题</th>
+                            <th scope="col">保司</th>
+                            <th scope="col">保障期间</th>
+                            <th scope="col" class="col-actions">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in report.missing_order %}
+                        <tr>
+                            <td data-label="标题">{{ r.title }}</td>
+                            <td data-label="保司">{{ r.company_name }}</td>
+                            <td data-label="保障期间">{{ r.issue_date|date:'Y-m-d' }} ~ {{ r.end_date|date:'Y-m-d' }}</td>
+                            <td data-label="操作" class="col-actions">
+                                <a class="btn-transparent btn-sm" href="{% url 'insurance_detail' r.id %}" data-modal-detail data-modal-title="保险详情">查看</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-cell">未发现单号缺失</div>
+            {% endif %}
+        </div>
+
+        <div class="ins-card">
+            <h3>同年度多条保单（{{ report.multi_item_count }} 个年度）</h3>
+            <p class="ins-muted">同一标的、同一保单年度存在多条记录，通常是主险 + 附加险、或是同一保单下的多个标的。阶段 1 先按年度合并展示，阶段 2 再拆成保障项。</p>
+            {% if report.multi_item_summary %}
+            <div class="table-responsive">
+                <table class="table table--cards ins-report-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">标的</th>
+                            <th scope="col">涉及年度数</th>
+                            <th scope="col">记录数</th>
+                            <th scope="col">涉及年度</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for entry in report.multi_item_summary %}
+                        <tr>
+                            <td data-label="标的"><a class="ins-subject-link" href="{% url 'insurance_subject_detail' %}?key={{ entry.subject.key|urlencode }}">{{ entry.subject.label }}</a></td>
+                            <td data-label="涉及年度数">{{ entry.year_count }} 个</td>
+                            <td data-label="记录数">{{ entry.record_count }} 条</td>
+                            <td data-label="涉及年度">
+                                {% for t in entry.years %}
+                                {{ t.year }}{% if not forloop.last %}、{% endif %}
+                                {% endfor %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-cell">未发现同年度多条保单</div>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}

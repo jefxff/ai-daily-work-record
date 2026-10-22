@@ -9,6 +9,7 @@ from .models import Decoration, CustomerCredit, CustomerComplaint, Regulation, P
 from .forms import DecorationForm, CustomerCreditForm, CustomerComplaintForm, CustomerComplaintClosureForm, RegulationForm, PriceEvaluationForm, InsuranceForm, ComplaintForm
 from .audit import log_operation, snapshot
 from .crud import make_delete_view, make_export_view, make_form_view, make_list_view
+from . import insurance_grouping
 from django.utils import timezone
 from accounts.decorators import perm_required, require_any_module
 from accounts.services import visible_modules
@@ -1636,6 +1637,16 @@ def price_evaluation_detail(request, pk):
 def insurance_detail(request, pk):
     """保险详情视图"""
     insurance = get_object_or_404(Insurance, pk=pk)
+    subject = insurance_grouping.subject_for_record(
+        insurance,
+        list(Insurance.objects.all()),
+        today=timezone.localdate(),
+    )
+    context = {
+        'insurance': insurance,
+        'subject': subject,
+        'highlight_id': insurance.pk,
+    }
     if _is_ajax(request):
-        return _modal_detail(request, 'records/_insurance_detail_modal.html', {'insurance': insurance})
-    return render(request, 'records/insurance_detail.html', {'insurance': insurance})
+        return _modal_detail(request, 'records/_insurance_detail_modal.html', context)
+    return render(request, 'records/insurance_detail.html', context)

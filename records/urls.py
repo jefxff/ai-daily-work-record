@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-from . import views_expiry, views_reports, views_audit, views_workspace
+from . import views_expiry, views_reports, views_audit, views_workspace, views_insurance
 
 urlpatterns = [
     # 首页
@@ -68,6 +68,10 @@ urlpatterns = [
     path('insurance/edit/<int:pk>/', views.insurance_edit, name='insurance_edit'),
     path('insurance/delete/<int:pk>/', views.insurance_delete, name='insurance_delete'),
     path('insurance/export/', views.insurance_export, name='insurance_export'),
+    # 保险只读聚合（阶段 1）
+    path('insurance/subjects/', views_insurance.insurance_subject_list, name='insurance_subject_list'),
+    path('insurance/subjects/detail/', views_insurance.insurance_subject_detail, name='insurance_subject_detail'),
+    path('insurance/renewal_report/', views_insurance.insurance_renewal_report, name='insurance_renewal_report'),
     
     # 金属价格详情
     path('metal_price/<str:metal_name>/', views.metal_price_detail, name='metal_price_detail'),

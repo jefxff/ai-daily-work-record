@@ -9,4 +9,11 @@
     <div class="detail-row"><div class="detail-label">部门：</div><div class="detail-value">{{ insurance.department }}</div></div>
     <div class="detail-row"><div class="detail-label">备注：</div><div class="detail-value">{{ insurance.remarks|default:"无" }}</div></div>
 </div>
+{% if subject %}
+{% include 'records/_insurance_aggregation_css.html' %}
+<div class="ins-card">
+    <h3>续保时间线 · {{ subject.label }}</h3>
+    {% include 'records/_insurance_timeline.html' with subject=subject highlight_id=insurance.id compact=True show_head=True %}
+</div>
+{% endif %}
 <style>#formModal.form-modal { width: 720px; }</style>

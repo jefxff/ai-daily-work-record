@@ -4,8 +4,15 @@
 
 {% block page_title %}保险详情 - 每日工作记录管理网站{% endblock %}
 
+{% block extra_css %}
+{% include 'records/_insurance_aggregation_css.html' %}
+{% endblock %}
+
 {% block top_nav_actions %}
     <a href="{% url 'insurance_list' %}" class="btn-transparent">返回列表</a>
+    {% if subject %}
+    <a href="{% url 'insurance_subject_detail' %}?key={{ subject.key|urlencode }}" class="btn-transparent">续保时间线</a>
+    {% endif %}
     {% can "insurance" "update" %}
     <a href="{% url 'insurance_edit' insurance.id %}" class="btn-transparent" data-modal-edit data-modal-title="编辑保险">编辑记录</a>
     {% endcan %}
@@ -64,4 +71,16 @@
             <div class="detail-value">{{ insurance.remarks|default:"无" }}</div>
         </div>
     </div>
+
+    {% if subject %}
+    <div class="ins-card">
+        <h3>续保时间线 · {{ subject.label }}</h3>
+        <p class="ins-muted">
+            同一标的共 {{ subject.record_count }} 条保单 / {{ subject.term_count }} 个年度
+            {% if subject.has_gap %} · 存在断档，最长 {{ subject.max_gap_days }} 天{% endif %}
+            {% if subject.status == 'expired' %} · 当前应续未续，已过期 {{ subject.expired_days }} 天{% endif %}
+        </p>
+        {% include 'records/_insurance_timeline.html' with subject=subject highlight_id=insurance.id show_head=False %}
+    </div>
+    {% endif %}
 {% endblock %}
