@@ -117,22 +117,21 @@
         <div class="kb-mindmap" id="kbMindmapCanvas"></div>
     </div>
 </div>
-</div>
 
 {% if related_docs %}
-<div class="card kb-related">
-    <div class="card-header">
-        <h5 class="mb-0">相关文档</h5>
-    </div>
-    <div class="list-group">
+<div class="kb-related">
+    <div class="kb-related-head">相关文档</div>
+    <div class="kb-related-list">
         {% for doc in related_docs %}
-        <a href="{% url 'knowledge_base:document_detail' doc.pk %}" class="list-group-item list-group-item-action">
+        <a href="{% url 'knowledge_base:document_detail' doc.pk %}" class="kb-related-item">
             {{ doc.title }}
         </a>
         {% endfor %}
     </div>
 </div>
 {% endif %}
+</div>
+
 {% endblock %}
 
 {% block right_sidebar %}
@@ -160,6 +159,34 @@
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     padding: 20px;
+}
+/* ── 相关文档（移入白卡内，用分隔线+间距与正文区隔开，不再贴死）── */
+.kb-related {
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 1px solid var(--c-border);
+}
+.kb-related-head {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--c-text-secondary);
+    margin-bottom: 12px;
+    letter-spacing: 0.02em;
+}
+.kb-related-list { display: flex; flex-direction: column; gap: 4px; }
+.kb-related-item {
+    display: block;
+    padding: 8px 12px;
+    border-radius: 6px;
+    color: var(--c-text-secondary);
+    text-decoration: none;
+    font-size: 0.88rem;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+.kb-related-item:hover {
+    background: var(--c-surface-sunken);
+    color: var(--c-primary);
+    text-decoration: none;
 }
 
 /* ── 面包屑 ── */

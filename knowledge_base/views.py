@@ -12,7 +12,7 @@ from django.db.models import Count, F, Q, Sum
 from django.db.models.functions import TruncDate
 from django.template.loader import render_to_string
 from django.utils import timezone
-from records.audit import log_operation
+from records.audit import log_operation, snapshot
 from records.crud import _per_page
 from .models import KnowledgeDocument, KnowledgeCategory, KnowledgeNode, KnowledgeView
 from .forms import KnowledgeDocumentForm, KnowledgeCategoryForm
@@ -336,6 +336,16 @@ def document_create(request):
                               else access.PRIVATE)
             access.ensure_owner(doc, request.user)
             doc.save()
+            try:
+                log_operation(
+                    request, '知识库', '文档创建',
+                    f'知识文档#{doc.pk}',
+                    f'「{doc.title}」创建',
+                    after=snapshot(doc),
+                )
+            except Exception:
+                import logging
+                logging.getLogger(__name__).exception('知识库文档#%s 创建留痕失败', doc.pk)
             if is_ajax:
                 return JsonResponse({'ok': True, 'message': f'文档「{doc.title}」创建成功'})
             return redirect('knowledge_base:document_list')
@@ -370,11 +380,23 @@ def document_edit(request, pk):
     if request.method == 'POST':
         form = KnowledgeDocumentForm(request.POST, instance=document)
         if form.is_valid():
+            before = snapshot(document)
             form.save()
             # 可见性单选框（批次 2 上 UI）：切换走唯一入口并留痕
             target = request.POST.get('visibility')
             if target in access.VISIBILITY_LABELS and access.can_manage_visibility(document, request.user):
                 access.set_visibility(document, target, request=request, source='编辑表单')
+            try:
+                document.refresh_from_db()
+                log_operation(
+                    request, '知识库', '文档编辑',
+                    f'知识文档#{document.pk}',
+                    f'「{document.title}」编辑',
+                    before=before, after=snapshot(document),
+                )
+            except Exception:
+                import logging
+                logging.getLogger(__name__).exception('知识库文档#%s 编辑留痕失败', document.pk)
             if is_ajax:
                 return JsonResponse({'ok': True, 'message': '文档已更新'})
             return redirect('knowledge_base:document_detail', pk=pk)
@@ -674,6 +696,15 @@ def api_folders(request):
                 request.user, data.get('name'), data.get('parent_id'))
         except kb_folders.FolderError as e:
             return JsonResponse({'ok': False, 'message': str(e)}, status=400)
+        try:
+            log_operation(
+                request, '知识库', '文件夹创建',
+                f'文件夹#{folder.pk}',
+                f'「{folder.name}」创建',
+            )
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception('知识库文件夹#%s 创建留痕失败', folder.pk)
         return JsonResponse({'ok': True, 'id': folder.pk, 'name': folder.name})
     tree = kb_folders.folder_tree(request.user)
     return JsonResponse({'ok': True, **tree})
@@ -686,6 +717,15 @@ def api_folder_rename(request, pk):
         folder = kb_folders.rename_folder(request.user, pk, data.get('name'))
     except kb_folders.FolderError as e:
         return JsonResponse({'ok': False, 'message': str(e)}, status=400)
+    try:
+        log_operation(
+            request, '知识库', '文件夹重命名',
+            f'文件夹#{folder.pk}',
+            f'「{folder.name}」重命名',
+        )
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception('知识库文件夹#%s 重命名留痕失败', folder.pk)
     return JsonResponse({'ok': True, 'id': folder.pk, 'name': folder.name})
 
 
@@ -696,6 +736,15 @@ def api_folder_move(request, pk):
         folder = kb_folders.move_folder(request.user, pk, data.get('parent_id'))
     except kb_folders.FolderError as e:
         return JsonResponse({'ok': False, 'message': str(e)}, status=400)
+    try:
+        log_operation(
+            request, '知识库', '文件夹移动',
+            f'文件夹#{folder.pk}',
+            f'「{folder.name}」{"移至顶层" if folder.parent_id is None else "移动到子文件夹"}',
+        )
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception('知识库文件夹#%s 移动留痕失败', folder.pk)
     return JsonResponse({'ok': True, 'id': folder.pk, 'parent_id': folder.parent_id})
 
 
@@ -706,6 +755,15 @@ def api_folder_delete(request, pk):
         moved_docs = kb_folders.delete_folder(request.user, pk)
     except kb_folders.FolderError as e:
         return JsonResponse({'ok': False, 'message': str(e)}, status=400)
+    try:
+        log_operation(
+            request, '知识库', '文件夹删除',
+            f'文件夹#{pk}',
+            f'删除（{moved_docs} 篇文档上提）',
+        )
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception('知识库文件夹#%s 删除留痕失败', pk)
     return JsonResponse({'ok': True, 'moved_docs': moved_docs})
 
 
@@ -716,10 +774,22 @@ def api_doc_move(request, pk):
     if not access.can_edit(document, request.user):
         return JsonResponse({'ok': False, 'message': '只能移动自己创建的文档'}, status=403)
     data = _folder_payload(request)
+    target_folder = kb_folders._owned_folder(request.user, data.get('folder_id'))
+    target_label = ('未归档' if target_folder is None and data.get('folder_id') not in (None, 0, '0', '')
+                    else (target_folder.name if target_folder else ''))
     try:
         kb_folders.move_doc(request.user, document, data.get('folder_id'))
     except kb_folders.FolderError as e:
         return JsonResponse({'ok': False, 'message': str(e)}, status=400)
+    try:
+        log_operation(
+            request, '知识库', '文档归档',
+            f'知识文档#{pk}',
+            f'「{document.title}」移动到「{target_label or "未归档"}」',
+        )
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception('知识库文档#%s 归档留痕失败', pk)
     return JsonResponse({'ok': True})
 
 
@@ -734,7 +804,20 @@ def document_delete(request, pk):
         return HttpResponseForbidden(message)
 
     if request.method == 'POST':
+        before = snapshot(document)
+        title = document.title
+        doc_id = document.pk
         document.delete()
+        try:
+            log_operation(
+                request, '知识库', '文档删除',
+                f'知识文档#{doc_id}',
+                f'「{title}」删除',
+                before=before,
+            )
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception('知识库文档#%s 删除留痕失败', doc_id)
         return redirect('knowledge_base:document_list')
 
     context = {
@@ -786,6 +869,16 @@ def category_create(request):
         form = KnowledgeCategoryForm(request.POST)
         if form.is_valid():
             cat = form.save()
+            try:
+                log_operation(
+                    request, '知识库', '分类创建',
+                    f'分类#{cat.pk}',
+                    f'「{cat.name}」创建',
+                    after=snapshot(cat),
+                )
+            except Exception:
+                import logging
+                logging.getLogger(__name__).exception('知识库分类#%s 创建留痕失败', cat.pk)
             if is_ajax:
                 return JsonResponse({'ok': True, 'message': f'分类「{cat.name}」创建成功'})
             return redirect('knowledge_base:category_list')
@@ -812,7 +905,19 @@ def category_edit(request, pk):
     if request.method == 'POST':
         form = KnowledgeCategoryForm(request.POST, instance=category)
         if form.is_valid():
+            before = snapshot(category)
             form.save()
+            try:
+                category.refresh_from_db()
+                log_operation(
+                    request, '知识库', '分类编辑',
+                    f'分类#{category.pk}',
+                    f'「{category.name}」编辑',
+                    before=before, after=snapshot(category),
+                )
+            except Exception:
+                import logging
+                logging.getLogger(__name__).exception('知识库分类#%s 编辑留痕失败', category.pk)
             if is_ajax:
                 return JsonResponse({'ok': True, 'message': '分类已更新'})
             return redirect('knowledge_base:category_list')
@@ -839,7 +944,21 @@ def category_delete(request, pk):
     category = get_object_or_404(KnowledgeCategory, pk=pk)
     
     if request.method == 'POST':
+        before = snapshot(category)
+        cat_id = category.pk
+        cat_name = category.name
+        document_count = category.documents.count()
         category.delete()
+        try:
+            log_operation(
+                request, '知识库', '分类删除',
+                f'分类#{cat_id}',
+                f'「{cat_name}」删除（含 {document_count} 篇文档）',
+                before=before,
+            )
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception('知识库分类#%s 删除留痕失败', cat_id)
         return redirect('knowledge_base:category_list')
     
     context = {
