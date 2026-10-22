@@ -13,6 +13,9 @@
     {% if subject %}
     <a href="{% url 'insurance_subject_detail' %}?key={{ subject.key|urlencode }}" class="btn-transparent">续保时间线</a>
     {% endif %}
+    {% can "insurance" "create" %}
+    <a href="{% url 'insurance_renew' %}?from_record={{ insurance.id }}" class="btn-primary" data-modal-add data-modal-title="续保保险">续保</a>
+    {% endcan %}
     {% can "insurance" "update" %}
     <a href="{% url 'insurance_edit' insurance.id %}" class="btn-transparent" data-modal-edit data-modal-title="编辑保险">编辑记录</a>
     {% endcan %}

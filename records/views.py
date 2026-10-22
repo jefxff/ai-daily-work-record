@@ -9,7 +9,7 @@ from .models import Decoration, CustomerCredit, CustomerComplaint, Regulation, P
 from .forms import DecorationForm, CustomerCreditForm, CustomerComplaintForm, CustomerComplaintClosureForm, RegulationForm, PriceEvaluationForm, InsuranceForm, ComplaintForm
 from .audit import log_operation, snapshot
 from .crud import make_delete_view, make_export_view, make_form_view, make_list_view
-from . import insurance_grouping
+from . import insurance_grouping, insurance_services
 from django.utils import timezone
 from accounts.decorators import perm_required, require_any_module
 from accounts.services import visible_modules
@@ -1015,11 +1015,13 @@ insurance_add, insurance_edit = make_form_view(
     log_label='保险', display_field='company_name',
     redirect_name='insurance_list', template_name='records/insurance_form.html',
     title_add='新增保险', title_edit='编辑保险',
+    after_save=lambda obj, created: insurance_services.attach_record_safe(obj),
 )
 
 insurance_delete = make_delete_view(
     model=Insurance, perm_module='insurance', label='保险',
     display_field='company_name', redirect_name='insurance_list',
+    after_delete=insurance_services.detach_record,
 )
 
 insurance_export = make_export_view(

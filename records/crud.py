@@ -32,7 +32,8 @@ def _sanitize_xlsx_formulas(wb):
 
 def make_form_view(*, model, form_class, perm_module, log_label, display_field,
                    redirect_name, template_name, title_add, title_edit,
-                   summary_label=None, modal_template='records/_form_modal.html'):
+                   summary_label=None, modal_template='records/_form_modal.html',
+                   after_save=None):
     """生成一对同构新增/编辑视图（整页表单 + AJAX 弹窗双模式，保存成功即留痕）。
 
     - model/form_class:    目标模型与其 ModelForm；
@@ -44,7 +45,9 @@ def make_form_view(*, model, form_class, perm_module, log_label, display_field,
     - redirect_name:       保存成功后跳转的 URL 名称；
     - template_name:       非弹窗模式的整页表单模板；
     - title_add/title_edit: 整页表单标题（如「新增核价」「编辑核价」）；
-    - modal_template:      AJAX 弹窗局部模板（records 各模块统一为 _form_modal.html）。
+    - modal_template:      AJAX 弹窗局部模板（records 各模块统一为 _form_modal.html）；
+    - after_save:          可选保存后钩子 after_save(obj, created)，在留痕前调用
+                           （如保险保存后自动挂接标的/保单年度），默认 None 零影响。
 
     AJAX 语义：GET 返回 {'ok': True, 'html': 弹窗}；校验失败返回
     {'ok': False, 'html': 弹窗} 且状态码 422；成功返回 {'ok': True, 'message': ...}。
@@ -64,6 +67,8 @@ def make_form_view(*, model, form_class, perm_module, log_label, display_field,
             form = form_class(request.POST)
             if form.is_valid():
                 obj = form.save()
+                if after_save is not None:
+                    after_save(obj, True)
                 log_operation(request, log_label, '新增', f'[{log_label}]下的记录#{obj.id}',
                               f'新增{label}: {getattr(obj, display_field)}',
                               after=snapshot(obj))
@@ -88,6 +93,8 @@ def make_form_view(*, model, form_class, perm_module, log_label, display_field,
             form = form_class(request.POST, instance=obj)
             if form.is_valid():
                 form.save()
+                if after_save is not None:
+                    after_save(obj, False)
                 log_operation(request, log_label, '更新', f'[{log_label}]下的记录#{obj.id}',
                               f'编辑{label}: {getattr(obj, display_field)}',
                               before=before_snap, after=snapshot(obj))
@@ -106,7 +113,7 @@ def make_form_view(*, model, form_class, perm_module, log_label, display_field,
 
 
 def make_delete_view(*, model=None, perm_module, label, display_field,
-                     redirect_name, getter=None):
+                     redirect_name, getter=None, after_delete=None):
     """生成标准删除视图：仅 POST（防跨站触发删除）+ 权限校验 + 操作留痕。
 
     - model:        被删模型；getter 未提供时按 get_object_or_404(model, pk=pk) 取数；
@@ -115,7 +122,10 @@ def make_delete_view(*, model=None, perm_module, label, display_field,
     - display_field:留痕摘要中展示的对象字段名；
     - redirect_name:删除成功后跳转的 URL 名称；
     - getter:       自定义取数 (request, pk) -> obj，用于行级数据隔离
-                    （如每日记录必须经 _get_my_record 校验归属，禁止跨用户删除）。
+                    （如每日记录必须经 _get_my_record 校验归属，禁止跨用户删除）；
+    - after_delete: 可选删除后钩子 after_delete(obj)，在 obj.delete() 之后、
+                    留痕之前调用；obj 的 pk 已置 None，其余字段值仍在
+                    （如保险删除后按原 policy_year_id 重算/清理保单年度）。
     """
     @perm_required(perm_module, "delete")
     @require_POST
@@ -125,6 +135,8 @@ def make_delete_view(*, model=None, perm_module, label, display_field,
         obj_id = obj.pk  # delete() 会将实例 pk 置 None，须先取出再删除
         before_snap = snapshot(obj)
         obj.delete()
+        if after_delete is not None:
+            after_delete(obj)
         log_operation(request, label, '删除', f'[{label}]下的记录#{obj_id}', info,
                       before=before_snap)
         return redirect(redirect_name)

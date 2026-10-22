@@ -127,6 +127,9 @@
                         <td data-label="操作" class="col-actions">
                             <a class="btn-transparent btn-sm" href="{% url 'insurance_subject_detail' %}?key={{ s.key|urlencode }}">时间线</a>
                             <a class="btn-transparent btn-sm" href="{% url 'insurance_detail' s.latest.primary_record.id %}" data-modal-detail data-modal-title="保险详情">当前保单</a>
+                            {% can "insurance" "create" %}
+                            <a class="btn-transparent btn-sm" href="{% url 'insurance_renew' %}?from_record={{ s.latest.primary_record.id }}" data-modal-add data-modal-title="续保保险 · {{ s.label }}">续保</a>
+                            {% endcan %}
                         </td>
                     </tr>
                     {% empty %}

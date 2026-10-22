@@ -1,19 +1,23 @@
-"""保险只读聚合页面（阶段 1）。
+"""保险聚合页面（阶段 1 只读）与续保录入（阶段 2）。
 
-只读视图，不新增模型、不改数据库：
 - 按标的聚合的续保列表；
 - 单标的续保时间线；
-- 应续未续 / 断档 / 即将到期报告。
+- 应续未续 / 断档 / 即将到期报告；
+- 续保视图：以上期保单为模板预填，保存后自动挂接标的/保单年度并留痕。
 """
 
 from django.core.paginator import Paginator
-from django.http import Http404
-from django.shortcuts import render
+from django.http import Http404, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
 from django.utils import timezone
 
 from accounts.decorators import perm_required
 
 from . import insurance_grouping as grouping
+from . import insurance_services
+from .audit import log_operation, snapshot
+from .forms import InsuranceForm
 from .models import Insurance
 
 
@@ -84,4 +88,48 @@ def insurance_renewal_report(request):
     return render(request, 'records/insurance_renewal_report.html', {
         'report': report,
         'summary': summary,
+    })
+
+
+@perm_required('insurance', 'create')
+def insurance_renew(request):
+    """续保录入：以上期保单为模板预填，保存后自动挂接标的/保单年度。
+
+    GET  参数 from_record=<上期保单id>：预填保司/标题/部门/保费，
+         日期顺推一年（上期截止日 +1 天 ~ +1 年），单号清空待填；
+    POST 创建新保单记录，attach_record 挂接，写「续保」留痕；
+    整页表单 + AJAX 弹窗双模式（与新增/编辑一致）。
+    """
+    is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
+
+    def _modal(form, ok):
+        html = render_to_string('records/_form_modal.html',
+                                {'form': form, 'save_label': '保存续保'},
+                                request=request)
+        return JsonResponse({'ok': ok, 'html': html}, status=200 if ok else 422)
+
+    if request.method == 'POST':
+        form = InsuranceForm(request.POST)
+        if form.is_valid():
+            obj = form.save()
+            insurance_services.attach_record_safe(obj)
+            log_operation(request, '保险', '续保', f'[保险]下的记录#{obj.id}',
+                          f'续保保险: {obj.company_name} {obj.title}',
+                          after=snapshot(obj))
+            if is_ajax:
+                return JsonResponse({'ok': True, 'message': '续保成功'})
+            return redirect('insurance_subject_list')
+        if is_ajax:
+            return _modal(form, False)
+    else:
+        from_record_id = request.GET.get('from_record')
+        if not from_record_id:
+            raise Http404('缺少上期保单参数')
+        prev = get_object_or_404(Insurance, pk=from_record_id)
+        form = InsuranceForm(initial=insurance_services.renewal_initial(prev))
+
+    if is_ajax:
+        return _modal(form, True)
+    return render(request, 'records/insurance_form.html', {
+        'form': form, 'title': '续保保险',
     })

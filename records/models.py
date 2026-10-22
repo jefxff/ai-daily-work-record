@@ -259,6 +259,72 @@ class MetalPrice(models.Model):
         return f"{self.metal_name} - {self.price} {self.unit} ({self.crawl_date})"
 
 
+class InsuranceSubject(models.Model):
+    """保险标的主档：一台车（车牌）或一个非车险险种（阶段 2 落库）。
+
+    归一口径与 records.insurance_grouping.subject_of 完全一致：
+    - 车险：plate 唯一（如 粤B8X66D），insurance_type 固定为「车险」；
+    - 非车险：(kind, insurance_type) 唯一（如 财产一切险）。
+    """
+
+    KIND_CHOICES = [('car', '车险'), ('non_car', '非车险')]
+
+    kind = models.CharField(max_length=20, choices=KIND_CHOICES, verbose_name='标的类型')
+    label = models.CharField(max_length=100, verbose_name='标的名称')
+    plate = models.CharField(max_length=20, blank=True, default='', verbose_name='车牌号')
+    insurance_type = models.CharField(max_length=100, verbose_name='险种')
+    department = models.CharField(max_length=50, blank=True, default='', verbose_name='默认部门')
+    remarks = models.TextField(null=True, blank=True, verbose_name='备注')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = '保险标的'
+        verbose_name_plural = '保险标的'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['plate'], condition=~models.Q(plate=''),
+                name='uniq_inssubject_plate',
+            ),
+            models.UniqueConstraint(
+                fields=['kind', 'insurance_type'], condition=models.Q(kind='non_car'),
+                name='uniq_inssubject_noncar_type',
+            ),
+        ]
+
+    def __str__(self):
+        return self.label
+
+
+class InsurancePolicyYear(models.Model):
+    """保单年度：标的一个截止年份下的全部保单条目汇总（冗余字段由明细重算）。"""
+
+    subject = models.ForeignKey(
+        InsuranceSubject, on_delete=models.CASCADE,
+        related_name='policy_years', verbose_name='保险标的',
+    )
+    year = models.PositiveIntegerField(verbose_name='保单年度')
+    start_date = models.DateField(verbose_name='保障开始')
+    end_date = models.DateField(verbose_name='保障截止')
+    premium = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name='保费合计')
+    insurer = models.CharField(max_length=100, blank=True, default='', verbose_name='保司（归一）')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = '保单年度'
+        verbose_name_plural = '保单年度'
+        ordering = ['subject_id', 'year']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['subject', 'year'], name='uniq_inspolicyyear_subject_year',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.subject.label} {self.year} 年度'
+
+
 class Insurance(models.Model):
     """保险模型"""
     company_name = models.CharField(max_length=100, verbose_name='公司名称', null=False, blank=False)
@@ -269,6 +335,15 @@ class Insurance(models.Model):
     end_date = models.DateField(verbose_name='截止日期', null=False, blank=False)
     department = models.CharField(max_length=50, verbose_name='部门', null=False, blank=False)
     remarks = models.TextField(verbose_name='备注', null=True, blank=True)
+    # 阶段 2：标的/年度挂接（可空，由 insurance_services.attach_record 自动维护）
+    subject = models.ForeignKey(
+        InsuranceSubject, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='records', verbose_name='保险标的',
+    )
+    policy_year = models.ForeignKey(
+        InsurancePolicyYear, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='records', verbose_name='保单年度',
+    )
     
     @property
     def is_expired(self):
