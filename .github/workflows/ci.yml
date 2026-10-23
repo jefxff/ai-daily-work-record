@@ -21,7 +21,7 @@ jobs:
       DJANGO_DEBUG: "0"
     steps:
       # Action 固定到 40 位 commit SHA：浮动 tag 可被上游重写，属于供应链投毒入口
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
 
@@ -93,7 +93,7 @@ jobs:
       BASE_URL: "http://127.0.0.1:8080"
       DJANGO_SUPERUSER_PASSWORD: "CiVisual#2026"
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
 
