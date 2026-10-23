@@ -271,7 +271,14 @@ class Ledger(TimeStampedModel):
 
     @property
     def archive_count(self) -> int:
-        """台账内档案数量。"""
+        """台账内档案数量。
+
+        若查询集已 annotate(_archive_count=Count("archives"))，直接用注解值，
+        避免排序弹窗逐台账一次 COUNT（审计 P2-2：总览页排序列表原本每行一条 SQL）。
+        """
+        cached = getattr(self, "_archive_count", None)
+        if cached is not None:
+            return int(cached)
         return self.archives.count()
 
 
@@ -385,16 +392,15 @@ class Archive(TimeStampedModel):
         """是否已过期（到期日期早于今天）。"""
         if not self.expire_date:
             return False
-        from datetime import date
-        return self.expire_date < date.today()
+        return self.expire_date < timezone.localdate()
 
     @property
     def is_expiring(self) -> bool:
         """是否即将到期（30天内到期，不含已过期）。"""
         if not self.expire_date or self.is_expired:
             return False
-        from datetime import date, timedelta
-        return self.expire_date <= date.today() + timedelta(days=30)
+        from datetime import timedelta
+        return self.expire_date <= timezone.localdate() + timedelta(days=30)
 
     @property
     def tags_list(self) -> list:

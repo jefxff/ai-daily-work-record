@@ -4,15 +4,18 @@
 URL 名称与行为完全不变。
 """
 
-from datetime import date, datetime, timedelta
+from collections import defaultdict
+from datetime import timedelta
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Count, Exists, F, OuterRef, Q, Window
+from django.db.models.functions import RowNumber
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 
 from accounts.decorators import perm_required
 from records.crud import _per_page
@@ -43,8 +46,15 @@ def overview(request):
     category_id = request.GET.get("category")
     status = request.GET.get("status")  # expiring / borrowed
 
-    today = date.today()
+    # P2-3：时区口径统一为 timezone.localdate()。timezone.localdate() 取的是进程操作系统的
+    # 本地日期，部署到 TZ=UTC 的容器后，每天北京时间 00:00–08:00 会返回前一天，
+    # 到期判定与"今日新增"整体偏移一天（本机 Windows 永远是 Asia/Shanghai，测不出来）。
+    today = timezone.localdate()
     expire_threshold = today + timedelta(days=30)
+
+    # 借出中的档案集合：反向外键 join 陷阱——borrow_records__return_time__isnull=True
+    # 会把无任何借阅记录的档案也匹配进来（LEFT JOIN 全 NULL 行），必须用子查询
+    borrowed_subq = BorrowRecord.objects.filter(return_time__isnull=True).values("archive_id")
 
     def _ledger_qs(ledger):
         """台账（None=未分配）内档案查询集，套用筛选条件。"""
@@ -57,12 +67,14 @@ def overview(request):
         if status == "expiring":
             qs = qs.filter(expire_date__isnull=False, expire_date__gte=today, expire_date__lte=expire_threshold)
         elif status == "borrowed":
-            # 反向外键 join 陷阱：borrow_records__return_time__isnull=True 会把
-            # 无任何借阅记录的档案也匹配进来（LEFT JOIN 全 NULL 行），必须用子查询
-            qs = qs.filter(
-                pk__in=BorrowRecord.objects.filter(return_time__isnull=True).values("archive_id")
+            qs = qs.filter(pk__in=borrowed_subq)
+        # 借出状态下推为注解：模板逐行读 a.is_borrowed，否则每行一次 EXISTS，
+        # 首屏 10 行 × N 个台账又成一条 N+1（Archive.is_borrowed 会优先读 _borrowed）
+        return qs.annotate(
+            _borrowed=Exists(
+                BorrowRecord.objects.filter(archive=OuterRef("pk"), return_time__isnull=True)
             )
-        return qs.order_by("-id")
+        ).order_by("-id")
 
     # 档案搜索：按多字段匹配，命中行在台账卡片中高亮
     matched_ids = []
@@ -83,53 +95,120 @@ def overview(request):
         )
 
     filtering = bool(aq or status or category_id)
-    ledger_data = []
-    for ledger in Ledger.objects.all():
-        qs = _ledger_qs(ledger)
-        total = qs.count()
-        if aq:
-            rows = list(qs.filter(id__in=matched_ids)[:200])
-        else:
-            rows = list(qs[:10])
-        # 筛选状态下跳过无命中台账，避免满屏空卡片
-        if filtering and not rows:
-            continue
-        ledger_data.append({
-            "ledger": ledger,
-            "rows": rows,
-            "total": total,
-            "expiring_count": ledger.archives.filter(
-                expire_date__isnull=False, expire_date__gte=today, expire_date__lte=expire_threshold
-            ).count(),
-            "borrowed_count": ledger.archives.filter(
-                pk__in=BorrowRecord.objects.filter(return_time__isnull=True).values("archive_id")
-            ).count(),
-        })
 
-    # 未分配台账的档案（历史数据/手工录入未选台账）
-    unassigned_qs = _ledger_qs(None)
-    unassigned_total = unassigned_qs.count()
+    # 审计 P2-2：台账维度的三个计数（总数/即将到期/借出中）原来是每个台账 3~4 条 SQL，
+    # 台账数是业务增长维度，50 个台账时光这里就 200+ 条。改为一次 annotate 全部取回。
+    ledger_stats = list(
+        Ledger.objects.annotate(
+            total=Count("archives", distinct=True),
+            expiring_count=Count(
+                "archives",
+                distinct=True,
+                filter=Q(
+                    archives__expire_date__isnull=False,
+                    archives__expire_date__gte=today,
+                    archives__expire_date__lte=expire_threshold,
+                ),
+            ),
+            borrowed_count=Count(
+                "archives", distinct=True, filter=Q(archives__pk__in=borrowed_subq)
+            ),
+        )
+    )
+
+    # 默认视图下每个台账首屏 10 行的暂存（窗口函数一趟取回后按台账分组）
+    rows_by_ledger = defaultdict(list)
+
+    ledger_data = []
+    if filtering:
+        # 筛选是低频路径：保留逐台账取行，但计数已由上面的 annotate 一次取回
+        for ledger in ledger_stats:
+            qs = _ledger_qs(ledger)
+            total = qs.count()
+            if aq:
+                rows = list(qs.filter(id__in=matched_ids)[:200])
+            else:
+                rows = list(qs[:10])
+            # 筛选状态下跳过无命中台账，避免满屏空卡片
+            if not rows:
+                continue
+            ledger_data.append({
+                "ledger": ledger,
+                "rows": rows,
+                "total": total,
+                "expiring_count": ledger.expiring_count,
+                "borrowed_count": ledger.borrowed_count,
+            })
+    else:
+        # 默认视图：每个台账展示最新 10 行。用窗口函数一条 SQL 取回所有台账的首屏行
+        # （含未分配档案，分区键 ledger_id 为 NULL），再按台账分组，省掉 N 次 LIMIT 查询。
+        top_rows = (
+            Archive.objects.annotate(
+                _rank=Window(
+                    RowNumber(), partition_by="ledger_id", order_by=F("id").desc()
+                ),
+                # 借出状态一并下推：模板逐行读 a.is_borrowed 走注解，不再每行 EXISTS
+                _borrowed=Exists(
+                    BorrowRecord.objects.filter(archive=OuterRef("pk"), return_time__isnull=True)
+                ),
+            ).filter(_rank__lte=10)
+        )
+        for archive in top_rows:
+            rows_by_ledger[archive.ledger_id].append(archive)
+        for ledger in ledger_stats:
+            ledger_data.append({
+                "ledger": ledger,
+                "rows": rows_by_ledger.get(ledger.pk, []),
+                "total": ledger.total,
+                "expiring_count": ledger.expiring_count,
+                "borrowed_count": ledger.borrowed_count,
+            })
+
+    # 未分配台账的档案（历史数据/手工录入未选台账）：三个计数一次聚合取回
+    unassigned_stats = Archive.objects.filter(ledger__isnull=True).aggregate(
+        total=Count("id"),
+        expiring_count=Count(
+            "id",
+            filter=Q(
+                expire_date__isnull=False,
+                expire_date__gte=today,
+                expire_date__lte=expire_threshold,
+            ),
+        ),
+        borrowed_count=Count("id", filter=Q(pk__in=borrowed_subq)),
+    )
+    unassigned_total = unassigned_stats["total"] or 0
     unassigned_rows = []
     if unassigned_total:
+        unassigned_qs = _ledger_qs(None)
         if aq:
             unassigned_rows = list(unassigned_qs.filter(id__in=matched_ids)[:200])
-        else:
+        elif filtering:
             unassigned_rows = list(unassigned_qs[:10])
+        else:
+            # 默认视图下这些行已在窗口函数那一趟里取回（分区键 ledger_id 为 NULL）
+            unassigned_rows = rows_by_ledger.get(None, [])
     if filtering and not unassigned_rows:
         unassigned_total = 0
 
     # 仪表盘指标：台账总数 / 档案总数 / 已借出 / 逾期未还 / 即将到期
-    total_ledgers = Ledger.objects.count()
+    total_ledgers = len(ledger_stats)
     total_archives = Archive.objects.count()
-    borrowed_count = BorrowRecord.objects.filter(return_time__isnull=True).count()
-    overdue_count = BorrowRecord.objects.filter(return_time__isnull=True, due_time__lt=today).count()
+    borrow_agg = BorrowRecord.objects.filter(return_time__isnull=True).aggregate(
+        borrowed_count=Count("id"),
+        overdue_count=Count("id", filter=Q(due_time__lt=today)),
+    )
+    borrowed_count = borrow_agg["borrowed_count"]
+    overdue_count = borrow_agg["overdue_count"]
     expiring_count = Archive.objects.filter(
         expire_date__isnull=False, expire_date__lte=expire_threshold, expire_date__gte=today
     ).count()
 
-    categories = Category.objects.all()
-    # 台账排序弹窗：完整台账列表（不受筛选影响），按当前显示顺序
-    sort_ledgers = Ledger.objects.all()
+    # full_path 会沿 self-referential 的 parent 上溯，不预取就是每个类别一次查询
+    categories = Category.objects.select_related("parent")
+    # 台账排序弹窗：完整台账列表（不受筛选影响），按当前显示顺序。
+    # 逐行展示档案数，annotate 下推，避免每台账一次 COUNT（P2-2）
+    sort_ledgers = Ledger.objects.annotate(_archive_count=Count("archives"))
 
     context = {
         "ledger_data": ledger_data,
@@ -162,7 +241,15 @@ def ledger_detail(request, pk):
     q = request.GET.get("q", "").strip()
     per_page = _per_page(request)
 
-    qs = ledger.archives.order_by("-id")
+    # 借出状态下推为注解：详情列表每行读 a.is_borrowed，否则每行一次 EXISTS
+    qs = (
+        ledger.archives.order_by("-id")
+        .annotate(
+            _borrowed=Exists(
+                BorrowRecord.objects.filter(archive=OuterRef("pk"), return_time__isnull=True)
+            )
+        )
+    )
     if q:
         qs = qs.filter(
             Q(name__icontains=q) | Q(code__icontains=q) | Q(counterpart__icontains=q)
@@ -172,7 +259,7 @@ def ledger_detail(request, pk):
     paginator = Paginator(qs, per_page)
     page_obj = paginator.get_page(request.GET.get("page"))
 
-    today = date.today()
+    today = timezone.localdate()
     expiring_count = ledger.archives.filter(
         expire_date__isnull=False, expire_date__lte=today + timedelta(days=30), expire_date__gte=today
     ).count()
@@ -289,7 +376,7 @@ def ledger_export(request, pk):
     archives = lg.archives.select_related("cabinet", "category", "ledger").order_by("id")
     data = _archive_book_bytes([(lg.name, archives)])
     _log(request, "导出", f"台账#{lg.id}", f"导出台账「{lg.name}」全部档案 {archives.count()} 条")
-    return _xlsx_response(data, f"{lg.name}_档案_{datetime.now():%Y%m%d_%H%M}.xlsx")
+    return _xlsx_response(data, f"{lg.name}_档案_{timezone.localtime():%Y%m%d_%H%M}.xlsx")
 
 
 @login_required
@@ -311,9 +398,9 @@ def ledger_batch_export(request):
     total = sum(len(s[1]) for s in sheets)
     _log(request, "导出", "台账批量导出", f"导出 {ledgers.count()} 个台账共 {total} 条档案")
     if ledgers.count() == 1:
-        fname = f"{ledgers.first().name}_档案_{datetime.now():%Y%m%d_%H%M}.xlsx"
+        fname = f"{ledgers.first().name}_档案_{timezone.localtime():%Y%m%d_%H%M}.xlsx"
     else:
-        fname = f"台账档案批量导出_{datetime.now():%Y%m%d_%H%M}.xlsx"
+        fname = f"台账档案批量导出_{timezone.localtime():%Y%m%d_%H%M}.xlsx"
     return _xlsx_response(data, fname)
 
 
