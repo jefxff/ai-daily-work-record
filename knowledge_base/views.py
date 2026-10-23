@@ -22,10 +22,7 @@ from accounts.services import has_perm
 from . import access
 from . import folders as kb_folders
 from . import outline as kb_outline
-
-
-def _is_ajax(request):
-    return request.headers.get('x-requested-with') == 'XMLHttpRequest'
+from work_record.http_utils import is_ajax as _is_ajax  # 统一实现（复核报告 CODE-01）
 
 
 def _int_or_none(value):

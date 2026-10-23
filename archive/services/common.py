@@ -5,6 +5,7 @@
 """
 
 from records.models import OperationLog
+from work_record.http_utils import is_ajax as _is_ajax  # 统一实现（复核报告 CODE-01）
 
 
 def _operator(request) -> str:
@@ -27,5 +28,3 @@ def _log(request, op_type: str, obj_id: str, summary: str):
     )
 
 
-def _is_ajax(request) -> bool:
-    return request.headers.get("x-requested-with") == "XMLHttpRequest"

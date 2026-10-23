@@ -12,8 +12,8 @@
 
 from decimal import Decimal
 
-from django.db.models import Count, DecimalField, Q, Sum, Value
-from django.db.models.functions import Coalesce
+from django.db.models import Count, DecimalField, F, Q, Sum, Value
+from django.db.models.functions import Coalesce, Greatest
 from django.utils import timezone
 
 from .models import (
@@ -31,14 +31,14 @@ from .models import (
 ZERO = Value(Decimal("0"), output_field=DecimalField(max_digits=14, decimal_places=2))
 
 
-def _sum(qs, field):
+def _sum(qs, field) -> Decimal:
     """SUM 并保证空表返回 0（而不是 None）。"""
     return qs.aggregate(v=Coalesce(Sum(field), ZERO))["v"] or Decimal("0")
 
 
 # ---------------- 各模块 ----------------
 
-def decoration_stats():
+def decoration_stats() -> dict:
     qs = Decoration.objects.all()
     return {
         "total_decorations": qs.count(),
@@ -46,7 +46,7 @@ def decoration_stats():
     }
 
 
-def credit_stats():
+def credit_stats() -> dict:
     return CustomerCredit.objects.aggregate(
         total=Count("id"),
         pending_site=Count("id", filter=Q(work_method="现场审核", result="待排期去现场")),
@@ -56,7 +56,7 @@ def credit_stats():
     )
 
 
-def customer_complaint_stats():
+def customer_complaint_stats() -> dict:
     return CustomerComplaint.objects.aggregate(
         total=Count("id"),
         completed=Count("id", filter=Q(complaint_status="已完成")),
@@ -66,7 +66,7 @@ def customer_complaint_stats():
     )
 
 
-def lawsuit_stats():
+def lawsuit_stats() -> dict:
     return Complaint.objects.aggregate(
         total=Count("id"),
         completed=Count("id", filter=Q(progress="结案")),
@@ -74,21 +74,39 @@ def lawsuit_stats():
     )
 
 
-def price_stats():
+def price_stats() -> dict:
+    """核价统计：核减金额下推为 SQL（MAX(三家报价) - 内控价）。
+
+    与原 Python 版 `get_reduction_amount()` 口径逐条等价：
+    - 内控价为空或 0 的行不计（原实现用 `if self.internal_control_price` 判真）；
+    - 三家供应商报价全为空的行不计；
+    - 空表返回 0 而非 None。
+    """
     qs = PriceEvaluation.objects.all()
-    # 核减金额 = 最高供应商报价 - 内控审核价；依赖三列取最大值，保留 Python 计算
-    total_reduction = sum(
-        (obj.get_reduction_amount() or 0) for obj in qs.only(
-            "supplier1_price", "supplier2_price", "supplier3_price", "internal_control_price"
+    max_price = Greatest(
+        Coalesce(F("supplier1_price"), ZERO),
+        Coalesce(F("supplier2_price"), ZERO),
+        Coalesce(F("supplier3_price"), ZERO),
+    )
+    eligible = (
+        qs.exclude(internal_control_price__isnull=True)
+        .exclude(internal_control_price=0)
+        .filter(
+            Q(supplier1_price__isnull=False)
+            | Q(supplier2_price__isnull=False)
+            | Q(supplier3_price__isnull=False)
         )
     )
+    total_reduction = eligible.aggregate(
+        v=Coalesce(Sum(max_price - F("internal_control_price")), ZERO)
+    )["v"] or Decimal("0")
     return {
         "total_price_evaluations": qs.count(),
         "total_price_reduction": total_reduction,
     }
 
 
-def insurance_stats(today=None):
+def insurance_stats(today=None) -> dict:
     today = today or timezone.localdate()
     return Insurance.objects.aggregate(
         total=Count("id"),
@@ -96,7 +114,7 @@ def insurance_stats(today=None):
     )
 
 
-def daily_stats(user):
+def daily_stats(user) -> dict:
     """每日记录按用户隔离：任何统计都只能基于本函数。"""
     return DailyRecord.objects.filter(user=user).aggregate(
         total=Count("id"),
@@ -105,11 +123,11 @@ def daily_stats(user):
     )
 
 
-def regulation_count():
+def regulation_count() -> int:
     return Regulation.objects.count()
 
 
-def metal_prices_today():
+def metal_prices_today() -> list:
     """今日金属价格；当天未抓取时回退到最近一次抓取的整批数据。"""
     today = timezone.localdate()
     today_qs = MetalPrice.objects.filter(crawl_date=today)
@@ -121,7 +139,7 @@ def metal_prices_today():
     return list(MetalPrice.objects.filter(crawl_date=last.crawl_date))
 
 
-def total_records(visible, base, user=None):
+def total_records(visible, base: int, user=None) -> int:
     """全站记录总数：口径统一在这里，漏模块的问题只会在这一处发生。
 
     base 为 records 各模块计数之和；visible 为用户可见模块集合，
@@ -149,3 +167,68 @@ def total_records(visible, base, user=None):
             doc_q &= Q(visibility="public")
         total += KnowledgeDocument.objects.filter(doc_q).count()
     return total
+
+
+# 数据看板 10 个模块卡（顺序即模板顺序；不含 metal_price / knowledge）
+DASHBOARD_MODULE_KEYS = (
+    "decoration", "customer_credit", "customer_complaint", "complaint",
+    "regulation", "price_evaluation", "insurance", "daily_record",
+    "samples", "archive",
+)
+
+
+def dashboard_summary(
+    user, visible, *, insurance_total: int, insurance_active: int, insurance_expired: int
+) -> dict:
+    """看板顶部统计的唯一计算入口（复核报告 DATA-04）。
+
+    改造前 dashboard() 自己又写了一遍 aggregate/sum，与 home() 的口径分叉。
+    这里复用各模块 stats 函数，只在外层做组合；模板 context 键保持不变。
+    保险数字由调用方按「标的聚合口径」传入，避免保单明细口径回潮。
+    """
+    dec = decoration_stats()
+    credit = credit_stats()
+    cc = customer_complaint_stats()
+    law = lawsuit_stats()
+    price = price_stats()
+    daily = daily_stats(user)
+    regulations = regulation_count()
+
+    base = (
+        dec["total_decorations"] + credit["distinct_customers"] + cc["total"]
+        + law["total"] + regulations + price["total_price_evaluations"]
+        + insurance_total + daily["total"]
+    )
+    total_processed = daily["completed"] + cc["completed"]
+    total_items = daily["total"] + cc["total"]
+    return {
+        "total_records": total_records(visible, base, user=user),
+        "module_count": sum(1 for key in DASHBOARD_MODULE_KEYS if key in visible),
+        "completion_rate": int((total_processed / total_items) * 100) if total_items else 0,
+        "pending_count": daily["incomplete"] + cc["pending"] + law["incomplete"],
+        "total_decorations": dec["total_decorations"],
+        "decoration_reduced_total": dec["decoration_reduced_total"],
+        "total_customers": credit["distinct_customers"],
+        "credit_total_count": credit["total"],
+        "credit_pending_site_count": credit["pending_site"],
+        "credit_agree_count": credit["agree"],
+        "credit_disagree_count": credit["disagree"],
+        "complaint_total_count": cc["total"],
+        "complaint_completed_count": cc["completed"],
+        "complaint_incomplete_count": cc["incomplete"],
+        "complaint_pending_count": cc["pending"],
+        "lawsuit_total_count": law["total"],
+        "lawsuit_completed_count": law["completed"],
+        "lawsuit_incomplete_count": law["incomplete"],
+        "lawsuit_pending_count": law["incomplete"],
+        "total_regulations": regulations,
+        "price_total_count": price["total_price_evaluations"],
+        "price_reduction_total": price["total_price_reduction"],
+        "insurance_total_count": insurance_total,
+        "insurance_not_expired_count": insurance_active,
+        "insurance_expired_count": insurance_expired,
+        "daily_total_count": daily["total"],
+        "daily_incomplete_count": daily["incomplete"],
+        "daily_pending_count": daily["incomplete"],
+    }
+

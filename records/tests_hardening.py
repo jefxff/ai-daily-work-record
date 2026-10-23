@@ -400,8 +400,6 @@ class ExportFilenameTests(TestCase):
 
     def test_export_writes_operation_log(self):
         """批次B：导出动作落一条 operation_type='导出' 留痕（供异常检测识别批量导出）。"""
-        from .models import OperationLog
-
         call_command("sync_rbac", verbosity=0)
         user = User.objects.create_superuser("e_log", "el@e.com", "x12345678")
         Decoration.objects.create(

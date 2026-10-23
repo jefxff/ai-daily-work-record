@@ -43,17 +43,17 @@ from .models import (
     Sample,
     TestRecord,
 )
+from work_record.http_utils import is_ajax as _is_ajax  # 统一实现（复核报告 CODE-01）
+from work_record.http_utils import parse_date as _shared_parse_date
+from work_record.http_utils import per_page as _shared_per_page
 
 logger = logging.getLogger(__name__)
 
 
 def _per_page(request):
     """列表页每页条数：仅允许 10/30/50，默认 10（与全站一致）。"""
-    try:
-        v = int(request.GET.get("per_page", 10))
-    except (TypeError, ValueError):
-        v = 10
-    return v if v in (10, 30, 50) else 10
+    return _shared_per_page(request, 10, choices=(10, 30, 50))
+
 
 
 def _current_name(request):
@@ -71,13 +71,7 @@ def _lock_person_field(form, field_name, value):
 
 
 def _parse_date(value, default=None):
-    value = (value or "").strip()
-    if not value:
-        return default
-    try:
-        return datetime.strptime(value, "%Y-%m-%d").date()
-    except ValueError:
-        return default
+    return _shared_parse_date(value, default)
 
 
 def _raise_to_form(form, exc):
@@ -86,10 +80,6 @@ def _raise_to_form(form, exc):
         target = field if field in form.fields else None
         for error in errors:
             form.add_error(target, error)
-
-
-def _is_ajax(request):
-    return request.headers.get("x-requested-with") == "XMLHttpRequest"
 
 
 def _modal_form(request, form, save_label, error_message="", ok=True):

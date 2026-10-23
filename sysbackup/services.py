@@ -78,22 +78,111 @@ def ensure_path_allowed(p):
         "路径不在允许的备份目录白名单内（如需使用项目外目录，请设置环境变量 BACKUP_ALLOWED_ROOTS）"
     )
 
-# ---------- 任务状态（进程内） ----------
+# ---------- 任务状态（进程内缓存 + 落库） ----------
+#
+# 复核报告 P1-B：状态原先只存在进程内字典，重启即丢且失败无痕迹。
+# 现在每次写入都同步到 sysbackup.BackupTask，进程内字典只作读缓存；
+# 跨进程/重启后 _task_snapshot 会回落到数据库读取。
 
 _STATE_LOCK = threading.Lock()
-_TASKS = {}  # task_id -> dict
+_TASKS = {}  # task_id -> dict（进程内缓存，权威数据在 BackupTask 表）
 _TASK_KEEP = 50  # 最多保留最近 N 个任务记录
 _RUN_SLOT = [False]  # 同一时间仅一个备份/恢复任务
+_HEARTBEAT_TIMEOUT_MIN = 30  # 心跳超过该分钟数视为任务已中断（进程被杀/重启）
+
+_TIME_FMT = "%Y-%m-%d %H:%M:%S"
+
+
+def _parse_task_time(value):
+    """把快照里的本地时间字符串还原为带时区的 datetime。"""
+    if not value:
+        return None
+    try:
+        dt = datetime.strptime(value, _TIME_FMT)
+    except (TypeError, ValueError):
+        return None
+    return timezone.make_aware(dt, timezone.get_current_timezone())
+
+
+def _persist(task):
+    """把内存快照写回数据库；失败仅告警，不阻断备份/恢复主流程。"""
+    if not task:
+        return
+    try:
+        from .models import BackupTask
+
+        BackupTask.objects.update_or_create(
+            id=task["id"],
+            defaults={
+                "kind": task["kind"],
+                "status": task["status"],
+                "stage": task.get("stage", ""),
+                "percent": task.get("percent", 0),
+                "message": task.get("message", ""),
+                "error": task.get("error", ""),
+                "log": task.get("log", []),
+                "result": task.get("result", {}),
+                "started_at": _parse_task_time(task.get("started_at")) or timezone.now(),
+                "finished_at": _parse_task_time(task.get("finished_at")),
+                "heartbeat_at": timezone.now(),
+            },
+        )
+    except Exception:  # 数据库被恢复回退等极端情况：内存状态仍可继续推进
+        logger.warning("备份任务状态落库失败（task=%s），继续按内存状态运行", task.get("id"))
+
+
+def _row_to_snapshot(row):
+    """BackupTask 行 → 与原 _TASKS 完全同构的 dict（保持视图/前端契约不变）。"""
+    return {
+        "id": row.id,
+        "kind": row.kind,
+        "status": row.status,
+        "stage": row.stage,
+        "percent": row.percent,
+        "message": row.message,
+        "error": row.error,
+        "log": list(row.log or []),
+        "started_at": timezone.localtime(row.started_at).strftime(_TIME_FMT)
+        if row.started_at else "",
+        "finished_at": timezone.localtime(row.finished_at).strftime(_TIME_FMT)
+        if row.finished_at else "",
+        "result": dict(row.result or {}),
+    }
 
 
 def _task_snapshot(task_id):
+    if not task_id:
+        return None
     with _STATE_LOCK:
         task = _TASKS.get(task_id)
-        return dict(task) if task else None
+        if task:
+            return dict(task)
+    try:
+        from .models import BackupTask
+
+        row = BackupTask.objects.filter(pk=task_id).first()
+        return _row_to_snapshot(row) if row else None
+    except Exception:
+        return None
+
+
+def _trim_tasks():
+    """数据库内只保留最近 N 个任务，避免无限增长。"""
+    try:
+        from .models import BackupTask
+
+        stale_ids = list(
+            BackupTask.objects.order_by("-started_at").values_list("id", flat=True)[_TASK_KEEP:]
+        )
+        if stale_ids:
+            BackupTask.objects.filter(id__in=stale_ids).delete()
+    except Exception:
+        logger.debug("清理历史备份任务记录失败", exc_info=True)
 
 
 def _new_task(kind, detail=""):
     task_id = uuid.uuid4().hex
+    now_text = timezone.localtime().strftime(_TIME_FMT)
     with _STATE_LOCK:
         _TASKS[task_id] = {
             "id": task_id,
@@ -104,14 +193,18 @@ def _new_task(kind, detail=""):
             "message": detail,
             "error": "",
             "log": [],
-            "started_at": timezone.localtime().strftime("%Y-%m-%d %H:%M:%S"),
+            "started_at": now_text,
             "finished_at": "",
             "result": {},
         }
-        # 清理历史任务，防止字典无限增长
+        # 清理进程内历史任务，防止字典无限增长
         if len(_TASKS) > _TASK_KEEP:
             for old_id in sorted(_TASKS.keys(), key=lambda k: _TASKS[k]["started_at"])[:-_TASK_KEEP]:
                 _TASKS.pop(old_id, None)
+        snapshot = dict(_TASKS[task_id])
+        snapshot["log"] = list(snapshot["log"])
+    _persist(snapshot)
+    _trim_tasks()
     return task_id
 
 
@@ -120,14 +213,40 @@ def _update(task_id, **fields):
         task = _TASKS.get(task_id)
         if task:
             task.update(fields)
+            if fields.get("status") in ("success", "failed") and not task.get("finished_at"):
+                task["finished_at"] = timezone.localtime().strftime(_TIME_FMT)
+            snapshot = dict(task)
+            snapshot["log"] = list(snapshot["log"])
+        else:
+            snapshot = None
+    if snapshot:
+        _persist(snapshot)
 
 
 def _log(task_id, message):
     line = f"[{timezone.localtime().strftime('%H:%M:%S')}] {message}"
     with _STATE_LOCK:
         task = _TASKS.get(task_id)
-        if task is not None:
+        if task is None:
+            snapshot = None
+        else:
             task["log"].append(line)
+            snapshot = dict(task)
+            snapshot["log"] = list(snapshot["log"])
+    if snapshot:
+        _persist(snapshot)
+        return
+    # 进程重启后恢复中的任务：日志仍要落库（行由 _update 重建）
+    try:
+        from .models import BackupTask
+
+        row = BackupTask.objects.filter(pk=task_id).first()
+        if row:
+            row.log = list(row.log or []) + [line]
+            row.heartbeat_at = timezone.now()
+            row.save(update_fields=["log", "heartbeat_at"])
+    except Exception:
+        logger.debug("追加任务日志失败", exc_info=True)
 
 
 def _progress(task_id, percent, stage=None):
@@ -137,7 +256,35 @@ def _progress(task_id, percent, stage=None):
     _update(task_id, **fields)
 
 
+def reap_stale_tasks():
+    """把心跳超时的 running 任务标记为失败（进程重启/被杀留下的僵尸任务）。"""
+    try:
+        from datetime import timedelta
+
+        from .models import BackupTask
+
+        cutoff = timezone.now() - timedelta(minutes=_HEARTBEAT_TIMEOUT_MIN)
+        return BackupTask.objects.filter(status="running", heartbeat_at__lt=cutoff).update(
+            status="failed",
+            stage="任务中断",
+            error="任务被中断：进程重启或异常退出（心跳超时）",
+            finished_at=timezone.now(),
+            heartbeat_at=timezone.now(),
+        )
+    except Exception:
+        logger.debug("清理僵尸备份任务失败", exc_info=True)
+        return 0
+
+
 def running_task_exists():
+    reap_stale_tasks()
+    try:
+        from .models import BackupTask
+
+        if BackupTask.objects.filter(status="running").exists():
+            return True
+    except Exception:
+        pass
     with _STATE_LOCK:
         return any(t["status"] == "running" for t in _TASKS.values())
 

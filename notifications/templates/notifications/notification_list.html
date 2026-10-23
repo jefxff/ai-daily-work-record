@@ -167,7 +167,7 @@
                            data-skip-history="{% if item.task.params.skip_history %}1{% endif %}"
                            data-purge-days="{{ item.task.params.purge_days|default_if_none:'' }}"
                            data-check="{% if item.task.params.check %}1{% endif %}"
-                           onclick="openTaskConfig(this)">配置</button>
+                           data-task-config>配置</button>
                     </div>
                 </td>
                 {% endif %}
@@ -225,7 +225,7 @@
                data-agg="{{ notification.agg_count }}"
                data-link="{{ notification.link }}"
                data-read-url="{% url 'notifications:read' notification.pk %}"
-               onclick="openNotifDetail(event, this)">查看</button>
+               data-notif-detail>查看</button>
             {% if not notification.is_read %}
             <form method="post" action="{% url 'notifications:read' notification.pk %}" class="notif-read-form u-inline">
                 {% csrf_token %}
@@ -357,7 +357,7 @@
         function closeModal() { backdrop.classList.remove('show'); }
 
         // 「查看」：打开详情弹窗，未读则标记已读（完整消费响应体，避免 ERR_ABORTED）
-        window.openNotifDetail = function (event, el) {
+        function openNotifDetail(event, el) {
             event.preventDefault();
             var row = el.closest('.notif-item');
             setText(titleEl, el.getAttribute('data-title'));
@@ -393,7 +393,13 @@
                     updateHint();
                 });
             }
-        };
+        }
+
+        // CSP：不在模板内写 onclick，统一事件委托
+        document.addEventListener('click', function (e) {
+            var trigger = e.target.closest('[data-notif-detail]');
+            if (trigger) openNotifDetail(e, trigger);
+        });
 
         document.getElementById('notifDetailClose').addEventListener('click', closeModal);
         document.getElementById('notifDetailCloseBtn').addEventListener('click', closeModal);
@@ -437,7 +443,7 @@
             paramCheck.style.display = code === 'notify_stats' ? '' : 'none';
         }
 
-        window.openTaskConfig = function (el) {
+        function openTaskConfig(el) {
             form.setAttribute('action', el.getAttribute('data-url'));
             nameEl.textContent = el.getAttribute('data-name') + '（' + el.getAttribute('data-code') + '）';
             enabledEl.checked = !!el.getAttribute('data-enabled');
@@ -451,7 +457,13 @@
             setParamFields(el.getAttribute('data-code'));
             refreshTriggerFields();
             backdrop.classList.add('show');
-        };
+        }
+
+        // CSP：不在模板内写 onclick，统一事件委托
+        document.addEventListener('click', function (e) {
+            var trigger = e.target.closest('[data-task-config]');
+            if (trigger) openTaskConfig(trigger);
+        });
 
         triggerEl.addEventListener('change', refreshTriggerFields);
         document.getElementById('schedConfigClose').addEventListener('click', function () { backdrop.classList.remove('show'); });

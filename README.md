@@ -52,13 +52,24 @@ pip install -r requirements.txt
 > 以及站内/邮件发送。**只启动 runserver 不会执行任何定时任务，且页面不会报错。**
 
 ### RBAC 验收账号
-项目内置 4 个验收账号（默认不在此文档公开口令，首次部署后由管理员在
-`/accounts/users/` 重置为强口令）：
+项目内置 4 个验收账号，**不再使用任何固定口令**：
 
 - `rbac_root` — 超级管理员（`is_superuser`，恒为全权限）
 - `rbac_admin` — 管理员（绑定内置角色 `admin`）
 - `rbac_staff` — 普通员工（绑定内置角色 `staff`）
 - `rbac_viewer` — 只读用户（绑定内置角色 `viewer`）
+
+口令由一次性初始化命令生成随机值，并写入仓库之外的文件：
+
+```bash
+python manage.py rotate_default_passwords --dry-run   # 先看有哪些账号需要轮换
+python manage.py rotate_default_passwords             # 轮换仍在使用历史公开口令的账号
+python manage.py rotate_default_passwords --force     # 额外强制轮换上述 4 个内置账号
+```
+
+新口令默认落盘到 `%USERPROFILE%\WorkRecordBackups\seed_passwords_<时间>.txt`
+（或 `--out` 指定路径），请立即转存密码管理器后删除该文件；之后可通过
+`/accounts/users/` 重置为个人口令。
 
 角色权限以 `accounts/registry.py` 为唯一事实源；权限条数会随模块增删而变化，
 请以 `python manage.py sync_rbac` 输出的实测值为准，本文档不再硬编码具体数字。

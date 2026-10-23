@@ -41,3 +41,43 @@ class BackupOperationLog(models.Model):
 
     def __str__(self):
         return f"{self.get_op_type_display()} {self.file_name or '(未生成文件)'} {'成功' if self.success else '失败'}"
+
+
+class BackupTask(models.Model):
+    """备份/恢复异步任务状态（落库，替代进程内字典）。
+
+    复核报告 P1-B：任务进度原先只存在模块级 `_TASKS` 字典中，进程重启后
+    running 状态凭空消失、失败也没有痕迹。改为落库后：
+    - 重启后仍可查询历史任务进度与日志；
+    - 未正常结束的任务由「心跳超时」判定为中断并标记失败；
+    - 恢复操作会整体回退数据库，因此任务行在恢复完成后由 update_or_create 重建。
+    """
+
+    STATUS_RUNNING = "running"
+    STATUS_SUCCESS = "success"
+    STATUS_FAILED = "failed"
+
+    id = models.CharField("任务ID", max_length=32, primary_key=True)
+    kind = models.CharField("类型", max_length=10)  # backup / restore
+    status = models.CharField("状态", max_length=10, default=STATUS_RUNNING, db_index=True)
+    stage = models.CharField("当前阶段", max_length=60, blank=True, default="")
+    percent = models.PositiveSmallIntegerField("进度", default=0)
+    message = models.TextField("说明", blank=True, default="")
+    error = models.TextField("错误", blank=True, default="")
+    log = models.JSONField("日志", default=list, blank=True)
+    result = models.JSONField("结果", default=dict, blank=True)
+    started_at = models.DateTimeField("开始时间", default=timezone.now, db_index=True)
+    finished_at = models.DateTimeField("结束时间", null=True, blank=True)
+    heartbeat_at = models.DateTimeField("最后心跳", default=timezone.now, db_index=True)
+
+    class Meta:
+        verbose_name = "备份任务"
+        verbose_name_plural = "备份任务"
+        ordering = ["-started_at"]
+        indexes = [
+            models.Index(fields=["status", "heartbeat_at"], name="idx_bktask_status_hb"),
+        ]
+
+    def __str__(self):
+        return f"{self.kind} {self.id[:8]} {self.status}"
+

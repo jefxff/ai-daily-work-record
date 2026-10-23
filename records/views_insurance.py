@@ -16,6 +16,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from accounts.decorators import perm_required
+from work_record.http_utils import per_page as _shared_per_page
 
 from . import insurance_grouping as grouping
 from . import insurance_services
@@ -36,11 +37,7 @@ def _annotate_one_off(subjects):
 
 
 def _per_page(request):
-    try:
-        value = int(request.GET.get('per_page', 30))
-    except (TypeError, ValueError):
-        value = 30
-    return value if value in PER_PAGE_CHOICES else 30
+    return _shared_per_page(request, 30, choices=PER_PAGE_CHOICES)
 
 
 def _all_records():

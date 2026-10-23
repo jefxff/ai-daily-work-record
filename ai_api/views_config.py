@@ -31,7 +31,8 @@ ACTION = "update"
 # 审计 SEC-07：base_url 由管理员可控，服务器会向该地址发起 POST（AI 请求）。
 # 完全禁止内网地址会让「远程 Ollama / LM Studio」这类内网部署失效，
 # 因此保留私网与回环地址，只挡云元数据 / 链路本地等明确的 SSRF 高危目标。
-_BLOCKED_HOSTS = {"metadata", "metadata.google.internal", "0.0.0.0"}
+# 0.0.0.0 在此是「被拉黑的 SSRF 目标字符串」，不是监听地址（bandit B104 误报）
+_BLOCKED_HOSTS = {"metadata", "metadata.google.internal", "0.0.0.0"}  # nosec B104
 
 
 def _validate_base_url(raw) -> str:

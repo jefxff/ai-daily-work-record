@@ -2,6 +2,55 @@
 
 本文件记录对外可见的功能、部署形态与依赖变更。格式参考 Keep a Changelog。
 
+## [2.1.0] - 2026-10-23
+
+评审复核报告（`.trae/documents/评审复核报告-20261023.md`）整改。全部改动保持 URL、
+URL 名称、模板引用与业务数据不变。
+
+### 变更（结构）
+
+- `records/views.py` 1660 行 → 约 800 行：`home` / `search` / `dashboard` 分别迁到
+  `views_home.py` / `views_search.py` / `views_dashboard.py`，原文件保留门面 re-export。
+- `ai_api/views.py` 1175 行 → 门面：ViewSet 迁到 `viewsets.py`，AI 端点迁到 `views_ai.py`，
+  `urls.py` 与导入路径零改动。
+- `dashboard()` 接入 `records/stats.py`：核减金额改为 SQL 聚合，核价核减用
+  `Greatest(Coalesce(...))` 下推，`DASHBOARD_MODULE_KEYS`/`dashboard_summary` 统一口径。
+- 新增 `work_record/http_utils.py`，统一 `is_ajax` / `per_page` / `parse_date`
+  （替换 `records`、`samples`、`notifications`、`accounts`、`archive`、`knowledge_base`
+  共 17 处重复实现）。
+
+### 变更（可靠性）
+
+- `sysbackup` 任务状态由进程内字典改为「内存缓存 + 落库」（新增 `BackupTask` 表与
+  `0002_backuptask` 迁移）：服务重启后进度/日志/结果仍可读，僵死超过 30 分钟的任务可回收。
+- 操作留痕保留期可配置（`OPERATION_LOG_RETENTION_DAYS`，默认 730 天），新增
+  `manage.py cleanup_operation_log`（支持 `--dry-run`），并注册为可调度的定时任务。
+
+### 变更（安全）
+
+- 4 个 RBAC 验收账号的口令已随机化（旧口令失效），新增
+  `manage.py rotate_default_passwords` 支持一次性轮换与 `--force`。
+
+### 变更（CI 门禁）
+
+- ruff 规则由 `pyproject.toml` 统一（`E9/F63/F7/F82/F811/F821/F823`）；bandit 收紧到 `-ll`
+  （误报加 `# nosec` 并注明原因）；`pip-audit` 改为阻断，可用仓库变量
+  `PIP_AUDIT_IGNORE` 逐条豁免；覆盖率实测基线 79%，闸门 `--fail-under=70` 改为阻断；
+  pre-commit 增加 ruff hook。
+- `check --deploy` 的 4 项 HTTPS 告警属于内网 HTTP 部署的有意取舍，仍只留痕不阻断。
+
+### 变更（前端）
+
+- `records/dashboard.html`、`knowledge_base/document_detail.html` 的内联脚本抽离到
+  `static/js/pages/`；全站 10 处 `onclick=` 改为事件委托（模板内 `onclick` 归零），
+  为后续 CSP enforce 消除唯一硬阻塞。
+
+### 未完成（已评估、留待后续）
+
+- `samples/views.py` 的 15 个手写 CRUD 迁移到 `records/crud.py` 工厂：现有工厂不支持
+  samples 的 service 层钩子、`ValidationError`→表单错误、`BusinessError` 文案与
+  删除确认页，硬迁移会改变用户可见行为，故本轮不动。
+
 ## [2.0.0] - 2026-10-23
 
 ### 变更（Breaking，部署形态）

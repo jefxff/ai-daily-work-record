@@ -55,18 +55,24 @@ jobs:
       - name: 迁移文件一致性
         run: python manage.py makemigrations --check --dry-run
 
-      - name: Python 语法与未定义名称
-        run: python -m ruff check . --select E9,F63,F7,F82
+      - name: Python 语法与未定义名称（ruff 规则由 pyproject.toml 统一）
+        run: python -m ruff check .
 
-      - name: 安全扫描（高危）
-        run: python -m bandit -r . -lll -x ./tests,./migrations,./.git -q
+      - name: 安全扫描（中危及以上）
+        run: python -m bandit -r . -ll -x ./tests,./migrations,./.git,./tests/visual,./scripts -q
 
-      # 审计 SUP-01：审计结果必须留在 Job Summary，而不是只打印后随日志滚走
-      - name: 依赖漏洞审计（发现上游未修复项时不阻断）
-        continue-on-error: true
+      # 审计 SUP-01：审计结果必须留在 Job Summary，而不是只打印后随日志滚走。
+      # 门禁阻断：确有已知漏洞时 CI 必须红；如属已评估接受的风险，
+      # 在仓库变量 PIP_AUDIT_IGNORE 中以逗号分隔填写漏洞 ID 豁免。
+      - name: 依赖漏洞审计（阻断）
         run: |
-          python -m pip_audit -r requirements.txt --strict --format json --output pip-audit.json || true
-          python -m pip_audit -r requirements.txt --strict --desc 2>&1 | tee -a "$GITHUB_STEP_SUMMARY" || true
+          set -euo pipefail
+          IGNORE_ARGS=""
+          if [ -n "${PIP_AUDIT_IGNORE:-}" ]; then
+            IFS=',' read -ra IDS <<< "$PIP_AUDIT_IGNORE"
+            for id in "${IDS[@]}"; do IGNORE_ARGS="$IGNORE_ARGS --ignore-vuln $id"; done
+          fi
+          python -m pip_audit -r requirements.txt --strict --desc $IGNORE_ARGS 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: 生成 SBOM（CycloneDX）
         run: |
@@ -78,11 +84,10 @@ jobs:
           python -m coverage run manage.py test
           python -m coverage report -m
 
-      # 审计 SUP-02：覆盖率闸门。阈值 60% 先以「不阻断」方式跑一轮，等 CI 首次
-      # 实测值留痕后改为阻断（本地环境离线装不上 coverage，无法预先标定基准）。
-      - name: 覆盖率闸门（首轮实测后转为阻断）
-        continue-on-error: true
-        run: python -m coverage report --fail-under=60
+      # 审计 SUP-02：覆盖率闸门。本地实测基线 79%（18125 行语句，3807 行未覆盖），
+      # 阈值取 70% 留出波动余量后转为阻断。
+      - name: 覆盖率闸门（阻断）
+        run: python -m coverage report --fail-under=70
 
   visual-a11y:
     runs-on: ubuntu-latest

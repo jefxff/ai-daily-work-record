@@ -508,6 +508,10 @@ SCHEDULER_HEARTBEAT_DIR = os.environ.get(
     'DJANGO_SCHEDULER_HEARTBEAT_DIR', os.path.join(BASE_DIR, 'logs')
 )
 
+# 操作留痕保留期（天）：records.OperationLog 只增不减，由 cleanup_operation_log
+# 命令按此天数清理，可在「系统 → 定时任务」中按需调度。
+OPERATION_LOG_RETENTION_DAYS = int(os.environ.get('OPERATION_LOG_RETENTION_DAYS', '730'))
+
 # === 请求性能采集（批次 C）===
 # 中间件把每次业务请求（静态/媒体/探针除外）的路径、状态码、总耗时、SQL 条数与最慢 SQL
 # 落库到 RequestMetric，供「性能监控」页做请求量 / P95 / 慢查询分析。

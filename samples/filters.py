@@ -7,18 +7,9 @@
 from datetime import datetime
 
 from django.db.models import Q
+from work_record.http_utils import parse_date as _parse_date  # 统一实现（复核报告 CODE-01）
 
 from .models import Sample
-
-
-def _parse_date(value):
-    value = (value or "").strip()
-    if not value:
-        return None
-    try:
-        return datetime.strptime(value, "%Y-%m-%d").date()
-    except ValueError:
-        return None
 
 
 class SampleFilter:

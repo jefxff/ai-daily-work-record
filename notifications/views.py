@@ -17,13 +17,11 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from accounts.decorators import perm_required
+from work_record.http_utils import is_ajax as _is_ajax  # 统一实现（复核报告 CODE-01）
+from work_record.http_utils import per_page as _shared_per_page
 
 from . import scheduler, services
 from .models import Notification, ScheduledTask, TEMPLATE_CATEGORIES
-
-
-def _is_ajax(request):
-    return request.headers.get("x-requested-with") == "XMLHttpRequest"
 
 
 def _superuser_required(view_func):
@@ -46,11 +44,7 @@ def _superuser_required(view_func):
 
 
 def _per_page(request, default=10):
-    try:
-        per = int(request.GET.get("per_page", default))
-    except (TypeError, ValueError):
-        per = default
-    return min(max(per, 5), 100)
+    return _shared_per_page(request, default)
 
 
 @perm_required("notifications", "read")

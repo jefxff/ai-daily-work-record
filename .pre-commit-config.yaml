@@ -5,3 +5,11 @@ repos:
     rev: v8.21.2
     hooks:
       - id: gitleaks
+
+  # 代码质量：ruff 规则由 pyproject.toml 统一（审计 META-03）。
+  # ruff-format 会重写文件，先保持不启用，避免与既有代码风格产生大面积 diff。
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.2
+    hooks:
+      - id: ruff
+        args: [--fix]

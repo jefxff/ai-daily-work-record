@@ -291,3 +291,64 @@ class BackupRestoreRoundTripTests(TransactionTestCase):
         with sqlite3.connect(str(restored_db)) as conn:
             names = [row[0] for row in conn.execute("SELECT name FROM auth_group")]
         self.assertIn(self.marker, names, "备份包内数据库缺少标记数据，备份不可用")
+
+
+class TaskStatePersistenceTests(TestCase):
+    """复核报告 P1-B：任务状态必须落库，重启后可查、僵尸任务必须判失败。"""
+
+    def tearDown(self):
+        # 内存缓存是模块级的，测试之间必须清掉，避免互相污染
+        services._TASKS.clear()
+
+    def test_task_state_survives_process_restart(self):
+        from sysbackup.models import BackupTask
+
+        task_id = services._new_task("backup", detail="目标目录：/tmp")
+        services._progress(task_id, 40, "打包附件")
+        services._log(task_id, "测试日志")
+
+        # 模拟进程重启：清空内存缓存后只能从数据库读
+        services._TASKS.clear()
+        snap = services._task_snapshot(task_id)
+        self.assertIsNotNone(snap)
+        self.assertEqual(snap["status"], "running")
+        self.assertEqual(snap["percent"], 40)
+        self.assertEqual(snap["stage"], "打包附件")
+        self.assertTrue(any("测试日志" in line for line in snap["log"]))
+        self.assertTrue(BackupTask.objects.filter(pk=task_id).exists())
+
+    def test_finished_task_is_persisted_with_finished_at(self):
+        task_id = services._new_task("backup")
+        services._update(task_id, status="failed", stage="备份失败", error="磁盘已满")
+        services._TASKS.clear()
+        snap = services._task_snapshot(task_id)
+        self.assertEqual(snap["status"], "failed")
+        self.assertEqual(snap["error"], "磁盘已满")
+        self.assertTrue(snap["finished_at"])
+
+    def test_reap_marks_stale_running_task_failed(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from sysbackup.models import BackupTask
+
+        task_id = services._new_task("restore")
+        BackupTask.objects.filter(pk=task_id).update(
+            heartbeat_at=timezone.now() - timedelta(minutes=services._HEARTBEAT_TIMEOUT_MIN + 5)
+        )
+        self.assertEqual(services.reap_stale_tasks(), 1)
+        row = BackupTask.objects.get(pk=task_id)
+        self.assertEqual(row.status, "failed")
+        self.assertIn("中断", row.error)
+
+    def test_snapshot_contract_keys_unchanged(self):
+        """前端/视图依赖的字段集合必须与改造前完全一致。"""
+        task_id = services._new_task("backup")
+        snap = services._task_snapshot(task_id)
+        self.assertEqual(
+            set(snap),
+            {"id", "kind", "status", "stage", "percent", "message", "error",
+             "log", "started_at", "finished_at", "result"},
+        )
+

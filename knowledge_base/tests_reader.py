@@ -119,14 +119,24 @@ class ReaderShellTests(TestCase):
            `_subH` 算法把多节点画布高度算成 47px，根与后续节点全被 viewBox
            裁掉（用户看到「内容没有正确显示，只剩一个 pill、大片空白」）；
            markdown 扁平树按标题层级分组（段落不进导图）；小图自动放大
-           铺满舞台宽度并水平居中；空态紧凑舞台。"""
-        self.assertIn("buildMapTree", self.html)       # 扁平树 → 标题层级树
-        self.assertIn("editor_mode", self.html)        # outline 模式直通的判断
-        self.assertIn("minTop", self.html)             # 盒子并集边界（替换 _subH）
-        self.assertIn("offsetY", self.html)            # 整体下移，防父盒探出上沿
-        self.assertIn("mmState.autoScale", self.html)  # 小图自适应放大
-        self.assertIn("SCALE_MAX", self.html)
-        self.assertNotIn("node._subH", self.html)   # 旧算法代码不得回流（注释提及不算）
+           铺满舞台宽度并水平居中。"""
+        # 2026-10-23：内联脚本已抽离到 static/js/pages/kb_document_detail.js，
+        # JS 断言改读外置文件，CSS 断言仍读页面 HTML。
+        from pathlib import Path
+
+        from django.conf import settings
+
+        js = (Path(settings.BASE_DIR) / "static/js/pages/kb_document_detail.js").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("buildMapTree", js)       # 扁平树 → 标题层级树
+        self.assertIn("editor_mode", js)        # outline 模式直通的判断
+        self.assertIn("minTop", js)             # 盒子并集边界（替换 _subH）
+        self.assertIn("offsetY", js)            # 整体下移，防父盒探出上沿
+        self.assertIn("mmState.autoScale", js)  # 小图自适应放大
+        self.assertIn("SCALE_MAX", js)
+        self.assertNotIn("node._subH", js)   # 旧算法代码不得回流（注释提及不算）
+        self.assertIn("kb_document_detail.js", self.html)  # 页面确实引用了外置脚本
         self.assertIn("min-height: 56vh", self.html)   # 大图：交还 CSS 滚动
         self.assertIn("margin-left: auto", self.html)  # 水平居中
 

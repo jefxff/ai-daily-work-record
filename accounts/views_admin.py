@@ -13,6 +13,7 @@ from django.template.loader import render_to_string
 from django.views.decorators.http import require_http_methods
 
 from records.crud import _per_page
+from work_record.http_utils import is_ajax as _is_ajax  # 统一实现（复核报告 CODE-01）
 
 from .decorators import perm_required
 from .forms import AdminCreateUserForm, AdminEditUserForm, AdminResetPasswordForm, RoleForm
@@ -22,10 +23,6 @@ from .registry import ACTION_LABELS, MODULES, all_permission_codes, permission_c
 
 def _forbidden(request):
     return render(request, "accounts/403.html", status=403)
-
-
-def _is_ajax(request):
-    return request.headers.get("x-requested-with") == "XMLHttpRequest"
 
 
 def _modal_json(template, context, request, *, ok=True):

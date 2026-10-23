@@ -19,6 +19,7 @@ from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 
 from accounts.decorators import perm_required
+from work_record.http_utils import per_page as http_per_page
 
 from .audit import log_operation, snapshot
 
@@ -217,12 +218,8 @@ def make_export_view(*, model=None, perm_module, sheet_title, filename_base,
 
 
 def _per_page(request):
-    """列表页每页条数：仅允许 10/30/50，默认 10"""
-    try:
-        v = int(request.GET.get('per_page', 10))
-    except (TypeError, ValueError):
-        v = 10
-    return v if v in (10, 30, 50) else 10
+    """列表页每页条数：仅允许 10/30/50，默认 10（统一实现见 work_record.http_utils）"""
+    return http_per_page(request, 10, choices=(10, 30, 50))
 
 
 def _dedupe_values(qs, field):

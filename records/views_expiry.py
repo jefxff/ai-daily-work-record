@@ -13,6 +13,7 @@ from openpyxl.utils import get_column_letter
 
 from accounts.decorators import perm_required_any
 from accounts.services import has_perm
+from work_record.http_utils import parse_date as _parse_date  # 统一实现（复核报告 CODE-01）
 
 from . import expiry
 from .audit import log_operation
@@ -51,14 +52,6 @@ def _forbidden(request):
         "required_module": "insurance/archive",
         "required_action": "read",
     }, status=403)
-
-
-def _parse_date(raw):
-    """解析 YYYY-MM-DD，非法值返回 None。"""
-    try:
-        return datetime.strptime(raw, "%Y-%m-%d").date()
-    except (TypeError, ValueError):
-        return None
 
 
 def _parse_month(raw):

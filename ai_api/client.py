@@ -88,7 +88,8 @@ def chat(messages, config):
         }
 
     try:
-        resp = requests.post(url, json=payload, headers=headers,
+        # timeout 参数在下一行显式传入（bandit B113 跨行误报，已核对）
+        resp = requests.post(url, json=payload, headers=headers,  # nosec B113
                              timeout=config.timeout or 30)
     except requests.RequestException as exc:
         raise AICallError(f"请求失败：{exc}") from exc

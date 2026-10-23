@@ -217,7 +217,7 @@
                 <div class="download-count">共 {{ decoration_count }} 条记录</div>
             </div>
             <div class="download-actions">
-                <a href="{% url 'decoration_export' %}" class="btn-transparent" onclick="showLoading()">
+                <a href="{% url 'decoration_export' %}" class="btn-transparent" data-export-loading>
                     下载Excel
                 </a>
             </div>
@@ -236,7 +236,7 @@
                 <div class="download-count">共 {{ customer_credit_count }} 条记录</div>
             </div>
             <div class="download-actions">
-                <a href="{% url 'customer_credit_export' %}" class="btn-transparent" onclick="showLoading()">
+                <a href="{% url 'customer_credit_export' %}" class="btn-transparent" data-export-loading>
                     下载Excel
                 </a>
             </div>
@@ -255,7 +255,7 @@
                 <div class="download-count">共 {{ customer_complaint_count }} 条记录</div>
             </div>
             <div class="download-actions">
-                <a href="{% url 'customer_complaint_export' %}" class="btn-transparent" onclick="showLoading()">
+                <a href="{% url 'customer_complaint_export' %}" class="btn-transparent" data-export-loading>
                     下载Excel
                 </a>
             </div>
@@ -274,7 +274,7 @@
                 <div class="download-count">共 {{ complaint_count }} 条记录</div>
             </div>
             <div class="download-actions">
-                <a href="{% url 'complaint_export' %}" class="btn-transparent" onclick="showLoading()">
+                <a href="{% url 'complaint_export' %}" class="btn-transparent" data-export-loading>
                     下载Excel
                 </a>
             </div>
@@ -293,7 +293,7 @@
                 <div class="download-count">共 {{ regulation_count }} 条记录</div>
             </div>
             <div class="download-actions">
-                <a href="{% url 'regulation_export' %}" class="btn-transparent" onclick="showLoading()">
+                <a href="{% url 'regulation_export' %}" class="btn-transparent" data-export-loading>
                     下载Excel
                 </a>
             </div>
@@ -312,7 +312,7 @@
                 <div class="download-count">共 {{ price_evaluation_count }} 条记录</div>
             </div>
             <div class="download-actions">
-                <a href="{% url 'price_evaluation_export' %}" class="btn-transparent" onclick="showLoading()">
+                <a href="{% url 'price_evaluation_export' %}" class="btn-transparent" data-export-loading>
                     下载Excel
                 </a>
             </div>
@@ -331,7 +331,7 @@
                 <div class="download-count">共 {{ insurance_count }} 条记录</div>
             </div>
             <div class="download-actions">
-                <a href="{% url 'insurance_export' %}" class="btn-transparent" onclick="showLoading()">
+                <a href="{% url 'insurance_export' %}" class="btn-transparent" data-export-loading>
                     下载Excel
                 </a>
             </div>
@@ -350,7 +350,7 @@
                 <div class="download-count">共 {{ daily_record_count }} 条记录</div>
             </div>
             <div class="download-actions">
-                <a href="{% url 'daily_record_export' %}" class="btn-transparent" onclick="showLoading()">
+                <a href="{% url 'daily_record_export' %}" class="btn-transparent" data-export-loading>
                     下载Excel
                 </a>
             </div>
@@ -379,5 +379,10 @@
             }, 1000);
         }
     }
+
+    // CSP：不在模板内写 onclick，统一事件委托
+    document.addEventListener('click', function (e) {
+        if (e.target.closest('[data-export-loading]')) showLoading();
+    });
 </script>
 {% endblock %}

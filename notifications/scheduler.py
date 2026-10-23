@@ -89,6 +89,7 @@ COMMAND_PARAMS = {
     "notify_stats": {"check"},
     "notify_knowledge_todo": {"days", "overdue_days"},
     "daily_backup": set(),
+    "cleanup_operation_log": {"days"},
 }
 
 

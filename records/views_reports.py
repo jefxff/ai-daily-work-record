@@ -16,6 +16,7 @@ from django.utils import timezone
 from accounts.decorators import perm_required
 from ai_api.client import polish_text
 from ai_api.models import AiProviderConfig
+from work_record.http_utils import parse_date as _parse_date  # 统一实现（复核报告 CODE-01）
 
 from .views import _my_daily_records
 
@@ -51,13 +52,6 @@ def maybe_ai_polish(text, instruction):
         logger.exception("AI 润色异常，回退模板文本")
         return text
     return polished or text
-
-
-def _parse_date(raw):
-    try:
-        return datetime.strptime(raw, "%Y-%m-%d").date()
-    except (TypeError, ValueError):
-        return None
 
 
 def _clamp_year(raw):
