@@ -13,10 +13,9 @@ jobs:
   check-and-test:
     runs-on: ubuntu-latest
     env:
-      # 生产形态的安全检查：HTTPS 相关开关打开后才做 check --deploy
-      DJANGO_HTTPS_ONLY: "1"
-      DJANGO_BEHIND_HTTPS_PROXY: "1"
-      DJANGO_HSTS_SECONDS: "31536000"
+      # 注意：HTTPS 相关开关只能挂在「check --deploy」单步上（见该步骤 env）。
+      # 若放在 job 级，SECURE_SSL_REDIRECT 会让测试客户端的每次 GET 变成 301，
+      # 造成整批测试假红（本地已复现：301 != 200）。
       DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1"
       DJANGO_DEBUG: "0"
     steps:
@@ -50,6 +49,11 @@ jobs:
       # （security.W004/W008/W012/W016 为已知项），因此该检查只做留痕不阻断。
       - name: 生产形态检查（HTTP 内网部署，安全项为已知收敛项）
         continue-on-error: true
+        # HTTPS 开关只对本步骤生效：模拟「已前置 HTTPS 反代」的生产形态
+        env:
+          DJANGO_HTTPS_ONLY: "1"
+          DJANGO_BEHIND_HTTPS_PROXY: "1"
+          DJANGO_HSTS_SECONDS: "31536000"
         run: python manage.py check --deploy --fail-level WARNING
 
       - name: 迁移文件一致性
@@ -124,9 +128,18 @@ jobs:
           cat server.log
           exit 1
 
-      - name: 安装 Playwright 并运行 a11y/移动端断言
+      # 拆成三个步骤：npm 安装 / 浏览器安装 / 断言，失败时能直接看出卡在哪一环
+      - name: 安装 Playwright 依赖（npm ci）
         run: |
           cd tests/visual
           npm ci
+
+      - name: 安装 Firefox 浏览器
+        run: |
+          cd tests/visual
           npx playwright install --with-deps firefox
+
+      - name: 运行 a11y/移动端断言
+        run: |
+          cd tests/visual
           npx playwright test
