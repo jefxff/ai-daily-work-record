@@ -1,0 +1,14 @@
+{% extends "records/base.html" %}
+{% block page_title %}{% if mode == 'edit' %}编辑{% else %}录入{% endif %}证照{% endblock %}
+{% block content %}
+<div class="container u-max-600">
+    <h1 class="page-title mb-4">{% if mode == 'edit' %}编辑{% else %}录入{% endif %}证照</h1>
+    {% if mode == 'edit' and license %}
+    <p class="text-muted mb-3">正在编辑：{{ license.code }} - {{ license.name }}</p>
+    {% endif %}
+    {% include "archive/_license_form_modal.html" %}
+    <p class="mt-4">
+        <a class="btn-transparent" href="{% url 'archive:license_list' %}">返回证照列表</a>
+    </p>
+</div>
+{% endblock %}

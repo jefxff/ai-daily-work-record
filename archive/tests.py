@@ -9,7 +9,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from .forms import ArchiveForm, CabinetForm, LedgerForm
-from .models import Archive, BorrowRecord, Cabinet, Category, Ledger
+from .models import Archive, BorrowRecord, Cabinet, Category, Ledger, License
 
 User = get_user_model()
 
@@ -675,3 +675,29 @@ class LedgerImportExportTests(TestCase):
         resp = self.client.get(reverse("archive:ledger_import", args=[self.ledger.pk]))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "导入更新「台账A」")
+
+
+class LicensePageTests(TestCase):
+    """证照录入/编辑全页路径。
+
+    审计 E2E 发现的基线缺陷：非 AJAX 直接访问 /archive/licenses/<pk>/edit/ 时
+    视图回退渲染 archive/license_form.html，而该模板在基线里不存在，页面 500
+    （只有 modal 局部模板）。这里固化全页渲染，防回归。
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_superuser("lic_admin", "l@a.com", "pass")
+        self.lic = License.objects.create(name="营业执照", code="LIC-001", creator=self.user)
+
+    def test_license_create_full_page(self):
+        self.client.force_login(self.user)
+        resp = self.client.get(reverse("archive:license_create"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "证照名称")
+
+    def test_license_edit_full_page(self):
+        self.client.force_login(self.user)
+        resp = self.client.get(reverse("archive:license_edit", args=[self.lic.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, self.lic.code)
+        self.assertContains(resp, "返回证照列表")
