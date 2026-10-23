@@ -96,6 +96,9 @@ jobs:
               grep -E "^(FAIL|ERROR):|^Ran |^FAILED|AssertionError|Error: " test.log | head -60
               echo '```'
             } >> "$GITHUB_STEP_SUMMARY"
+            # 同时以注解形式暴露（公开仓库的 annotations API 可匿名读取，便于排障）
+            echo "::error::FAILED_TESTS: $(grep -E '^(FAIL|ERROR):' test.log | sed -E 's/ \(.*//' | tr '\n' ';' | head -c 3500)"
+            echo "::error::TAIL: $(tail -c 2500 test.log | tr '\n' '~')"
           fi
           python -m coverage report -m
           exit $code
@@ -165,5 +168,7 @@ jobs:
               grep -E "Error:|expect|failed|✘|Timed out" pw.log | head -60
               echo '```'
             } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::PW_FAILED: $(grep -E '^\s+[0-9]+\) |Error: |Timeout' pw.log | tr '\n' '~' | head -c 3500)"
+            echo "::error::PW_TAIL: $(tail -c 2500 pw.log | tr '\n' '~')"
           fi
           exit $code
