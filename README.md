@@ -74,6 +74,19 @@ python manage.py rotate_default_passwords --force     # 额外强制轮换上述
 角色权限以 `accounts/registry.py` 为唯一事实源；权限条数会随模块增删而变化，
 请以 `python manage.py sync_rbac` 输出的实测值为准，本文档不再硬编码具体数字。
 
+「系统管理」模块除标准 CRUD 外还有两个**高危附加动作**，与 `system.read` /
+`system.update` 解耦、单独授权，默认只随内置 `admin` 角色发放：
+
+- `system.backup` — 下载备份包。备份包含全库数据 + 全部附件，等于绕过所有模块级
+  read 权限的横向导出通道，因此不该被「只为了看服务健康状态」的用户拿到；
+- `system.restore` — 触发全量恢复。会用备份包整体覆盖线上数据库，不可逆。
+
+新增模块或新增这类动作后，执行 `python manage.py sync_rbac` 同步权限码；
+已有内置角色不会被覆盖，如需对齐默认定义加 `--reset-builtins`。
+
+长期 Token（`/api-token-auth/`）的明文**不落库**：签发时只存哈希与前缀，
+明文仅在签发响应里回显一次，历史列表只能看到前缀；备份包外流不再等于凭据外流。
+
 注册账号默认 `is_active=False`，需管理员在 /accounts/users/ 审核激活。
 
 ## 功能模块
