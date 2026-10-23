@@ -85,8 +85,20 @@ jobs:
 
       - name: 运行测试并统计覆盖率
         run: |
-          python -m coverage run manage.py test
+          set +e
+          python -m coverage run manage.py test > test.log 2>&1
+          code=$?
+          cat test.log
+          if [ "$code" -ne 0 ]; then
+            {
+              echo "### 测试失败摘要"
+              echo '```'
+              grep -E "^(FAIL|ERROR):|^Ran |^FAILED|AssertionError|Error: " test.log | head -60
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
           python -m coverage report -m
+          exit $code
 
       # 审计 SUP-02：覆盖率闸门。本地实测基线 79%（18125 行语句，3807 行未覆盖），
       # 阈值取 70% 留出波动余量后转为阻断。
@@ -142,4 +154,16 @@ jobs:
       - name: 运行 a11y/移动端断言
         run: |
           cd tests/visual
-          npx playwright test
+          set +e
+          npx playwright test > pw.log 2>&1
+          code=$?
+          tail -120 pw.log
+          if [ "$code" -ne 0 ]; then
+            {
+              echo "### Playwright 失败摘要"
+              echo '```'
+              grep -E "Error:|expect|failed|✘|Timed out" pw.log | head -60
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit $code
