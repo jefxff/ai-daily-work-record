@@ -98,7 +98,7 @@ jobs:
             } >> "$GITHUB_STEP_SUMMARY"
             # 同时以注解形式暴露（公开仓库的 annotations API 可匿名读取，便于排障）
             echo "::error::FAILED_TESTS: $(grep -E '^(FAIL|ERROR):' test.log | sed -E 's/ \(.*//' | tr '\n' ';' | head -c 3500)"
-            echo "::error::TAIL: $(tail -c 2500 test.log | tr '\n' '~')"
+            echo "::error::TAIL: $(grep -E -A 12 '^(FAIL|ERROR):' test.log | tr '\n' '~' | head -c 3500)"
           fi
           python -m coverage report -m
           exit $code
