@@ -15,6 +15,8 @@ from __future__ import annotations
 import logging
 from decimal import Decimal
 
+from django.utils import timezone
+
 from .insurance_grouping import normalize_insurer, subject_of
 from .models import InsurancePolicyYear, InsuranceSubject
 
@@ -149,9 +151,8 @@ def renewal_alerts(days=30, today=None):
     返回 {'due': [...], 'lapsed': [...], ...}；每个元素含 subject/year/record
     与 days_left、overdue_days，供定时提醒与页面展示共用。
     """
-    from datetime import date
 
-    today = today or date.today()
+    today = today or timezone.localdate()
     due, lapsed = [], []
     for subject in InsuranceSubject.objects.filter(is_one_off=False):
         year = subject.policy_years.order_by('-end_date', '-id').first()

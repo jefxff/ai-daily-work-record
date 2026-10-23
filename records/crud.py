@@ -7,13 +7,13 @@
 
 注意：URL 配置（records/urls.py）按视图名引用，替换为工厂生成后视图名保持不变。
 """
-from datetime import datetime
 
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
@@ -201,7 +201,7 @@ def make_export_view(*, model=None, perm_module, sheet_title, filename_base,
             ws.column_dimensions[get_column_letter(col)].width = column_width
 
         # 生成文件名（数据库名-YYYYMMDD.xlsx）
-        filename = f'{filename_base}-{datetime.now().strftime("%Y%m%d")}.xlsx'
+        filename = f'{filename_base}-{timezone.localtime().strftime("%Y%m%d")}.xlsx'
         response = HttpResponse(
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         from work_record.export_utils import content_disposition

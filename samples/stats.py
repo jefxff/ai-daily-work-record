@@ -6,17 +6,17 @@
 - 通过率 = 已通过样品数 ÷ 样品总数 × 100%
 """
 
-from datetime import date
 
 from django.db.models import Count
 from django.db.models.functions import TruncMonth
+from django.utils import timezone
 
 from .models import Sample, TestRecord
 
 
 def preset_range(range_key):
     """快捷时间范围，返回 (date_from, date_to)。"""
-    today = date.today()
+    today = timezone.localdate()
     if range_key == "year":
         return today.replace(month=1, day=1), today
     if range_key == "quarter":

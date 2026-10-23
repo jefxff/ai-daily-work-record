@@ -1,6 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime
+from django.utils import timezone
 import re
 import logging
 from .error_handler import ErrorHandler
@@ -102,8 +102,8 @@ def crawl_metal_prices():
                             'price': price,
                             'unit': target_metals[metal_name],
                             'price_change': price_change,
-                            'crawl_date': datetime.now().date(),
-                            'crawl_time': datetime.now()
+                            'crawl_date': timezone.localdate(),
+                            'crawl_time': timezone.localtime()
                         })
                         logger.info(f"提取到 {metal_name}: {price} {target_metals[metal_name]} (涨跌: {price_change})")
                     except Exception as e:
@@ -130,8 +130,8 @@ def crawl_metal_prices():
                                 'price': price,
                                 'unit': target_metals[metal_name],
                                 'price_change': 0,
-                                'crawl_date': datetime.now().date(),
-                                'crawl_time': datetime.now()
+                                'crawl_date': timezone.localdate(),
+                                'crawl_time': timezone.localtime()
                             })
                             logger.info(f"从页面文本提取到 {metal_name}: {price} {target_metals[metal_name]}")
                         except Exception as e:
@@ -285,7 +285,7 @@ def crawl_gold_price():
                     # 尝试从数据库获取昨天的价格来计算涨跌
                     from records.models import MetalPrice
                     from datetime import timedelta
-                    yesterday = datetime.now().date() - timedelta(days=1)
+                    yesterday = timezone.localdate() - timedelta(days=1)
                     yesterday_gold = MetalPrice.objects.filter(
                         metal_name='黄金',
                         crawl_date=yesterday
@@ -299,8 +299,8 @@ def crawl_gold_price():
                     'price': gold_price,
                     'unit': '元/克',
                     'price_change': round(price_change, 2),
-                    'crawl_date': datetime.now().date(),
-                    'crawl_time': datetime.now()
+                    'crawl_date': timezone.localdate(),
+                    'crawl_time': timezone.localtime()
                 })
                 logger.info(f"成功获取黄金价格: {gold_price} 元/克, 涨跌: {round(price_change, 2)}")
             else:
@@ -310,8 +310,8 @@ def crawl_gold_price():
                     'price': None,  # None 表示数据无效（爬取失败时的占位）
                     'unit': '元/克',
                     'price_change': 0,
-                    'crawl_date': datetime.now().date(),
-                    'crawl_time': datetime.now(),
+                    'crawl_date': timezone.localdate(),
+                    'crawl_time': timezone.localtime(),
                     'is_sample': True  # 标记为示例数据，前端可据此判断
                 })
         
@@ -325,8 +325,8 @@ def crawl_gold_price():
             'price': None,
             'unit': '元/克',
             'price_change': 0,
-            'crawl_date': datetime.now().date(),
-            'crawl_time': datetime.now(),
+            'crawl_date': timezone.localdate(),
+            'crawl_time': timezone.localtime(),
             'is_sample': True
         })
     
@@ -357,7 +357,7 @@ def get_sample_metal_prices():
     ]
     
     # 添加爬取时间
-    now = datetime.now()
+    now = timezone.localtime()
     for item in sample_data:
         item['crawl_date'] = now.date()
         item['crawl_time'] = now
@@ -370,10 +370,10 @@ def save_metal_prices_to_db(prices_data):
     改进策略：保留30天历史数据，清理更早的数据
     """
     from .models import MetalPrice
-    from datetime import date, timedelta
+    from datetime import timedelta
     
     saved_prices = []
-    today = date.today()
+    today = timezone.localdate()
     
     # 清理30天前的历史数据（保留30天历史）
     cutoff_date = today - timedelta(days=30)
@@ -418,7 +418,7 @@ def get_metal_price_history(metal_name, days=30):
     from .models import MetalPrice
     from datetime import timedelta
     
-    end_date = datetime.now().date()
+    end_date = timezone.localdate()
     start_date = end_date - timedelta(days=days)
     
     return MetalPrice.objects.filter(
@@ -432,9 +432,8 @@ def clean_old_prices():
     清理旧的金属价格数据，每天只保留最新的一条记录
     """
     from .models import MetalPrice
-    from datetime import date
     
-    today = date.today()
+    today = timezone.localdate()
     
     # 获取所有金属名称
     metal_names = MetalPrice.objects.values_list('metal_name', flat=True).distinct()
@@ -462,9 +461,8 @@ def fetch_and_save_prices(use_sample=False):
     每天只保留最新的数据，刷新时会删除当天的旧数据并保存新数据
     """
     from .models import MetalPrice
-    from datetime import date
     
-    today = date.today()
+    today = timezone.localdate()
     
     logger.info(f"开始获取金属价格数据，日期: {today}")
     

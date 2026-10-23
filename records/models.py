@@ -352,8 +352,7 @@ class Insurance(models.Model):
     @property
     def is_expired(self):
         """判断是否到期"""
-        from datetime import date
-        today = date.today()
+        today = timezone.localdate()
         if self.end_date < today:
             return True
         return False
@@ -361,8 +360,7 @@ class Insurance(models.Model):
     @property
     def expired_days(self):
         """计算到期天数"""
-        from datetime import date
-        today = date.today()
+        today = timezone.localdate()
         if self.end_date < today:
             days = (today - self.end_date).days
             return f"已到期{days}天"

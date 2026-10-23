@@ -15,8 +15,9 @@ WorkRecordBackups/，不落进仓库）中出现一次，请立即转存到密�
 
 import secrets
 import string
-from datetime import datetime
 from pathlib import Path
+
+from django.utils import timezone
 
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -85,7 +86,7 @@ class Command(BaseCommand):
         out_path = self._resolve_out_path(options["out"])
         out_path.parent.mkdir(parents=True, exist_ok=True)
         lines = [
-            f"# 生成时间：{datetime.now():%Y-%m-%d %H:%M:%S}",
+            f"# 生成时间：{timezone.localtime():%Y-%m-%d %H:%M:%S}",
             "# 用途：验收账号口令轮换（历史口令已泄露）。请转存密码管理器后删除本文件。",
             "",
         ]
@@ -109,7 +110,7 @@ class Command(BaseCommand):
     def _resolve_out_path(raw):
         if raw:
             return Path(raw).expanduser().resolve()
-        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        stamp = timezone.localtime().strftime("%Y%m%d_%H%M%S")
         return Path.home() / "WorkRecordBackups" / f"seed_passwords_{stamp}.txt"
 
     @staticmethod

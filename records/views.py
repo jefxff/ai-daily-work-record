@@ -531,7 +531,7 @@ daily_record_delete = make_delete_view(
 # 保险视图
 def _filter_insurance_expired(qs, value):
     """保险到期状态筛选：expired=已到期，not_expired=未到期（与原实现一致）。"""
-    today = date.today()
+    today = timezone.localdate()
     if value == 'expired':
         return qs.filter(end_date__lt=today)
     if value == 'not_expired':

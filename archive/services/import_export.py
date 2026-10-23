@@ -7,7 +7,6 @@
 
 import csv
 import io
-from datetime import datetime
 
 # .xls 老格式解析依赖（openpyxl 只支持 .xlsx）。
 # 采用"可选导入 + 明确报错"而不是模块级硬导入：缺依赖时应用仍能启动，
@@ -576,7 +575,7 @@ def _export_response(spec, include_header_only=False):
     buf = io.BytesIO()
     wb.save(buf)
     suffix = "模板" if include_header_only else "导出"
-    fname = f"{spec['label']}{suffix}_{datetime.now():%Y%m%d_%H%M}.xlsx"
+    fname = f"{spec['label']}{suffix}_{timezone.localtime():%Y%m%d_%H%M}.xlsx"
     resp = HttpResponse(
         buf.getvalue(),
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

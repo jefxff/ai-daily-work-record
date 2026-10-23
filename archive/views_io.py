@@ -8,7 +8,7 @@ import csv
 import io
 import logging
 import os
-from datetime import datetime
+from django.utils import timezone
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -229,7 +229,7 @@ def import_archives(request):
 @perm_required("archive", "read")
 def export_archives(request):
     response = HttpResponse(content_type="text/csv; charset=utf-8-sig")
-    response["Content-Disposition"] = f'attachment; filename="archives_{datetime.now():%Y%m%d_%H%M}.csv"'
+    response["Content-Disposition"] = f'attachment; filename="archives_{timezone.localtime():%Y%m%d_%H%M}.csv"'
     writer = csv.writer(response)
     writer.writerow(["所属台账", "来源Sheet", "编号", "名称", "档案柜", "位置", "层", "格", "类别", "标签", "创建人", "创建时间"])
     for a in Archive.objects.select_related("cabinet", "category", "creator", "ledger"):

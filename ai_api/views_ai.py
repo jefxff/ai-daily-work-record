@@ -6,7 +6,7 @@ from rest_framework.pagination import PageNumberPagination
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Q
 from django.utils import timezone
-from datetime import datetime, timedelta
+from datetime import timedelta
 import logging
 import os
 
@@ -93,7 +93,7 @@ def ai_summary(request):
     summary['总数据统计'] = totals
 
     # 今日数据
-    today = datetime.now().date()
+    today = timezone.localdate()
     today_data = {}
     if _can(request.user, 'daily_record', 'read'):
         today_data['今日新增记录'] = DailyRecord.objects.filter(
@@ -333,10 +333,10 @@ def ai_query(request):
 
         if model_name == 'insurance':
             if any(kw in question for kw in ['到期', '过期']):
-                expired = Insurance.objects.filter(end_date__lt=datetime.now().date())
+                expired = Insurance.objects.filter(end_date__lt=timezone.localdate())
                 upcoming = Insurance.objects.filter(
-                    end_date__gte=datetime.now().date(),
-                    end_date__lte=datetime.now().date() + timedelta(days=30)
+                    end_date__gte=timezone.localdate(),
+                    end_date__lte=timezone.localdate() + timedelta(days=30)
                 )
                 response['答案'] = f'已到期{expired.count()}个，30天内到期{upcoming.count()}个'
                 response['数据'] = InsuranceSerializer(expired[:5], many=True).data
@@ -413,7 +413,7 @@ def ai_query(request):
             )
 
         elif model_name == 'license':
-            today = datetime.now().date()
+            today = timezone.localdate()
             if any(kw in question for kw in ['到期', '过期', '年审']):
                 expired = License.objects.filter(
                     Q(expire_date__lt=today) | Q(next_review_date__lt=today)

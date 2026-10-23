@@ -19,6 +19,7 @@ import re
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from datetime import date
+from django.utils import timezone
 from decimal import Decimal
 
 
@@ -352,7 +353,7 @@ def _build_subject(key, meta, records, today):
 
 def build_subjects(records, today=None):
     """把保险流水聚合成标的列表（按紧急程度排序）。"""
-    today = today or date.today()
+    today = today or timezone.localdate()
     buckets = OrderedDict()
     for record in records:
         meta = subject_of(record)
