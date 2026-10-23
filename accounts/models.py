@@ -20,8 +20,9 @@ TOKEN_TTL_DAYS = 365
 def _hash_token_key(raw_key: str) -> str:
     """Token key 哈希：sha256(明文 + SECRET_KEY salt)。
 
-    存入 key_hash 字段，认证时比对哈希。key 字段保留明文用于过渡期 fallback，
-    后续可逐步清理。
+    入库后明文**不再保存**：Token 是给外部 Agent 的长期免交互凭据，明文落库意味着
+    任何能读数据库的途径（只读副本、sqlite 文件、本系统自己的备份包）都等于拿到
+    一批可直接冒用的凭据。校验只在认证时比对哈希，明文仅在签发响应里出现一次。
     """
     secret = settings.SECRET_KEY.encode("utf-8")
     return hashlib.sha256(raw_key.encode("utf-8") + secret).hexdigest()
@@ -144,7 +145,11 @@ class ApiToken(models.Model):
     """长期 Token：供外部 Agent 以请求头 ``Authorization: Token <key>`` 免交互校验身份。
 
     与 DRF 内置 authtoken（每用户仅一枚、无过期、无历史）不同，本模型保留历史记录、
-    带过期时间，便于管理端审计。Token 值需在页面回显与复制，故以明文存储。
+    带过期时间，便于管理端审计。
+
+    安全约束（审计 P1-2）：明文 key **不落库**。签发时哈希进 ``key_hash``、
+    前缀进 ``key_prefix``，明文只在签发响应里回显一次；认证只可能按哈希比对。
+    本系统每天产出含全库数据的备份包，明文入库等于把长期凭据一起打包送出去。
     """
 
     class Status(models.TextChoices):
@@ -158,10 +163,19 @@ class ApiToken(models.Model):
         on_delete=models.CASCADE,
         related_name="api_tokens",
     )
-    key = models.CharField("Token", max_length=128, unique=True, db_index=True)
+    key_prefix = models.CharField(
+        "Token 前缀",
+        max_length=16,
+        default="",
+        blank=True,
+        help_text="明文 key 的前几位，仅用于用户在历史列表里辨认是哪一枚 Token",
+    )
     key_hash = models.CharField(
-        "Token 哈希", max_length=64, blank=True, default="", db_index=True,
-        help_text="sha256(key + SECRET_KEY)，认证时优先比对此字段；key 字段保留明文用于过渡期 fallback",
+        "Token 哈希",
+        max_length=64,
+        default="",
+        db_index=True,
+        help_text="sha256(key + SECRET_KEY)，认证时唯一比对字段；明文不落库，仅在签发响应里回显一次",
     )
     created_at = models.DateTimeField("创建时间", auto_now_add=True)
     expires_at = models.DateTimeField("过期时间", null=True, blank=True)
@@ -219,20 +233,29 @@ class ApiToken(models.Model):
     def status_text(self):
         return self.Status(self.status_code).label
 
+    @property
+    def masked_key(self):
+        """历史列表展示用的掩码值。明文不落库，这里只能给前缀。"""
+        return f"{self.key_prefix}…" if self.key_prefix else "（前缀缺失）"
+
     @classmethod
     def issue(cls, user, *, ip=None, ttl_days=TOKEN_TTL_DAYS):
         """为用户签发一枚新的长期 Token（不撤销既有 Token，保留完整历史）。
 
-        返回 Token 对象，调用方应在**唯一一次**响应中把明文 key 展示给用户——
-        入库后 key_hash 即可覆盖 key 的安全兜底（过渡期两者同时存在）。
+        返回 Token 对象，明文字 **只挂在实例的 ``raw_key`` 属性上**（不入库）。
+        调用方必须在唯一一次响应中展示它——页面历史列表此后只能看到前缀。
         """
         raw_key = secrets.token_urlsafe(TOKEN_KEY_BYTES)
-        return cls.objects.create(
+        token = cls.objects.create(
             user=user,
-            key=raw_key,
+            key_prefix=raw_key[:12],
             key_hash=_hash_token_key(raw_key),
             expires_at=timezone.now() + timedelta(days=ttl_days),
             created_ip=ip,
             # 记录签发时的密码指纹：改密/重置后据此令本 Token 失效
             password_fingerprint=user.password or "",
         )
+        # 明文只在本次响应里使用；绝不能 save()（save 会把内存属性写进 key_hash 之外的字段，
+        # 而 raw_key 本身不是模型字段，不会被持久化，但也不要给它这个机会）
+        token.raw_key = raw_key
+        return token

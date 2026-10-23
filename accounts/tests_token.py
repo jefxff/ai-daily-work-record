@@ -14,6 +14,7 @@ from datetime import timedelta
 
 from django.contrib.auth.models import User
 from django.core.cache import cache
+from django.core.exceptions import FieldError
 from django.core.management import call_command
 from django.test import Client, TestCase
 from django.urls import reverse
@@ -21,7 +22,7 @@ from django.utils import timezone
 
 from rest_framework.test import APIClient
 
-from .models import ApiToken, Role
+from .models import ApiToken, Role, _hash_token_key
 
 PWD = "X12345678"
 TOKEN_URL = "/api-token-auth/"
@@ -102,10 +103,13 @@ class ApiTokenFeatureTests(TestCase):
         self.assertEqual(resp.status_code, 201)
         data = resp.json()
         self.assertTrue(data["key"])
+        self.assertTrue(data["key_prefix"])
         self.assertEqual(data["status"], "active")
         self.assertEqual(ApiToken.objects.filter(user=self.admin).count(), 1)
-        # 页面历史列表应出现新 Token
-        self.assertContains(c.get(reverse("accounts:api_token")), data["key"])
+        # 明文只在签发响应里出现一次：历史列表能认得前缀，却拿不到明文
+        page = c.get(reverse("accounts:api_token")).content.decode()
+        self.assertIn(data["key_prefix"], page)
+        self.assertNotIn(data["key"], page)
 
     def test_issue_with_credentials_anonymous(self):
         resp = Client().post(TOKEN_URL, {"username": "admin_tk", "password": PWD})
@@ -139,7 +143,7 @@ class ApiTokenFeatureTests(TestCase):
     # ---------- 3. DRF 全局 Token 认证 ----------
     def test_token_authenticates_drf_api(self):
         token = ApiToken.issue(self.admin, ip="127.0.0.1")
-        self.assertEqual(self._token_client(token.key).get(DECORATION_API).status_code, 200)
+        self.assertEqual(self._token_client(token.raw_key).get(DECORATION_API).status_code, 200)
 
     def test_invalid_token_rejected(self):
         self.assertEqual(self._token_client("not-a-real-token").get(DECORATION_API).status_code, 401)
@@ -148,18 +152,18 @@ class ApiTokenFeatureTests(TestCase):
         token = ApiToken.issue(self.admin)
         token.expires_at = timezone.now() - timedelta(days=1)
         token.save(update_fields=["expires_at"])
-        self.assertEqual(self._token_client(token.key).get(DECORATION_API).status_code, 401)
+        self.assertEqual(self._token_client(token.raw_key).get(DECORATION_API).status_code, 401)
 
     def test_revoked_token_rejected(self):
         token = ApiToken.issue(self.admin)
         token.is_active = False
         token.save(update_fields=["is_active"])
-        self.assertEqual(self._token_client(token.key).get(DECORATION_API).status_code, 401)
+        self.assertEqual(self._token_client(token.raw_key).get(DECORATION_API).status_code, 401)
 
     def test_token_still_bound_by_rbac(self):
         """Token 仅代表身份，权限仍按该用户 RBAC 判定：只读角色不可写。"""
         token = ApiToken.issue(self.viewer)
-        client = self._token_client(token.key)
+        client = self._token_client(token.raw_key)
         self.assertEqual(client.get(DAILY_RECORD_API).status_code, 200)
         resp = client.post(
             DAILY_RECORD_API,
@@ -173,9 +177,40 @@ class ApiTokenFeatureTests(TestCase):
         token = ApiToken.issue(self.admin)
         self.admin.set_password("BrandNewPwd456")
         self.admin.save()
-        self.assertEqual(self._token_client(token.key).get(DECORATION_API).status_code, 401)
+        self.assertEqual(self._token_client(token.raw_key).get(DECORATION_API).status_code, 401)
 
     # ---------- 4. 历史记录 ----------
+    # ---------- P1-2：明文不落库 ----------
+    def test_plaintext_key_is_not_persisted(self):
+        """审计 P1-2：明文 key 不得出现在数据库任何字段里。"""
+        token = ApiToken.issue(self.admin, ip="127.0.0.1")
+        raw = token.raw_key
+        stored = ApiToken.objects.get(pk=token.pk)
+        # 模型上已无 key 字段；状态字典里也不该有它
+        self.assertNotIn("key", stored.__dict__)
+        self.assertEqual(stored.key_prefix, raw[:12])
+        self.assertEqual(stored.key_hash, _hash_token_key(raw))
+        # 整行序列化后仍找不到明文（防以后有人加字段把明文又存回去）
+        row_text = repr(stored.__dict__)
+        self.assertNotIn(raw, row_text)
+
+    def test_hash_only_authentication_still_works(self):
+        """明文的唯一出口是签发响应：认证按哈希，明文列已不存在。"""
+        token = ApiToken.issue(self.admin)
+        # 认证成功
+        self.assertEqual(self._token_client(token.raw_key).get(DECORATION_API).status_code, 200)
+        # 查不到明文列：任何「按 key=明文 查询」的写法都该直接 AttributeError
+        with self.assertRaises(FieldError):
+            ApiToken.objects.filter(key=token.raw_key).exists()
+
+    def test_page_never_leaks_full_key(self):
+        """历史列表与签发后的刷新页面都不含明文（前缀除外）。"""
+        token = ApiToken.issue(self.admin)
+        c = self._session_client(self.admin)
+        page = c.get(reverse("accounts:api_token")).content.decode()
+        self.assertNotIn(token.raw_key, page)
+        self.assertIn(token.key_prefix, page)
+
     def test_history_pagination(self):
         for _ in range(12):
             ApiToken.issue(self.admin)
@@ -218,7 +253,7 @@ class ApiTokenFeatureTests(TestCase):
         token.refresh_from_db()
         self.assertFalse(token.is_active)
         # 撤销后该 Token 调用立即失败
-        self.assertEqual(self._token_client(token.key).get(DECORATION_API).status_code, 401)
+        self.assertEqual(self._token_client(token.raw_key).get(DECORATION_API).status_code, 401)
 
     def test_revoke_page_shows_button_for_active_only(self):
         c = self._session_client(self.admin)

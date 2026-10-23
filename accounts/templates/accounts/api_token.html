@@ -16,14 +16,15 @@
             <h6 class="mb-2 u-bold">获取最新长期 Token</h6>
             <p class="text-muted mb-3 u-fs-sm">
                 点击下方按钮生成一枚新的长期 Token（有效期 {{ token_ttl_days }} 天）。
-                生成后请立即复制并妥善保管，切勿泄露给无关人员。
+                <strong>明文只在创建成功的那一刻显示一次</strong>，请立即复制并妥善保管；
+                此后历史列表仅保留前缀供辨认，遗失只能重新签发（备份包与数据库都不再含明文）。
             </p>
             <button class="btn btn-primary" id="btnGenToken" type="button" style="min-width:180px;">
                 获取最新长期Token
             </button>
             <div class="alert alert-success mt-3 mb-0" id="newTokenBox" hidden>
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-1">
-                    <strong style="font-size:.9rem;">最新 Token（请立即复制保存）</strong>
+                    <strong style="font-size:.9rem;">最新 Token（仅此一次可见，请立即复制保存）</strong>
                     <button class="btn btn-sm btn-outline-primary" id="btnCopyNew" type="button">复制</button>
                 </div>
                 <div class="token-value" id="newTokenValue"></div>
@@ -55,7 +56,9 @@
                     <tbody id="tokenTbody">
                         {% for t in page %}
                         <tr>
-                            <td data-label="Token 值"><span class="token-value">{{ t.key }}</span></td>
+                            <td data-label="Token 值">
+                                <span class="token-value" title="明文仅在创建时显示一次，此后只能看到前缀">{{ t.masked_key }}</span>
+                            </td>
                             <td data-label="创建时间">{{ t.created_at|date:"Y-m-d H:i:s" }}</td>
                             <td data-label="过期时间">{{ t.expires_at|date:"Y-m-d H:i:s"|default:"—" }}</td>
                             <td data-label="状态">
@@ -64,7 +67,6 @@
                                 {% else %}<span class="status-badge danger">{{ t.status_text }}</span>{% endif %}
                             </td>
                             <td data-label="操作">
-                                <button class="btn btn-sm btn-outline-secondary btn-copy-row" type="button" data-token="{{ t.key|escapejs }}">复制</button>
                                 {% if t.status_code == 'active' %}
                                 <form method="post" action="{% url 'accounts:api_token_revoke' t.id %}" class="d-inline" data-confirm="确定撤销该 Token 吗？撤销后使用它的调用将立即失败，且不可恢复。">
                                     {% csrf_token %}

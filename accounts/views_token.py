@@ -128,16 +128,19 @@ def obtain_api_token(request):
     try:
         log_operation(
             request, "系统管理", "新增", f"长期Token#{token.pk}",
-            f"为用户 {user.get_username()} 签发长期 Token",
+            f"为用户 {user.get_username()} 签发长期 Token（前缀 {token.key_prefix}）",
         )
     except Exception:  # 留痕失败不影响签发主流程
         import logging
 
         logging.getLogger(__name__).exception("长期 Token 操作留痕写入失败")
 
+    # 明文只在这一次响应里出现（P1-2）。此后历史列表只能看到 key_prefix 掩码，
+    # 丢钥只能重新签发，换取的是「备份包外流不再等于凭据外流」。
     return Response({
         "id": token.pk,
-        "key": token.key,
+        "key": token.raw_key,
+        "key_prefix": token.key_prefix,
         "created_at": _fmt(token.created_at),
         "expires_at": _fmt(token.expires_at),
         "status": token.status_code,
