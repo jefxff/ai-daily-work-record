@@ -4,13 +4,16 @@
 避免 Content-Disposition 直接携带中文导致的下载中断问题。
 """
 
-from datetime import date
 
+from django.db.models import Prefetch
 from django.http import HttpResponse
+from django.utils import timezone
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 from urllib.parse import quote
+
+from .models import BatchRecord, TestRecord
 
 HEADER_FILL = PatternFill("solid", fgColor="D9E2F3")
 HEADER_FONT = Font(bold=True)
@@ -68,10 +71,24 @@ def export_samples_xlsx(filter_qs):
         "是否已录入金蝶", "终止原因",
     ]
     rows1 = []
-    for s in filter_qs.select_related("supplier"):
-        latest_test = s.test_records.first()
-        latest_batch = s.batch_records.first()
-        kingdee = any(r.kingdee_entered for r in s.batch_records.all())
+    # 审计 P2-1：这里原来是逐行 5 次查询（test_records.first() / batch_records.first() /
+    # batch_records.all() / 两个同样查库的 model property），20 条样品 110 条 SQL，
+    # 导出 2000 条就是上万条，SQLite 上直接卡死。改为一次预取，循环内全走缓存。
+    # TestRecord/BatchRecord 的 Meta.ordering 是 ["-round_no"]，`.first()` 取的是
+    # 最大轮次那条，所以预取显式按同一顺序排，列表首元素即语义等价的"最新一轮"。
+    samples = (
+        filter_qs.select_related("supplier")
+        .prefetch_related(
+            Prefetch("test_records", queryset=TestRecord.objects.order_by("-round_no")),
+            Prefetch("batch_records", queryset=BatchRecord.objects.order_by("-round_no")),
+        )
+    )
+    for s in samples:
+        tests = list(s.test_records.all())
+        batches = list(s.batch_records.all())
+        latest_test = tests[0] if tests else None
+        latest_batch = batches[0] if batches else None
+        kingdee = any(r.kingdee_entered for r in batches)
         rows1.append([
             s.sample_no,
             s.material_name,
@@ -83,9 +100,9 @@ def export_samples_xlsx(filter_qs):
             s.get_status_display(),
             s.registrar or "",
             s.registered_at.strftime("%Y-%m-%d %H:%M"),
-            s.latest_test_round,
+            tests[0].round_no if tests else 0,
             latest_test.get_review_conclusion_display() if latest_test else "",
-            s.latest_batch_round,
+            batches[0].round_no if batches else 0,
             latest_batch.get_batch_result_display() if latest_batch else "",
             _yn(kingdee),
             s.terminate_reason,
@@ -113,7 +130,6 @@ def export_samples_xlsx(filter_qs):
         )
         .order_by("sample_no", "-test_records__round_no")
     )
-    from .models import TestRecord
     conclusion_display = dict(TestRecord.Conclusion.choices)
     for (
         sample_no, material, model, test_no, round_no, test_date, test_result,
@@ -142,7 +158,6 @@ def export_samples_xlsx(filter_qs):
         "是否录入金蝶", "操作人", "操作时间", "批次备注",
     ]
     rows3 = []
-    from .models import BatchRecord
     result_display = dict(BatchRecord.Result.choices)
     batches = (
         filter_qs.prefetch_related("batch_records")
@@ -175,7 +190,7 @@ def export_samples_xlsx(filter_qs):
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-    filename = f"试样跟进台账_{date.today():%Y%m%d}.xlsx"
+    filename = f"试样跟进台账_{timezone.localdate():%Y%m%d}.xlsx"
     # RFC 5987：filename* 携带 URL 编码中文，兼容主流浏览器
     from work_record.export_utils import content_disposition
 
