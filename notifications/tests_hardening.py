@@ -107,6 +107,39 @@ class InProcessSchedulerTests(TestCase):
         self.assertIn("worker", scheduler.HEARTBEATS)
         self.assertIsInstance(scheduler.worker_alive(), bool)
 
+    def test_heartbeat_file_is_visible_to_other_process(self):
+        """独立进程模式：web 进程只能靠心跳文件判断调度器存活。
+
+        模拟方式：写入心跳文件后清空进程内 HEARTBEATS（等价于"另一个进程"），
+        heartbeat_ts / scheduler_alive 仍应读到文件里的时间戳。
+        """
+        import tempfile
+
+        old = dict(scheduler.HEARTBEATS)
+        try:
+            with tempfile.TemporaryDirectory() as tmp, \
+                    override_settings(SCHEDULER_HEARTBEAT_DIR=tmp):
+                scheduler.record_heartbeat("scheduler")
+                scheduler.HEARTBEATS["scheduler"] = None
+                self.assertIsNotNone(scheduler.heartbeat_ts("scheduler"))
+                self.assertTrue(scheduler.scheduler_alive())
+        finally:
+            scheduler.HEARTBEATS.update(old)
+
+    def test_missing_heartbeat_file_reports_not_alive(self):
+        """没有任何心跳（web 进程刚启动、run_scheduler 未拉起）时不能误报运行中。"""
+        import tempfile
+
+        old = dict(scheduler.HEARTBEATS)
+        try:
+            with tempfile.TemporaryDirectory() as tmp, \
+                    override_settings(SCHEDULER_HEARTBEAT_DIR=tmp):
+                scheduler.HEARTBEATS["scheduler"] = None
+                self.assertIsNone(scheduler.heartbeat_ts("scheduler"))
+                self.assertFalse(scheduler.scheduler_alive())
+        finally:
+            scheduler.HEARTBEATS.update(old)
+
     def test_next_run_at_for_interval_task(self):
         task = ScheduledTask(
             enabled=True,

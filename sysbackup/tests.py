@@ -72,11 +72,20 @@ class BackupPackageValidationTests(TestCase):
         self.assertTrue(any("结构版本" in e for e in errors))
 
     def test_django_major_mismatch_is_reported(self):
+        """新版本备份包不能恢复到旧版本（缺逆向迁移）。"""
         meta = {"schema_version": services.SCHEMA_VERSION,
-                "django_version": "3.2", "media": {"files": []}}
+                "django_version": "9.0", "media": {"files": []}}
         with tempfile.TemporaryDirectory() as td:
             _, errors = services._inspect_backup(self._make_package(td, meta))
-        self.assertTrue(any("Django 主版本" in e for e in errors))
+        self.assertTrue(any("无法降级恢复" in e for e in errors))
+
+    def test_older_django_package_is_accepted(self):
+        """升级后必须仍能恢复升级前（4.2）的备份包。"""
+        meta = {"schema_version": services.SCHEMA_VERSION,
+                "django_version": "4.2", "media": {"files": []}}
+        with tempfile.TemporaryDirectory() as td:
+            _, errors = services._inspect_backup(self._make_package(td, meta))
+        self.assertFalse([e for e in errors if "Django" in e])
 
     def test_missing_attachment_is_reported(self):
         meta = {"schema_version": services.SCHEMA_VERSION,

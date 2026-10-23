@@ -638,11 +638,21 @@ def _inspect_backup(zip_path: Path):
                 errors.append(
                     f"备份包结构版本不兼容（包 v{meta.get('schema_version')}，当前 v{SCHEMA_VERSION}）"
                 )
-            pkg_major = str(meta.get("django_version", "")).split(".")[0]
+            pkg_ver = str(meta.get("django_version", ""))
+            pkg_major = pkg_ver.split(".")[0]
             cur_major = _django_version().split(".")[0]
-            if pkg_major and pkg_major != cur_major:
+            # 跨主版本：旧包 → 新版本允许（本项目 4.2 升级 5.2 后，升级前的历史备份仍需可恢复；
+            # 数据库迁移记录与表结构一致，migrate --check 已验证无待补齐项）。
+            # 新包 → 旧版本禁止：缺少逆向迁移，降级恢复会得到无法识别的 schema。
+            if pkg_major.isdigit() and cur_major.isdigit() and int(pkg_major) > int(cur_major):
                 errors.append(
-                    f"Django 主版本不兼容（备份时 {meta.get('django_version')}，当前 {_django_version()}）"
+                    f"备份包 Django 版本高于当前版本，无法降级恢复"
+                    f"（备份时 {pkg_ver}，当前 {_django_version()}）"
+                )
+            elif pkg_major and pkg_major != cur_major:
+                logger.warning(
+                    "恢复旧版本备份包：备份时 Django %s，当前 %s，按当前版本向前兼容",
+                    pkg_ver, _django_version(),
                 )
             manifest = meta.get("media", {}).get("files", [])
             missing = [f for f in manifest if (MEDIA_PREFIX + f) not in names]
@@ -684,7 +694,10 @@ def _run_restore(task_id, zip_path: Path, operator):
         _log(task_id, f"Django {meta.get('django_version')}，数据库 {meta['database']['tables']} 张表 / "
                       f"{meta['database']['rows']} 条记录，附件 {meta['media']['file_count']} 个")
         if meta.get("django_version") != _django_version():
-            _log(task_id, f"⚠️ Django 版本不同（当前 {_django_version()}），已确认兼容（主版本一致）")
+            pkg_major = str(meta.get("django_version", "")).split(".")[0]
+            note = "已确认兼容（旧版本向前兼容）" if pkg_major == _django_version().split(".")[0] \
+                else "旧主版本包，按当前版本读取"
+            _log(task_id, f"⚠️ Django 版本不同（当前 {_django_version()}），{note}")
 
         # 1) 恢复前对当前库做安全快照，失败时可手动回退
         _progress(task_id, 8, "备份当前数据（安全快照）")

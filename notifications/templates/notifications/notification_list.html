@@ -91,8 +91,8 @@
     <div class="sched-header">
         <h3>⏰ 定时任务</h3>
         <div class="sched-thread-badges">
-            <span class="status-badge {{ worker_alive|yesno:'success,danger' }}" title="站内/邮件队列发送线程（随服务进程自动运行）">后台发送线程：{{ worker_alive|yesno:'运行中,未运行' }}</span>
-            <span class="status-badge {{ scheduler_alive|yesno:'success,danger' }}" title="定时任务调度线程（随服务进程自动运行）">定时调度：{{ scheduler_alive|yesno:'运行中,未运行' }}</span>
+            <span class="status-badge {{ worker_alive|yesno:'success,danger' }}" title="站内/邮件队列发送线程（由独立调度进程 run_scheduler 承担）">后台发送线程：{{ worker_alive|yesno:'运行中,未运行' }}</span>
+            <span class="status-badge {{ scheduler_alive|yesno:'success,danger' }}" title="定时任务调度进程（独立进程 run_scheduler，心跳写入 logs/.hb_scheduler）">定时调度：{{ scheduler_alive|yesno:'运行中,未运行' }}</span>
         </div>
     </div>
     <table class="table--cards sched-table">

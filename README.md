@@ -4,7 +4,7 @@
 这是一个基于Django的每日工作记录管理系统，包含装修管理、客户账期、客户客诉、制度及处罚、核价管理等功能。
 
 ## 技术栈
-- **后端**: Django 4.2.24
+- **后端**: Django 5.2.18（LTS）+ Django REST Framework 3.18
 - **前端**: Bootstrap 5 + Chart.js
 - **数据库**: SQLite
 - **API**: Django REST Framework
@@ -30,8 +30,8 @@
 ## 快速开始
 
 ### 环境要求
-- Python 3.8+
-- Django 4.2.24
+- Python 3.11+
+- Django 5.2.18
 - 其他依赖见 requirements.txt
 
 ### 安装依赖
@@ -40,12 +40,21 @@ pip install -r requirements.txt
 ```
 
 ### 启动项目
-- Windows 一键启动: `scripts/windows/start_windows.bat`
-- 直接启动（推荐）: `python manage.py runserver 0.0.0.0:8080`
+- Windows 一键启动: `scripts/windows/start_windows.bat`（会同时拉起 web 与调度进程）
+- 直接启动（推荐）:
+  ```bash
+  python manage.py runserver 0.0.0.0:8080     # 终端 1：web
+  python manage.py run_scheduler              # 终端 2：定时任务 + 通知发送
+  ```
 - 访问地址: http://127.0.0.1:8080/  （登录页 /accounts/login/）
 
+> `run_scheduler` 是常驻进程，负责到期提醒、每日未完成提醒、保险续保提醒、每日自动备份
+> 以及站内/邮件发送。**只启动 runserver 不会执行任何定时任务，且页面不会报错。**
+
 ### RBAC 验收账号
-项目内置 4 个验收账号（密码均为 `X12345678`）：
+项目内置 4 个验收账号（默认不在此文档公开口令，首次部署后由管理员在
+`/accounts/users/` 重置为强口令）：
+
 - `rbac_root` — 超级管理员（`is_superuser`，恒为全权限）
 - `rbac_admin` — 管理员（绑定内置角色 `admin`）
 - `rbac_staff` — 普通员工（绑定内置角色 `staff`）
@@ -88,7 +97,7 @@ pip install -r requirements.txt
 
 ### 代码规范
 - 遵循PEP 8编码规范
-- 使用类型提示
+- 类型提示是渐进目标：新增/改动函数优先补注解，存量代码不强制一次性补齐
 - 添加适当的注释和文档
 
 ### 测试
@@ -96,26 +105,33 @@ pip install -r requirements.txt
 
 ### 部署
 
-本项目按**单进程**形态部署（Windows 常驻进程直接跑 `runserver`）。
+本项目按**两进程**形态部署（Windows 常驻进程直接跑 `runserver` + `run_scheduler`）。
 
 **启动步骤**
 ```bash
 pip install -r requirements.txt
 python manage.py migrate
 python manage.py createcachetable   # 登录失败锁定使用 DatabaseCache，需先建缓存表
-# 本机/内网运行：显式开启调试模式（保留静态文件自动服务与详细报错）
-set DJANGO_DEBUG=1                  # Windows；Linux/macOS 用 export DJANGO_DEBUG=1
+
+# 终端 1：web（默认 DJANGO_DEBUG=0，无需显式设置）
 python manage.py runserver 0.0.0.0:8080
+# 终端 2：定时任务 + 通知发送（必须常驻，否则定时任务静默停摆）
+python manage.py run_scheduler
 ```
-（直接运行 `scripts/windows/start_windows.bat` 或 `./start.sh` 时，脚本已自动设置 `DJANGO_DEBUG=1`。）
+（直接运行 `scripts/windows/start_windows.bat` 或 `./start.sh` 时会自动拉起这两个进程。）
 
 **部署形态说明**
-- **必须单进程运行**：备份/恢复任务状态（`sysbackup`）与消息通知调度线程均为进程内实现，
-  启动多 worker（gunicorn/uwsgi）会导致任务状态互不可见、同一时刻仅一个任务的互斥失效。
+- **web 与调度分离**：`NOTIFICATIONS_SCHEDULER_INPROCESS` 默认 `False`，web 进程内不再起
+  调度线程；定时任务由 `run_scheduler` 承担。仅排障时临时设 `DJANGO_SCHEDULER_INPROCESS=1`，
+  此时**不要**再启动 `run_scheduler`（否则同一任务会被执行两次）。
+- **跨进程心跳**：`run_scheduler` 每 30s 写 `logs/.hb_scheduler` / `logs/.hb_worker`，
+  web 进程读文件判断存活，健康页 `/system/health/` 因此能正确显示独立进程状态。
+- **备份/恢复任务状态**（`sysbackup`）仍为进程内实现，因此 web 侧必须单进程运行；
+  不要用 gunicorn/uwsgi 多 worker 启动。
 - 登录失败计数使用 DatabaseCache 落库，跨服务重启仍生效，无法通过"重启"绕过锁定。
 - 数据库为 SQLite（已开启 WAL），仅适合局域网单机中小并发；如需横向扩展须先改造任务状态存储。
 - **DEBUG 默认关闭（0）**：未设置 `DJANGO_DEBUG` 时即为 `0`，避免未捕获异常把含 `SECRET_KEY`
-  的配置快照打到 500 页；本机/内网运行请显式设 `DJANGO_DEBUG=1`。
+  的配置快照打到 500 页。排障时可临时设 `DJANGO_DEBUG=1`，排障后务必改回 0。
 - **ALLOWED_HOSTS 自动探测**：默认取本机主机名与局域网 IP（换网段自动跟随），
   可用 `DJANGO_ALLOWED_HOSTS`（逗号分隔）追加；`DJANGO_DEBUG=0` 时禁止通配符 `*`（启动即报错）。
 - `DJANGO_DEBUG=0` 时 runserver 不再自动服务 `/static/`，项目已在 `work_record/urls.py`
@@ -123,9 +139,10 @@ python manage.py runserver 0.0.0.0:8080
 
 **自动化校验（CI）**
 `.github/workflows/ci.yml` 在 push / PR 到 `main` 时执行：
-`pip install -r requirements.txt` → `pip check` → `manage.py check` →
-`check --deploy`（生产形态）→ `makemigrations --check` → ruff / bandit / pip-audit →
-`coverage run manage.py test`。所有 Action 固定到 commit SHA，Dependabot 每周检查依赖更新。
+`pip install -r requirements.txt` → `pip install -r requirements-dev.txt` → `pip check` →
+`manage.py check` → `check --deploy`（生产形态）→ `makemigrations --check` →
+ruff / bandit / pip-audit → `coverage run manage.py test`。所有 Action 固定到 commit SHA，
+质量工具版本锁定在 `requirements-dev.txt`。
 
 ## 安全与合规说明
 
@@ -159,6 +176,8 @@ python manage.py sync_rbac
 监控系统运行状态和性能指标
 
 ---
-**项目版本**: 1.0.0  
-**最后更新**: 2026-10-22  
+**项目版本**: 2.0.0  
+**最后更新**: 2026-10-23  
 **维护团队**: 开发团队
+
+**许可**：Proprietary / All rights reserved，详见 `LICENSE`。仓库当前不对外公开。

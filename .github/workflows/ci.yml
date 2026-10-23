@@ -34,7 +34,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: 安装质量与安全工具
-        run: pip install ruff bandit pip-audit coverage
+        run: pip install -r requirements-dev.txt
 
       - name: 依赖完整性
         run: python -m pip check

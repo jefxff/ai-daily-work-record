@@ -52,8 +52,8 @@ SECRET_KEY = _load_secret_key()
 
 # DEBUG 由环境变量控制，默认关闭（安全默认值，评审 R4）。
 # - 本机/内网日常运行：使用 scripts/windows/start_windows.bat 或 start.sh，
-#   两者会显式设置 DJANGO_DEBUG=1，保持 runserver 自动服务静态文件与详细报错；
-# - 加固/对外运行：保持默认 DJANGO_DEBUG=0，此时用 DJANGO_ALLOWED_HOSTS 显式列主机。
+#   两者显式设置 DJANGO_DEBUG=0，与线上保持一致；
+# - 排障需要详细报错时再临时设 DJANGO_DEBUG=1（不会影响定时任务，调度器已独立进程）。
 # 注意：DEBUG=0 时 runserver 不再自动服务 /static/。为不让内网用户看到无样式的页面，
 # work_record/urls.py 在 DEBUG=0 下会显式挂载 /static/ 路由（详见该文件）。
 DEBUG = os.environ.get('DJANGO_DEBUG', '0') == '1'
@@ -416,7 +416,12 @@ REST_FRAMEWORK = {
 _LOG_DIR = os.path.join(BASE_DIR, 'logs')
 # 保证日志目录存在：全新检出（如 CI）时 logs/ 被 .gitignore 忽略，缺失会让
 # RotatingFileHandler 打不开文件、dictConfig 抛错导致启动失败。
-os.makedirs(_LOG_DIR, exist_ok=True)
+# 目录不可创建（只读盘/权限不足）时降级到 console handler，不阻断启动。
+try:
+    os.makedirs(_LOG_DIR, exist_ok=True)
+    _LOG_DIR_OK = True
+except OSError:
+    _LOG_DIR_OK = False
 
 LOGGING = {
     'version': 1,
@@ -458,12 +463,10 @@ LOGGING = {
     },
 }
 
-# 日志目录：exist_ok=True 消除"检查-创建"之间的竞态（两个进程同时启动时
-# 第二个会抛 FileExistsError，而它发生在 settings 导入期 = 进程起不来）。
-# 目录不可创建（只读盘/权限不足）时降级到 stderr，不阻断启动。
-try:
-    os.makedirs(_LOG_DIR, exist_ok=True)
-except OSError:
+# 日志目录不可创建时，把 file handler 降级为 console（见上方 _LOG_DIR_OK 判定）。
+# exist_ok=True 消除"检查-创建"之间的竞态（两个进程同时启动时第二个会抛
+# FileExistsError，而它发生在 settings 导入期 = 进程起不来）。
+if not _LOG_DIR_OK:
     LOGGING['handlers']['file'] = {
         'level': 'INFO',
         'class': 'logging.StreamHandler',
@@ -490,14 +493,20 @@ else:
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@localhost')
 
 # === 通知调度器 ===
-# 是否在 web 进程内起后台线程（发送 worker + 定时任务调度）。
-# True：runserver 单进程的现状，随进程自动运行；
-# False：由独立进程 `manage.py run_scheduler` 承担（gunicorn/uwsgi 等多 worker
-#        部署必须用这种方式，否则每个 worker 都会起一份调度器）。
-# 默认跟 DEBUG 走，保证本机启动行为与改造前完全一致。
+# 部署形态：runserver（web） + 独立 `manage.py run_scheduler`（调度 + 发送）。
+# 两者分离后，DEBUG 开关不再影响定时任务是否执行，也避免进程内线程随 web 重启而丢失。
+# - 默认 False：不在 web 进程内起后台线程，由 run_scheduler 独立进程承担；
+# - 仅单进程临时排障时才设 DJANGO_SCHEDULER_INPROCESS=1（此时勿再启动 run_scheduler，
+#   否则定时任务会被执行两次）。
 NOTIFICATIONS_SCHEDULER_INPROCESS = os.environ.get(
-    'DJANGO_SCHEDULER_INPROCESS', '1' if DEBUG else '0'
+    'DJANGO_SCHEDULER_INPROCESS', '0'
 ) == '1'
+
+# 跨进程心跳目录：run_scheduler 每 30s 写一次心跳文件，web 进程读取它判断调度器是否存活
+# （进程内字典只在同一进程可见，独立进程模式下会一直误报「未运行」）。
+SCHEDULER_HEARTBEAT_DIR = os.environ.get(
+    'DJANGO_SCHEDULER_HEARTBEAT_DIR', os.path.join(BASE_DIR, 'logs')
+)
 
 # === 请求性能采集（批次 C）===
 # 中间件把每次业务请求（静态/媒体/探针除外）的路径、状态码、总耗时、SQL 条数与最慢 SQL

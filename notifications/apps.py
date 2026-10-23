@@ -1,11 +1,13 @@
 """notifications 应用配置。
 
-ready() 在 runserver 长驻进程内启动两个后台线程：
-1. 发送线程（daemon worker）：站内/邮件队列无需人工启动 manage.py notify_worker，
-   进程存活即自动消费。manage.py notify_worker 命令仍保留，供计划任务或独立部署使用；
-   两者基于原子领取（claim_for_send）可安全并存，不会重复发送。
-2. 调度线程（scheduler.scheduler_loop）：按 ScheduledTask 配置执行到期提醒扫描、
-   每日记录提醒、过期兜底、健康巡检等定时任务，可在通知中心页面由超管配置。
+默认部署形态是「runserver（web） + 独立 `manage.py run_scheduler`」，web 进程内
+**不**起后台线程（settings.NOTIFICATIONS_SCHEDULER_INPROCESS=False）。
+
+仅当显式设置 DJANGO_SCHEDULER_INPROCESS=1 时，ready() 才在 runserver 长驻进程内启动：
+1. 发送线程（daemon worker）：站内/邮件队列无需人工启动 manage.py notify_worker；
+2. 调度线程（scheduler.scheduler_loop）：按 ScheduledTask 配置执行到期扫描。
+
+独立进程的 run_scheduler 与进程内线程共用同一套原子领取，二者不可同时开启。
 """
 import logging
 import os
@@ -41,7 +43,7 @@ def _worker_loop():
     from . import scheduler
 
     while True:
-        scheduler.HEARTBEATS["worker"] = time.time()
+        scheduler.record_heartbeat("worker")
         time.sleep(POLL_INTERVAL_SECONDS)
         try:
             close_old_connections()
@@ -57,10 +59,8 @@ class NotificationsConfig(AppConfig):
 
     def ready(self):
         # 是否在进程内起线程由配置决定（settings.NOTIFICATIONS_SCHEDULER_INPROCESS）。
-        # 改造前用 `"runserver" in sys.argv` 判断运行环境：换成 gunicorn/uwsgi 后
-        # 定时任务会全部静默停摆且不报错。现在改为显式开关：
-        #   True  —— 开发/单进程 runserver，随进程启动（保持原行为）
-        #   False —— 多 worker 部署，由 `manage.py run_scheduler` 独立进程承担
+        # 默认 False：由独立进程 `manage.py run_scheduler` 承担，web 进程不起线程。
+        # 显式 True 时才走下面的进程内路径（临时排障用，勿与 run_scheduler 同时运行）。
         from django.conf import settings
 
         if not getattr(settings, "NOTIFICATIONS_SCHEDULER_INPROCESS", False):

@@ -1,12 +1,14 @@
-"""通知模块进程内定时任务调度器。
+"""通知模块定时任务调度器。
 
-单进程部署（runserver）下随 web 进程启动后台线程：
+部署形态：web 进程（runserver）与独立进程（`manage.py run_scheduler`）分离。
 - 每 30s 扫描 ScheduledTask 中已启用且到期的任务并串行执行；
 - 手动「立即执行」（超管）与调度线程共用原子领取（exclude running），
   避免并发重复执行；running 超过 30 分钟视为僵死可重新领取；
 - 执行结果（状态/耗时/输出摘要）持久化到 ScheduledTask，通知中心页面直接展示。
 
-心跳：HEARTBEATS 供视图判断 worker / scheduler 线程是否存活（90s 内有活动视为存活）。
+心跳：进程内 `HEARTBEATS` 只是本进程缓存；真正跨进程可见的是
+`logs/.hb_worker` / `logs/.hb_scheduler` 两个心跳文件（`record_heartbeat` 落盘）。
+web 进程与 run_scheduler 是两个进程，只读内存字典会永远看到「未运行」。
 
 连续失败告警：同一任务连续失败达到 FAIL_STREAK_THRESHOLD 时通知 system.update 管理员。
 计数采用**_模块级进程内计数** `_FAIL_STREAK`（键为 task.pk）——零 DB schema 约束下的
@@ -14,11 +16,13 @@
 """
 import io
 import logging
+import os
 import threading
 import time
 import traceback
 from datetime import timedelta
 
+from django.conf import settings
 from django.core.management import call_command
 from django.db import close_old_connections
 from django.db.models import Q
@@ -42,6 +46,40 @@ FAIL_STREAK_THRESHOLD = 3
 # 进程内连续失败计数（task.pk → 计数）。限制见模块 docstring：重启清零、仅本次运行语义。
 _FAIL_STREAK = {}
 
+
+def _heartbeat_path(key):
+    """心跳文件路径（目录来自 settings.SCHEDULER_HEARTBEAT_DIR）。"""
+    base = getattr(settings, "SCHEDULER_HEARTBEAT_DIR", None) \
+        or os.path.join(str(settings.BASE_DIR), "logs")
+    return os.path.join(str(base), f".hb_{key}")
+
+
+def record_heartbeat(key):
+    """更新本进程心跳并落盘；落盘失败只影响跨进程可见性，不抛异常。"""
+    now = time.time()
+    HEARTBEATS[key] = now
+    try:
+        path = _heartbeat_path(key)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="ascii") as fh:
+            fh.write(str(now))
+    except OSError:
+        logger.debug("心跳文件写入失败（key=%s）", key, exc_info=True)
+
+
+def heartbeat_ts(key):
+    """心跳时间戳：取本进程内存与心跳文件中的较大值；都没有返回 None。"""
+    ts = HEARTBEATS.get(key)
+    try:
+        with open(_heartbeat_path(key), "r", encoding="ascii") as fh:
+            value = float((fh.read() or "").strip() or 0)
+        if ts is None or value > ts:
+            ts = value
+    except (OSError, ValueError):
+        pass
+    return ts
+
+
 # 各命令允许的参数白名单（任务 code → 参数键）
 COMMAND_PARAMS = {
     "check_expiry_notices": {"days"},
@@ -55,7 +93,7 @@ COMMAND_PARAMS = {
 
 
 def _alive(key):
-    ts = HEARTBEATS.get(key)
+    ts = heartbeat_ts(key)
     return ts is not None and (time.time() - ts) < ALIVE_WINDOW_SECONDS
 
 
@@ -264,9 +302,9 @@ def run_due_tasks(should_stop=None) -> int:
 
 
 def scheduler_loop():
-    """调度主循环：串行执行到期任务。"""
+    """调度主循环：串行执行到期任务（仅进程内模式使用）。"""
     while True:
-        HEARTBEATS["scheduler"] = time.time()
+        record_heartbeat("scheduler")
         try:
             close_old_connections()
             run_due_tasks()

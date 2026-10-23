@@ -3,18 +3,22 @@
 # 带哈希的锁文件需在可联网环境执行 python scripts/gen_requirements_lock.py 生成
 # （当前运行环境离线，仓库未附 requirements.lock；联网后生成并改用
 #   pip install --require-hashes -r requirements.lock）。
-django==4.2.24
-djangorestframework==3.17.1
+#
+# 2026-10-23 升级：Django 4.2（扩展支持已于 2026-04 结束）→ 5.2 LTS（支持至 2028-04）。
+# DRF 3.18 起要求 Django>=5.2，二者需同步升级。
+django==5.2.18
+djangorestframework==3.18.3
 django-cors-headers==4.9.0
-openpyxl==3.1.2
+openpyxl==3.1.5
 # .xls 老格式解析（openpyxl 只支持 .xlsx）；xlrd 2.x 不再支持 .xlsx
-xlrd==2.0.1
-requests==2.31.0
-beautifulsoup4==4.12.2
-markdown==3.7
-bleach==6.1.0
+xlrd==2.0.2
+# 2.31.0 含 CVE-2024-35195 / CVE-2024-47081
+requests==2.34.2
+beautifulsoup4==4.15.0
+markdown==3.11.2
+bleach==6.4.0
 # 档案管理模块依赖；Pillow 同时是图像上传攻击面，必须显式锁定（勿依赖 qrcode[pil] 间接引入）
-qrcode==7.4.2
-Pillow==11.0.0
+qrcode==8.2
+Pillow==13.0.0
 # 备份中心 AES（Fernet）加密与 API Token 摘要
-cryptography==42.0.2
+cryptography==50.0.2

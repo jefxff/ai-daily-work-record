@@ -2,7 +2,7 @@
 
 面向具备 system.read 权限的管理员，聚合展示：
 - 健康探测（work_record.health.probe_health：数据库 / 迁移 / 日志目录）；
-- 调度线程心跳（scheduler.HEARTBEATS 原始时间戳 + 存活判定）；
+- 调度进程心跳（scheduler.heartbeat_ts：进程内 + logs/.hb_* 跨进程文件，90s 窗口）；
 - 定时任务状态（ScheduledTask：上次执行结果 / 下次预计）；
 - 备份操作历史（sysbackup.models.BackupOperationLog 最近 20 条）；
 - 磁盘占用（总/已用/可用/百分比 + db.sqlite3 + backups/media 目录大小）。
@@ -78,7 +78,7 @@ def _dir_size(path):
 
 
 def _fmt_heartbeat(ts):
-    """HEARTBEATS 原始时间戳（time.time()）→ 本地时间字符串；None 显示「无」。"""
+    """心跳原始时间戳（time.time()）→ 本地时间字符串；None 显示「无」。"""
     if ts is None:
         return "无"
     try:
@@ -95,14 +95,14 @@ def system_health(request):
     scheduler_alive = scheduler.scheduler_alive()
     heartbeats = [
         {
-            "label": "后台发送线程",
+            "label": "后台发送进程（run_scheduler worker）",
             "alive": worker_alive,
-            "time": _fmt_heartbeat(scheduler.HEARTBEATS.get("worker")),
+            "time": _fmt_heartbeat(scheduler.heartbeat_ts("worker")),
         },
         {
-            "label": "定时调度线程",
+            "label": "定时调度进程（run_scheduler）",
             "alive": scheduler_alive,
-            "time": _fmt_heartbeat(scheduler.HEARTBEATS.get("scheduler")),
+            "time": _fmt_heartbeat(scheduler.heartbeat_ts("scheduler")),
         },
     ]
 

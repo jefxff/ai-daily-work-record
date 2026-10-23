@@ -39,4 +39,12 @@ echo -e "按 Ctrl+C 停止服务"
 # _detect_allowed_hosts() 会自动探测当前机器的内网 IP 追加进来，DHCP 换 IP 无需改配置。
 export DJANGO_DEBUG=0
 export DJANGO_ALLOWED_HOSTS="localhost,127.0.0.1"
+
+# 独立调度进程：定时任务扫描 + 通知发送 worker。
+# 调度已与 web 进程解耦，DJANGO_DEBUG 不再影响定时任务是否执行。
+mkdir -p logs
+python manage.py run_scheduler >> logs/scheduler.out 2>&1 &
+SCHEDULER_PID=$!
+trap 'kill "$SCHEDULER_PID" 2>/dev/null' EXIT INT TERM
+
 python manage.py runserver 0.0.0.0:8000

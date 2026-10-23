@@ -4,9 +4,9 @@
     python manage.py run_scheduler            # 调度 + 发送，前台常驻
     python manage.py run_scheduler --no-worker  # 只跑定时任务
 
-为什么需要它：多 worker 部署（gunicorn/uwsgi/waitress）下，进程内线程会给每个
-worker 各起一份；而若按"是否 runserver"判断，非 runserver 部署会一份都不起，
-定时任务静默停摆。把这件事交给显式命令，部署侧只需多一个 systemd 服务。
+默认部署形态即为本命令 + runserver 两个进程（settings.NOTIFICATIONS_SCHEDULER_INPROCESS
+默认 False）。心跳会同时写入 `logs/.hb_scheduler` / `logs/.hb_worker`，web 进程读文件
+判断存活，因此健康页在独立进程模式下也能正确显示「运行中」。
 """
 
 import logging
@@ -74,7 +74,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS("通知调度器已启动（Ctrl+C 退出）"))
 
         while not stop.is_set():
-            scheduler.HEARTBEATS["scheduler"] = time.time()
+            scheduler.record_heartbeat("scheduler")
             try:
                 close_old_connections()
                 scheduler.run_due_tasks(should_stop=stop.is_set)
@@ -94,7 +94,7 @@ def _worker_loop():
     from notifications import scheduler
 
     while True:
-        scheduler.HEARTBEATS["worker"] = time.time()
+        scheduler.record_heartbeat("worker")
         time.sleep(5)
         try:
             close_old_connections()

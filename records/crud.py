@@ -64,7 +64,7 @@ def make_form_view(*, model, form_class, perm_module, log_label, display_field,
     def _add_view(request):
         is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
         if request.method == 'POST':
-            form = form_class(request.POST)
+            form = form_class(request.POST, request.FILES)
             if form.is_valid():
                 obj = form.save()
                 if after_save is not None:
@@ -90,7 +90,7 @@ def make_form_view(*, model, form_class, perm_module, log_label, display_field,
         before_snap = snapshot(obj)
         is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
         if request.method == 'POST':
-            form = form_class(request.POST, instance=obj)
+            form = form_class(request.POST, request.FILES, instance=obj)
             if form.is_valid():
                 form.save()
                 if after_save is not None:
