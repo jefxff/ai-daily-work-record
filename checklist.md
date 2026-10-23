@@ -54,8 +54,8 @@
 - [x] `/expiry/export/` 真实浏览器验证通过：未返回 404/500/403，行为符合直接下载 xlsx
 - [x] `/daily_record/weekly_report/` 真实浏览器验证通过：周次切换、统计卡、Markdown 区、复制按钮、侧栏高亮均正常
 - [x] `/daily_record/annual_summary/` 真实浏览器验证通过：年份选择器、指标卡片、TOP 部门区块、侧栏高亮均正常
-- [x] `/operation_log/anomalies/` 服务端渲染 200（48.9 KB 完整 HTML）；**浏览器实测未完成**——浏览器自动化环境在后续调用中持续返回 `IDE Command timeout`，故未取得浏览器证据
-- [x] `/system/health/` 服务端渲染 200（59.5 KB 完整 HTML）；**浏览器实测未完成**——同上浏览器环境超时
+- [x] `/operation_log/anomalies/` Playwright（Firefox 1440×900，已登录态）实测通过：HTTP 200、标题「异常检测」、四类异常分区与表格正常渲染、侧栏「异常检测」高亮、浏览器控制台零错误；截图 `tests/visual/test-results/anomalies.png`
+- [x] `/system/health/` Playwright（Firefox 1440×900，已登录态）实测通过：HTTP 200、标题「系统健康」、健康探测/调度心跳/定时任务/备份历史/磁盘占用五区块完整渲染、侧栏「系统健康」高亮、浏览器控制台零错误；截图 `tests/visual/test-results/health.png`
 - [x] 浏览器控制台出现的 `net::ERR_CONNECTION_RESET` / `ERR_CONNECTION_REFUSED`（指向 `/notifications/api/unread/`）已定位为 runserver 自动热重载期间的历史瞬时消息（服务监听进程 PID 由 3680 变为 27192），非新代码缺陷
 
 ## 六、决策点落地情况（对应 spec.md 第 7 节）
@@ -71,6 +71,5 @@
 
 ## 七、遗留与已知限制
 
-- [ ] `/operation_log/anomalies/` 与 `/system/health/` 的**真实浏览器视觉复核**待浏览器自动化环境恢复后补做（功能与渲染已由自动化测试与服务端渲染覆盖）
-- [ ] A4 连续失败计数为进程内状态：服务重启即清零，语义为「本次运行内连续失败」；如需跨重启累计，需在批 B 增加 `fail_streak` 字段与迁移
-- [ ] 本节改动尚未提交 Git（等待用户指示）
+- A4 连续失败计数为进程内状态：服务重启即清零，语义为「本次运行内连续失败」；如需跨重启累计，需在批 B 增加 `fail_streak` 字段与迁移（已知限制，非遗留任务）
+- [x] 批次 A 改动已提交并推送至 `origin/main`（远端 HEAD `c5bc94d`）
