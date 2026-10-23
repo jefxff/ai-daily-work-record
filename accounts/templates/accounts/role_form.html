@@ -100,12 +100,26 @@
                         </td>
                         {% endfor %}
                     </tr>
+                    {% if m.extra_actions %}
+                    <tr class="role-matrix-extra">
+                        <td colspan="5" class="role-matrix-cell role-matrix-extra-cell">
+                            <span class="role-matrix-extra-label">{{ m.name }} · 高危附加动作：</span>
+                            {% for a in m.extra_actions %}
+                            <label class="u-me-8">
+                                <input type="checkbox" name="perms" value="{{ a.code }}" class="form-check-input perm-cb"
+                                       aria-label="{{ m.name }} - {{ a.label }}"
+                                       {% if a.checked %}checked{% endif %}> {{ a.label }}
+                            </label>
+                            {% endfor %}
+                        </td>
+                    </tr>
+                    {% endif %}
                     {% endfor %}
                 </tbody>
             </table>
         </div>
         <p class="role-form-note">
-            说明：勾选"读取"后该模块才会出现在用户侧边栏；金属价格仅支持读取/编辑，数据展示仅支持读取（由系统统一规定，不可越权勾选）。
+            说明：勾选"读取"后该模块才会出现在用户侧边栏；金属价格仅支持读取/编辑，数据展示仅支持读取（由系统统一规定，不可越权勾选）；备份下载与数据恢复是高危动作，仅系统管理模块支持，默认只随内置管理员角色发放。
             {% if mode == 'edit' and role.is_builtin %}内置角色仅可调整权限矩阵，名称/说明/启停不可修改；执行 <code>python manage.py sync_rbac</code> 不会覆盖此处调整。{% endif %}
         </p>
         <div class="role-form-actions">

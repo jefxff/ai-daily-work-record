@@ -284,6 +284,39 @@ class RbacAuthTests(TestCase):
         r = ac.post(reverse("accounts:role_delete", args=[self.role_viewer.pk]))
         self.assertTrue(Role.objects.filter(pk=self.role_viewer.pk).exists())
 
+    # ---------- P1-1：system 高危附加动作 ----------
+    def test_system_backup_restore_codes_grantable_and_defaulted(self):
+        """备份下载/数据恢复是独立权限码：矩阵可见、可勾选授予、admin 角色默认拥有。"""
+        from .rbac_init import builtin_role_codes
+
+        # admin 内置角色默认带这两个码
+        codes = builtin_role_codes("admin")
+        self.assertIn(permission_code("system", "backup"), codes)
+        self.assertIn(permission_code("system", "restore"), codes)
+        # staff/viewer 一概没有
+        for role_code in ("staff", "viewer"):
+            self.assertNotIn(permission_code("system", "backup"), builtin_role_codes(role_code))
+
+        # 矩阵界面能渲染并提交这两个码
+        ac = self.login(self.admin)
+        page = ac.get(reverse("accounts:role_create"))
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "备份下载")
+        self.assertContains(page, "数据恢复")
+        self.assertContains(page, f'value="{permission_code("system", "backup")}"')
+
+        perms = [
+            permission_code("system", "read"),
+            permission_code("system", "backup"),
+        ]
+        r = ac.post(reverse("accounts:role_create"), {
+            "code": "bk_operator", "name": "备份操作员",
+            "description": "只能看备份中心+下载", "is_active": "on", "perms": perms,
+        })
+        self.assertEqual(r.status_code, 302)
+        role = Role.objects.get(code="bk_operator")
+        self.assertEqual(set(role.permissions.values_list("code", flat=True)), set(perms))
+
     # ---------- 内置角色权限放开 ----------
     def test_builtin_role_perm_edit_and_sync_kept(self):
         """内置角色可在界面调整权限矩阵；sync_rbac 默认不重置，--reset-builtins 才强制对齐。"""

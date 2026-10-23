@@ -960,6 +960,16 @@ td[data-label="操作"] > div { justify-content: center; }
 .role-matrix .role-matrix-key { color: var(--c-text-tertiary); font-size: 0.75rem; margin-left: 0.4rem; }
 .role-matrix .role-matrix-cell { text-align: center; }
 .role-matrix .role-matrix-na { color: var(--c-border-strong); }
+/* system 模块的高危附加动作（备份下载/数据恢复）跨列子行 */
+.role-matrix .role-matrix-extra-cell {
+    text-align: left;
+    background: var(--c-surface-sunken);
+    font-size: 0.78rem;
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+}
+.role-matrix .role-matrix-extra-label { color: var(--c-text-secondary); margin-right: 0.4rem; }
+.role-matrix .role-matrix-extra-cell label { margin-right: 1.2rem; white-space: nowrap; }
 .role-form-note { color: var(--c-text-secondary); font-size: 0.78rem; margin: 0.5rem 0 0; }
 .role-form-actions { display: flex; gap: 0.75rem; margin-top: 1.25rem; }
 .role-form-submit { padding: 0.5rem 1.5rem; }

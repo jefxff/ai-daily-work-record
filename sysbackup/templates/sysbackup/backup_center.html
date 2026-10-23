@@ -1,4 +1,6 @@
 {% extends "records/base.html" %}
+{% load static %}
+{% load accounts_tags %}
 {% block page_title %}数据备份 · 系统管理{% endblock %}
 
 {% block extra_css %}
@@ -19,6 +21,11 @@
 {% endblock %}
 {% block content %}
 <div class="container">
+    {# 高危动作权限透传给 JS：动态渲染的备份包行与上方静态表格用同一把锁（P1-1） #}
+    <div id="bkPerms" class="d-none"
+         data-restore="{% can 'system' 'restore' %}1{% endcan %}"
+         data-backup="{% can 'system' 'backup' %}1{% endcan %}"
+         data-delete="{% can 'system' 'delete' %}1{% endcan %}"></div>
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <h4 class="mb-0 u-bolder">数据备份与恢复</h4>
         <div class="text-muted u-fs-82">
@@ -93,10 +100,17 @@
                             <td data-label="数据库">{{ b.db_tables }} 表 / {{ b.db_rows }} 条</td>
                             <td data-label="附件">{{ b.media_files }} 个</td>
                             <td data-label="操作">
+                                {# 高危动作按钮与后端权限码一一对应：无权用户不渲染入口（P1-1）#}
+                                {% can "system" "restore" %}
                                 <button class="btn btn-sm btn-outline-danger btn-restore">恢复</button>
+                                {% endcan %}
+                                {% can "system" "backup" %}
                                 <a class="btn btn-sm btn-outline-secondary btn-download"
                                    href="{% url 'sysbackup:download' %}?path={{ b.path|urlencode }}">下载</a>
+                                {% endcan %}
+                                {% can "system" "delete" %}
                                 <button class="btn btn-sm btn-outline-secondary btn-delete-bk">删除</button>
+                                {% endcan %}
                             </td>
                         </tr>
                         {% empty %}
@@ -247,6 +261,14 @@
     });
 
     var $ = function (id) { return document.getElementById(id); };
+
+    /* 高危动作权限：服务端按权限码渲染，与静态表格同一把锁；无权时 JS 不渲染入口 */
+    var _bkPerms = $('bkPerms') ? $('bkPerms').dataset : {};
+    var BK_PERMS = {
+        restore: _bkPerms.restore === '1',
+        backup: _bkPerms.backup === '1',
+        del: _bkPerms.delete === '1'
+    };
 
     /* ---------- 通用 AJAX（完整消费响应体后再做后续动作） ---------- */
     function _parseJsonResp(r) {
@@ -466,9 +488,11 @@
                     '<td data-label="大小">' + esc(b.size_text) + '</td>' +
                     '<td data-label="数据库">' + esc(b.db_tables) + ' 表 / ' + esc(b.db_rows) + ' 条</td>' +
                     '<td data-label="附件">' + esc(b.media_files) + ' 个</td>' +
-                    '<td data-label="操作"><button class="btn btn-sm btn-outline-danger btn-restore">恢复</button> ' +
-                    '<a class="btn btn-sm btn-outline-secondary btn-download" href="/system/backup/download/?path=' + encodeURIComponent(b.path) + '">下载</a> ' +
-                    '<button class="btn btn-sm btn-outline-secondary btn-delete-bk">删除</button></td></tr>');
+                    '<td data-label="操作">' +
+                        (BK_PERMS.restore ? '<button class="btn btn-sm btn-outline-danger btn-restore">恢复</button> ' : '') +
+                        (BK_PERMS.backup ? '<a class="btn btn-sm btn-outline-secondary btn-download" href="/system/backup/download/?path=' + encodeURIComponent(b.path) + '">下载</a> ' : '') +
+                        (BK_PERMS.del ? '<button class="btn btn-sm btn-outline-secondary btn-delete-bk">删除</button>' : '') +
+                    '</td></tr>');
             });
             if (!d.backups.length) {
                 tb.insertAdjacentHTML('beforeend',

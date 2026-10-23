@@ -12,11 +12,20 @@ READ = "read"
 UPDATE = "update"
 DELETE = "delete"
 
+# 高危附加动作（不属于标准 CRUD）：只挂在 system 模块上。
+# 审计 P1-1：备份包 = db.sqlite3 + data.sql + 全部 media/ 附件，下载它等于绕过
+# 所有模块级 read 权限一次性带走全库数据；恢复则可用任意备份覆盖线上库。
+# 因此这两个动作与 system.read/update 解耦、单独授权，默认只随 admin 角色发放。
+BACKUP = "backup"
+RESTORE = "restore"
+
 ACTION_LABELS = {
     CREATE: "新增",
     READ: "读取",
     UPDATE: "编辑",
     DELETE: "删除",
+    BACKUP: "备份下载",
+    RESTORE: "数据恢复",
 }
 
 CRUD = [CREATE, READ, UPDATE, DELETE]
@@ -43,7 +52,9 @@ MODULES = [
     # 消息通知：read=通知中心/未读接口/偏好（人人可用）；
     # 公告推送走 system.create、撤回走 system.update（管理员专属，避免 staff 默认可推送公告）
     {"key": "notifications", "name": "消息通知", "actions": READ_ONLY},
-    {"key": "system", "name": "系统管理", "actions": CRUD},
+    # system.backup = 下载备份包（全库数据导出）；system.restore = 触发全量恢复。
+    # 两者均为不可委托给「仅查看系统状态」用户的高危动作，见模块清单外的说明。
+    {"key": "system", "name": "系统管理", "actions": CRUD + [BACKUP, RESTORE]},
 ]
 
 # 默认授权范围排除的模块（仅影响内置角色创建时与 --reset-builtins 重置时的默认授权；
@@ -100,9 +111,9 @@ def is_valid_code(code):
 BUILTIN_ROLES = {
     "admin": (
         "管理员",
-        "全部模块的增删改查及系统管理权限",
+        "全部模块的增删改查、备份下载/恢复及系统管理权限",
         MODULE_KEYS,
-        CRUD,
+        CRUD + [BACKUP, RESTORE],
     ),
     "staff": (
         "普通员工",

@@ -270,7 +270,11 @@ def user_reset_password_view(request, user_id):
 # ============================== 角色管理 ==============================
 
 def _matrix(selected_codes):
-    """构造权限矩阵渲染数据：固定 C/R/U/D 四列，模块不支持的动作为 None。"""
+    """构造权限矩阵渲染数据：固定 C/R/U/D 四列，模块不支持的动作为 None。
+
+    CRUD 之外的高危附加动作（目前只有 system 的备份下载/数据恢复）单独放在
+    `extra_actions`：模板里渲染成跨列子行，避免把所有模块的表格拉宽两列。
+    """
     columns = ["create", "read", "update", "delete"]
     matrix = []
     for module in MODULES:
@@ -283,10 +287,20 @@ def _matrix(selected_codes):
                                 "checked": code in selected_codes})
             else:
                 actions.append(None)
+        extra_actions = [
+            {
+                "label": ACTION_LABELS[a],
+                "code": permission_code(module["key"], a),
+                "checked": permission_code(module["key"], a) in selected_codes,
+            }
+            for a in module["actions"]
+            if a not in columns
+        ]
         matrix.append({
             "key": module["key"],
             "name": module["name"],
             "actions": actions,
+            "extra_actions": extra_actions,
             "is_system": module["key"] == "system",
         })
     return matrix

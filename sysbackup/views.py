@@ -52,7 +52,9 @@ def api_start_backup(request):
 
 
 @require_POST
-@perm_required("system", "update")
+# 审计 P1-1：恢复会用备份包整体覆盖线上数据库，与 system.update（改配置/改用户）
+# 不是同一风险级别，单独授权 system.restore
+@perm_required("system", "restore")
 def api_start_restore(request):
     """发起全量恢复（异步）。body: {path: str}"""
     try:
@@ -105,11 +107,17 @@ def api_delete(request):
         name = services.delete_backup((payload.get("path") or "").strip())
     except ValueError as e:
         return JsonResponse({"ok": False, "message": str(e)}, status=400)
+    # 审计 P3-3：销毁唯一备份是最敏感的动作之一，删除原来不留任何痕迹
+    services._write_oplog(
+        _operator(request), "删除", name, f"删除备份包 {name}",
+    )
     return JsonResponse({"ok": True, "message": f"已删除 {name}"})
 
 
 @require_GET
-@perm_required("system", "read")
+# 审计 P1-1：备份包含全库数据 + 全部附件，等于绕过所有模块 read 权限的横向导出
+# 通道，system.read 只该覆盖「看健康状态/看备份列表」，下载必须单独授权 system.backup
+@perm_required("system", "backup")
 def download(request):
     """下载备份包。?path=<绝对路径>（必须在备份目录白名单内）"""
     p = Path((request.GET.get("path") or "").strip())
@@ -119,6 +127,11 @@ def download(request):
         services.ensure_path_allowed(p)
     except ValueError as e:
         return JsonResponse({"ok": False, "message": str(e)}, status=400)
+    # 审计 P3-3：下载是备份体系里最敏感的读取动作，必须可回答「谁在什么时候拿走过哪包」
+    services._write_oplog(
+        _operator(request), "下载", p.name,
+        f"下载备份包 {p.name}（{p.stat().st_size} 字节）至客户端 {request.META.get('REMOTE_ADDR', '')}",
+    )
     resp = FileResponse(p.open("rb"), as_attachment=True, filename=p.name)
     return resp
 
