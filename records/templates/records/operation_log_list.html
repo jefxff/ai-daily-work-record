@@ -5,7 +5,7 @@
 
 {% block top_nav_actions %}
     <form class="d-flex gap-2" method="GET" id="searchForm">
-        <input class="search-input" type="search" placeholder="搜索操作人或变更摘要" name="search" value="{{ search_term }}">
+        <input class="search-input" type="search" placeholder="搜索操作人或变更摘要" name="search" value="{{ search_term }}" aria-label="搜索操作人或变更摘要">
         <button class="btn-transparent" type="submit">搜索</button>
     </form>
     <div class="filter-container">
@@ -133,16 +133,16 @@
     .table { min-width: 1120px; }
     .table td { padding: 0.875rem 1rem; }
     .filter-container { position: relative; display: inline-block; }
-    .filter-dropdown { position: absolute; top: calc(100% + 0.5rem); right: 0; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 12px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15); padding: 1.25rem; min-width: 320px; max-width: 90vw; z-index: var(--z-dropdown); display: none; }
+    .filter-dropdown { position: absolute; top: calc(100% + 0.5rem); right: 0; background: var(--c-surface); backdrop-filter: blur(10px); border: 1px solid var(--c-border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15); padding: 1.25rem; min-width: 320px; max-width: 90vw; z-index: var(--z-dropdown); display: none; }
     .filter-dropdown.show { display: block; }
-    .filter-dropdown h4 { color: #333; margin: 0 0 1rem 0; font-size: 1rem; font-weight: 600; }
+    .filter-dropdown h4 { color: var(--c-text); margin: 0 0 1rem 0; font-size: 1rem; font-weight: 600; }
     .filter-group { margin-bottom: 1rem; }
-    .filter-group label { display: block; color: #666; font-size: 0.875rem; margin-bottom: 0.5rem; font-weight: 500; }
-    .filter-group select { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid rgba(0, 0, 0, 0.1); border-radius: 6px; font-size: 0.875rem; background: white; color: #333; cursor: pointer; }
-    .filter-actions { display: flex; gap: 0.5rem; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid rgba(0, 0, 0, 0.1); }
-    .filter-apply { flex: 1; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.875rem; font-weight: 500; cursor: pointer; border: none; background: rgba(59, 130, 246, 1); color: white; }
-    .filter-reset { flex: 1; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.875rem; font-weight: 500; cursor: pointer; border: none; background: rgba(0, 0, 0, 0.05); color: #666; }
-    .empty-state { text-align: center; padding: 3rem 1rem; color: rgba(255, 255, 255, 0.7); font-size: 1.1rem; }
+    .filter-group label { display: block; color: var(--c-text-secondary); font-size: 0.875rem; margin-bottom: 0.5rem; font-weight: 500; }
+    .filter-group select { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid var(--c-border-strong); border-radius: 6px; font-size: 0.875rem; background: var(--c-surface); color: var(--c-text); cursor: pointer; }
+    .filter-actions { display: flex; gap: 0.5rem; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--c-border); }
+    .filter-apply { flex: 1; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.875rem; font-weight: 500; cursor: pointer; border: none; background: var(--c-primary); color: var(--c-text-inverse); }
+    .filter-reset { flex: 1; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.875rem; font-weight: 500; cursor: pointer; border: none; background: var(--c-surface-sunken); color: var(--c-text-secondary); }
+    .empty-state { text-align: center; padding: 3rem 1rem; color: var(--c-text-secondary); font-size: 1.1rem; }
     .badge-operation { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.8rem; font-weight: 600; }
     .badge-new { background: rgba(34, 197, 94, 0.3); color: rgba(255, 255, 255, 0.95); }
     .badge-update { background: rgba(59, 130, 246, 0.3); color: rgba(255, 255, 255, 0.95); }

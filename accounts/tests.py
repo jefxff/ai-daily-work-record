@@ -466,3 +466,29 @@ class RbacAuthTests(TestCase):
         self.assertNotIn("总客户数", home_html)
         # 全站搜索：零权限直接 403（不再是"能打开但全空"）
         self.assertEqual(cn.get(reverse("search")).status_code, 403)
+
+
+class AdminSurfaceTests(TestCase):
+    """审计 SEC-09：Django Admin 不再匿名可达，且仅超管可进。"""
+
+    def test_anonymous_admin_redirects_to_project_login(self):
+        r = Client().get("/admin/")
+        self.assertEqual(r.status_code, 302)
+        self.assertIn("/accounts/login/", r["Location"])
+
+    def test_staff_non_superuser_cannot_enter_admin(self):
+        staff = User.objects.create_user(
+            "staff_only", "staff_only@e.com", PWD, is_active=True, is_staff=True
+        )
+        c = Client()
+        c.force_login(staff)
+        r = c.get("/admin/")
+        # 没有 admin 权限 → 跳回 Admin 自己的登录页，而不是进入模型列表
+        self.assertEqual(r.status_code, 302)
+        self.assertIn("/admin/login/", r["Location"])
+
+    def test_superuser_can_enter_admin(self):
+        root = User.objects.create_superuser("admin_root", "admin_root@e.com", PWD)
+        c = Client()
+        c.force_login(root)
+        self.assertEqual(c.get("/admin/").status_code, 200)

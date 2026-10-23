@@ -3,6 +3,20 @@ from django.contrib import admin
 from .models import LoginLog, Permission, Role, UserProfile
 
 
+def _superuser_only_has_permission(request):
+    """审计 SEC-09：Admin 只允许超管进入。
+
+    Django 默认 is_staff 即可登录，而项目业务权限由 registry 的模块粒度控制；
+    允许普通 staff 进 Admin 等于给他们一条绕过 RBAC 的读写通道。
+    """
+    user = getattr(request, "user", None)
+    return bool(user and user.is_active and user.is_superuser)
+
+
+# 覆盖实例方法而不是 fork AdminSite：保留所有原有注册与静态资源行为
+admin.site.has_permission = _superuser_only_has_permission
+
+
 @admin.register(Permission)
 class PermissionAdmin(admin.ModelAdmin):
     list_display = ("code", "module", "action", "name")

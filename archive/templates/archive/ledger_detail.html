@@ -9,7 +9,7 @@
     .lgd-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.25rem; }
     .lgd-title { font-size: 1.25rem; font-weight: 700; color: var(--c-text); }
     .lgd-meta { font-size: 0.82rem; color: var(--c-text-secondary); margin-top: 0.2rem; }
-    .lgd-card { background: rgba(255,255,255,0.95); border-radius: 12px; padding: 1.1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .lgd-card { background: var(--c-surface); border-radius: 12px; padding: 1.1rem; box-shadow: var(--sh-card); }
     .lgd-toolbar { display: flex; flex-wrap: nowrap; gap: 0.6rem; align-items: center; margin-bottom: 1rem; overflow-x: auto; }
     .lgd-toolbar .form-control { min-width: 240px; }
     .lgd-toolbar form { flex-wrap: nowrap !important; }
@@ -20,7 +20,7 @@
     .lgd-table th { background: var(--c-surface-sunken); color: var(--c-text-secondary); font-weight: 600; padding: 9px 12px; text-align: left; white-space: nowrap; border-bottom: 1px solid var(--c-border); }
     .lgd-table td { padding: 9px 12px; color: var(--c-text); border-bottom: 1px solid var(--c-surface-sunken); white-space: nowrap; }
     .lgd-table td.lgd-ellipsis { max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
-    .lgd-table tbody tr:hover { background: #f5faff; }
+    .lgd-table tbody tr:hover { background: var(--c-primary-subtle); }
     .lgd-actions-cell { display: flex; gap: 6px; flex-wrap: nowrap; }
     .lgd-empty { text-align: center; color: var(--c-text-secondary); padding: 2.5rem 0; }
 </style>
@@ -54,7 +54,7 @@
     <div class="lgd-card">
         <div class="lgd-toolbar">
             <form method="get" class="d-flex gap-2">
-                <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm" placeholder="搜索：名称 / 编号 / 相对方 / 合同号 / 部门 / 标签 / 经办人">
+                <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm" placeholder="搜索：名称 / 编号 / 相对方 / 合同号 / 部门 / 标签 / 经办人" aria-label="搜索档案">
                 <button class="btn btn-primary btn-sm" type="submit">搜索</button>
             </form>
             <div class="lgd-actions">

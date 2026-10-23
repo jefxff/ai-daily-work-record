@@ -2,6 +2,8 @@
 const { test, expect } = require('@playwright/test');
 
 const AUTH_STATE = process.env.VISUAL_AUTH_STATE || '.auth/state.json';
+// CI 不做像素比对（Linux 与本地 Windows 基线存在渲染差异），只保留溢出断言
+const A11Y_ONLY = process.env.CI_A11Y_ONLY === '1';
 
 const PAGES = [
   { name: 'home-mobile', path: '/' },
@@ -33,6 +35,8 @@ for (const item of PAGES) {
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow, `${item.path} 横向溢出 ${overflow}px`).toBeLessThanOrEqual(1);
-    await expect(page).toHaveScreenshot(`${item.name}.png`, { fullPage: false });
+    if (!A11Y_ONLY) {
+      await expect(page).toHaveScreenshot(`${item.name}.png`, { fullPage: false });
+    }
   });
 }

@@ -6,7 +6,7 @@
 
 {% block top_nav_actions %}
     <form class="d-flex gap-2" method="GET">
-        <input class="search-input" type="search" placeholder="搜索标题或内容" name="search" value="{{ search_term }}">
+        <input class="search-input" type="search" placeholder="搜索标题或内容" name="search" value="{{ search_term }}" aria-label="搜索标题或内容">
         <button class="btn-transparent" type="submit">搜索</button>
     </form>
     {% can "regulation" "create" %}
@@ -81,14 +81,14 @@
     .table td { font-variant-numeric: tabular-nums; }
 
     .table td a.regulation-link {
-        color: #3498db;
+        color: var(--c-primary-hover);
         text-decoration: underline;
         font-weight: 600;
         transition: all 0.3s ease;
     }
 
     .table td a.regulation-link:hover {
-        color: #2980b9;
+        color: var(--c-primary);
         text-decoration: none;
     }
 </style>

@@ -6,7 +6,7 @@
 
 {% block top_nav_actions %}
     <form class="d-flex gap-2" method="GET" id="searchForm">
-        <input class="search-input" type="search" placeholder="搜索被告或案号" name="search" value="{{ search_term }}">
+        <input class="search-input" type="search" placeholder="搜索被告或案号" name="search" value="{{ search_term }}" aria-label="搜索被告或案号">
         <button class="btn-transparent" type="submit">搜索</button>
     </form>
     <!-- 筛选按钮 -->
@@ -29,11 +29,11 @@
                 </div>
                 <div class="filter-group">
                     <label>被告</label>
-                    <input type="text" name="defendant" placeholder="模糊搜索被告" value="{{ defendant_filter }}">
+                    <input type="text" name="defendant" placeholder="模糊搜索被告" value="{{ defendant_filter }}" aria-label="被告">
                 </div>
                 <div class="filter-group">
                     <label>案号</label>
-                    <input type="text" name="case_number" placeholder="精确搜索案号" value="{{ case_number_filter }}">
+                    <input type="text" name="case_number" placeholder="精确搜索案号" value="{{ case_number_filter }}" aria-label="案号">
                 </div>
                 <div class="filter-group">
                     <label>受理法院</label>
@@ -208,9 +208,9 @@
         position: absolute;
         top: calc(100% + 0.5rem);
         right: 0;
-        background: rgba(255, 255, 255, 0.95);
+        background: var(--c-surface);
         backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.3);
+        border: 1px solid var(--c-border);
         border-radius: 12px;
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
         padding: 1.25rem;

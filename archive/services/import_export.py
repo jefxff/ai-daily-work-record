@@ -27,10 +27,12 @@ from ..models import (
     AnnualReview, Archive, BorrowRecord, Cabinet, Category, Ledger,
     License, LicenseBorrowRecord,
 )
+from ..validators import validate_import_file
 
 
 def _read_import_rows(f):
     """解析上传的导入文件，返回字典行列表。支持 .xlsx / .xls / .csv。"""
+    validate_import_file(f)
     name = (getattr(f, "name", "") or "").lower()
     if name.endswith(".csv"):
         raw = f.read()
@@ -104,6 +106,7 @@ FIELD_CHOICES = [
 
 def _parse_excel_sheets(f):
     """解析 Excel 文件所有 sheet，返回 {sheet_name: {headers: [], rows: [{col: val}]}}。"""
+    validate_import_file(f)
     name = (getattr(f, "name", "") or "").lower()
     result = {}
     if name.endswith(".xls"):

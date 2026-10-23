@@ -10,7 +10,7 @@
 <div class="page-header">
     <h2>{% if mode == 'create' %}新建用户{% else %}编辑用户：{{ target.username }}{% endif %}</h2>
 </div>
-<div style="max-width:640px; background:var(--c-surface); border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.08); padding:1.75rem;">
+<div style="max-width:640px; background:var(--c-surface); border-radius:8px; box-shadow:var(--sh-card); padding:1.75rem;">
     {% if form.non_field_errors %}
     <div class="u-alert-danger">
         {{ form.non_field_errors|join:'；' }}

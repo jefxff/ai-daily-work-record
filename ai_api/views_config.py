@@ -8,8 +8,11 @@
 所有写操作均记录操作留痕；留痕失败仅记日志，不影响主流程。
 """
 
+import ipaddress
 import logging
+from urllib.parse import urlsplit
 
+from django.contrib import messages
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
@@ -24,6 +27,35 @@ logger = logging.getLogger(__name__)
 
 MODULE = "system"
 ACTION = "update"
+
+# 审计 SEC-07：base_url 由管理员可控，服务器会向该地址发起 POST（AI 请求）。
+# 完全禁止内网地址会让「远程 Ollama / LM Studio」这类内网部署失效，
+# 因此保留私网与回环地址，只挡云元数据 / 链路本地等明确的 SSRF 高危目标。
+_BLOCKED_HOSTS = {"metadata", "metadata.google.internal", "0.0.0.0"}
+
+
+def _validate_base_url(raw) -> str:
+    """校验 API 地址，返回错误消息；通过返回空串。"""
+    raw = (raw or "").strip()
+    if not raw:
+        return ""  # 留空 = 使用 provider 默认地址
+    parts = urlsplit(raw)
+    if parts.scheme not in ("http", "https"):
+        return "API 地址必须以 http:// 或 https:// 开头"
+    if not parts.hostname:
+        return "API 地址缺少主机名"
+    if parts.username or parts.password:
+        return "API 地址不允许携带用户名/密码"
+    host = parts.hostname.strip("[]").lower()
+    if host in _BLOCKED_HOSTS:
+        return "API 地址不能指向云元数据等保留主机"
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return ""
+    if ip.is_link_local or ip.is_multicast or ip.is_unspecified or ip.is_reserved:
+        return "API 地址不能指向链路本地/保留地址"
+    return ""
 
 
 def _float(raw, default):
@@ -87,6 +119,10 @@ def ai_config_view(request):
 @require_POST
 def ai_config_save(request):
     config = AiProviderConfig.current() or AiProviderConfig()
+    err = _validate_base_url(request.POST.get("base_url"))
+    if err:
+        messages.error(request, err)
+        return _render(request)
     _apply_form(config, request.POST)
     config.updated_by = request.user.get_username()
     config.save()
@@ -112,6 +148,9 @@ def ai_config_reset(request):
 @require_POST
 def ai_config_test(request):
     """连通性测试：优先用页面当前填写的参数（未保存的也能测）。"""
+    err = _validate_base_url(request.POST.get("base_url"))
+    if err:
+        return JsonResponse({"ok": False, "message": err})
     config = AiProviderConfig.current() or AiProviderConfig()
     _apply_form(config, request.POST)
     ok, message = test_connection(config)

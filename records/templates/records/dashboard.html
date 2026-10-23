@@ -5,7 +5,7 @@
 
 {% block top_nav_actions %}
     <form class="d-flex gap-2" method="GET">
-        <input class="search-input" type="search" placeholder="搜索" name="search" value="{{ search_term }}">
+        <input class="search-input" type="search" placeholder="搜索" name="search" value="{{ search_term }}" aria-label="搜索">
         <button class="btn-transparent" type="submit">搜索</button>
     </form>
 {% endblock %}
@@ -679,7 +679,7 @@
         border-radius: 8px;
         padding: 1.5rem;
         margin-bottom: 1.5rem;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        box-shadow: var(--sh-card);
     }
 
     .overview-header {
@@ -757,7 +757,7 @@
         border-radius: 8px;
         padding: 1.5rem;
         margin-bottom: 1.5rem;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        box-shadow: var(--sh-card);
     }
 
     .pending-header {
@@ -978,7 +978,7 @@
         border: none;
         border-radius: 8px;
         padding: 1.5rem;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        box-shadow: var(--sh-card);
         transition: box-shadow 0.25s ease, transform 0.25s ease;
     }
 
@@ -1139,7 +1139,7 @@
             background: var(--c-surface);
             border-radius: 8px;
             padding: 1.25rem 1.5rem;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            box-shadow: var(--sh-card);
         }
         .chart-title {
             font-size: 0.95rem;

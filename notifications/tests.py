@@ -542,15 +542,18 @@ class ScheduledTaskTests(TestCase):
         self.staff = User.objects.create_user("staff", password="x12345678")
 
     def test_seed_tasks_exist(self):
-        """迁移种子：6 个内置任务存在且默认触发配置正确。"""
+        """迁移种子：7 个内置任务存在且默认触发配置正确。"""
         from notifications.models import ScheduledTask
 
         codes = set(ScheduledTask.objects.values_list("code", flat=True))
         self.assertEqual(codes, {
             "check_expiry_notices", "check_insurance_renewal",
             "check_daily_incomplete", "notify_expire", "notify_stats",
-            "notify_knowledge_todo",
+            "notify_knowledge_todo", "daily_backup",
         })
+        backup = ScheduledTask.objects.get(code="daily_backup")
+        self.assertTrue(backup.enabled)
+        self.assertEqual(backup.trigger_type, ScheduledTask.TriggerType.DAILY)
         expiry = ScheduledTask.objects.get(code="check_expiry_notices")
         self.assertTrue(expiry.enabled)
         self.assertEqual(expiry.trigger_type, ScheduledTask.TriggerType.DAILY)

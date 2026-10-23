@@ -6,12 +6,12 @@
        class="metal-tab {% if metal == current_metal %}active{% endif %}">{{ metal }}</a>
     {% endfor %}
 </div>
-<div style="background:var(--c-surface);border-radius:8px;padding:1rem;box-shadow:0 2px 8px rgba(0,0,0,0.08);margin-bottom:1rem;">
+<div style="background:var(--c-surface);border-radius:8px;padding:1rem;box-shadow:var(--sh-card);margin-bottom:1rem;">
     <h4 style="font-size:0.95rem;font-weight:600;color:var(--c-text);margin:0 0 0.75rem;">{{ current_metal }} - 价格走势（近30天）</h4>
     <div style="position:relative;height:240px;"><canvas id="mpPriceChart"></canvas></div>
 </div>
 {% if latest_price %}
-<div style="background:var(--c-surface);border-radius:8px;padding:1rem;box-shadow:0 2px 8px rgba(0,0,0,0.08);margin-bottom:1rem;">
+<div style="background:var(--c-surface);border-radius:8px;padding:1rem;box-shadow:var(--sh-card);margin-bottom:1rem;">
     <h4 style="font-size:0.95rem;font-weight:600;color:var(--c-text);margin:0 0 0.5rem;padding-left:0.5rem;border-left:3px solid var(--c-primary);">今日{{ current_metal }}价格</h4>
     <table class="table--cards table table-sm mb-0">
         <thead><tr><th scope="col">市场来源</th><th scope="col">商品名</th><th scope="col">更新日期</th><th scope="col">价格</th><th scope="col">涨跌</th><th scope="col">单位</th></tr></thead>
@@ -30,7 +30,7 @@
     </table>
 </div>
 {% endif %}
-<div style="background:var(--c-surface);border-radius:8px;padding:1rem;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+<div style="background:var(--c-surface);border-radius:8px;padding:1rem;box-shadow:var(--sh-card);">
     <h4 style="font-size:0.95rem;font-weight:600;color:var(--c-text);margin:0 0 0.5rem;padding-left:0.5rem;border-left:3px solid var(--c-primary);">历史价格记录</h4>
     <div style="max-height:220px;overflow-y:auto;">
     <table class="table--cards table table-sm mb-0">

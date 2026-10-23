@@ -7,7 +7,7 @@
     {# 统计窗口与返回按钮同处一条操作栏，不再单独占一张筛选卡 #}
     <form class="report-toolbar" method="GET">
         <label class="report-toolbar-label">统计窗口
-            <input type="number" name="days" min="1" max="365" value="{{ days }}" class="search-input" style="width:80px; min-width:0;">
+            <input type="number" name="days" min="1" max="365" value="{{ days }}" class="search-input" style="width:80px; min-width:0;" aria-label="统计天数">
         </label>
         <button type="submit" class="btn-transparent">应用</button>
         <a href="{% url 'knowledge_base:document_list' %}" class="btn-transparent">返回知识库</a>
@@ -150,8 +150,8 @@
         font-weight: 600;
         padding: 0.75rem 1rem;
         margin: 0;
-        border-bottom: 1px solid var(--c-border, rgba(0,0,0,0.08));
-        background: var(--c-surface-sunken, #f7f8fa);
+        border-bottom: 1px solid var(--c-border);
+        background: var(--c-surface-sunken);
     }
     .report-trend {
         display: flex;
@@ -172,10 +172,10 @@
         width: 1.25rem;
         height: var(--bar-h, 2px);
         min-height: 2px;
-        background: var(--c-primary, #1890ff);
+        background: var(--c-primary);
         border-radius: 3px;
     }
-    .trend-count { font-size: 0.75rem; color: var(--c-text-muted, #666); }
-    .trend-day { font-size: 0.75rem; color: var(--c-text-muted, #666); }
+    .trend-count { font-size: 0.75rem; color: var(--c-text-tertiary); }
+    .trend-day { font-size: 0.75rem; color: var(--c-text-tertiary); }
 </style>
 {% endblock %}

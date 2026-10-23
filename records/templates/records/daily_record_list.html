@@ -6,7 +6,7 @@
 
 {% block top_nav_actions %}
     <form class="d-flex gap-2" method="GET" id="searchForm">
-        <input class="search-input" type="search" placeholder="搜索工作内容或部门" name="search" value="{{ search_term }}">
+        <input class="search-input" type="search" placeholder="搜索工作内容或部门" name="search" value="{{ search_term }}" aria-label="搜索工作内容或部门">
         <button class="btn-transparent" type="submit">搜索</button>
     </form>
     <div class="filter-button">
@@ -145,7 +145,7 @@
         background: var(--c-surface) !important;
         border: 1px solid var(--c-border) !important;
         border-radius: 8px !important;
-        box-shadow: 0 6px 16px rgba(0,0,0,0.08) !important;
+        box-shadow: var(--sh-pop) !important;
         padding: 1rem;
         min-width: 280px;
         z-index: var(--z-dropdown);
@@ -288,15 +288,6 @@
                     kbSyncBtn.disabled = false;
                 });
             });
-
-            function getCookie(name) {
-                var v = null;
-                document.cookie.split(';').forEach(function (c) {
-                    var p = c.trim().split('=');
-                    if (p[0] === name) v = decodeURIComponent(p[1]);
-                });
-                return v;
-            }
         }
     });
 </script>

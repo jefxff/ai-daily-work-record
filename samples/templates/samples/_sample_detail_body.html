@@ -1,7 +1,7 @@
 {% load accounts_tags %}
 <style>
     /* ===== 顶部基本信息卡 ===== */
-    .header-card { background: var(--c-surface); border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 1.25rem 1.5rem 1.4rem; margin-bottom: 1.25rem; }
+    .header-card { background: var(--c-surface); border-radius: 8px; box-shadow: var(--sh-card); padding: 1.25rem 1.5rem 1.4rem; margin-bottom: 1.25rem; }
     .head-top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem; }
     .head-title { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
     .head-title h2 { margin: 0; font-size: 1.3rem; color: var(--c-text); }
@@ -19,7 +19,7 @@
     .info-value { color: var(--c-text); font-size: 0.875rem; word-break: break-all; line-height: 1.5; }
 
     /* 步骤条 */
-    .step-bar { display: flex; align-items: center; background: var(--c-surface); border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 1.25rem 2rem; margin-bottom: 1.25rem; }
+    .step-bar { display: flex; align-items: center; background: var(--c-surface); border-radius: 8px; box-shadow: var(--sh-card); padding: 1.25rem 2rem; margin-bottom: 1.25rem; }
     .step-item { display: flex; align-items: center; flex: 1; }
     .step-item:last-child { flex: 0 0 auto; }
     .step-dot { width: 32px; height: 32px; border-radius: 50%; background: var(--c-border); color: var(--c-text-secondary); display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 600; flex-shrink: 0; }
@@ -52,7 +52,7 @@
     @media (max-width: 992px) { .detail-left { position: static; } }
 
     /* 记录区块 */
-    .record-card { background: var(--c-surface); border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 1.5rem; margin-bottom: 1.25rem; }
+    .record-card { background: var(--c-surface); border-radius: 8px; box-shadow: var(--sh-card); padding: 1.5rem; margin-bottom: 1.25rem; }
     .record-card .table { width: 100%; table-layout: fixed; }
     .record-card .table th, .record-card .table td { overflow: hidden; text-overflow: ellipsis; }
     .record-card .table td { white-space: nowrap; }
@@ -81,7 +81,7 @@
     .table-audit th:nth-child(5) { width: 20%; }
     .table-audit th:nth-child(6) { width: 11%; }
     .table-audit th:nth-child(7) { width: 18%; }
-    .record-card .table thead th { background: var(--c-surface); color: var(--c-text); font-weight: 600; font-size: 0.82rem; border-bottom: 2px solid #e8e8e8; padding: 10px 8px; white-space: nowrap; }
+    .record-card .table thead th { background: var(--c-surface); color: var(--c-text); font-weight: 600; font-size: 0.82rem; border-bottom: 2px solid var(--c-border); padding: 10px 8px; white-space: nowrap; }
     .record-card .table td { padding: 12px 8px; border-bottom: 1px solid var(--c-border); vertical-align: middle; }
     .record-card .table tbody tr:hover { background: var(--c-surface-sunken); }
     .round-main { font-weight: 600; color: var(--c-text); }
@@ -101,11 +101,11 @@
     .proof-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem; }
     /* 同上：单列轨道用 minmax(0, 1fr)，否则被证明材料卡片内最宽子项（长文件名）撑开 */
     @media (max-width: 1200px) { .proof-grid { grid-template-columns: minmax(0, 1fr); } }
-    .proof-card { min-width: 0; border: 1.5px solid #13c2c2; border-radius: 10px; padding: 1rem 1.25rem; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .proof-card { min-width: 0; border: 1.5px solid var(--c-primary); border-radius: 10px; padding: 1rem 1.25rem; transition: transform 0.2s ease, box-shadow 0.2s ease; }
     .proof-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
     .proof-card.has-files { border-color: var(--c-primary); }
     .proof-head { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
-    .proof-num { width: 20px; height: 20px; border-radius: 50%; background: #13c2c2; color: var(--c-surface); font-size: 0.72rem; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .proof-num { width: 20px; height: 20px; border-radius: 50%; background: var(--c-primary); color: var(--c-surface); font-size: 0.72rem; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .has-files .proof-num { background: var(--c-primary); }
     .proof-head .proof-name { font-weight: 600; color: var(--c-text); font-size: 0.9rem; flex: 1; min-width: 0; }
     .proof-count { font-size: 0.72rem; color: var(--c-text-secondary); background: var(--c-surface-sunken); border-radius: 10px; padding: 2px 10px; flex-shrink: 0; }
@@ -123,7 +123,7 @@
     .upload-form input[type="file"] { font-size: 0.78rem; color: var(--c-text-secondary); background: var(--c-surface-sunken); border: 1px dashed var(--c-border-strong); border-radius: 6px; padding: 6px 8px; cursor: pointer; transition: border-color 0.2s ease; }
     .upload-form input[type="file"]:hover { border-color: var(--c-primary); }
     .upload-form textarea { border-radius: 6px; }
-    .btn-upload { width: 100%; border: none; border-radius: 6px; background: #13c2c2; color: var(--c-surface); font-size: 0.82rem; font-weight: 500; padding: 7px 0; cursor: pointer; }
+    .btn-upload { width: 100%; border: none; border-radius: 6px; background: var(--c-primary); color: var(--c-surface); font-size: 0.82rem; font-weight: 500; padding: 7px 0; cursor: pointer; }
     .btn-upload:hover { opacity: 0.85; }
     .has-files .btn-upload { background: var(--c-primary); }
 
@@ -178,7 +178,7 @@
             {% if not sample.is_deleted %}
             {% can "samples" "update" %}
             <a class="btn-transparent" href="{% url 'samples:edit' sample.pk %}" data-modal-edit data-modal-title="编辑样品">编辑</a>
-            {% if can_terminate %}<a class="btn-transparent" href="{% url 'samples:terminate' sample.pk %}" style="background:var(--c-warning-bg) !important; color:var(--c-warning) !important; border-color:#ffd591 !important;">终止</a>{% endif %}
+            {% if can_terminate %}<a class="btn-transparent" href="{% url 'samples:terminate' sample.pk %}" style="background:var(--c-warning-bg) !important; color:var(--c-warning) !important; border-color:var(--c-warning-line) !important;">终止</a>{% endif %}
             {% endcan %}
             {% can "samples" "delete" %}
             <a class="btn-transparent btn-delete" href="{% url 'samples:delete' sample.pk %}">删除</a>
@@ -456,7 +456,7 @@
                     {% if can_upload_proof and request.user|can_do:'samples.create' %}
                     <form class="upload-form" method="POST" action="{% url 'samples:proof_upload' sample.pk stage.value %}" enctype="multipart/form-data">
                         {% csrf_token %}
-                        <input type="file" name="file" class="form-control form-control-sm" required
+                        <input type="file" name="file" class="form-control form-control-sm" required aria-label="上传证明材料"
                                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar,.7z">
                         <textarea name="remark" class="form-control form-control-sm" rows="1" placeholder="可选：注明订单号/日期/人员等关键信息"></textarea>
                         <button type="submit" class="btn-upload">⬆ 上传 {{ stage.label }}</button>

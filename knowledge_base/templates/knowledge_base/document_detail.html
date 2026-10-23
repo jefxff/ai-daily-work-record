@@ -157,7 +157,7 @@
 .kb-detail-card {
     background: var(--c-surface);
     border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    box-shadow: var(--sh-card);
     padding: 20px;
 }
 /* ── 相关文档（移入白卡内，用分隔线+间距与正文区隔开，不再贴死）── */
@@ -808,15 +808,6 @@
         })
         .finally(function () { toggle.disabled = false; });
     });
-
-    function getCookie(name) {
-        var v = null;
-        document.cookie.split(';').forEach(function (c) {
-            var p = c.trim().split('=');
-            if (p[0] === name) v = decodeURIComponent(p[1]);
-        });
-        return v;
-    }
 })();
 </script>
 

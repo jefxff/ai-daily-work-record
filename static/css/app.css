@@ -88,9 +88,7 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
 .btn-transparent { background: rgba(255, 255, 255, 0.2); color: rgba(255, 255, 255, 0.95); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 8px; padding: 0.75rem 1.25rem; font-weight: 500; transition: background-color 0.3s ease, color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease; text-decoration: none; display: inline-block; }
 .btn-transparent:hover { background: rgba(255, 255, 255, 0.3); color: rgba(255, 255, 255, 0.95); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); }
 .btn-sm { padding: 0.5rem 1rem; font-size: 0.875rem; border-radius: 6px; }
-.search-input { background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 8px; padding: 0.5rem 1rem; color: rgba(255, 255, 255, 0.95); transition: background-color 0.3s ease, border-color 0.3s ease; }
-.search-input::placeholder { color: rgba(255, 255, 255, 0.7); }
-.search-input:focus { background: rgba(255, 255, 255, 0.3); border-color: rgba(255, 255, 255, 0.5); outline: none; color: rgba(255, 255, 255, 0.95); }
+/* 搜索框：统一由下方 .search-input 令牌规则渲染，旧玻璃态规则已删除 */
 
 /* 表格 */
 .table-container { background: rgba(255, 255, 255, 0.2); border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); padding: 2rem; overflow-x: auto; }
@@ -99,12 +97,7 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
 .table td { text-align: center; padding: 1rem; border-bottom: 1px solid rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.95); word-wrap: break-word; }
 .table tr:hover { background-color: rgba(255, 255, 255, 0.2); }
 
-/* 分页 */
-.pagination { margin-top: 2rem; }
-.pagination .page-item .page-link { border-radius: 8px; margin: 0 0.25rem; border: 1px solid rgba(255, 255, 255, 0.3); background: rgba(255, 255, 255, 0.2); color: rgba(255, 255, 255, 0.95); transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease; }
-.pagination .page-item .page-link:hover { background: rgba(255, 255, 255, 0.3); color: rgba(255, 255, 255, 0.95); }
-.pagination .page-item.active .page-link { background: rgba(255, 255, 255, 0.4); border: 1px solid rgba(255, 255, 255, 0.5); color: rgba(255, 255, 255, 0.95); }
-.pagination .page-item.disabled .page-link { opacity: 0.5; background: rgba(255, 255, 255, 0.1); }
+/* 分页：统一由 .pagination-info（组件层）渲染，旧玻璃态规则已删除 */
 
 /* 响应式表格 */
 @media (max-width: 768px) {

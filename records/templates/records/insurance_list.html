@@ -1,12 +1,13 @@
 {% extends 'records/base.html' %}
 {% load static %}
 {% load accounts_tags %}
+{% load humanize %}
 
 {% block page_title %}保险列表 - 每日工作记录管理网站{% endblock %}
 
 {% block top_nav_actions %}
     <form class="d-flex gap-2" method="GET" id="searchForm">
-        <input class="search-input" type="search" placeholder="搜索公司名称或标题" name="search" value="{{ search_term }}">
+        <input class="search-input" type="search" placeholder="搜索公司名称或标题" name="search" value="{{ search_term }}" aria-label="搜索公司名称或标题">
         <button class="btn-transparent" type="submit">搜索</button>
     </form>
     <!-- 筛选按钮 -->
@@ -20,11 +21,11 @@
                 <input type="hidden" name="search" value="{{ search_term }}">
                 <div class="filter-group">
                     <label>公司名称</label>
-                    <input type="text" name="company_name" placeholder="模糊搜索公司名称" value="{{ company_name_filter }}">
+                    <input type="text" name="company_name" placeholder="模糊搜索公司名称" value="{{ company_name_filter }}" aria-label="公司名称">
                 </div>
                 <div class="filter-group">
                     <label>标题</label>
-                    <input type="text" name="title" placeholder="模糊搜索标题" value="{{ title_filter }}">
+                    <input type="text" name="title" placeholder="模糊搜索标题" value="{{ title_filter }}" aria-label="标题">
                 </div>
                 <div class="filter-group">
                     <label>部门</label>
@@ -46,9 +47,9 @@
                 <div class="filter-group">
                     <label>日期范围（到期日）</label>
                     <div class="date-range-container">
-                        <input type="date" name="date_start" value="{{ date_start }}">
+                        <input type="date" name="date_start" value="{{ date_start }}" aria-label="到期日开始日期">
                         <span class="date-range-separator">至</span>
-                        <input type="date" name="date_end" value="{{ date_end }}">
+                        <input type="date" name="date_end" value="{{ date_end }}" aria-label="到期日结束日期">
                     </div>
                 </div>
                 <div class="filter-actions">
@@ -119,7 +120,7 @@
                         <td data-label="公司名称">{{ insurance.company_name }}</td>
                         <td data-label="标题">{{ insurance.title }}</td>
                         <td data-label="单号">{{ insurance.order_number|default:'' }}</td>
-                        <td data-label="保费">{{ insurance.premium }}</td>
+                        <td data-label="保费">{{ insurance.premium|floatformat:2|intcomma }}</td>
                         <td data-label="签发日期">{{ insurance.issue_date|date:'Y-m-d' }}</td>
                         <td data-label="截止日期">{{ insurance.end_date|date:'Y-m-d' }}</td>
                         <td data-label="是否已经到期">
@@ -195,9 +196,9 @@
         position: absolute;
         top: calc(100% + 0.5rem);
         right: 0;
-        background: rgba(255, 255, 255, 0.95);
+        background: var(--c-surface);
         backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.3);
+        border: 1px solid var(--c-border);
         border-radius: 12px;
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
         padding: 1.25rem;
@@ -214,7 +215,7 @@
     }
 
     .filter-dropdown h4 {
-        color: #333;
+        color: var(--c-text);
         margin: 0 0 1rem 0;
         font-size: 1rem;
         font-weight: 600;
@@ -226,7 +227,7 @@
 
     .filter-group label {
         display: block;
-        color: #666;
+        color: var(--c-text-secondary);
         font-size: 0.875rem;
         margin-bottom: 0.5rem;
         font-weight: 500;
@@ -240,7 +241,7 @@
         border-radius: 6px;
         font-size: 0.875rem;
         background: white;
-        color: #333;
+        color: var(--c-text);
         cursor: pointer;
     }
 
@@ -251,7 +252,7 @@
     }
 
     .filter-group input::placeholder {
-        color: #999;
+        color: var(--c-text-tertiary);
     }
 
     /* 日期范围选择 */
@@ -266,7 +267,7 @@
     }
 
     .date-range-separator {
-        color: #666;
+        color: var(--c-text-secondary);
         font-size: 0.875rem;
         padding: 0 0.25rem;
     }
@@ -302,7 +303,7 @@
 
     .filter-reset {
         background: rgba(0, 0, 0, 0.05);
-        color: #666;
+        color: var(--c-text-secondary);
     }
 
     .filter-reset:hover {

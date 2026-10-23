@@ -11,14 +11,14 @@
 <div class="page-actions">
     <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; flex:1 1 auto; min-width:0;">
         <form method="GET" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-            <input class="search-input" type="search" placeholder="搜索用户名/姓名" name="q" value="{{ f_q }}">
-            <select class="search-input" name="role" style="width:auto;">
+            <input class="search-input" type="search" placeholder="搜索用户名/姓名" name="q" value="{{ f_q }}" aria-label="搜索用户名/姓名">
+            <select class="search-input" name="role" style="width:auto;" aria-label="按角色筛选">
                 <option value="">全部角色</option>
                 {% for r in roles %}
                 <option value="{{ r.id }}" {% if f_role == r.id|stringformat:'s' %}selected{% endif %}>{{ r.name }}</option>
                 {% endfor %}
             </select>
-            <select class="search-input" name="status" style="width:auto;">
+            <select class="search-input" name="status" style="width:auto;" aria-label="按状态筛选">
                 <option value="">全部状态</option>
                 <option value="active" {% if f_status == 'active' %}selected{% endif %}>正常</option>
                 <option value="inactive" {% if f_status == 'inactive' %}selected{% endif %}>停用/待审核</option>

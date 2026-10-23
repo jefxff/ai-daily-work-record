@@ -6,7 +6,7 @@
 
 {% block top_nav_actions %}
     <form class="d-flex gap-2" method="GET" id="searchForm">
-        <input class="search-input" type="search" placeholder="搜索客户名称或业务员" name="search" value="{{ search_term }}">
+        <input class="search-input" type="search" placeholder="搜索客户名称或业务员" name="search" value="{{ search_term }}" aria-label="搜索客户名称或业务员">
         <button class="btn-transparent" type="submit">搜索</button>
     </form>
     <!-- 筛选按钮 -->
@@ -20,7 +20,7 @@
                 <input type="hidden" name="search" value="{{ search_term }}">
                 <div class="filter-group">
                     <label>客户名称</label>
-                    <input type="text" name="customer_name" placeholder="模糊搜索客户名称" value="{{ customer_name_filter }}">
+                    <input type="text" name="customer_name" placeholder="模糊搜索客户名称" value="{{ customer_name_filter }}" aria-label="客户名称">
                 </div>
                 <div class="filter-group">
                     <label>责任业务员</label>
@@ -222,9 +222,9 @@
         position: absolute;
         top: calc(100% + 0.5rem);
         right: 0;
-        background: rgba(255, 255, 255, 0.95);
+        background: var(--c-surface);
         backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.3);
+        border: 1px solid var(--c-border);
         border-radius: 12px;
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
         padding: 1.25rem;

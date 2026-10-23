@@ -50,6 +50,7 @@ COMMAND_PARAMS = {
     "notify_expire": {"purge_days"},
     "notify_stats": {"check"},
     "notify_knowledge_todo": {"days", "overdue_days"},
+    "daily_backup": set(),
 }
 
 

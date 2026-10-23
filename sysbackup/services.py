@@ -49,9 +49,12 @@ DEFAULT_BACKUP_DIR = Path(
 )
 
 # 备份包默认 Fernet 加密；密钥优先取环境变量，否则落盘到项目外/内的密钥文件。
+# 审计 SEC-04：默认密钥文件与备份包同目录（项目外），避免整目录拷贝项目时
+# 把「代码 + 可解密历史备份的密钥」一起带走；BACKUP_KEY_FILE 仍可覆盖。
 BACKUP_KEY_ENV = "BACKUP_ENCRYPTION_KEY"
+_LEGACY_BACKUP_KEY_FILE = Path(settings.BASE_DIR) / ".backup_key"
 BACKUP_KEY_FILE = Path(
-    os.environ.get("BACKUP_KEY_FILE") or (Path(settings.BASE_DIR) / ".backup_key")
+    os.environ.get("BACKUP_KEY_FILE") or (DEFAULT_BACKUP_DIR / ".backup_key")
 )
 ENCRYPTED_SUFFIX = ".zip.enc"
 
@@ -147,20 +150,43 @@ def default_dir():
     return str(DEFAULT_BACKUP_DIR)
 
 
+def _key_file() -> Path:
+    """返回当前生效的密钥文件路径。
+
+    旧版本把密钥落在项目根 `.backup_key`。为了不丢已加密的历史备份，
+    新位置不存在而旧位置存在时，把旧密钥原样复制到新位置后再使用
+    （同一份密钥，新旧备份包都能解密）。
+    """
+    if BACKUP_KEY_FILE.is_file() or not _LEGACY_BACKUP_KEY_FILE.is_file():
+        return BACKUP_KEY_FILE
+    try:
+        BACKUP_KEY_FILE.parent.mkdir(parents=True, exist_ok=True)
+        BACKUP_KEY_FILE.write_bytes(_LEGACY_BACKUP_KEY_FILE.read_bytes())
+        try:
+            os.chmod(BACKUP_KEY_FILE, 0o600)
+        except OSError:
+            pass
+        return BACKUP_KEY_FILE
+    except OSError:
+        logger.warning("备份密钥迁移到项目外失败，继续使用旧路径 %s", _LEGACY_BACKUP_KEY_FILE)
+        return _LEGACY_BACKUP_KEY_FILE
+
+
 def _fernet():
     """返回备份包加解密用的 Fernet 实例（密钥持久化，重启后仍可解密旧包）。"""
     from cryptography.fernet import Fernet
 
     key = os.environ.get(BACKUP_KEY_ENV)
     if not key:
-        if BACKUP_KEY_FILE.is_file():
-            key = BACKUP_KEY_FILE.read_text(encoding="utf-8").strip()
+        key_file = _key_file()
+        if key_file.is_file():
+            key = key_file.read_text(encoding="utf-8").strip()
         else:
             key = Fernet.generate_key().decode("ascii")
-            BACKUP_KEY_FILE.parent.mkdir(parents=True, exist_ok=True)
-            BACKUP_KEY_FILE.write_text(key, encoding="utf-8")
+            key_file.parent.mkdir(parents=True, exist_ok=True)
+            key_file.write_text(key, encoding="utf-8")
             try:
-                os.chmod(BACKUP_KEY_FILE, 0o600)
+                os.chmod(key_file, 0o600)
             except OSError:
                 pass
     if isinstance(key, str):

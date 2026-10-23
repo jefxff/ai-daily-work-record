@@ -422,14 +422,6 @@
     var openBtn = document.getElementById('btnLedgerSort');
     if (!backdrop || !openBtn) return;
 
-    function getCookie(name) {
-        var v = null;
-        document.cookie.split(';').forEach(function (c) {
-            var p = c.trim().split('=');
-            if (p[0] === name) v = decodeURIComponent(p[1]);
-        });
-        return v;
-    }
     function moveEl(el, direction, selector) {
         var parent = el.parentNode;
         if (direction === 'top') {

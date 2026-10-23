@@ -318,10 +318,14 @@
     }
     function showResult(ok, text) {
         var el = $('taskResult');
+        var tokens = getComputedStyle(document.documentElement);
+        var bg = ok ? '--c-success-bg' : '--c-danger-bg';
+        var line = ok ? '--c-success-line' : '--c-danger-line';
+        var fg = ok ? '--c-success' : '--c-danger';
         el.style.display = 'block';
-        el.style.background = ok ? '#f6ffed' : '#fff1f0';
-        el.style.border = ok ? '1px solid #b7eb8f' : '1px solid #ffa39e';
-        el.style.color = ok ? '#389e0d' : '#cf1322';
+        el.style.background = tokens.getPropertyValue(bg).trim();
+        el.style.border = '1px solid ' + tokens.getPropertyValue(line).trim();
+        el.style.color = tokens.getPropertyValue(fg).trim();
         el.textContent = text;
     }
     function poll(taskId) {

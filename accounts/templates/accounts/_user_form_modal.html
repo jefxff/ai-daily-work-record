@@ -8,12 +8,12 @@
     {% if mode == 'create' %}
     <div class="ac-field">
         <label class="form-label">用户名 <span class="u-text-danger">*</span></label>
-        <input type="text" name="username" class="form-control" value="{{ form.username.value|default:'' }}" maxlength="150" required>
+        <input type="text" name="username" class="form-control" value="{{ form.username.value|default:'' }}" maxlength="150" required aria-label="用户名">
         {% if form.username.errors %}<div class="ac-error">{{ form.username.errors|join:'；' }}</div>{% endif %}
     </div>
     <div class="ac-field">
         <label class="form-label">初始密码 <span class="u-text-danger">*</span></label>
-        <input type="password" name="password" class="form-control" autocomplete="new-password" required>
+        <input type="password" name="password" class="form-control" autocomplete="new-password" required aria-label="初始密码">
         {% if form.password.errors %}<div class="ac-error">{{ form.password.errors|join:'；' }}</div>{% endif %}
     </div>
     {% else %}
@@ -22,17 +22,17 @@
 
     <div class="ac-field">
         <label class="form-label">姓名</label>
-        <input type="text" name="real_name" class="form-control" value="{{ form.real_name.value|default:'' }}" maxlength="50">
+        <input type="text" name="real_name" class="form-control" value="{{ form.real_name.value|default:'' }}" maxlength="50" aria-label="姓名">
         {% if form.real_name.errors %}<div class="ac-error">{{ form.real_name.errors|join:'；' }}</div>{% endif %}
     </div>
     <div class="ac-field">
         <label class="form-label">部门</label>
-        <input type="text" name="department" class="form-control" value="{{ form.department.value|default:'' }}" maxlength="100">
+        <input type="text" name="department" class="form-control" value="{{ form.department.value|default:'' }}" maxlength="100" aria-label="部门">
         {% if form.department.errors %}<div class="ac-error">{{ form.department.errors|join:'；' }}</div>{% endif %}
     </div>
     <div class="ac-field">
         <label class="form-label">岗位</label>
-        <input type="text" name="position" class="form-control" value="{{ form.position.value|default:'' }}" maxlength="100">
+        <input type="text" name="position" class="form-control" value="{{ form.position.value|default:'' }}" maxlength="100" aria-label="岗位">
         {% if form.position.errors %}<div class="ac-error">{{ form.position.errors|join:'；' }}</div>{% endif %}
     </div>
 

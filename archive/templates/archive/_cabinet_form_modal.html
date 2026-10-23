@@ -48,7 +48,7 @@
                 var v = initial[i - 1] !== undefined ? initial[i - 1] : '';
                 html += '<div style="text-align:center">'
                     + '<div style="font-size:0.72rem;color:var(--c-text-secondary);margin-bottom:2px;">第 ' + i + ' 层</div>'
-                    + '<input class="form-control" style="width:74px;padding:0.35rem 0.5rem;font-size:0.85rem;" type="number" min="1" max="99" '
+                    + '<input class="form-control" aria-label="每层格数" style="width:74px;padding:0.35rem 0.5rem;font-size:0.85rem;" type="number" min="1" max="99" '
                     + 'name="layer_cell_' + i + '" value="' + esc(v) + '" placeholder="10">'
                     + '</div>';
             }

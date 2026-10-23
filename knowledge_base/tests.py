@@ -424,3 +424,33 @@ class VisibilityMatrixTests(TestCase):
         self.assertIn('id="kbVisBadge"', body_bob)
         self.assertIn("全员可见", body_bob)
         self.assertNotIn('id="kbVisToggle"', body_bob)
+
+
+class MarkdownSanitizeTests(TestCase):
+    """审计 SEC-06：知识库是唯一 |safe 出口，白名单必须防漂移。"""
+
+    def test_sanitize_rejects_script_tag(self):
+        from .views import _sanitize_html
+
+        out = _sanitize_html('<p>ok</p><script>alert(1)</script>')
+        self.assertNotIn("<script", out.lower())
+        self.assertIn("ok", out)
+
+    def test_sanitize_rejects_onerror_attr(self):
+        from .views import _sanitize_html
+
+        out = _sanitize_html('<img src="x" onerror="alert(1)">')
+        self.assertNotIn("onerror", out.lower())
+
+    def test_sanitize_rejects_javascript_protocol(self):
+        from .views import _sanitize_html
+
+        out = _sanitize_html('<a href="javascript:alert(1)">点我</a>')
+        self.assertNotIn("javascript:", out.lower())
+
+    def test_render_markdown_keeps_normal_link_and_strips_script(self):
+        from .views import _render_markdown
+
+        out = _render_markdown("[官网](https://example.com)\n\n<script>x</script>")
+        self.assertIn('href="https://example.com"', out)
+        self.assertNotIn("<script", out.lower())

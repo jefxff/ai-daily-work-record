@@ -18,7 +18,7 @@
 
 <div class="filter-bar">
     <form method="GET" class="filter-form">
-        <input type="text" class="form-control search-input" style="width:240px;" name="keyword" value="{{ keyword }}" placeholder="名称 / 编号 / 联系人">
+        <input type="text" class="form-control search-input" style="width:240px;" name="keyword" value="{{ keyword }}" placeholder="名称 / 编号 / 联系人" aria-label="搜索名称 / 编号 / 联系人">
         <select name="status" class="form-select" style="width:130px;">
             <option value="">全部状态</option>
             {% for key, label in status_choices %}

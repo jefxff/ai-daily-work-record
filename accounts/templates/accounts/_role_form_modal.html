@@ -5,34 +5,34 @@
     <div class="ac-modal-alert">{{ form.code.errors|join:'；' }}{{ form.non_field_errors|join:'；' }}</div>
     {% endif %}
 
-    <div style="display:flex; gap:1rem; flex-wrap:wrap;">
-        <div class="ac-field" style="flex:1; min-width:200px;">
+    <div class="role-form-grid">
+        <div class="ac-field role-form-field">
             <label class="form-label">{{ form.code.label }}</label>
             {% if mode == 'edit' %}
-            <input type="text" class="form-control" value="{{ role.code }}" disabled>
+            <input type="text" class="form-control" value="{{ role.code }}" disabled aria-label="{{ form.code.label }}">
             <input type="hidden" name="code" value="{{ role.code }}">
             {% else %}
-            <input type="text" name="code" class="form-control" value="{{ form.code.value|default:'' }}" maxlength="50" required>
+            <input type="text" name="code" class="form-control" value="{{ form.code.value|default:'' }}" maxlength="50" required aria-label="{{ form.code.label }}">
             <div class="ac-help">{{ form.code.help_text }}</div>
             {% endif %}
         </div>
-        <div class="ac-field" style="flex:1; min-width:200px;">
+        <div class="ac-field role-form-field">
             <label class="form-label">{{ form.name.label }}</label>
             {% if mode == 'edit' and role.is_builtin %}
-            <input type="text" class="form-control" value="{{ role.name }}" disabled>
+            <input type="text" class="form-control" value="{{ role.name }}" disabled aria-label="{{ form.name.label }}">
             <input type="hidden" name="name" value="{{ role.name }}">
             {% else %}
-            <input type="text" name="name" class="form-control" value="{{ form.name.value|default:'' }}" maxlength="50" required>
+            <input type="text" name="name" class="form-control" value="{{ form.name.value|default:'' }}" maxlength="50" required aria-label="{{ form.name.label }}">
             {% endif %}
         </div>
     </div>
     <div class="ac-field">
         <label class="form-label">{{ form.description.label }}</label>
         {% if mode == 'edit' and role.is_builtin %}
-        <textarea class="form-control" rows="2" disabled>{{ role.description }}</textarea>
+        <textarea class="form-control" rows="2" disabled aria-label="{{ form.description.label }}">{{ role.description }}</textarea>
         <input type="hidden" name="description" value="{{ role.description }}">
         {% else %}
-        <textarea name="description" class="form-control" rows="2">{{ form.description.value|default:'' }}</textarea>
+        <textarea name="description" class="form-control" rows="2" aria-label="{{ form.description.label }}">{{ form.description.value|default:'' }}</textarea>
         {% endif %}
     </div>
     <div class="ac-field">
@@ -52,19 +52,19 @@
         {% endif %}
     </div>
 
-    <div style="border-top:1px solid var(--c-border); margin:0.5rem 0 0.9rem; padding-top:0.9rem;">
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.75rem;">
-            <strong style="font-size:0.92rem;">权限矩阵</strong>
-            <div style="display:flex; gap:0.5rem;">
+    <div class="role-form-divider">
+        <div class="role-form-head">
+            <strong>权限矩阵</strong>
+            <div class="role-form-head-actions">
                 <button type="button" class="btn-transparent btn-sm" data-check-all=".perm-cb">全部勾选</button>
                 <button type="button" class="btn-transparent btn-sm" data-uncheck-all=".perm-cb">全部清除</button>
             </div>
         </div>
-        <div style="overflow-x:auto;">
-            <table class="table" style="min-width:520px; margin-bottom:0;">
+        <div class="role-matrix">
+            <table class="table">
                 <thead>
                     <tr>
-                        <th scope="col" style="min-width:180px;">模块</th>
+                        <th scope="col">模块</th>
                         <th class="u-w-72-center" scope="col">新增</th>
                         <th class="u-w-72-center" scope="col">读取</th>
                         <th class="u-w-72-center" scope="col">编辑</th>
@@ -73,18 +73,19 @@
                 </thead>
                 <tbody>
                     {% for m in matrix %}
-                    <tr {% if m.is_system %}data-module-group="system" style="background:var(--c-surface-sunken);"{% else %}data-module-group="business"{% endif %}>
+                    <tr {% if m.is_system %}data-module-group="system"{% else %}data-module-group="business"{% endif %}>
                         <td>
                             <strong>{{ m.name }}</strong>
-                            <span style="color:var(--c-text-tertiary); font-size:0.75rem; margin-left:0.4rem;">{{ m.key }}</span>
+                            <span class="role-matrix-key">{{ m.key }}</span>
                         </td>
                         {% for a in m.actions %}
-                        <td style="text-align:center;">
+                        <td class="role-matrix-cell">
                             {% if a %}
                             <input type="checkbox" name="perms" value="{{ a.code }}" class="form-check-input perm-cb"
+                                   aria-label="{{ m.name }} - {{ a.label }}"
                                    {% if a.checked %}checked{% endif %}>
                             {% else %}
-                            <span style="color:var(--c-border-strong);">—</span>
+                            <span class="role-matrix-na">—</span>
                             {% endif %}
                         </td>
                         {% endfor %}

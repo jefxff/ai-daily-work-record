@@ -1,0 +1,7 @@
+# 本项目无前端构建链，这里只作为「支持矩阵」的唯一事实来源：
+# 供 CSS/JS 兼容性评审、编辑器工具链与 CI 静态检查引用，不参与打包。
+> 0.2%
+last 2 versions
+Firefox ESR
+not dead
+not op_mini all

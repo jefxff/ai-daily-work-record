@@ -38,10 +38,10 @@
         <div class="form-group">
             <label class="form-label">免打扰时段（仅影响邮件，高优先级通知不受限）</label>
             <div style="display:flex;align-items:center;gap:0.5rem;">
-                <input type="time" name="quiet_start" class="form-control" style="max-width: 160px;"
+                <input type="time" name="quiet_start" class="form-control" style="max-width: 160px;" aria-label="免打扰开始时间"
                        value="{{ prefs.quiet_start|time:'H:i'|default_if_none:'' }}">
                 <span class="text-muted">至</span>
-                <input type="time" name="quiet_end" class="form-control" style="max-width: 160px;"
+                <input type="time" name="quiet_end" class="form-control" style="max-width: 160px;" aria-label="免打扰结束时间"
                        value="{{ prefs.quiet_end|time:'H:i'|default_if_none:'' }}">
             </div>
             <span class="form-text">留空表示不启用免打扰。</span>

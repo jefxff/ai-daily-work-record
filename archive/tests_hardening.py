@@ -209,6 +209,9 @@ class LicenseQueryTests(TestCase):
         """SQL 条数不随行数增长（改造前 100 行 = 323 条）。"""
         root = User.objects.create_superuser("lic_root", "l@e.com", "x12345678")
         self.client.force_login(root)
+        # 预热一次：首个请求会顺带做一次性的系统查询（session / 权限缓存建立），
+        # 不计入稳态比较，否则测试结果会随用例执行顺序漂移。
+        self.client.get(reverse("archive:license_list"))
 
         with CaptureQueriesContext(connection) as small:
             self.client.get(reverse("archive:license_list"))
@@ -363,6 +366,47 @@ class ProtectedMediaTests(TestCase):
         self.assertTrue(resp["Content-Disposition"].startswith("inline"))
         self.assertEqual(resp["X-Frame-Options"], "SAMEORIGIN")
         self.assertIn("frame-ancestors 'self'", resp["Content-Security-Policy"])
+
+
+class UploadValidationTests(TestCase):
+    """审计 SEC-02 / SEC-08：导入文件与档案附件必须有类型、大小、文件头三重校验。"""
+
+    def test_import_rejects_oversized_file(self):
+        from unittest import mock
+
+        from .validators import validate_import_file
+
+        f = SimpleUploadedFile("a.csv", b"a,b\n1,2\n")
+        with mock.patch("archive.validators.IMPORT_MAX_SIZE", 4):
+            with self.assertRaisesMessage(ValueError, "超过上限"):
+                validate_import_file(f)
+
+    def test_import_rejects_exe_renamed_xlsx(self):
+        from .services.import_export import _parse_excel_sheets
+
+        f = SimpleUploadedFile("evil.xlsx", b"MZ\x90\x00" + b"\x00" * 64)
+        with self.assertRaisesMessage(ValueError, "文件内容与扩展名不符"):
+            _parse_excel_sheets(f)
+
+    def test_import_accepts_valid_csv(self):
+        from .services.import_export import _read_import_rows
+
+        f = SimpleUploadedFile("ok.csv", "编号,名称\nARC1,测试档案\n".encode("utf-8-sig"))
+        rows = _read_import_rows(f)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["名称"], "测试档案")
+
+    def test_archive_attachment_rejects_pe_renamed_pdf(self):
+        from .validators import validate_archive_file
+
+        err = validate_archive_file(SimpleUploadedFile("fake.pdf", b"MZ\x90\x00" + b"\x00" * 64))
+        self.assertIn("内容与扩展名不符", err)
+
+    def test_archive_attachment_accepts_real_pdf(self):
+        from .validators import validate_archive_file
+
+        err = validate_archive_file(SimpleUploadedFile("ok.pdf", b"%PDF-1.4\n%%EOF"))
+        self.assertEqual(err, "")
 
 
 class LicenseScanValidationTests(TestCase):

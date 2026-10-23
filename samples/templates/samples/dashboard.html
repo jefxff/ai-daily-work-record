@@ -5,7 +5,7 @@
 {% block extra_css %}
 <style>
     /* ===== 筛选区 ===== */
-    .dash-toolbar { background: var(--c-surface); border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 0.9rem 1.25rem; margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; }
+    .dash-toolbar { background: var(--c-surface); border-radius: 8px; box-shadow: var(--sh-card); padding: 0.9rem 1.25rem; margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; }
     .range-tabs { display: flex; gap: 0.25rem; background: var(--c-surface-sunken); border-radius: 8px; padding: 3px; flex-wrap: wrap; }
     .range-tab { border: none; background: transparent; color: var(--c-text-secondary); border-radius: 6px; padding: 5px 16px; font-size: 0.85rem; cursor: pointer; text-decoration: none; transition: all 0.2s ease; }
     .range-tab:hover { color: var(--c-primary); }
@@ -18,11 +18,11 @@
     @media (max-width: 1400px) { .kpi-grid { grid-template-columns: repeat(3, 1fr); } }
     @media (max-width: 768px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
     @media (max-width: 480px) { .kpi-grid { grid-template-columns: 1fr; } }
-    .kpi-card { background: var(--c-surface); border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 1.1rem 1.25rem; position: relative; overflow: hidden; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .kpi-card { background: var(--c-surface); border-radius: 10px; box-shadow: var(--sh-card); padding: 1.1rem 1.25rem; position: relative; overflow: hidden; transition: transform 0.2s ease, box-shadow 0.2s ease; }
     .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.12); }
     .kpi-card::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
     .kpi-card.c-blue::after { background: var(--c-primary); }
-    .kpi-card.c-cyan::after { background: #13c2c2; }
+    .kpi-card.c-cyan::after { background: var(--c-primary); }
     .kpi-card.c-green::after { background: var(--c-success); }
     .kpi-card.c-geek::after { background: var(--c-primary); }
     .kpi-card.c-orange::after { background: var(--c-warning); }
@@ -30,9 +30,9 @@
     .kpi-head { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem; }
     .kpi-icon { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; flex-shrink: 0; }
     .c-blue .kpi-icon { background: var(--c-primary-subtle); }
-    .c-cyan .kpi-icon { background: #e6fffb; }
+    .c-cyan .kpi-icon { background: var(--c-primary-subtle); }
     .c-green .kpi-icon { background: var(--c-success-bg); }
-    .c-geek .kpi-icon { background: #f0f5ff; }
+    .c-geek .kpi-icon { background: var(--c-primary-subtle); }
     .c-orange .kpi-icon { background: var(--c-warning-bg); }
     .c-red .kpi-icon { background: var(--c-danger-bg); }
     .kpi-label { font-size: 0.82rem; color: var(--c-text-secondary); }
@@ -44,7 +44,7 @@
     /* ===== 图表区 ===== */
     .board-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 1.25rem; margin-bottom: 1.25rem; }
     @media (max-width: 1200px) { .board-grid { grid-template-columns: 1fr; } }
-    .board-card { background: var(--c-surface); border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 1.4rem 1.5rem; margin-bottom: 0; min-width: 0; }
+    .board-card { background: var(--c-surface); border-radius: 10px; box-shadow: var(--sh-card); padding: 1.4rem 1.5rem; margin-bottom: 0; min-width: 0; }
     .board-card.block { margin-bottom: 1.25rem; }
     .board-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.1rem; }
     .board-title { font-size: 0.95rem; font-weight: 600; color: var(--c-text); margin: 0; display: flex; align-items: center; gap: 0.45rem; }
@@ -55,7 +55,7 @@
     .month-chart { display: flex; align-items: flex-end; gap: 8px; height: 190px; padding: 0 0.25rem; overflow-x: auto; }
     .month-col { display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 42px; flex: 1; height: 100%; justify-content: flex-end; }
     .month-val { font-size: 0.72rem; color: var(--c-text-secondary); font-weight: 600; }
-    .m-bar { width: 55%; max-width: 34px; min-height: 3px; background: linear-gradient(180deg, #69c0ff, var(--c-primary)); border-radius: 4px 4px 0 0; transition: opacity 0.2s ease; }
+    .m-bar { width: 55%; max-width: 34px; min-height: 3px; background: linear-gradient(180deg, var(--c-primary-hover), var(--c-primary)); border-radius: 4px 4px 0 0; transition: opacity 0.2s ease; }
     .month-col:hover .m-bar { opacity: 0.75; }
     .month-label { font-size: 0.68rem; color: var(--c-text-secondary); white-space: nowrap; }
 
@@ -78,7 +78,7 @@
     .supplier-rank.r3 { background: var(--c-warning-bg); color: var(--c-warning); }
     .supplier-name { width: 180px; font-size: 0.85rem; color: var(--c-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
     .supplier-track { flex: 1; height: 12px; background: var(--c-surface-sunken); border-radius: 6px; overflow: hidden; }
-    .supplier-fill { height: 100%; background: linear-gradient(90deg, #69c0ff, var(--c-primary)); border-radius: 6px; transition: width 0.5s ease; }
+    .supplier-fill { height: 100%; background: linear-gradient(90deg, var(--c-primary-hover), var(--c-primary)); border-radius: 6px; transition: width 0.5s ease; }
     .supplier-num { width: 40px; font-size: 0.85rem; color: var(--c-text); font-weight: 700; text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums; }
 </style>
 {% endblock %}
@@ -94,9 +94,9 @@
     <form method="GET" class="custom-range">
         <input type="hidden" name="range" value="custom">
         <input type="hidden" name="basis" value="{{ basis }}">
-        <input type="date" name="date_from" value="{{ date_from }}" class="search-input" style="width:140px;">
+        <input type="date" name="date_from" value="{{ date_from }}" class="search-input" style="width:140px;" aria-label="开始日期">
         <span class="sep">至</span>
-        <input type="date" name="date_to" value="{{ date_to }}" class="search-input" style="width:140px;">
+        <input type="date" name="date_to" value="{{ date_to }}" class="search-input" style="width:140px;" aria-label="结束日期">
         <button type="submit" class="btn-primary btn-sm">查询</button>
     </form>
 </div>

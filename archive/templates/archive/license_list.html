@@ -23,7 +23,7 @@
     .lic-toolbar .form-select { width: auto; min-width: 120px; }
     .lic-toolbar .btn { white-space: nowrap; }
 
-    .lic-table { background: rgba(255,255,255,0.95); border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .lic-table { background: var(--c-surface); border-radius: 12px; overflow: hidden; box-shadow: var(--sh-card); }
     .lic-table table { margin: 0; }
     .lic-table th { background: var(--c-surface-sunken); font-weight: 600; color: var(--c-text-secondary); text-align: center; padding: 12px; white-space: nowrap; border-bottom: 1px solid var(--c-border); font-size: 14px; }
     .lic-table td { text-align: center; padding: 10px 12px; border-bottom: 1px solid var(--c-border); color: var(--c-text); font-size: 14px; }
@@ -67,7 +67,7 @@
     <!-- 操作条：搜索 / 筛选 / 导入导出，一行放在列表上方 -->
     <div class="page-actions">
     <form method="GET">
-        <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="搜索证照名称/编号/持证单位/发证机关">
+        <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="搜索证照名称/编号/持证单位/发证机关" aria-label="搜索证照">
         <select name="status" class="form-select" onchange="this.form.submit()">
             <option value="">全部状态</option>
             <option value="normal" {% if status == 'normal' %}selected{% endif %}>正常</option>

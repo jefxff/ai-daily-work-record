@@ -6,14 +6,17 @@ sysbackup 含「整库恢复」这类最高危写操作，此前无任何测试�
 """
 
 import json
+import sqlite3
 import tempfile
+import uuid
 import zipfile
 from pathlib import Path
 from unittest import mock
 
 from django.conf import settings
 from django.contrib.auth.models import Group
-from django.test import TestCase
+from django.db import connection
+from django.test import TestCase, TransactionTestCase
 
 from . import services
 
@@ -109,6 +112,15 @@ class BackupPackageValidationTests(TestCase):
 class BackupEncryptionTests(TestCase):
     """审计 P2-4：备份包必须加密落盘，且旧明文包仍可识别/恢复。"""
 
+    def test_default_backup_key_is_outside_project_tree(self):
+        """审计 SEC-04：默认密钥文件不得落在 BASE_DIR 内。"""
+        default = Path(settings.BASE_DIR) / ".backup_key"
+        if services.BACKUP_KEY_FILE == default:
+            self.skipTest("测试环境显式用 BACKUP_KEY_FILE 指回了项目内路径")
+        self.assertFalse(
+            str(services.BACKUP_KEY_FILE).lower().startswith(str(settings.BASE_DIR).lower())
+        )
+
     def test_encrypt_decrypt_roundtrip(self):
         with tempfile.TemporaryDirectory() as d:
             key_file = Path(d) / "backup.key"
@@ -199,3 +211,74 @@ class ZipSlipPathFenceTests(TestCase):
         from django.core.exceptions import SuspiciousOperation
         with self.assertRaises(SuspiciousOperation):
             services._write_storage_file("../../../etc/passwd", None)
+
+
+class BackupRestoreRoundTripTests(TransactionTestCase):
+    """OBS-01：备份可用性回环——真实产包 → 结构校验 → 落到临时库确认数据可还原。
+
+    刻意不在测试里调用 _run_restore 覆盖当前测试库：TestCase 事务隔离下，
+    覆盖中的 SQLite 文件会让 Django 连接读到半成品状态（历史上曾因此丢数据）。
+    这里改用与恢复完全相同的 sqlite3 online backup API 把包内 db 导入临时文件，
+    等价验证「这份备份包里的数据能还原」，同时对测试库零副作用。
+    """
+
+    def setUp(self):
+        self.dest = Path(settings.BASE_DIR) / "backups" / "test_roundtrip"
+        self.dest.mkdir(parents=True, exist_ok=True)
+        self.marker = f"roundtrip-marker-{uuid.uuid4().hex[:8]}"
+        Group.objects.create(name=self.marker)
+
+    def tearDown(self):
+        Group.objects.filter(name=self.marker).delete()
+        for p in self.dest.glob("*"):
+            try:
+                p.unlink()
+            except OSError:
+                pass
+        try:
+            self.dest.rmdir()
+        except OSError:
+            pass
+
+    def test_backup_package_can_be_restored(self):
+        # Django 的 SQLite 测试库默认是 :memory:，备份线程另开连接只会看到空库。
+        # 这里先用 online backup API 把内存库落成真实文件，再把备份指向该文件。
+        live = self.dest / "live.sqlite3"
+        dst = sqlite3.connect(str(live))
+        connection.connection.backup(dst)
+        dst.close()
+
+        key_file = self.dest / "backup.key"
+        patched_db = {**settings.DATABASES["default"], "NAME": str(live)}
+        with mock.patch.dict(settings.DATABASES, {"default": patched_db}), \
+                mock.patch.object(services, "BACKUP_KEY_FILE", key_file):
+            task_id = services.start_backup(dest_dir=str(self.dest), operator="test")
+            snap = services.wait_task(task_id, timeout=180)
+            self.assertEqual(snap["status"], "success", snap.get("error"))
+
+            pkg = Path(snap["result"]["path"])
+            self.assertTrue(pkg.exists())
+            self.assertTrue(pkg.name.endswith(services.ENCRYPTED_SUFFIX))
+            self.assertNotEqual(pkg.read_bytes()[:4], b"PK\x03\x04", "备份包必须加密落盘")
+
+            plain = self.dest / "unpacked.zip"
+            services._decrypt_file(pkg, plain)
+
+        meta, errors = services._inspect_backup(plain)
+        self.assertEqual(errors, [])
+        self.assertGreater(meta["database"]["tables"], 0)
+        self.assertGreater(meta["database"]["rows"], 0)
+
+        with zipfile.ZipFile(plain) as zf:
+            zf.extract(services.DB_ENTRY, self.dest)
+        restored_db = self.dest / "restored.sqlite3"
+        src = sqlite3.connect(str(self.dest / services.DB_ENTRY))
+        dst = sqlite3.connect(str(restored_db))
+        with dst:
+            src.backup(dst)
+        src.close()
+        dst.close()
+
+        with sqlite3.connect(str(restored_db)) as conn:
+            names = [row[0] for row in conn.execute("SELECT name FROM auth_group")]
+        self.assertIn(self.marker, names, "备份包内数据库缺少标记数据，备份不可用")

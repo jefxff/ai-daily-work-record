@@ -9,7 +9,7 @@
 {# 操作条：与下方列表拼成一张卡，标题独占一行 #}
 <div class="page-actions">
     <form method="GET">
-        <input class="search-input" type="search" placeholder="按用户名搜索" name="username" value="{{ f_username }}">
+        <input class="search-input" type="search" placeholder="按用户名搜索" name="username" value="{{ f_username }}" aria-label="按用户名搜索">
         <select name="result" class="search-input" style="width:auto;">
             <option value="">全部结果</option>
             <option value="success" {% if f_result == 'success' %}selected{% endif %}>成功</option>

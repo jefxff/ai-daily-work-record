@@ -42,6 +42,12 @@ class CSPMiddleware:
             return response
 
     def _apply(self, request, response, nonce):
+        # 与 CSP 模式解耦：任何响应都关闭本项目用不到的高权限 API
+        response.setdefault(
+            "Permissions-Policy",
+            "camera=(), microphone=(), geolocation=(), payment=(), usb=(), "
+            "magnetometer=(), gyroscope=(), accelerometer=(), fullscreen=(self)",
+        )
         if self.mode == "off":
             return response
         # 媒体/下载响应可能已自行设置 frame-ancestors（PDF 预览），不覆盖

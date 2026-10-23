@@ -292,3 +292,43 @@ class AiSearchPermKeyTests(TestCase):
         client.force_login(plain)
         resp = client.get("/api/ai/search/", {"q": "洪兴", "model": "partner"})
         self.assertEqual(resp.status_code, 403)
+
+
+class AiConfigBaseUrlTests(TestCase):
+    """审计 SEC-07：管理员可控的 base_url 必须挡住 SSRF 高危目标。"""
+
+    def test_validate_rejects_non_http_scheme(self):
+        from .views_config import _validate_base_url
+
+        self.assertIn("http://", _validate_base_url("file:///etc/passwd"))
+        self.assertIn("http://", _validate_base_url("ftp://example.com"))
+
+    def test_validate_rejects_link_local_metadata(self):
+        from .views_config import _validate_base_url
+
+        self.assertTrue(_validate_base_url("http://169.254.169.254/latest/meta-data"))
+        self.assertIn("保留", _validate_base_url("http://metadata.google.internal/"))
+
+    def test_validate_allows_public_and_lan_hosts(self):
+        from .views_config import _validate_base_url
+
+        self.assertEqual(_validate_base_url("https://api.minimax.chat/v1"), "")
+        self.assertEqual(_validate_base_url("http://127.0.0.1:11434"), "")
+        self.assertEqual(_validate_base_url("http://192.168.1.20:11434"), "")
+
+    def test_test_endpoint_returns_error_for_metadata_url(self):
+        from unittest import mock
+
+        from django.urls import reverse
+
+        root = User.objects.create_superuser("cfg_root", "cfg@e.com", "x12345678")
+        client = APIClient()
+        client.force_login(root)
+        with mock.patch("ai_api.views_config.test_connection") as conn:
+            resp = client.post(
+                reverse("ai_config_test"),
+                {"base_url": "http://169.254.169.254/latest", "provider": "ollama"},
+            )
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(resp.json()["ok"])
+        conn.assert_not_called()

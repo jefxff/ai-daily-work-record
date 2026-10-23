@@ -6,9 +6,10 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 
+# 附件校验（扩展名 + 大小 + 文件头）收敛到 validators.py，这里保留原有导出名
+from .validators import validate_archive_file  # noqa: F401
+
 from .models import (
-    ARCHIVE_FILE_ALLOWED_EXTS,
-    ARCHIVE_FILE_MAX_SIZE,
     AnnualReview,
     Archive,
     BorrowRecord,
@@ -18,16 +19,6 @@ from .models import (
     License,
     LicenseBorrowRecord,
 )
-
-
-def validate_archive_file(f) -> str:
-    """校验上传附件的类型与大小，通过返回空串，否则返回错误消息。"""
-    ext = os.path.splitext(f.name)[1].lstrip(".").upper()
-    if ext not in ARCHIVE_FILE_ALLOWED_EXTS:
-        return f"不支持的文件类型「{ext or '无扩展名'}」（允许：图片/PDF/Office/压缩包/文本）"
-    if f.size > ARCHIVE_FILE_MAX_SIZE:
-        return f"文件大小 {f.size / 1024 / 1024:.1f}MB 超过上限 50MB"
-    return ""
 
 
 # 证照扫描件：仅允许图片/PDF，禁止 HTML/SVG 等可执行内容（审计 P1-2）

@@ -192,11 +192,11 @@
         align-items: center;
         gap: 0.75rem;
         padding: 0.75rem 1rem;
-        border-bottom: 1px solid var(--c-border, rgba(0,0,0,0.08));
-        background: var(--c-surface-sunken, #f7f8fa);
+        border-bottom: 1px solid var(--c-border);
+        background: var(--c-surface-sunken);
     }
     .expiry-day-date { font-weight: 600; }
-    .expiry-day-weekday { color: var(--c-text-muted, #666); }
+    .expiry-day-weekday { color: var(--c-text-tertiary); }
     .table-container { margin-top: 1rem; }
     /* 每天一个分组、各自一张表：默认 auto 布局会按各表内容分别计算列宽，
        导致 32 张表的列位置层层错开（宽屏下尤其明显）。这里改为 fixed 布局，

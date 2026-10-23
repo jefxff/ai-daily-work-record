@@ -10,7 +10,7 @@
         </h4>
         <div class="kb-doc-actions">
             <form action="{% url 'knowledge_base:document_search' %}" method="get" class="kb-search-form">
-                <input type="text" name="keyword" class="kb-search-input" placeholder="搜索文档..." value="{{ request.GET.keyword }}">
+                <input type="text" name="keyword" class="kb-search-input" placeholder="搜索文档..." value="{{ request.GET.keyword }}" aria-label="搜索文档">
                 <button type="submit" class="kb-search-btn">搜索</button>
             </form>
             {% can "knowledge" "create" %}

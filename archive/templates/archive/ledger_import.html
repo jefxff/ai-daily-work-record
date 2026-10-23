@@ -50,7 +50,7 @@
                 {% csrf_token %}
                 <input type="hidden" name="step" value="upload">
                 <div class="mb-3">
-                    <input type="file" name="file" class="form-control" accept=".xlsx,.xls,.csv" required>
+                    <input type="file" name="file" class="form-control" accept=".xlsx,.xls,.csv" required aria-label="选择 Excel 文件">
                 </div>
                 <button type="submit" class="btn btn-primary">上传并预览</button>
                 {% if mode == 'single' %}

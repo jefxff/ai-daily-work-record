@@ -1,7 +1,8 @@
 # 直接依赖：全部锁定到与生产运行环境一致的精确版本（审计 BE-07）。
-# 升级流程：先在测试环境验证，再同步修改本文件与 requirements.lock。
-# 带哈希的锁文件由 scripts/gen_requirements_lock.py 在可联网环境生成，
-# 安装时使用：pip install --require-hashes -r requirements.lock
+# 升级流程：先在测试环境验证，再同步修改本文件。
+# 带哈希的锁文件需在可联网环境执行 python scripts/gen_requirements_lock.py 生成
+# （当前运行环境离线，仓库未附 requirements.lock；联网后生成并改用
+#   pip install --require-hashes -r requirements.lock）。
 django==4.2.24
 djangorestframework==3.17.1
 django-cors-headers==4.9.0

@@ -107,15 +107,6 @@
     var revokeUrlTpl = "{% url 'accounts:api_token_revoke' 0 %}";
     var csrf = "{{ csrf_token }}";
 
-    function getCookie(name) {
-        var v = null;
-        document.cookie.split(';').forEach(function (c) {
-            var p = c.trim().split('=');
-            if (p[0] === name) v = decodeURIComponent(p[1]);
-        });
-        return v;
-    }
-
     function fallbackCopy(text, okMsg) {
         var ta = document.createElement('textarea');
         ta.value = text;

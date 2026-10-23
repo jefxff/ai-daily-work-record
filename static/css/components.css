@@ -271,7 +271,11 @@
   @page { margin: 12mm; }
 }
 
-/* ---------- §5 断点收敛：640 / 960 / 1280 ---------- */
+/* ---------- §5 断点收敛：640 / 960 / 1280 ----------
+   本层与 app.css 的全局断点统一为三档：960（侧栏抽屉）、640（紧凑内边距）、1280（宽屏）。
+   模板内的 @media 断点属于组件自身的「内容驱动」临界宽度（如 4 列网格在 1200px
+   塌成 3 列、两栏详情在 992px 变单栏），不参与全局断点收敛，避免为对齐数字而
+   破坏既有布局。新增全局布局规则请使用上面的三档。 */
 
 /* 960px 以下：侧栏退出文档流（抽屉），内容区恢复全宽。
    原实现要到 576px 才收起，平板竖屏（600~960px）长期被 200px 侧栏挤压。 */
@@ -892,4 +896,72 @@ td[data-label="操作"] > div { justify-content: center; }
 .u-max-560 { max-width: 560px; }
 .u-max-600 { max-width: 600px; }
 .u-panel-12 { border: none; border-radius: 12px; }
+
+/* ============================================================================
+   §7 安全区：viewport-fit=cover 下避开刘海 / 手势条
+   env() 在非全面屏设备上恒为 0，因此桌面端表现不变。
+   ========================================================================== */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .main-content {
+    padding-left: calc(1.5rem + env(safe-area-inset-left));
+    padding-right: calc(1.5rem + env(safe-area-inset-right));
+    padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+  }
+  @media (max-width: 960px) {
+    .main-content {
+      padding-left: calc(var(--sp-4) + env(safe-area-inset-left));
+      padding-right: calc(var(--sp-4) + env(safe-area-inset-right));
+      padding-bottom: calc(var(--sp-4) + env(safe-area-inset-bottom));
+    }
+  }
+  @media (max-width: 640px) {
+    .main-content {
+      padding-left: calc(var(--sp-3) + env(safe-area-inset-left));
+      padding-right: calc(var(--sp-3) + env(safe-area-inset-right));
+      padding-bottom: calc(var(--sp-3) + env(safe-area-inset-bottom));
+    }
+  }
+  .sidebar { padding-bottom: calc(1rem + env(safe-area-inset-bottom)); }
+  .toast-container { padding-bottom: env(safe-area-inset-bottom); }
+}
+
+/* ============================================================================
+   §8 角色表单（页面 + 弹窗共用）：清偿权限矩阵区域的内联样式
+   ========================================================================== */
+.role-form-card {
+  background: var(--c-surface);
+  border-radius: var(--r-md);
+  box-shadow: var(--sh-1);
+  padding: var(--sp-5);
+  margin-bottom: var(--sp-5);
+  max-width: 860px;
+}
+.role-form-card--matrix { margin-bottom: 0; }
+.role-form-grid { display: flex; gap: var(--sp-4); flex-wrap: wrap; }
+.role-form-field { flex: 1; min-width: 200px; }
+.role-form-check { display: flex; gap: 0.5rem; align-items: center; font-size: 0.88rem; }
+.role-form-inline-hint { color: var(--c-text-tertiary); font-size: 0.76rem; }
+.role-form-head {
+  display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;
+}
+.role-form-head h3 { font-size: 1rem; font-weight: 600; margin: 0; }
+.role-form-head strong { font-size: 0.92rem; }
+.role-form-head-actions { display: flex; gap: 0.5rem; }
+.role-form-divider {
+  border-top: 1px solid var(--c-border);
+  margin: 0.5rem 0 0.9rem;
+  padding-top: 0.9rem;
+}
+.role-matrix { overflow-x: auto; }
+.role-matrix .table { min-width: 520px; margin-bottom: 0; }
+.role-matrix .table th:first-child { min-width: 180px; }
+.role-matrix tr[data-module-group="system"] { background: var(--c-surface-sunken); }
+.role-matrix .role-matrix-key { color: var(--c-text-tertiary); font-size: 0.75rem; margin-left: 0.4rem; }
+.role-matrix .role-matrix-cell { text-align: center; }
+.role-matrix .role-matrix-na { color: var(--c-border-strong); }
+.role-form-note { color: var(--c-text-secondary); font-size: 0.78rem; margin: 0.5rem 0 0; }
+.role-form-actions { display: flex; gap: 0.75rem; margin-top: 1.25rem; }
+.role-form-submit { padding: 0.5rem 1.5rem; }
+
 

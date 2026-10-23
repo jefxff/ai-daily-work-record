@@ -52,11 +52,13 @@ class LoginRequiredMiddleware:
     # 精确路径前缀，全部以 / 结尾防越权（如 /accounts/loginxxx 不匹配）
     # 注意：/media/ 不在白名单 —— 用户上传文件（证照扫描件/证明材料）必须登录后访问，
     # 由 work_record.urls 的 protected_media 视图提供（URL 路径保持 /media/... 不变）
+    # 注意：/admin/ 也不在白名单（审计 SEC-09）—— Django Admin 自带登录页不受
+    # 项目登录锁定保护，匿名可达即可无限爆破；现在必须先在项目登录页登录，
+    # 且 AdminSite.has_permission 已收紧为仅超管。
     EXEMPT_PREFIXES = (
         "/accounts/login/",
         "/accounts/logout/",
         "/accounts/register/",
-        "/admin/",
         "/static/",
         "/favicon.ico",
     )

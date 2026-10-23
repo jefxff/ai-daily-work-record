@@ -147,9 +147,13 @@ if os.environ.get('DJANGO_HTTPS_ONLY', '0') == '1':
     CSRF_COOKIE_NAME = '__Host-csrftoken'
 
 # HSTS 独立于 HTTPS 开关：默认 0（不发送），由运维逐步放量（审计 P3-1）。
+# 三个开关相互独立（审计 SEC-03）：设置秒数不再自动带上 includeSubDomains /
+# preload。preload 是「粘性承诺」（浏览器内置后极难回退），必须显式开启。
 SECURE_HSTS_SECONDS = int(os.environ.get('DJANGO_HSTS_SECONDS', '0'))
-SECURE_HSTS_INCLUDE_SUBDOMAINS = SECURE_HSTS_SECONDS > 0
-SECURE_HSTS_PRELOAD = SECURE_HSTS_SECONDS > 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = (
+    os.environ.get('DJANGO_HSTS_INCLUDE_SUBDOMAINS', '0') == '1'
+)
+SECURE_HSTS_PRELOAD = os.environ.get('DJANGO_HSTS_PRELOAD', '0') == '1'
 
 # 会话绝对有效期（秒），默认 12 小时；滑动过期仍保持 8 小时。
 SESSION_ABSOLUTE_MAX_AGE = int(os.environ.get('SESSION_ABSOLUTE_MAX_AGE', str(12 * 3600)))
@@ -168,6 +172,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.humanize',
     'rest_framework',
     'corsheaders',
     'records',

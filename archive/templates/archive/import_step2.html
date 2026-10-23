@@ -29,7 +29,7 @@
                 <div class="mb-4 p-3 rounded" style="background:var(--c-primary-subtle);border:1px solid var(--c-border-hover)">
                     <label class="form-label fw-bold mb-1">台账名称</label>
                     <p class="text-muted small mb-2">导入的档案将归入该台账（对应一份 Excel 台账，默认取文件名）。已有同名台账会复用，不会重复创建。</p>
-                    <input type="text" name="ledger_name" value="{{ default_ledger }}" class="form-control" style="max-width:420px" placeholder="如：专利、商标相关合同">
+                    <input type="text" name="ledger_name" value="{{ default_ledger }}" class="form-control" style="max-width:420px" placeholder="如：专利、商标相关合同" aria-label="台账名称">
                 </div>
 
                 {% for sname, sdata in sheets.items %}

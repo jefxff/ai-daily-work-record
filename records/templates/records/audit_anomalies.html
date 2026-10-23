@@ -6,7 +6,7 @@
 {% block top_nav_actions %}
     <form class="anomaly-window-form" method="GET">
         <label class="anomaly-window-label">检测窗口（天）
-            <input type="number" name="days" min="1" max="90" value="{{ days }}" inputmode="numeric">
+            <input type="number" name="days" min="1" max="90" value="{{ days }}" inputmode="numeric" aria-label="统计天数">
         </label>
         <button type="submit" class="btn-transparent">应用</button>
     </form>

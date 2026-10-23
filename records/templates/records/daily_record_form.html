@@ -12,12 +12,12 @@
 
             <div class="form-group">
                 <label class="form-label">序号</label>
-                <input type="text" class="form-control" value="{% if record %}{{ forloop.counter }}{% else %}自动生成{% endif %}" disabled>
+                <input type="text" class="form-control" value="{% if record %}{{ forloop.counter }}{% else %}自动生成{% endif %}" disabled aria-label="序号">
             </div>
 
             <div class="form-group">
                 <label class="form-label">日期及时间</label>
-                <input type="text" class="form-control" value="{% if record %}{{ record.record_date|date:'Y-m-d H:i:s' }}{% else %}{{ now|date:'Y-m-d H:i:s' }}{% endif %}" disabled>
+                <input type="text" class="form-control" value="{% if record %}{{ record.record_date|date:'Y-m-d H:i:s' }}{% else %}{{ now|date:'Y-m-d H:i:s' }}{% endif %}" disabled aria-label="日期及时间">
             </div>
 
             <div class="form-group">
