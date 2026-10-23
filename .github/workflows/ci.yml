@@ -13,10 +13,9 @@ jobs:
   check-and-test:
     runs-on: ubuntu-latest
     env:
-      # 生产形态的安全检查：HTTPS 相关开关打开后才做 check --deploy
-      DJANGO_HTTPS_ONLY: "1"
-      DJANGO_BEHIND_HTTPS_PROXY: "1"
-      DJANGO_HSTS_SECONDS: "31536000"
+      # 注意：HTTPS 相关开关只能挂在「check --deploy」单步上（见该步骤 env）。
+      # 若放在 job 级，SECURE_SSL_REDIRECT 会让测试客户端的每次 GET 变成 301，
+      # 造成整批测试假红（本地已复现：301 != 200）。
       DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1"
       DJANGO_DEBUG: "0"
     steps:
@@ -50,6 +49,11 @@ jobs:
       # （security.W004/W008/W012/W016 为已知项），因此该检查只做留痕不阻断。
       - name: 生产形态检查（HTTP 内网部署，安全项为已知收敛项）
         continue-on-error: true
+        # HTTPS 开关只对本步骤生效：模拟「已前置 HTTPS 反代」的生产形态
+        env:
+          DJANGO_HTTPS_ONLY: "1"
+          DJANGO_BEHIND_HTTPS_PROXY: "1"
+          DJANGO_HSTS_SECONDS: "31536000"
         run: python manage.py check --deploy --fail-level WARNING
 
       - name: 迁移文件一致性
@@ -81,8 +85,23 @@ jobs:
 
       - name: 运行测试并统计覆盖率
         run: |
-          python -m coverage run manage.py test
+          set +e
+          python -m coverage run manage.py test > test.log 2>&1
+          code=$?
+          cat test.log
+          if [ "$code" -ne 0 ]; then
+            {
+              echo "### 测试失败摘要"
+              echo '```'
+              grep -E "^(FAIL|ERROR):|^Ran |^FAILED|AssertionError|Error: " test.log | head -60
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            # 同时以注解形式暴露（公开仓库的 annotations API 可匿名读取，便于排障）
+            echo "::error::FAILED_TESTS: $(grep -E '^(FAIL|ERROR):' test.log | sed -E 's/ \(.*//' | tr '\n' ';' | head -c 3500)"
+            echo "::error::TAIL: $(grep -E -A 12 '^(FAIL|ERROR):' test.log | tr '\n' '~' | head -c 3500)"
+          fi
           python -m coverage report -m
+          exit $code
 
       # 审计 SUP-02：覆盖率闸门。本地实测基线 79%（18125 行语句，3807 行未覆盖），
       # 阈值取 70% 留出波动余量后转为阻断。
@@ -124,9 +143,32 @@ jobs:
           cat server.log
           exit 1
 
-      - name: 安装 Playwright 并运行 a11y/移动端断言
+      # 拆成三个步骤：npm 安装 / 浏览器安装 / 断言，失败时能直接看出卡在哪一环
+      - name: 安装 Playwright 依赖（npm ci）
         run: |
           cd tests/visual
           npm ci
+
+      - name: 安装 Firefox 浏览器
+        run: |
+          cd tests/visual
           npx playwright install --with-deps firefox
-          npx playwright test
+
+      - name: 运行 a11y/移动端断言
+        run: |
+          cd tests/visual
+          set +e
+          npx playwright test > pw.log 2>&1
+          code=$?
+          tail -120 pw.log
+          if [ "$code" -ne 0 ]; then
+            {
+              echo "### Playwright 失败摘要"
+              echo '```'
+              grep -E "Error:|expect|failed|✘|Timed out" pw.log | head -60
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::PW_FAILED: $(grep -E '^\s+[0-9]+\) |Error: |Timeout' pw.log | tr '\n' '~' | head -c 3500)"
+            echo "::error::PW_TAIL: $(tail -c 2500 pw.log | tr '\n' '~')"
+          fi
+          exit $code

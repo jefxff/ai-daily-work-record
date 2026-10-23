@@ -221,6 +221,27 @@ class ZipSlipPathFenceTests(TestCase):
         with self.assertRaises(SuspiciousOperation):
             services._write_storage_file("../../../etc/passwd", None)
 
+    def test_iter_storage_files_tolerates_missing_media_root(self):
+        """MEDIA_ROOT 不存在时（全新部署/CI 空库）按「无附件」处理，备份不得失败。"""
+        with mock.patch.object(
+            services.default_storage, "listdir", side_effect=FileNotFoundError
+        ):
+            self.assertEqual(list(services._iter_storage_files()), [])
+
+    def test_iter_storage_files_tolerates_missing_subdir(self):
+        """子目录在遍历过程中被删除时同样跳过，而不是中断整次备份。"""
+        calls = {"n": 0}
+
+        def fake_listdir(prefix):
+            calls["n"] += 1
+            if prefix == "":
+                return (["proofs"], [])
+            raise FileNotFoundError(prefix)
+
+        with mock.patch.object(services.default_storage, "listdir", side_effect=fake_listdir):
+            self.assertEqual(list(services._iter_storage_files()), [])
+        self.assertEqual(calls["n"], 2)
+
 
 class BackupRestoreRoundTripTests(TransactionTestCase):
     """OBS-01：备份可用性回环——真实产包 → 结构校验 → 落到临时库确认数据可还原。
