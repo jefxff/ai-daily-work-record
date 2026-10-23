@@ -391,8 +391,15 @@ def _validate_dest_dir(dest_dir):
 
 
 def _iter_storage_files(prefix=""):
-    """递归遍历 default_storage，产出相对路径（正斜杠）。"""
-    dirs, files = default_storage.listdir(prefix or "")
+    """递归遍历 default_storage，产出相对路径（正斜杠）。
+
+    MEDIA_ROOT 尚未创建时（全新部署、CI 空库、刚清理过附件目录）listdir 会抛
+    FileNotFoundError；备份不应因此整体失败，按「无附件」处理。
+    """
+    try:
+        dirs, files = default_storage.listdir(prefix or "")
+    except (FileNotFoundError, NotADirectoryError):
+        return
     for f in files:
         yield (prefix + f) if prefix else f
     for d in dirs:
