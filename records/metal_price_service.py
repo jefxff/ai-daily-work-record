@@ -118,7 +118,7 @@ def crawl_metal_prices():
                 
                 for metal_name in target_metals.keys():
                     # 查找金属名称附近的价格
-                    pattern = f'{re.escape(metal_name)}.{{0,100}}?(\d[\d,]*(?:\.\d+)?)'
+                    pattern = rf'{re.escape(metal_name)}.{{0,100}}?(\d[\d,]*(?:\.\d+)?)'
                     match = re.search(pattern, all_text, re.DOTALL)
                     if match:
                         try:
