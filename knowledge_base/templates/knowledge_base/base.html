@@ -24,7 +24,7 @@
         width: 280px;
         max-height: calc(100vh - 88px);
         overflow-y: auto;
-        z-index: var(--z-dropdown);
+        z-index: 30; /* 低于 --z-dropdown(50)：顶栏用户/通知下拉必须压在侧栏之上（UI 反馈 #1） */
         background: var(--c-surface) !important;
         border: 1px solid var(--c-border) !important;
         border-radius: 8px !important;
