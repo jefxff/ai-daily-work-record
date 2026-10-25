@@ -1,6 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
+from . import api_admin
 
 # 路由注册
 router = DefaultRouter()
@@ -31,10 +32,36 @@ router.register(r'archive/license-borrow', views.LicenseBorrowRecordViewSet)
 # 知识库
 router.register(r'knowledge/category', views.KnowledgeCategoryViewSet)
 router.register(r'knowledge/document', views.KnowledgeDocumentViewSet)
+# 账户管理（用户/角色/登录日志/长期 Token）
+router.register(r'accounts/users', api_admin.UserAdminViewSet)
+router.register(r'accounts/roles', api_admin.RoleAdminViewSet)
+router.register(r'accounts/login-logs', api_admin.LoginLogViewSet, basename='api-loginlog')
+router.register(r'accounts/api-tokens', api_admin.ApiTokenViewSet, basename='api-apitoken')
+# 通知中心：tasks 必须先于 notifications 注册，否则 'notifications/tasks/' 会被
+# notifications 的 detail 路由（pk='tasks'）抢先匹配
+router.register(r'notifications/tasks', api_admin.ScheduledTaskViewSet, basename='api-scheduledtask')
+router.register(r'notifications', api_admin.NotificationViewSet, basename='api-notification')
 
 urlpatterns = [
+    # 静态字面量端点必须放在 router 之前，避免被 detail 路由（pk=字面量）抢先匹配
+    path('notifications/preferences/', api_admin.NotificationPreferenceAPIView.as_view(),
+         name='api-notification-preferences'),
+    path('notifications/announce/', api_admin.AnnounceAPIView.as_view(),
+         name='api-notification-announce'),
+    path('notifications/task-runs/', api_admin.TaskRunLogAPIView.as_view(),
+         name='api-task-run-logs'),
+    path('system/health/', api_admin.SystemHealthAPIView.as_view(),
+         name='api-system-health'),
+    path('system/perf/', api_admin.SystemPerfAPIView.as_view(),
+         name='api-system-perf'),
+
     # REST API 路由
     path('', include(router.urls)),
+
+    # 账户管理补充端点
+    path('accounts/sessions/', api_admin.SessionAPIView.as_view(), name='api-sessions'),
+    path('accounts/sessions/<str:action>/', api_admin.SessionAPIView.as_view(),
+         name='api-session-action'),
     
     # AI 友好接口
     path('ai/summary/', views.ai_summary, name='ai_summary'),

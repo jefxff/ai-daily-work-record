@@ -39,7 +39,12 @@ class ModuleRbacPermission(BasePermission):
         if not module:
             # 未声明模块的接口（如 API 根索引）：登录即可访问
             return True
-        action = ACTION_MAP.get(getattr(view, "action", None))
+        # 自定义 action 可在视图上声明 custom_action_perms = {action: 模块动作}；
+        # 必须与标准 C/R/U/D 映射**合并**（而不是替换）：只写自定义动作的视图集
+        # 仍然要能处理 list/retrieve/create/update/destroy，否则「补一个自定义动作
+        # 的权限映射」会把整个视图集对非超管关死。
+        mapping = {**ACTION_MAP, **(getattr(view, "custom_action_perms", None) or {})}
+        action = mapping.get(getattr(view, "action", None))
         if action is None:
             # 未映射的自定义 action：默认拒绝，避免越权
             return False

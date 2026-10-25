@@ -38,9 +38,12 @@ WHITELIST = {
     "records.views_home.home": "首页按 visible_modules 裁剪内容；登录由 LoginRequiredMiddleware 保证",
     # —— 媒体下载：三层校验在视图内部完成 ——
     "work_record.urls.protected_media": "媒体下载在视图内做模块归属/登录/存在性三层校验",
+    # —— 静态资源：CSS/JS/图片本就公开，不含业务数据（审查 H4 改由 STATIC_ROOT 提供）——
+    "work_record.urls.serve_static": "静态资源（/static/）为公开资产，无业务数据；原先由 django staticfiles 视图承担",
     # —— DRF：权限挂在 permission_classes / 视图内部 _can 判定上 ——
     "rest_framework.routers.view": "DRF router 根视图（接口清单收紧项见审计 P3-1）",
     "ai_api.views_ai.view": "DRF @api_view + permission_classes(IsAuthenticated)，模块判定在视图内 _can",
+    "ai_api.api_admin.view": "DRF APIView，权限在视图内 _require()/行级校验；类上已声明 perm_explicit_checks",
     # —— 高危动作收紧到超管（与备份下载同一思路）——
     "notifications.views.scheduled_task_run": "@_superuser_required，超管专属",
     "notifications.views.scheduled_task_update": "@_superuser_required，超管专属",
@@ -65,8 +68,14 @@ def _has_marker(callback, view_class):
         for attr in ("rbac_permission", "rbac_any_module", "rbac_public")
     ):
         return True
-    # DRF viewset：权限挂在类上
-    return bool(view_class is not None and getattr(view_class, "perm_module", None))
+    # DRF viewset / APIView：权限挂在类上（perm_module）
+    # 或声明 perm_explicit_checks —— 行级/跨模块混合权限，在视图内用 _require() 显式判定
+    if view_class is None:
+        return False
+    return bool(
+        getattr(view_class, "perm_module", None)
+        or getattr(view_class, "perm_explicit_checks", False)
+    )
 
 
 def _is_framework(module):
