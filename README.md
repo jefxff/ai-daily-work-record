@@ -43,9 +43,12 @@ pip install -r requirements.txt
 - Windows 一键启动: `scripts/windows/start_windows.bat`（会同时拉起 web 与调度进程）
 - 直接启动（推荐）:
   ```bash
-  python manage.py runserver 0.0.0.0:8080     # 终端 1：web
-  python manage.py run_scheduler              # 终端 2：定时任务 + 通知发送
+  python manage.py collectstatic --noinput    # 静态资源（DEBUG=0 下由 STATIC_ROOT 提供）
+  python manage.py runserver 0.0.0.0:8080 --noreload   # 终端 1：web
+  python manage.py run_scheduler                       # 终端 2：定时任务 + 通知发送
   ```
+  > `--noreload` 必须加：备份/恢复任务跑在 web 进程的后台线程里，auto-reload 会在
+  > 保存代码的瞬间重启进程，把正在执行的恢复打断成半状态。改代码后手动重启即可。
 - 访问地址: http://127.0.0.1:8080/  （登录页 /accounts/login/）
 
 > `run_scheduler` 是常驻进程，负责到期提醒、每日未完成提醒、保险续保提醒、每日自动备份
@@ -137,8 +140,11 @@ pip install -r requirements.txt
 python manage.py migrate
 python manage.py createcachetable   # 登录失败锁定使用 DatabaseCache，需先建缓存表
 
-# 终端 1：web（默认 DJANGO_DEBUG=0，无需显式设置）
-python manage.py runserver 0.0.0.0:8080
+# 静态资源：DEBUG=0 时 /static/ 由 STATIC_ROOT 提供，必须先收集
+python manage.py collectstatic --noinput
+
+# 终端 1：web（默认 DJANGO_DEBUG=0，无需显式设置；--noreload 见下）
+python manage.py runserver 0.0.0.0:8080 --noreload
 # 终端 2：定时任务 + 通知发送（必须常驻，否则定时任务静默停摆）
 python manage.py run_scheduler
 ```
@@ -158,8 +164,79 @@ python manage.py run_scheduler
   的配置快照打到 500 页。排障时可临时设 `DJANGO_DEBUG=1`，排障后务必改回 0。
 - **ALLOWED_HOSTS 自动探测**：默认取本机主机名与局域网 IP（换网段自动跟随），
   可用 `DJANGO_ALLOWED_HOSTS`（逗号分隔）追加；`DJANGO_DEBUG=0` 时禁止通配符 `*`（启动即报错）。
-- `DJANGO_DEBUG=0` 时 runserver 不再自动服务 `/static/`，项目已在 `work_record/urls.py`
-  显式挂载静态文件路由，内网用户页面样式不受影响。
+- **静态文件**：`DJANGO_DEBUG=0` 时 runserver 不再自动服务 `/static/`。项目在
+  `work_record/urls.py` 显式挂载：优先从 `STATIC_ROOT`（collectstatic 产物）读取，
+  只有尚未 collectstatic 时才回退到 staticfiles finders 并打印一条告警。
+  启动脚本已内置 `collectstatic`；CI 另有「产物非空」门禁，防止静默丢样式。
+- **导出保护**：单进程 runserver 无并发上限/超时，导出（openpyxl 全量内存构建）用两个
+  设置兜底——`EXPORT_MAX_CONCURRENCY`（默认 2，超出 429）与 `EXPORT_MAX_ROWS`
+  （默认 30000 行，超出 413 并提示缩小筛选范围）。
+- **备份保留与密钥**：每日备份按 `BACKUP_RETAIN_DAILY`（默认 14 天）+ 每周 1 份 ×
+  `BACKUP_RETAIN_WEEKLY`（默认 8 周）自动轮转；加密密钥默认在
+  `%LOCALAPPDATA%\WorkRecordKeys\.backup_key`（非备份目录）。**密钥必须与备份分开保管**，
+  否则磁盘故障时两者一起丢失，历史加密包将永久无法解密。
+- **数据恢复维护模式**：恢复期间（含换库与附件解压）非超管的写请求返回 503，
+  恢复结束自动解除；恢复中途失败会自动回滚到 `backups/safety_snapshots/` 的安全快照。
+
+### HTTPS 部署（内网自签证书，可选）
+
+明文 HTTP 下同网段可嗅探会话 Cookie。若不接受该风险，按下述方式启用 HTTPS：
+
+```bash
+# 1) 生成本地 CA + 服务器证书（SAN 自动包含 localhost / 回环 / 主机名 / 内网 IP）
+python scripts/gen_dev_cert.py
+# 2) 把本地 CA 装进受信任根证书（管理员权限执行，只需一次；之后续签的证书仍受信）
+certutil -addstore -f "ROOT" certs\ca.crt.pem
+# 3) HTTPS 方式启动（web + 调度两进程）
+scripts\windows\start_windows_https.bat      # Windows
+./start_https.sh                              # Linux/macOS
+# 访问 https://127.0.0.1:8443/
+```
+
+实现说明（为什么不用现成方案）：
+- `runserver` 自 Django 1.9 起不再支持 `--cert-file`；waitress 3.x **没有** TLS 支持；
+  gunicorn/uwsgi 在本项目属禁用项（任务状态/互斥/心跳是进程内实现）。
+- `scripts/serve_https.py` 用标准库 `wsgiref` + `ssl.SSLContext` 提供**单进程多线程**的
+  HTTPS 服务，HTTP/1.1 keep-alive，静态/媒体仍走 Django 自己的路由，行为与 HTTP 版一致。
+- 启动脚本内部设 `DJANGO_HTTPS_ONLY=1`：启用 `SECURE_SSL_REDIRECT`、Secure Cookie 与
+  `__Host-` 前缀，`check --deploy` 的 W008/W012/W016 随之消失。
+- HSTS 单独用 `DJANGO_HSTS_SECONDS` 放量（默认 0，不发送）；确认全站 HTTPS 后再开，
+  否则浏览器记住 HSTS 且证书出问题时，回退会很痛苦。
+- 证书与 CA 私钥在 `certs/`（已 gitignore）。**CA 私钥不要外发**；装信任的机器只需
+  `ca.crt.pem`。换 IP/续签：`python scripts/gen_dev_cert.py --force`。
+
+> 若将来并发显著上升，建议前置 stunnel/nginx 终止 TLS，本脚本即可停用。
+
+### 备份异地副本（C2）
+
+备份目录与数据库同在一块盘时，磁盘故障会同时带走两者。配置镜像目录后，每次备份
+完成会自动复制一份过去（失败只记警告，不影响本次备份）：
+
+```bash
+# Windows（多个目录用分号分隔）
+set BACKUP_MIRROR_DIRS=D:\WorkRecordMirror;\\nas\backup\workrecord
+# Linux/macOS
+export BACKUP_MIRROR_DIRS=/mnt/usb/workrecord:/mnt/nas/workrecord
+```
+
+复制结果会写进备份任务详情与操作留痕（`异地副本 n/m 成功`）。建议镜像目录选
+**另一块物理盘 / 移动硬盘 / 另一台机器**，不要把镜像放回同一块盘。
+
+### 依赖完整性与漏洞审计（C3）
+
+```bash
+pip install --require-hashes -r requirements.lock     # 可复现安装（存在锁文件时优先）
+python -m pip_audit -r requirements.txt               # 漏洞审计（需联网 PyPI 顾问库）
+```
+
+`requirements.lock` 由 `scripts/gen_requirements_lock.py`（pip-tools）生成，含每个包的
+sha256；升级依赖后需重新生成并提交。CI 已在每次 push 执行 pip-audit 并阻断已知漏洞。
+
+### 多进程/多实例改造（C4）
+
+当前架构**明确依赖单进程**。若将来要换多 worker 或多实例，请先按
+`docs/multi-worker-migration.md` 的清单改造（任务状态外置、互斥改 DB 级、导出闸门换
+分布式计数、备份恢复独立成命令），不要“先上多进程再说”。
 
 **自动化校验（CI）**
 `.github/workflows/ci.yml` 在 push / PR 到 `main` 时执行：

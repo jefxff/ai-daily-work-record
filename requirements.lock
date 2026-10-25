@@ -1,0 +1,44 @@
+# 运行时依赖锁（全部直接 + 传递依赖精确 pin）
+#
+# 生成方式（任选其一）：
+#   A. 带哈希（推荐，需可访问真实 PyPI）：
+#        python -m pip install pip-tools
+#        python scripts/gen_requirements_lock.py     # 产出带 hash 的版本
+#        python -m pip install --require-hashes -r requirements.lock
+#   B. 无哈希（离线/内网镜像环境）：在干净虚拟环境中
+#        python -m venv .venv-lock && .venv-lock/bin/pip install -r requirements.txt
+#        .venv-lock/bin/pip freeze > requirements.lock  （并补回本注释头）
+#
+# 说明：当前仓库版本由 B 方式生成 —— 生成环境使用内部镜像，取不到 PyPI 官方
+# wheel 哈希，因此只锁版本、不含 --hash。它消除了「传递依赖漂移」
+# （requirements.txt 只锁直接依赖），但**不能**防御供应链投毒；需要该能力时
+# 在有公网 PyPI 的机器上按 A 方式重新生成并提交。
+#
+# 升级流程：改 requirements.txt → 重新生成本文件 → CI 通过 → 两者一起提交。
+# 本文件为锁定结果，请勿手工编辑。
+asgiref==3.13.0
+beautifulsoup4==4.15.0
+bleach==6.4.0
+certifi==2026.10.23
+cffi==2.1.1
+charset-normalizer==3.5.2
+colorama==0.4.6
+cryptography==50.0.2
+Django==5.2.18
+django-cors-headers==4.9.0
+djangorestframework==3.18.3
+et_xmlfile==2.0.0
+idna==3.20
+Markdown==3.11.2
+openpyxl==3.1.5
+pillow==13.0.0
+pycparser==3.12
+qrcode==8.2
+requests==2.34.2
+soupsieve==3.0.4
+sqlparse==0.6.0
+typing_extensions==4.16.0
+tzdata==2026.5
+urllib3==2.8.0
+webencodings==0.6.1
+xlrd==2.0.2

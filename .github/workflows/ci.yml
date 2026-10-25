@@ -37,6 +37,11 @@ jobs:
 
       - name: 依赖完整性
         run: python -m pip check
+      # 审查 C3：requirements.txt 改了却忘记重新生成 requirements.lock 会造成
+      # 「开发装新版、部署按锁装旧版」的静默漂移，这里直接让 CI 变红。
+      - name: 依赖锁一致性（阻断）
+        run: python scripts/check_lock_sync.py
+
 
       # 审计 SEC-01：防止硬编码 SECRET_KEY / Token / 私钥再次进入仓库
       - name: 密钥泄漏扫描
@@ -58,6 +63,13 @@ jobs:
 
       - name: 迁移文件一致性
         run: python manage.py makemigrations --check --dry-run
+
+      # 审查 H4：DEBUG=0 下 /static/ 由 STATIC_ROOT 提供，collectstatic 必须真能产出
+      # 内容；产物为空会让内网用户看到「无样式页面」，而单元测试发现不了。
+      - name: 静态资源可收集（阻断）
+        run: |
+          python manage.py collectstatic --noinput --clear > /dev/null
+          test -n "$(ls -A staticfiles)" || { echo "::error::collectstatic 未产出任何文件"; exit 1; }
 
       - name: Python 语法与未定义名称（ruff 规则由 pyproject.toml 统一）
         run: python -m ruff check .
