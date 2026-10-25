@@ -464,9 +464,13 @@ class RbacAuthTests(TestCase):
                 checked += 1
         for entry in api_urls.router.registry:
             viewset = entry[1]
-            self.assertTrue(getattr(viewset, "perm_module", None))
+            # perm_explicit_checks：行级/跨模块混合权限的视图集（视图内显式校验）
+            self.assertTrue(
+                getattr(viewset, "perm_module", None)
+                or getattr(viewset, "perm_explicit_checks", False),
+                f"ViewSet {viewset.__name__} 既无 perm_module 也未声明显式校验")
             checked += 1
-        self.assertGreaterEqual(checked, 53 + 10 + 27 + 9)
+        self.assertGreaterEqual(checked, 53 + 10 + 27 + 9 + 6)
 
         # 无角色用户遍历全站业务 GET URL，均不得 200
         cn = self.login(self.norole)
@@ -525,3 +529,71 @@ class AdminSurfaceTests(TestCase):
         c = Client()
         c.force_login(root)
         self.assertEqual(c.get("/admin/").status_code, 200)
+
+
+class AdminAuditTrailTests(TestCase):
+    """管理员写操作必须写入操作留痕（records.OperationLog）。"""
+
+    @classmethod
+    def setUpTestData(cls):
+        call_command("sync_rbac", verbosity=0)
+        cls.root = User.objects.create_superuser("audit_root", "audit_root@e.com", PWD)
+
+    def _client(self):
+        c = Client()
+        c.force_login(self.root)
+        return c
+
+    def _logs(self, **kw):
+        from records.models import OperationLog
+        return OperationLog.objects.filter(module_type="系统管理", **kw)
+
+    def test_user_create_edit_toggle_reset_logged(self):
+        c = self._client()
+        r = c.post(reverse("accounts:user_create"), {
+            "username": "audit_u1", "password": PWD, "real_name": "审计一号",
+            "is_active": "on", "roles": [],
+        })
+        self.assertEqual(r.status_code, 302)
+        u = User.objects.get(username="audit_u1")
+        self.assertTrue(self._logs(operation_type="新增", object_identifier__contains="audit_u1").exists())
+
+        c.post(reverse("accounts:user_edit", args=[u.pk]), {
+            "real_name": "审计一号改", "is_active": "on",
+        })
+        self.assertTrue(self._logs(operation_type="更新", object_identifier__contains="audit_u1").exists())
+
+        c.post(reverse("accounts:user_toggle", args=[u.pk]), {"active": "false"})
+        self.assertTrue(self._logs(operation_type="停用", object_identifier__contains="audit_u1").exists())
+
+        c.post(reverse("accounts:user_reset_password", args=[u.pk]),
+               {"new_password": PWD2, "confirm": PWD2})
+        self.assertTrue(self._logs(operation_type="重置密码", object_identifier__contains="audit_u1").exists())
+
+    def test_role_create_edit_delete_logged(self):
+        c = self._client()
+        r = c.post(reverse("accounts:role_create"), {
+            "code": "audit_role", "name": "审计角色", "description": "", "is_active": "on",
+        })
+        self.assertEqual(r.status_code, 302)
+        role = Role.objects.get(code="audit_role")
+        self.assertTrue(self._logs(operation_type="新增", object_identifier__contains="audit_role").exists())
+
+        c.post(reverse("accounts:role_edit", args=[role.pk]), {
+            "code": "audit_role", "name": "审计角色改", "description": "", "is_active": "on",
+        })
+        self.assertTrue(self._logs(operation_type="更新", object_identifier__contains="audit_role").exists())
+
+        c.post(reverse("accounts:role_delete", args=[role.pk]))
+        self.assertTrue(self._logs(operation_type="删除", object_identifier__contains="audit_role").exists())
+
+    def test_session_revoke_logged(self):
+        from django.contrib.sessions.backends.db import SessionStore
+        c = self._client()
+        # 伪造第二个属于同一用户的会话，保证"撤销其他"确有可撤对象
+        s2 = SessionStore()
+        s2.create()
+        s2["_auth_user_id"] = str(self.root.pk)
+        s2.save()
+        c.post(reverse("accounts:session_revoke_others"))
+        self.assertTrue(self._logs(operation_type="撤销会话").exists())

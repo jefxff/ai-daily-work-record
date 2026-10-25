@@ -7,6 +7,8 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
+from records.audit import log_operation
+
 
 @require_http_methods(["GET", "POST"])
 def password_change_view(request):
@@ -15,6 +17,10 @@ def password_change_view(request):
         form = PasswordChangeForm(request.user, request.POST)
         if form.is_valid():
             form.save()
+            log_operation(
+                request, "系统管理", '修改密码', f'用户#{request.user.id}（{request.user.username}）',
+                '自助修改登录密码（其它会话将被强制登出）',
+            )
             # 保持当前会话登录态，并把密码指纹刷新为新值
             update_session_auth_hash(request, form.user)
             request.session["_pwd"] = form.user.password
@@ -68,6 +74,10 @@ def session_revoke_view(request, session_key):
     """下线指定会话（不允许下线当前会话；当前会话请走登出）。"""
     if session_key and session_key != request.session.session_key:
         Session.objects.filter(session_key=session_key).delete()
+        log_operation(
+            request, "系统管理", '撤销会话', f'用户#{request.user.id}（{request.user.username}）',
+            f'下线指定会话: …{session_key[-8:]}',
+        )
     return redirect("accounts:sessions")
 
 
@@ -75,10 +85,17 @@ def session_revoke_view(request, session_key):
 def session_revoke_others_view(request):
     """下线除当前会话外的全部会话。"""
     current_key = request.session.session_key
+    revoked = 0
     for s in Session.objects.filter(expire_date__gt=timezone.now()):
         if s.session_key == current_key:
             continue
         data = s.get_decoded()
         if data.get("_auth_user_id") and int(data["_auth_user_id"]) == request.user.pk:
             s.delete()
+            revoked += 1
+    if revoked:
+        log_operation(
+            request, "系统管理", '撤销会话', f'用户#{request.user.id}（{request.user.username}）',
+            f'下线除当前会话外的全部会话（共 {revoked} 个）',
+        )
     return redirect("accounts:sessions")

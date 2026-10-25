@@ -251,8 +251,17 @@ def export_archives(request):
 def table_export(request, table):
     """按表导出 xlsx（导出列 = 导入列，可直接修改后回导）。"""
     spec = _get_spec(table)
-    _log(request, "导出", f"{spec['label']}导出", f"导出{spec['label']}清单")
-    return _export_response(spec)
+    # 审查 H5/B3：与其它导出共用并发闸门，避免多人同时导出打满 runserver 线程
+    from work_record.export_guard import ExportSlot, export_busy_response
+
+    slot = ExportSlot()
+    if not slot.__enter__():
+        return export_busy_response()
+    try:
+        _log(request, "导出", f"{spec['label']}导出", f"导出{spec['label']}清单")
+        return _export_response(spec)
+    finally:
+        slot.__exit__(None, None, None)
 
 
 @login_required
@@ -260,6 +269,7 @@ def table_export(request, table):
 def table_template(request, table):
     """下载表级导入模板（仅表头 + 首条记录示例）。"""
     spec = _get_spec(table)
+    _log(request, "下载", f"{spec['label']}模板", f"下载{spec['label']}导入模板")
     return _export_response(spec, include_header_only=True)
 
 

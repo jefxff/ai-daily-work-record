@@ -6,19 +6,29 @@
 from django.contrib import messages
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator
-from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.views.decorators.http import require_http_methods
 
+from records.audit import log_operation, snapshot
 from records.crud import _per_page
 from work_record.http_utils import is_ajax as _is_ajax  # 统一实现（复核报告 CODE-01）
 
+from . import user_admin as ua
 from .decorators import perm_required
 from .forms import AdminCreateUserForm, AdminEditUserForm, AdminResetPasswordForm, RoleForm
-from .models import LoginLog, Permission, Role, UserProfile
-from .registry import ACTION_LABELS, MODULES, all_permission_codes, permission_code
+from .models import LoginLog, Role
+from .registry import ACTION_LABELS, MODULES, permission_code
+
+# 操作留痕统一模块名（与 ai_config 等系统页面对齐）
+AUDIT_MODULE = "系统管理"
+
+
+def _user_roles_summary(user) -> str:
+    """用户当前挂载的角色名列表（用于留痕摘要）。"""
+    names = list(user.rbac_roles.values_list("name", flat=True))
+    return "、".join(names) if names else "（无角色）"
 
 
 def _forbidden(request):
@@ -36,9 +46,13 @@ def _modal_message(message):
 
 
 def _guarded_target(request, user_id):
-    """取出目标用户；非超管操作超管账号一律拒绝。返回 (user, None) 或 (None, 403响应)。"""
+    """取出目标用户；非超管操作超管账号一律拒绝。返回 (user, None) 或 (None, 403响应)。
+
+    「非超管不能动超管」的判定在 ``accounts.user_admin.may_manage_user``，
+    与 DRF 端共用同一实现（避免两套规则漂移）。
+    """
     target = get_object_or_404(User, pk=user_id)
-    if target.is_superuser and not request.user.is_superuser:
+    if not ua.may_manage_user(request.user, target):
         return None, _forbidden(request)
     return target, None
 
@@ -119,17 +133,23 @@ def user_create_view(request):
         form = AdminCreateUserForm(request.POST)
         if form.is_valid():
             data = form.cleaned_data
-            user = User.objects.create_user(
-                username=data["username"], password=data["password"],
+            # 创建规则（初始密码必填、档案建空、角色挂载）与 DRF 端共用
+            user = ua.create_user_account(
+                username=data["username"],
+                password=data["password"],
                 is_active=data.get("is_active", True),
+                profile_data={
+                    "real_name": data.get("real_name", ""),
+                    "department": data.get("department", ""),
+                    "position": data.get("position", ""),
+                },
+                roles=_parse_role_ids(request),
             )
-            UserProfile.objects.create(
-                user=user,
-                real_name=data.get("real_name", ""),
-                department=data.get("department", ""),
-                position=data.get("position", ""),
+            log_operation(
+                request, AUDIT_MODULE, '新增', f'用户#{user.id}（{user.username}）',
+                f'创建用户: {user.username}（{data.get("real_name") or "未填姓名"}），角色: {_user_roles_summary(user)}',
+                after=snapshot(user),
             )
-            user.rbac_roles.set(_parse_role_ids(request))
             messages.success(request, f"用户「{user.username}」创建成功。")
             if is_ajax:
                 return JsonResponse({"ok": True, "message": f"用户「{user.username}」创建成功"})
@@ -162,19 +182,29 @@ def user_edit_view(request, user_id):
     if request.method == "POST":
         form = AdminEditUserForm(request.POST)
         if form.is_valid():
+            before_snap = snapshot(target)
+            old_roles = _user_roles_summary(target)
             data = form.cleaned_data
-            if profile is None:
-                profile = UserProfile.objects.create(user=target)
-            profile.real_name = data.get("real_name", "")
-            profile.department = data.get("department", "")
-            profile.position = data.get("position", "")
-            profile.save()
-            target.is_active = data.get("is_active", False)
-            # is_staff（Admin 后台入口）仅超级管理员可授予
+            fields = {"is_active": data.get("is_active", False)}
+            # is_staff 仅超管可授：这里只在超管提交时才传入（非超管提交的会被
+            # user_admin.update_user_account 内部丢弃，双保险）
             if request.user.is_superuser:
-                target.is_staff = data.get("is_staff", False)
-            target.save()
-            target.rbac_roles.set(_parse_role_ids(request))
+                fields["is_staff"] = data.get("is_staff", False)
+            ua.update_user_account(
+                request.user, target,
+                fields=fields,
+                profile_data={
+                    "real_name": data.get("real_name", ""),
+                    "department": data.get("department", ""),
+                    "position": data.get("position", ""),
+                },
+                roles=_parse_role_ids(request),
+            )
+            log_operation(
+                request, AUDIT_MODULE, '更新', f'用户#{target.id}（{target.username}）',
+                f'编辑用户: {target.username}（角色 {old_roles} → {_user_roles_summary(target)}）',
+                before=before_snap, after=snapshot(target),
+            )
             messages.success(request, f"用户「{target.username}」资料已更新。")
             if is_ajax:
                 return JsonResponse({"ok": True, "message": f"用户「{target.username}」资料已更新"})
@@ -205,15 +235,22 @@ def user_edit_view(request, user_id):
     })
 
 
-def _set_active(request, user_id, active, *, self_check=True):
+def _set_active(request, user_id, active, *, self_check=True, action='启停'):
     target, denied = _guarded_target(request, user_id)
     if denied is not None:
         return denied
-    if self_check and not active and target.pk == request.user.pk:
-        messages.error(request, "不能停用当前登录账号。")
+    before_snap = snapshot(target)
+    try:
+        # 越权校验 + 禁止停用自己，与 DRF 端共用同一实现
+        ua.set_user_active(request.user, target, active, forbid_self_disable=self_check)
+    except ua.AccountRuleError as exc:
+        messages.error(request, str(exc))
         return redirect("accounts:user_list")
-    target.is_active = active
-    target.save()
+    log_operation(
+        request, AUDIT_MODULE, action, f'用户#{target.id}（{target.username}）',
+        f'{action}: {target.username}（账号{"启用" if target.is_active else "停用"}）',
+        before=before_snap, after=snapshot(target),
+    )
     return target
 
 
@@ -221,7 +258,8 @@ def _set_active(request, user_id, active, *, self_check=True):
 @require_http_methods(["POST"])
 def user_toggle_view(request, user_id):
     result = _set_active(
-        request, user_id, request.POST.get("active") == "true")
+        request, user_id, request.POST.get("active") == "true",
+        action='启用' if request.POST.get("active") == "true" else '停用')
     if not isinstance(result, User):
         return result
     messages.success(request, f"用户「{result.username}」已{'启用' if result.is_active else '停用'}。")
@@ -231,7 +269,7 @@ def user_toggle_view(request, user_id):
 @perm_required("system", "update")
 @require_http_methods(["POST"])
 def user_approve_view(request, user_id):
-    result = _set_active(request, user_id, True, self_check=False)
+    result = _set_active(request, user_id, True, self_check=False, action='审核通过')
     if not isinstance(result, User):
         return result
     messages.success(request, f"已审核通过「{result.username}」，该账号现在可以登录。")
@@ -241,7 +279,7 @@ def user_approve_view(request, user_id):
 @perm_required("system", "update")
 @require_http_methods(["POST"])
 def user_reject_view(request, user_id):
-    result = _set_active(request, user_id, False, self_check=False)
+    result = _set_active(request, user_id, False, self_check=False, action='拒绝/停用')
     if not isinstance(result, User):
         return result
     messages.success(request, f"已拒绝/停用「{result.username}」。")
@@ -257,11 +295,19 @@ def user_reset_password_view(request, user_id):
     if request.method == "POST":
         form = AdminResetPasswordForm(request.POST)
         if form.is_valid():
-            target.set_password(form.cleaned_data["new_password"])
-            target.save()
-            # 密码指纹机制会使该用户其它会话在下次请求时被强制登出
-            messages.success(request, f"「{target.username}」的密码已重置。")
-            return redirect("accounts:user_list")
+            try:
+                # 强度校验（带 user 上下文）+ 越权校验 + 落库，与 DRF 端共用
+                ua.reset_user_password(request.user, target, form.cleaned_data["new_password"])
+            except ua.AccountRuleError as exc:
+                form.add_error("new_password", str(exc))
+            else:
+                log_operation(
+                    request, AUDIT_MODULE, '重置密码', f'用户#{target.id}（{target.username}）',
+                    f'管理员重置密码: {target.username}（该用户其它会话将被强制登出）',
+                )
+                # 密码指纹机制会使该用户其它会话在下次请求时被强制登出
+                messages.success(request, f"「{target.username}」的密码已重置。")
+                return redirect("accounts:user_list")
     else:
         form = AdminResetPasswordForm()
     return render(request, "accounts/user_reset_password.html", {"form": form, "target": target})
@@ -313,15 +359,16 @@ def role_list_view(request):
 
 
 def _save_role_permissions(role, raw_codes):
-    """校验并整体替换角色权限；非法 code 返回错误信息字符串，成功返回 None。"""
-    valid_codes = set(all_permission_codes())
-    chosen = {c for c in raw_codes if c}
-    illegal = chosen - valid_codes
-    if illegal:
-        return f"检测到非法权限码，已拒绝保存：{', '.join(sorted(illegal))}"
-    with transaction.atomic():
-        perms = Permission.objects.filter(code__in=chosen)
-        role.permissions.set(perms)
+    """校验并整体替换角色权限；非法 code 返回错误信息字符串，成功返回 None。
+
+    规则本体在 ``accounts.user_admin.save_role_permissions``（与 DRF 端共用），
+    这里只是把异常转成页面需要的「错误文案」返回值。
+    保留此薄封装是为了兼容页面侧既有调用点与潜在的外部引用。
+    """
+    try:
+        ua.save_role_permissions(role, raw_codes)
+    except ua.AccountRuleError as exc:
+        return str(exc)
     return None
 
 
@@ -336,24 +383,29 @@ def role_create_view(request):
         if form.is_valid() and Role.objects.filter(code__iexact=code).exists():
             form.add_error("code", "角色编码已存在。")
         if form.is_valid():
-            with transaction.atomic():
-                role = Role.objects.create(
+            try:
+                # 编码唯一、禁止建内置角色、权限码合法性校验全在共用规则里，
+                # 任一失败都在写入前抛出（不会留下半成品角色）
+                role = ua.create_role(
                     code=form.cleaned_data["code"],
                     name=form.cleaned_data["name"],
                     description=form.cleaned_data.get("description", ""),
                     is_active=form.cleaned_data.get("is_active", False),
-                    is_builtin=False,
+                    permission_codes=request.POST.getlist("perms"),
                 )
-                err = _save_role_permissions(role, request.POST.getlist("perms"))
-                if err:
-                    transaction.set_rollback(True)
-                    illegal_err = err
-                    messages.error(request, err)
-                else:
-                    messages.success(request, f"角色「{role.name}」创建成功。")
-                    if is_ajax:
-                        return JsonResponse({"ok": True, "message": f"角色「{role.name}」创建成功"})
-                    return redirect("accounts:role_list")
+            except ua.AccountRuleError as err:
+                illegal_err = str(err)
+                messages.error(request, illegal_err)
+            else:
+                log_operation(
+                    request, AUDIT_MODULE, '新增', f'角色#{role.id}（{role.code}）',
+                    f'创建角色: {role.name}（{role.code}），权限数: {role.permissions.count()}',
+                    after=snapshot(role),
+                )
+                messages.success(request, f"角色「{role.name}」创建成功。")
+                if is_ajax:
+                    return JsonResponse({"ok": True, "message": f"角色「{role.name}」创建成功"})
+                return redirect("accounts:role_list")
         if is_ajax:
             if illegal_err:
                 return _modal_message(illegal_err)
@@ -381,17 +433,26 @@ def role_edit_view(request, role_id):
         form = RoleForm(request.POST)
         if form.is_valid():
             # code 永不修改（内置/自定义均如此）；内置角色仅开放权限矩阵，
-            # 名称/说明/启停保持锁定；sync_rbac 默认不再重置内置角色权限
-            err = _save_role_permissions(role, request.POST.getlist("perms"))
-            if err:
-                illegal_err = err
-                messages.error(request, err)
+            # 名称/说明/启停保持锁定 —— 两条不变式都在 update_role 里实现
+            before_snap = snapshot(role)
+            old_perm_count = role.permissions.count()
+            try:
+                ua.update_role(
+                    role,
+                    name=form.cleaned_data["name"],
+                    description=form.cleaned_data.get("description", ""),
+                    is_active=form.cleaned_data.get("is_active", False),
+                    permission_codes=request.POST.getlist("perms"),
+                )
+            except ua.AccountRuleError as err:
+                illegal_err = str(err)
+                messages.error(request, illegal_err)
             else:
-                if not role.is_builtin:
-                    role.name = form.cleaned_data["name"]
-                    role.description = form.cleaned_data.get("description", "")
-                    role.is_active = form.cleaned_data.get("is_active", False)
-                role.save()
+                log_operation(
+                    request, AUDIT_MODULE, '更新', f'角色#{role.id}（{role.code}）',
+                    f'编辑角色: {role.name}（权限 {old_perm_count} → {role.permissions.count()} 个）',
+                    before=before_snap, after=snapshot(role),
+                )
                 messages.success(request, f"角色「{role.name}」权限已更新。")
                 if is_ajax:
                     return JsonResponse({"ok": True, "message": f"角色「{role.name}」权限已更新"})
@@ -424,11 +485,18 @@ def role_edit_view(request, role_id):
 @require_http_methods(["POST"])
 def role_delete_view(request, role_id):
     role = get_object_or_404(Role, pk=role_id)
-    if role.is_builtin:
-        return _forbidden(request)
-    user_count = role.users.count()
     role_name = role.name
-    role.delete()
+    before_snap = snapshot(role)
+    try:
+        # 内置角色拒绝删除（与 DRF 端同一规则）
+        user_count = ua.delete_role(role)
+    except ua.AccountRuleError:
+        return _forbidden(request)
+    log_operation(
+        request, AUDIT_MODULE, '删除', f'角色#{role_id}（{role.code}）',
+        f'删除角色: {role_name}（原关联 {user_count} 个用户，删除前快照见 before）',
+        before=before_snap,
+    )
     messages.success(request, f"角色「{role_name}」已删除，已解除与 {user_count} 个用户的关联。")
     return redirect("accounts:role_list")
 

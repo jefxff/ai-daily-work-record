@@ -21,6 +21,7 @@ from django.utils import timezone
 
 from accounts.decorators import perm_required
 from records.crud import _per_page
+from records.audit import log_operation
 from records.models import OperationLog
 
 from .forms import AnnualReviewForm, LicenseBorrowForm, LicenseForm
@@ -36,13 +37,9 @@ logger = logging.getLogger(__name__)
 
 
 def _license_log(request, op_type: str, obj_id: str, summary: str):
-    """写入证照操作留痕。"""
-    OperationLog.objects.create(
-        operator=_operator(request),
-        module_type="证照管理",
-        operation_type=op_type,
-        object_identifier=obj_id,
-        change_summary=summary,
+    """写入证照操作留痕（复用 records.audit 的统一写入点，操作人姓名优先）。"""
+    log_operation(
+        request, "证照管理", op_type, obj_id, summary, prefer_real_name=True,
     )
 
 
@@ -229,7 +226,8 @@ def annual_review_create(request, license_pk):
             + ("（续期至 %s）" % lic.expire_date if renewed else "（未变更有效期）"),
         )
         if review.result == "failed":
-            _notify_review_failed(lic, review)
+            # 通知延迟到事务提交后（失败回滚时不应发出「年审未通过」通知）——审查 H2
+            transaction.on_commit(lambda: _notify_review_failed(lic, review))
         if _is_ajax(request):
             return JsonResponse({"ok": True, "message": notice, "renewed": renewed})
         messages.info(request, notice)

@@ -17,6 +17,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from accounts.decorators import perm_required
+from records.audit import log_operation
 from work_record.http_utils import is_ajax as _is_ajax  # 统一实现（复核报告 CODE-01）
 from work_record.http_utils import per_page as _shared_per_page
 
@@ -116,6 +117,11 @@ def notification_revoke(request, pk):
 
     notification = get_object_or_404(Notification, pk=pk)
     count = services.revoke(notification, request.user)
+    if count:
+        log_operation(
+            request, "通知中心", '撤回', f'通知#{notification.pk}（{notification.title[:50]}）',
+            f'撤回通知「{notification.title[:80]}」，共撤回 {count} 条',
+        )
     if _is_ajax(request):
         return JsonResponse(
             {"ok": bool(count), "message": f"已撤回 {count} 条通知" if count else "该通知当前状态不可撤回"},
@@ -226,6 +232,11 @@ def preference_edit(request):
         prefs.quiet_start = request.POST.get("quiet_start") or None
         prefs.quiet_end = request.POST.get("quiet_end") or None
         prefs.save()
+        log_operation(
+            request, "通知中心", '偏好修改', f'用户#{request.user.id}（{request.user.username}）',
+            f'修改通知偏好: 邮件开关={prefs.channel_prefs}, 聚合窗口={prefs.agg_window_minutes}分钟, '
+            f'免打扰={prefs.quiet_start}~{prefs.quiet_end}',
+        )
         if _is_ajax(request):
             return JsonResponse({"ok": True, "message": "通知偏好已保存"})
         messages.success(request, "通知偏好已保存")
@@ -263,6 +274,10 @@ def announce(request):
         count = services.announce(
             title, content, created_by=request.user,
             link=link, priority=priority, expires_days=expires_days,
+        )
+        log_operation(
+            request, "通知中心", '发布公告', f'公告「{title[:80]}」',
+            f'发布系统公告「{title[:80]}」，推送给 {count} 位用户（优先级: {priority}）',
         )
         if _is_ajax(request):
             return JsonResponse({"ok": True, "message": f"公告已推送给 {count} 位用户"})
@@ -357,6 +372,10 @@ def scheduled_task_update(request, pk):
     task.save(update_fields=[
         "enabled", "trigger_type", "run_time", "interval_minutes", "params", "updated_at",
     ])
+    log_operation(
+        request, "通知中心", '任务配置', f'定时任务#{task.pk}（{task.code}）',
+        f'修改定时任务「{task.name}」配置: 启用={enabled}, 触发={trigger_type}, 参数={params}',
+    )
     if _is_ajax(request):
         return JsonResponse({"ok": True, "message": f"「{task.name}」配置已保存"})
     messages.success(request, f"「{task.name}」配置已保存")
@@ -375,6 +394,10 @@ def scheduled_task_run(request, pk):
         messages.error(request, message)
         return redirect("notifications:list")
     summary = f"「{task.name}」执行{'成功' if ok else '失败'}：{_task_summary(message)}"
+    log_operation(
+        request, "通知中心", '手动执行', f'定时任务#{task.pk}（{task.code}）',
+        f'手动执行定时任务「{task.name}」: {"成功" if ok else "失败"}，{_task_summary(message)}',
+    )
     if _is_ajax(request):
         return JsonResponse({"ok": bool(ok), "message": summary}, status=200 if ok else 422)
     (messages.success if ok else messages.error)(request, summary)

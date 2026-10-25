@@ -16,7 +16,7 @@ import time
 from django.db import IntegrityError, models, transaction
 from django.utils import timezone
 
-from records.models import OperationLog as RecordsOperationLog
+from records.audit import write_operation
 
 from . import serialno
 from .models import BatchRecord, Partner, ProofAttachment, Sample, TestRecord
@@ -79,11 +79,13 @@ _ACTION_TYPE_MAP = {
 
 
 def _log(operator, action, target_type, target_repr, summary, ip=None):
-    """写入系统统一操作留痕（records.OperationLog，模块固定为「试样管理」）。
+    """写入系统统一操作留痕（模块固定为「试样管理」）。
 
+    统一走 ``records.audit.write_operation``（全站唯一写入点），本函数只负责把
+    业务动作枚举转成中文动作名、拼对象标识。
     ip 参数保留以兼容既有调用点；records.OperationLog 无 IP 字段，暂不落库。
     """
-    RecordsOperationLog.objects.create(
+    write_operation(
         operator=(operator or "").strip(),
         module_type="试样管理",
         operation_type=_ACTION_TYPE_MAP.get(action, "编辑"),
@@ -199,12 +201,21 @@ def _resync_sample_status(sample, operator, ip=None, context=""):
         ip,
     )
     if new_status == Sample.Status.TERMINATED:
-        notify_sample_terminated(sample)
+        # 通知属外部副作用：必须等事务提交后再发，否则外层回滚后通知照发
+        # （收到通知去看，样品并没有被终止）——审查 H2。
+        transaction.on_commit(lambda: notify_sample_terminated(sample))
     return True
 
 
 def notify_sample_terminated(sample):
-    """样品终止后通知 samples.read 用户（失败仅记日志，不影响主流程）。"""
+    """样品终止后通知 samples.read 用户（失败仅记日志，不影响主流程）。
+
+    收件人 = 持有 samples.read 权限的用户（通常个位数）。这里保留逐人
+    ``emit()``：emit 内部要按「人」做幂等去重（dedup_key = 模板+收件人+业务键）
+    与聚合降噪计数，批量写会绕过这两条语义，收益远小于风险。
+    真正会放大的批量路径是「系统公告」，已在 notifications.services.announce()
+    改成偏好预取 + bulk_create（审查 H3）。
+    """
     try:
         from notifications import services as notify_svc
 
@@ -440,7 +451,8 @@ def terminate_sample(sample, operator, reason, ip=None):
         f"手动终止：状态「{old_status}」→「已终止」，终止原因：{reason}",
         ip,
     )
-    notify_sample_terminated(sample)
+    # 通知延迟到事务提交后（与 _resync_sample_status 口径一致，见审查 H2）
+    transaction.on_commit(lambda: notify_sample_terminated(sample))
 
 
 # ---------------------------------------------------------------------------
