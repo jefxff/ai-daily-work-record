@@ -15,4 +15,17 @@
         }
         return value;
     };
+    /**
+     * CSRF token 统一出口（UI 反馈 #3/#5）：
+     * HTTPS 模式下 cookie 名是 __Host-csrftoken（settings 加固），
+     * HTTP 模式是 csrftoken。此前各处只读 csrftoken，
+     * 8443 HTTPS 下 fetch 带空 token → 全部 POST 403
+     * （金属价格刷新、一键备份、每日记录筛选等均命中）。
+     * 新代码一律用 window.getCsrfToken()，不要再直接 getCookie('csrftoken')。
+     */
+    window.getCsrfToken = function () {
+        return window.getCookie('csrftoken')
+            || window.getCookie('__Host-csrftoken')
+            || '';
+    };
 })();

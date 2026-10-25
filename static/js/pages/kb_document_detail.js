@@ -39,7 +39,7 @@
             // Django 的 request.POST 不解析 text/plain，会拿到空值报 400
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-                'X-CSRFToken': getCookie('csrftoken') || csrf,
+                'X-CSRFToken': getCsrfToken() || csrf,
                 'X-Requested-With': 'XMLHttpRequest'
             },
             body: body.toString(),

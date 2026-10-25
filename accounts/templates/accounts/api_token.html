@@ -232,7 +232,7 @@
             btn.textContent = '生成中…';
             fetch(genUrl, {
                 method: 'POST',
-                headers: { 'X-CSRFToken': getCookie('csrftoken') || csrf, 'X-Requested-With': 'XMLHttpRequest' },
+                headers: { 'X-CSRFToken': getCsrfToken() || csrf, 'X-Requested-With': 'XMLHttpRequest' },
                 body: new URLSearchParams({})
             }).then(function (resp) {
                 return resp.text().then(function (txt) {

@@ -360,7 +360,7 @@
                         var fd = new FormData(form);
                         fetch(form.action, {
                             method: 'POST',
-                            headers: { 'X-CSRFToken': getCookie('csrftoken'), 'X-Requested-With': 'XMLHttpRequest' },
+                            headers: { 'X-CSRFToken': getCsrfToken(), 'X-Requested-With': 'XMLHttpRequest' },
                             body: fd
                         }).then(function (resp) {
                             var ct = resp.headers.get('content-type') || '';

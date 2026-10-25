@@ -268,7 +268,7 @@
                 fd.append('visibility', 'private');
                 fetch(kbSyncBtn.dataset.url, {
                     method: 'POST',
-                    headers: { 'X-CSRFToken': getCookie('csrftoken') || '{{ csrf_token }}', 'X-Requested-With': 'XMLHttpRequest' },
+                    headers: { 'X-CSRFToken': getCsrfToken() || '{{ csrf_token }}', 'X-Requested-With': 'XMLHttpRequest' },
                     body: fd,
                     keepalive: true
                 })

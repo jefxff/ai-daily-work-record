@@ -275,11 +275,8 @@
 {% block extra_js %}
 <script>
 (function () {
-    var csrftoken = null;
-    document.cookie.split(';').forEach(function (c) {
-        var p = c.trim().split('=');
-        if (p[0] === 'csrftoken') csrftoken = decodeURIComponent(p[1] || '');
-    });
+    // HTTPS 模式下 cookie 名是 __Host-csrftoken（此前只读 csrftoken → 一键备份 403，UI 反馈 #5）
+    var csrftoken = window.getCsrfToken ? window.getCsrfToken() : (window.getCookie('csrftoken') || '');
 
     var $ = function (id) { return document.getElementById(id); };
 

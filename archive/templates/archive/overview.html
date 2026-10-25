@@ -462,7 +462,7 @@
         fetch(row.getAttribute('data-move-url'), {
             method: 'POST',
             headers: {
-                'X-CSRFToken': getCookie('csrftoken'),
+                'X-CSRFToken': getCsrfToken(),
                 'X-Requested-With': 'XMLHttpRequest',
                 'Content-Type': 'application/x-www-form-urlencoded'
             },
