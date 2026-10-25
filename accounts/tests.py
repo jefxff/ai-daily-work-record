@@ -597,3 +597,32 @@ class AdminAuditTrailTests(TestCase):
         s2.save()
         c.post(reverse("accounts:session_revoke_others"))
         self.assertTrue(self._logs(operation_type="撤销会话").exists())
+
+
+class SessionListNaiveDatetimeTests(TestCase):
+    """会话页兼容历史 naive 登录时间（UI 反馈：/accounts/sessions/ 500）。
+
+    旧版本写入会话的 login_ts 是无时区 ISO 字符串，与 timezone.now()（aware）
+    排序比较会抛 TypeError。修复后 _parse_dt 统一升级为 aware。
+    """
+
+    def setUp(self):
+        self.root = User.objects.create_superuser("sess_root", "s@e.com", "x12345678")
+        self.client = Client()
+        self.client.force_login(self.root)
+
+    def test_naive_login_ts_does_not_crash(self):
+        # 手工构造一条 naive login_ts 的历史会话
+        from django.contrib.sessions.backends.db import SessionStore
+        from django.utils.timezone import datetime
+        s = SessionStore()
+        s["_auth_user_id"] = str(self.root.pk)
+        s["login_ts"] = datetime(2026, 10, 1, 8, 0, 0).isoformat()
+        s.save()
+        resp = self.client.get(reverse("accounts:sessions"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "sess_root")
+
+    def test_aware_login_ts_still_works(self):
+        resp = self.client.get(reverse("accounts:sessions"))
+        self.assertEqual(resp.status_code, 200)

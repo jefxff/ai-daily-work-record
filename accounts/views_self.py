@@ -35,10 +35,21 @@ def password_done_view(request):
 
 
 def _parse_dt(value):
+    """解析会话里存的登录时间（ISO 字符串）。
+
+    历史会话可能存的是**无时区**的 naive datetime（审计修复前写入），
+    与 timezone.now()（aware）比较会抛 TypeError → 会话页 500。
+    这里统一把 naive 升级为当前时区的 aware 时间。
+    """
     try:
-        return timezone.datetime.fromisoformat(value) if value else None
+        dt = timezone.datetime.fromisoformat(value) if value else None
     except (ValueError, TypeError):
         return None
+    if dt is None:
+        return None
+    if timezone.is_naive(dt):
+        dt = timezone.make_aware(dt, timezone.get_current_timezone())
+    return dt
 
 
 def _user_sessions(user):
