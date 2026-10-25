@@ -7,6 +7,7 @@ import uuid
 from datetime import date, datetime, time
 from decimal import Decimal
 
+from .audit_vocab import normalize_action, normalize_module
 from .models import OperationLog
 
 # 单个字段值保留的最大字符数：知识库正文等大字段截断，避免留痕表被撑爆
@@ -69,18 +70,62 @@ def operator_from_request(request, *, prefer_real_name=False):
     return request.META.get('REMOTE_ADDR', '未知')
 
 
+def _resolve_username(display_name):
+    """展示名 → 登录账号（尽力而为，无法唯一确定时返回空串）。
+
+    为什么需要：``OperationLog.operator`` 存的是**展示名**，各模块口径不同 ——
+    多数记用户名，档案/证照/试样记 Profile 姓名。于是同一个人的操作在审计表里
+    变成「张三」和「zhangsan」两条，按操作人聚合的异常检测（单小时高频、导出
+    爆发）会把一个人拆成两个人，阈值永远打不到（一致性审计 P0-2）。
+
+    写入时顺手把账号补齐，聚合统一按 ``operator_username``，展示仍用 ``operator``。
+    姓名重名时不猜（返回空串），聚合回退到展示名 —— 宁可少合并，不要错合并。
+    """
+    display_name = (display_name or "").strip()
+    if not display_name:
+        return ""
+    from django.contrib.auth.models import User
+
+    if User.objects.filter(username=display_name).exists():
+        return display_name
+    from accounts.models import UserProfile
+
+    candidates = list(
+        UserProfile.objects.filter(real_name=display_name)
+        .values_list("user__username", flat=True)[:2]
+    )
+    return candidates[0] if len(candidates) == 1 else ""
+
+
+def operator_identity(request, *, prefer_real_name=False):
+    """返回 ``(展示名, 登录账号)``：账号用于聚合，展示名用于显示。"""
+    display = operator_from_request(request, prefer_real_name=prefer_real_name)
+    user = getattr(request, 'user', None) if request else None
+    if user is not None and getattr(user, 'is_authenticated', False):
+        return display, user.get_username()
+    return display, ""
+
+
 def write_operation(operator, module_type, operation_type, object_identifier,
-                    change_summary='', before=None, after=None):
+                    change_summary='', before=None, after=None,
+                    operator_username=""):
     """全站唯一的操作留痕写入点。
 
-    各模块的 ``_log`` 封装（samples / archive 等）都应走这里，而不是自己
-    ``OperationLog.objects.create(...)`` —— 否则字段口径（空值处理、快照序列化）
-    会各写一份，日后加字段就得改 N 处。
+    各模块的 ``_log`` 封装（samples / archive / sysbackup 等）都应走这里，而不是
+    自己 ``OperationLog.objects.create(...)`` —— 否则字段口径（空值处理、快照序列化、
+    词表归一）会各写一份，日后加字段就得改 N 处。
+
+    模块名与动作名在此统一折叠成标准词（``records.audit_vocab``）：
+    历史行不动，新行从此一致；查询与审计规则用 ``expand_*`` 兼容旧词。
     """
+    operator = (operator or '未知').strip() or '未知'
+    if not operator_username:
+        operator_username = _resolve_username(operator)
     OperationLog.objects.create(
-        operator=operator or '未知',
-        module_type=module_type,
-        operation_type=operation_type,
+        operator=operator,
+        operator_username=operator_username,
+        module_type=normalize_module(module_type),
+        operation_type=normalize_action(operation_type),
         object_identifier=object_identifier,
         change_summary=change_summary or '',
         before_json=before,
@@ -91,13 +136,13 @@ def write_operation(operator, module_type, operation_type, object_identifier,
 def log_operation(request, module_type, operation_type, object_identifier,
                   change_summary='', before=None, after=None, *,
                   prefer_real_name=False):
-    """记录操作留痕：优先记录登录用户名，未登录时 fallback 到 IP 地址。
+    """记录操作留痕：展示名按口径取姓名/用户名，账号单独落库（供聚合）。
 
     before / after 为 ``snapshot()`` 归一后的字典（可为 None）：
     新增仅传 after、删除仅传 before、编辑两者都传；导出等无实体变更的动作不传。
     """
+    display, username = operator_identity(request, prefer_real_name=prefer_real_name)
     write_operation(
-        operator_from_request(request, prefer_real_name=prefer_real_name),
-        module_type, operation_type, object_identifier,
-        change_summary, before, after,
+        display, module_type, operation_type, object_identifier,
+        change_summary, before, after, operator_username=username,
     )

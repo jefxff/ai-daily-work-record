@@ -462,6 +462,14 @@ class OperationLog(models.Model):
     """操作留痕模型"""
     operation_time = models.DateTimeField(auto_now_add=True, verbose_name='操作时间')
     operator = models.CharField(max_length=100, verbose_name='操作人')
+    # 操作人账号（用于聚合与追责）：operator 是**展示名**，可能记的是姓名，
+    # 同一个人的操作会因入口不同被记成「张三」和「zhangsan」两条
+    # （一致性审计 P0-2）。账号列不参与展示，只用于查询/统计分组。
+    # 空值表示历史行或非登录来源（如 API Token 前的匿名 IP），聚合时回退到 operator。
+    operator_username = models.CharField(
+        max_length=150, blank=True, default="", db_index=True,
+        verbose_name='操作人账号',
+    )
     module_type = models.CharField(max_length=50, verbose_name='模块类型')
     operation_type = models.CharField(max_length=20, verbose_name='操作类型')
     object_identifier = models.CharField(max_length=200, verbose_name='对象标识')

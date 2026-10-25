@@ -20,13 +20,14 @@
 """
 from datetime import timedelta
 
-from django.db.models import Count, Q
-from django.db.models.functions import TruncDate, TruncHour
+from django.db.models import Count, F, Q, Value
+from django.db.models.functions import Coalesce, NullIf, TruncDate, TruncHour
 from django.shortcuts import render
 from django.utils import timezone
 
 from accounts.decorators import perm_required
 
+from .audit_vocab import DELETE_ACTIONS, EXPORT_ACTIONS, UPDATE_ACTIONS
 from .models import OperationLog
 
 # 阈值集中定义，便于测试与后续调整
@@ -38,6 +39,18 @@ EXPORT_BURST_THRESHOLD = 10      # 同一操作人 1 小时内导出条数上限
 DEFAULT_DAYS = 7
 MIN_DAYS = 1
 MAX_DAYS = 90
+
+
+def _with_actor(qs):
+    """按「账号优先、展示名兜底」附加聚合键 ``actor``。
+
+    为什么不能直接按 ``operator`` 分组：那列是展示名，各模块口径不同（多数是
+    用户名，档案/证照/试样是姓名），同一个人会被拆成两组，阈值判定失真
+    （一致性审计 P0-2）。历史行没回填到账号时自动回退到展示名。
+    """
+    return qs.annotate(
+        actor=Coalesce(NullIf(F("operator_username"), Value("")), F("operator"))
+    )
 
 
 def _clamp_days(raw):
@@ -58,9 +71,9 @@ def audit_anomalies(request):
 
     # 1. 删除爆发：同一操作人 1 小时内删除条数 > 阈值
     delete_bursts = list(
-        base.filter(operation_type="删除")
+        _with_actor(base.filter(operation_type__in=DELETE_ACTIONS))
         .annotate(hour=TruncHour("operation_time"))
-        .values("operator", "hour")
+        .values("actor", "hour")
         .annotate(cnt=Count("id"))
         .filter(cnt__gt=DELETE_BURST_THRESHOLD)
         .order_by("-cnt")
@@ -73,10 +86,10 @@ def audit_anomalies(request):
         & Q(operation_time__week_day__in=[2, 3, 4, 5, 6])
     )
     off_hours = list(
-        base.filter(operation_type__in=["删除", "编辑"])
+        _with_actor(base.filter(operation_type__in=DELETE_ACTIONS + UPDATE_ACTIONS))
         .exclude(business_hours)
         .annotate(day=TruncDate("operation_time"))
-        .values("operator", "day")
+        .values("actor", "day")
         .annotate(cnt=Count("id"))
         .filter(cnt__gte=OFF_HOURS_BATCH_THRESHOLD)
         .order_by("-cnt")
@@ -84,8 +97,9 @@ def audit_anomalies(request):
 
     # 3. 单小时高频操作：同一操作人 1 小时内操作总数 > 阈值
     high_freq = list(
-        base.annotate(hour=TruncHour("operation_time"))
-        .values("operator", "hour")
+        _with_actor(base)
+        .annotate(hour=TruncHour("operation_time"))
+        .values("actor", "hour")
         .annotate(cnt=Count("id"))
         .filter(cnt__gt=HIGH_FREQ_THRESHOLD)
         .order_by("-cnt")
@@ -93,9 +107,9 @@ def audit_anomalies(request):
 
     # 4. 导出爆发：同一操作人 1 小时内导出条数 > 阈值
     export_bursts = list(
-        base.filter(operation_type="导出")
+        _with_actor(base.filter(operation_type__in=EXPORT_ACTIONS))
         .annotate(hour=TruncHour("operation_time"))
-        .values("operator", "hour")
+        .values("actor", "hour")
         .annotate(cnt=Count("id"))
         .filter(cnt__gt=EXPORT_BURST_THRESHOLD)
         .order_by("-cnt")

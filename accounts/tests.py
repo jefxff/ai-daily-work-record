@@ -561,7 +561,7 @@ class AdminAuditTrailTests(TestCase):
         c.post(reverse("accounts:user_edit", args=[u.pk]), {
             "real_name": "审计一号改", "is_active": "on",
         })
-        self.assertTrue(self._logs(operation_type="更新", object_identifier__contains="audit_u1").exists())
+        self.assertTrue(self._logs(operation_type="编辑", object_identifier__contains="audit_u1").exists())
 
         c.post(reverse("accounts:user_toggle", args=[u.pk]), {"active": "false"})
         self.assertTrue(self._logs(operation_type="停用", object_identifier__contains="audit_u1").exists())
@@ -582,7 +582,7 @@ class AdminAuditTrailTests(TestCase):
         c.post(reverse("accounts:role_edit", args=[role.pk]), {
             "code": "audit_role", "name": "审计角色改", "description": "", "is_active": "on",
         })
-        self.assertTrue(self._logs(operation_type="更新", object_identifier__contains="audit_role").exists())
+        self.assertTrue(self._logs(operation_type="编辑", object_identifier__contains="audit_role").exists())
 
         c.post(reverse("accounts:role_delete", args=[role.pk]))
         self.assertTrue(self._logs(operation_type="删除", object_identifier__contains="audit_role").exists())

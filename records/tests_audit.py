@@ -81,7 +81,8 @@ class AuditAnomaliesTests(TestCase):
         return c
 
     def _hits_operator(self, rows, operator):
-        return any(row["operator"] == operator for row in rows)
+        # 分组键是 actor（账号优先、展示名兜底）：测试里没有账号，回退到 operator
+        return any((row.get("actor") or row.get("operator")) == operator for row in rows)
 
     # ---------- 1. 命中 / 不命中 ----------
     def test_delete_burst_hit_and_miss(self):
@@ -224,3 +225,70 @@ class OperationSnapshotTests(TestCase):
                       before={"work_content": "内容"}, after=None)
         log = OperationLog.objects.filter(operation_type="删除").get()
         self.assertEqual(log.change_diff, [("work_content", "内容", None)])
+
+
+class AuditVocabTests(TestCase):
+    """留痕词表单一事实源（一致性审计 P0-1 / P0-2）。
+
+    锁定三件事：
+    1. 写入时把同义词折叠成标准词（历史行不改，新行一致）；
+    2. 查询/规则展开同义词，历史行照样命中（不需要数据回填）；
+    3. 操作人账号单独落库：展示名口径不同也能按同一个人聚合。
+    """
+
+    def test_write_normalizes_synonyms(self):
+        from records.audit import write_operation
+
+        write_operation("tester", "样品", "更新", "样品#1", "旧词写入")
+        write_operation("tester", "档案", "文档创建", "档案#1", "旧词写入")
+        log = OperationLog.objects.latest("id")
+        self.assertEqual(log.operation_type, "新增")
+        self.assertEqual(log.module_type, "档案管理")
+        prev = OperationLog.objects.exclude(pk=log.pk).latest("id")
+        self.assertEqual(prev.operation_type, "编辑")     # 更新 → 编辑
+        self.assertEqual(prev.module_type, "试样管理")    # 样品 → 试样管理
+
+    def test_expand_covers_legacy_values(self):
+        from records import audit_vocab as v
+
+        self.assertIn("编辑", v.expand_action("编辑"))
+        self.assertIn("更新", v.expand_action("编辑"), "历史行里的「更新」必须仍可被筛出")
+        self.assertIn("文档编辑", v.expand_action("编辑"))
+        self.assertIn("删除", v.expand_action("删除"))
+        self.assertIn("档案", v.expand_module("档案管理"))
+        self.assertIn("导出", v.EXPORT_ACTIONS)
+
+    def test_filter_callables_match_legacy_rows(self):
+        from records import audit_vocab as v
+
+        OperationLog.objects.create(operator="x", module_type="档案", operation_type="更新",
+                                    object_identifier="档案#1", change_summary="历史行")
+        qs = OperationLog.objects.all()
+        self.assertEqual(v.filter_by_module(qs, "档案管理").count(), 1)
+        self.assertEqual(v.filter_by_action(qs, "编辑").count(), 1)
+        self.assertEqual(v.filter_by_action(qs, "").count(), 1)   # 空值不过滤
+
+    def test_operator_username_recorded_even_with_real_name_display(self):
+        """展示名记姓名时，账号列仍要落下 —— 否则聚合会把一个人拆成两个。"""
+        from accounts.models import UserProfile
+
+        user = User.objects.create_user("audit_p1", "p1@e.com", PWD, is_active=True)
+        UserProfile.objects.create(user=user, real_name="审计一号")
+
+        rf = RequestFactory()
+        req = rf.post("/x/")
+        req.user = user
+        from records.audit import log_operation
+
+        log_operation(req, "档案管理", "编辑", "档案#9", "按姓名展示", prefer_real_name=True)
+        log = OperationLog.objects.latest("id")
+        self.assertEqual(log.operator, "审计一号")
+        self.assertEqual(log.operator_username, "audit_p1")
+
+    def test_industry_vocab_includes_notification_module(self):
+        """下拉里必须有「通知中心」，否则通知模块的留痕在页面上筛不出来。"""
+        from records import audit_vocab as v
+
+        self.assertIn("通知中心", v.MODULE_CHOICES)
+        self.assertIn("任务配置", v.ACTION_CHOICES)
+        self.assertIn("重置密码", v.ACTION_CHOICES)

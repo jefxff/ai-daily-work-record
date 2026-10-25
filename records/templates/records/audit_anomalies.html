@@ -44,7 +44,7 @@
                 <tbody>
                     {% for row in delete_bursts %}
                     <tr>
-                        <td data-label="操作人">{{ row.operator }}</td>
+                        <td data-label="操作人">{{ row.actor }}</td>
                         <td data-label="小时">{{ row.hour|date:'Y-m-d H:00' }}</td>
                         <td data-label="删除条数"><span class="status-badge danger">{{ row.cnt }}</span></td>
                     </tr>
@@ -76,7 +76,7 @@
                 <tbody>
                     {% for row in off_hours %}
                     <tr>
-                        <td data-label="操作人">{{ row.operator }}</td>
+                        <td data-label="操作人">{{ row.actor }}</td>
                         <td data-label="日期">{{ row.day|date:'Y-m-d' }}</td>
                         <td data-label="条数"><span class="status-badge warning">{{ row.cnt }}</span></td>
                     </tr>
@@ -108,7 +108,7 @@
                 <tbody>
                     {% for row in high_freq %}
                     <tr>
-                        <td data-label="操作人">{{ row.operator }}</td>
+                        <td data-label="操作人">{{ row.actor }}</td>
                         <td data-label="小时">{{ row.hour|date:'Y-m-d H:00' }}</td>
                         <td data-label="条数"><span class="status-badge info">{{ row.cnt }}</span></td>
                     </tr>
@@ -140,7 +140,7 @@
                 <tbody>
                     {% for row in export_bursts %}
                     <tr>
-                        <td data-label="操作人">{{ row.operator }}</td>
+                        <td data-label="操作人">{{ row.actor }}</td>
                         <td data-label="小时">{{ row.hour|date:'Y-m-d H:00' }}</td>
                         <td data-label="导出次数"><span class="status-badge warning">{{ row.cnt }}</span></td>
                     </tr>

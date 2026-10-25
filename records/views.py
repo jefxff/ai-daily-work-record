@@ -7,6 +7,7 @@ from django.db.models.functions import TruncDate
 from datetime import date, datetime, timedelta
 from .models import Decoration, CustomerCredit, CustomerComplaint, Regulation, PriceEvaluation, DailyRecord, MetalPrice, Insurance, Complaint, OperationLog
 from .forms import DecorationForm, CustomerCreditForm, CustomerComplaintForm, CustomerComplaintClosureForm, RegulationForm, PriceEvaluationForm, InsuranceForm, ComplaintForm
+from . import audit_vocab
 from .audit import log_operation, snapshot
 from .crud import make_delete_view, make_export_view, make_form_view, make_list_view
 from . import insurance_grouping, insurance_services
@@ -782,21 +783,23 @@ def complaint_advance(request, pk):
     return redirect('complaint_detail', pk=pk)
 
 
-# 操作留痕视图（固定每页 20 条；搜索不剥离空白，筛选值原样过滤）
+# 操作留痕视图（搜索不剥离空白；每页 10/30/50 与全站一致）
+#
+# 模块名/动作名的下拉与筛选**都来自 records.audit_vocab**（单一事实源）：
+# 此前下拉是硬编码列表，已经落后于实际词表 —— 缺「通知中心」模块，也缺
+# 重置密码/撤销会话/发布公告/任务配置等动作，导致新补的留痕在页面上筛不出来。
+# 筛选走 expand_*，历史行里的「更新」「文档创建」「样品」等旧词同样命中。
 operation_log_list = make_list_view(
     perm_module='system', template_name='records/operation_log_list.html',
-    page_var='logs', model=OperationLog, per_page=20,
-    search_fields=['operator', 'object_identifier', 'change_summary'],
+    page_var='logs', model=OperationLog,
+    search_fields=['operator', 'operator_username', 'object_identifier', 'change_summary'],
     filters=[
-        ('module_type', 'module_type', None, 'module_filter'),
-        ('operation_type', 'operation_type', None, 'operation_filter'),
+        ('module_type', audit_vocab.filter_by_module, None, 'module_filter'),
+        ('operation_type', audit_vocab.filter_by_action, None, 'operation_filter'),
     ],
     extra_context={
-        'module_choices': ['每日记录', '装修', '客户账期', '客户客诉', '诉讼',
-                           '制度及处罚', '核价', '保险', '金属价格', '数据展示', '数据下载', '知识库',
-                           '档案管理', '证照管理', '试样管理', '到期预警', '系统管理'],
-        'operation_choices': ['新增', '更新', '删除', '编辑', '状态变更', '导入', '导出',
-                              '下载', '备份', '恢复', '借阅', '归还', '移动', '年审'],
+        'module_choices': audit_vocab.MODULE_CHOICES,
+        'operation_choices': audit_vocab.ACTION_CHOICES,
     },
 )
 

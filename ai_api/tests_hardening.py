@@ -61,7 +61,7 @@ class AuditTrailTests(TestCase):
         )
         self.assertEqual(resp.status_code, 200)
         log = self._last_log()
-        self.assertEqual(log.operation_type, "更新")
+        self.assertEqual(log.operation_type, "编辑")  # 词表归一：更新→编辑
         self.assertIn("考勤制度（修订）", log.change_summary)
 
     def test_delete_writes_audit_log(self):
@@ -88,7 +88,7 @@ class AuditTrailTests(TestCase):
 
         view._write_audit("更新", 1, "编辑样品: S2601001")
         log = OperationLog.objects.filter(module_type="试样管理").order_by("-id").first()
-        self.assertEqual(log.operation_type, "更新")
+        self.assertEqual(log.operation_type, "编辑")  # 词表归一：更新→编辑
 
         view._write_audit("删除", 1, "删除样品: S2601001")
         log = OperationLog.objects.filter(module_type="试样管理").order_by("-id").first()
