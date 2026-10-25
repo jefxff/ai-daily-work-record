@@ -11,10 +11,20 @@ from urllib.parse import quote
 
 from django.conf import settings
 from django.contrib.auth import logout as auth_logout
-from django.http import JsonResponse, HttpResponseRedirect
+from django.http import HttpResponse, JsonResponse, HttpResponseRedirect
 from django.urls import resolve
 
 from work_record.error_handler import error_payload
+
+
+def _in_maintenance() -> bool:
+    """数据恢复期的维护标志（sysbackup 置位；缓存不可用时按「非维护」处理）。"""
+    try:
+        from sysbackup.services import in_maintenance_mode
+
+        return in_maintenance_mode()
+    except Exception:  # 中间件绝不能因为标志读取失败而阻断请求
+        return False
 
 
 class SessionAbsoluteTimeoutMiddleware:
@@ -91,6 +101,15 @@ class LoginRequiredMiddleware:
                 if request.path.startswith("/api/"):
                     return JsonResponse(error_payload("登录状态已失效，请重新登录。", 401), status=401)
                 return HttpResponseRedirect(settings.LOGIN_URL)
+            # 数据恢复期间（审查 S2/B2）：拒绝非超管的写请求，避免半状态继续产生
+            # 新数据。只在写方法上查一次缓存，不给读请求增加开销。
+            if request.method not in ("GET", "HEAD", "OPTIONS") and not user.is_superuser:
+                if _in_maintenance():
+                    message = "系统正在执行数据恢复，请稍后再试（恢复完成后自动解除）。"
+                    if request.path.startswith("/api/") or \
+                            request.headers.get("x-requested-with") == "XMLHttpRequest":
+                        return JsonResponse(error_payload(message, 503), status=503)
+                    return HttpResponse(message, status=503, content_type="text/plain; charset=utf-8")
             return self.get_response(request)
 
         if self._is_exempt(request):

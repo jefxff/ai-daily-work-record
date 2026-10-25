@@ -129,13 +129,35 @@ urlpatterns = [
 
 if not settings.DEBUG:
     # DEBUG=0 时 runserver 不再自动服务 /static/。本项目为单进程内网部署，无
-    # whitenoise / 前置代理；若不显式挂载，内网用户会看到丢失全部 CSS/JS 的页面
-    # （评审 R4 把默认值翻转为 0 时必须同时消除的样式回归）。这里交给 staticfiles
-    # 的 finders 直接服务（insecure=True），无需先执行 collectstatic。
-    from django.contrib.staticfiles.views import serve as staticfiles_serve
+    # whitenoise / 前置代理；若不显式挂载，内网用户会看到丢失全部 CSS/JS 的页面。
+    #
+    # 审查 H4：原先长期使用 staticfiles 的**开发视图**（finders 全盘查找）当生产
+    # 方案。现在改为：优先从 STATIC_ROOT（collectstatic 产物，语义明确、查找成本低、
+    # 可用 immutable 缓存）返回；只有忘了 collectstatic 时才回退到 finders，
+    # 保证「零配置也不丢样式」，同时把回退情况记进日志以便运维发现。
+    import logging
+
+    from django.contrib.staticfiles import finders
+    from django.contrib.staticfiles.views import serve as staticfiles_serve  # noqa: F401
+    from django.views.static import serve as _serve_static_file
+
+    _static_logger = logging.getLogger(__name__)
+    _static_root = Path(settings.STATIC_ROOT)
+
+    def serve_static(request, path):
+        """静态资源：STATIC_ROOT 优先，缺失时回退 finders（仅回退时告警一次/进程）。"""
+        if (_static_root / path).is_file():
+            return _serve_static_file(request, path, document_root=str(_static_root))
+        if not getattr(serve_static, "_warned", False):
+            _static_logger.warning(
+                "STATIC_ROOT 未命中 %s，已回退到 staticfiles finders；"
+                "建议执行 python manage.py collectstatic --noinput", path,
+            )
+            serve_static._warned = True
+        return staticfiles_serve(request, path, insecure=True)
 
     urlpatterns += [
-        re_path(r'^static/(?P<path>.*)$', staticfiles_serve, {'insecure': True}),
+        re_path(r'^static/(?P<path>.*)$', serve_static),
     ]
 
 

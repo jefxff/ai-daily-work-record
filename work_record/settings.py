@@ -267,6 +267,13 @@ DATABASES = {
         # 局域网多用户并发：提高 SQLite 忙等超时，缓解 database is locked
         'OPTIONS': {
             'timeout': 20,
+            # Django 5.1+ 原生支持：事务一开始就取写锁（BEGIN IMMEDIATE）。
+            # 默认 DEFERRED 事务在「先读后写」时会锁升级，若期间其它连接已写入
+            # 则立即 SQLITE_BUSY（busy_timeout 对锁升级的等待有限）——runserver
+            # 是多线程的，同一时刻可能有多个用户提交表单 + 调度线程记账，
+            # 表现为偶发、难复现的 500。IMMEDIATE 把冲突提前到事务开始，配合
+            # timeout/busy_timeout 排队等待，不再中途失败（审查 H1）。
+            'transaction_mode': 'IMMEDIATE',
         },
     }
 }
@@ -356,6 +363,30 @@ BACKUP_ALLOWED_ROOTS = [
     str(BASE_DIR),
     *[p.strip() for p in os.environ.get('BACKUP_ALLOWED_ROOTS', '').split(';') if p.strip()],
 ]
+
+# 备份保留策略（审查 H7）：每日全量包永不删除会把单盘写满，盘满时 SQLite
+# 直接 "database or disk is full"，业务写入与备份同时失败。这里保留
+# 「最近 N 天」+「每周一份 × M 周」，由 sysbackup.services._rotate_backups() 执行。
+BACKUP_RETAIN_DAILY = int(os.environ.get('BACKUP_RETAIN_DAILY', '14'))
+BACKUP_RETAIN_WEEKLY = int(os.environ.get('BACKUP_RETAIN_WEEKLY', '8'))
+
+# 备份异地副本（审查 C2）：备份目录与数据库同在一块盘时，磁盘损坏/勒索软件会
+# 同时带走「库 + 备份」。这里配置额外的镜像目录（如移动硬盘、网络盘、另一台机器
+# 的共享目录），每次备份完成后自动复制一份过去。Windows 多个目录用分号分隔：
+#   set BACKUP_MIRROR_DIRS=D:\WorkRecordMirror;\\nas\backup\workrecord
+# 复制失败只记警告，不会让备份任务失败（本地副本仍然有效）。
+BACKUP_MIRROR_DIRS = [
+    p.strip()
+    for p in os.environ.get('BACKUP_MIRROR_DIRS', '').split(';')
+    if p.strip()
+]
+
+# 导出类重操作的保护（审查 H5 / B3）：单进程 runserver 无并发上限、无请求超时，
+# 导出把整本工作簿构建在内存里，并发几个就会把线程与内存吃光。
+# EXPORT_MAX_CONCURRENCY：同时进行的导出数上限，超出返回 429；
+# EXPORT_MAX_ROWS：单次导出行数上限，超出返回 413 并提示缩小筛选范围。
+EXPORT_MAX_CONCURRENCY = int(os.environ.get('EXPORT_MAX_CONCURRENCY', '2'))
+EXPORT_MAX_ROWS = int(os.environ.get('EXPORT_MAX_ROWS', '30000'))
 
 # CORS settings
 # 说明（SEC-L8）：本站为「Django 模板 + 同源 AJAX」的单体应用，页面不存在跨域

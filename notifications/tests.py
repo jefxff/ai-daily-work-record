@@ -542,7 +542,7 @@ class ScheduledTaskTests(TestCase):
         self.staff = User.objects.create_user("staff", password="x12345678")
 
     def test_seed_tasks_exist(self):
-        """迁移种子：7 个内置任务存在且默认触发配置正确。"""
+        """迁移种子：9 个内置任务存在且默认触发配置正确。"""
         from notifications.models import ScheduledTask
 
         codes = set(ScheduledTask.objects.values_list("code", flat=True))
@@ -550,6 +550,7 @@ class ScheduledTaskTests(TestCase):
             "check_expiry_notices", "check_insurance_renewal",
             "check_daily_incomplete", "notify_expire", "notify_stats",
             "notify_knowledge_todo", "daily_backup",
+            "cleanup_operation_log", "db_maintenance",
         })
         backup = ScheduledTask.objects.get(code="daily_backup")
         self.assertTrue(backup.enabled)
@@ -562,6 +563,14 @@ class ScheduledTaskTests(TestCase):
         self.assertTrue(renewal.enabled)
         self.assertEqual(renewal.params["days"], 30)
         self.assertEqual(ScheduledTask.objects.get(code="notify_stats").interval_minutes, 720)
+        # 审查 H6/W6：审计清理与 SQLite 维护任务必须默认启用
+        cleanup = ScheduledTask.objects.get(code="cleanup_operation_log")
+        self.assertTrue(cleanup.enabled)
+        # 保留天数不在任务参数里写死，统一由 settings.OPERATION_LOG_RETENTION_DAYS 决定
+        self.assertEqual(cleanup.params, {})
+        maintenance = ScheduledTask.objects.get(code="db_maintenance")
+        self.assertTrue(maintenance.enabled)
+        self.assertEqual(maintenance.trigger_type, ScheduledTask.TriggerType.DAILY)
         kb_todo = ScheduledTask.objects.get(code="notify_knowledge_todo")
         self.assertTrue(kb_todo.enabled)
         self.assertEqual(kb_todo.params["days"], 3)

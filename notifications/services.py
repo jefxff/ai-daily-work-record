@@ -161,10 +161,19 @@ def announce(title, content, *, created_by, link="", priority="normal",
     )
     batch_id = uuid.uuid4().hex
     now = timezone.now()
+    # 偏好一次性预取（审查 H3）：原实现循环内逐用户 get_or_create，
+    # 50 人公告 = 100+ 次 SQLite 查询/写入，既拖慢请求又与调度器争抢单写者锁。
+    # 缺省（无偏好记录）视为开启，与 NotificationPreference.email_enabled 语义一致。
+    recipient_list = list(recipients)
+    pref_map = {
+        p.user_id: p
+        for p in NotificationPreference.objects.filter(user_id__in=[u.pk for u in recipient_list])
+    }
     email_users, inapp_users = [], []
-    for user in recipients:
-        has_email = bool(getattr(user, "email", ""))
-        if template.supports_email and has_email and get_prefs(user).email_enabled(template.category):
+    for user in recipient_list:
+        pref = pref_map.get(user.pk)
+        email_ok = pref.email_enabled(template.category) if pref is not None else True
+        if template.supports_email and getattr(user, "email", "") and email_ok:
             email_users.append(user)
         else:
             inapp_users.append(user)

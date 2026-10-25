@@ -241,27 +241,24 @@ class APIError(Exception):
 
 # 删除重复的函数定义，保留前面的JsonResponse版本
 
-# 示例使用
+# 示例/自测入口：原为 __main__ 下的 print 演示，按项目口径改为 logging
+# （审查 W1：production 代码里不保留 print）。需手工验证时用下面的命令：
+#   python -m records.error_handler
 if __name__ == "__main__":
-    # 配置日志
     logging.basicConfig(level=logging.INFO)
-    
-    # 测试重试机制
+    logger = logging.getLogger(__name__)
+
     @ErrorHandler.retry_on_exception(max_retries=3, delay=1)
     @ErrorHandler.log_exception
     def test_function():
         """测试函数"""
-        print("执行测试函数...")
+        logger.info("执行测试函数...")
         raise ValueError("测试异常")
-    
+
     try:
         test_function()
-    except Exception as e:
-        print(f"捕获异常: {e}")
-    
-    # 测试错误响应
-    error_response = create_error_response("测试错误", 400, {"field": "value"})
-    print("错误响应:", error_response)
-    
-    success_response = create_success_response({"result": "success"}, "操作成功")
-    print("成功响应:", success_response)
+    except Exception as exc:
+        logger.info("捕获异常: %s", exc)
+
+    logger.info("错误响应: %s", create_error_response("测试错误", 400, {"field": "value"}))
+    logger.info("成功响应: %s", create_success_response({"result": "success"}, "操作成功"))

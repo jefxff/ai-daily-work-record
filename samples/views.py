@@ -1258,9 +1258,24 @@ def partner_delete(request, pk):
 
 @perm_required("samples", "read")
 def export_samples(request):
+    from work_record.export_guard import (
+        ExportSlot, export_busy_response, export_too_large_response, max_export_rows,
+    )
+
     flt = SampleFilter(request.GET)
     qs = flt.apply()
-    response = export_samples_xlsx(qs)
+    # 审查 H5/B3：并发闸门 + 行数上限（openpyxl 全量在内存构建，不能让并发导出打满线程/内存）
+    slot = ExportSlot()
+    if not slot.__enter__():
+        return export_busy_response()
+    try:
+        total_rows = qs.count()
+        row_limit = max_export_rows()
+        if total_rows > row_limit:
+            return export_too_large_response(total_rows, row_limit)
+        response = export_samples_xlsx(qs)
+    finally:
+        slot.__exit__(None, None, None)
     # 导出行为留痕（写入 records.OperationLog，供审计异常检测统一读取）
     from records.audit import log_operation
     log_operation(request, "试样管理", "导出", "[试样管理]下的导出",

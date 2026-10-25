@@ -19,6 +19,9 @@ from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 
 from accounts.decorators import perm_required
+from work_record.export_guard import (
+    ExportSlot, export_busy_response, export_too_large_response, max_export_rows,
+)
 from work_record.http_utils import per_page as http_per_page
 
 from .audit import log_operation, snapshot
@@ -165,6 +168,16 @@ def make_export_view(*, model=None, perm_module, sheet_title, filename_base,
 
     @perm_required(perm_module, "read")
     def _export_view(request):
+        """导出入口：并发闸门（审查 H5/B3）+ 行数上限，避免导出把整站拖死。"""
+        slot = ExportSlot()
+        if not slot.__enter__():
+            return export_busy_response()
+        try:
+            return _export_impl(request)
+        finally:
+            slot.__exit__(None, None, None)
+
+    def _export_impl(request):
         objs = queryset(request) if queryset else model.objects.all()
         # 归属隔离兜底：含 user 字段的模型（如每日记录）即便未来加入导出清单，
         # 也不会把其他用户的记录导出给普通用户。
@@ -182,6 +195,9 @@ def make_export_view(*, model=None, perm_module, sheet_title, filename_base,
         total = objs.count()
         if not total:
             return HttpResponse(empty_text)
+        row_limit = max_export_rows()
+        if total > row_limit:
+            return export_too_large_response(total, row_limit)
 
         wb = Workbook()
         ws = wb.active

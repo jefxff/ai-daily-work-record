@@ -26,6 +26,10 @@ if not exist db.sqlite3 (
     python manage.py migrate
 )
 
+REM 收集静态文件（审查 H4：DEBUG=0 下由 STATIC_ROOT 提供 /static/，必须先收集）
+echo 收集静态文件...
+python manage.py collectstatic --noinput --clear
+
 REM 检查RBAC验收账号
 echo 检查RBAC验收账号...
 python manage.py shell -c "from django.contrib.auth.models import User; print('rbac_root 账号:', User.objects.filter(username='rbac_root').exists())"
@@ -44,6 +48,6 @@ REM 独立调度进程：定时任务扫描 + 通知发送 worker（与 web 进�
 if not exist logs mkdir logs
 start "WorkRecord-Scheduler" /min cmd /c "python manage.py run_scheduler >> logs\scheduler.out 2>&1"
 
-python manage.py runserver 0.0.0.0:8080
+python manage.py runserver 0.0.0.0:8080 --noreload
 
 pause

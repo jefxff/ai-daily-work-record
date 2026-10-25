@@ -20,9 +20,9 @@ fi
 echo -e "${YELLOW}安装依赖...${NC}"
 pip install -r requirements.txt
 
-# 收集静态文件
+# 收集静态文件（审查 H4：DEBUG=0 下由 STATIC_ROOT 提供 /static/，必须先收集）
 echo -e "${YELLOW}收集静态文件...${NC}"
-python manage.py collectstatic --noinput
+python manage.py collectstatic --noinput --clear
 
 # 迁移数据库（首次运行）
 echo -e "${YELLOW}检查数据库...${NC}"
@@ -47,4 +47,4 @@ python manage.py run_scheduler >> logs/scheduler.out 2>&1 &
 SCHEDULER_PID=$!
 trap 'kill "$SCHEDULER_PID" 2>/dev/null' EXIT INT TERM
 
-python manage.py runserver 0.0.0.0:8000
+python manage.py runserver 0.0.0.0:8000 --noreload

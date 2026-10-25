@@ -89,6 +89,8 @@ COMMAND_PARAMS = {
     "notify_stats": {"check"},
     "notify_knowledge_todo": {"days", "overdue_days"},
     "daily_backup": set(),
+    # SQLite 维护（wal_checkpoint + VACUUM + ANALYZE），命令内部按 28 天节流
+    "db_maintenance": set(),
     "cleanup_operation_log": {"days"},
 }
 

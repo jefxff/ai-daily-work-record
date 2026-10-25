@@ -167,7 +167,10 @@ class SampleTerminatedNotifyTests(TestCase):
     def test_terminate_emits_notification(self):
         from samples import services
 
-        services.terminate_sample(self.sample, "测试员", "测试终止原因")
+        # 通知已改为 transaction.on_commit 触发（审查 H2）：测试需捕获提交回调，
+        # 否则 TestCase 的外层事务永不提交，通知永远不会发。
+        with self.captureOnCommitCallbacks(execute=True):
+            services.terminate_sample(self.sample, "测试员", "测试终止原因")
         qs = Notification.objects.filter(template__code="sample_terminated")
         self.assertEqual(qs.filter(recipient=self.receiver).count(), 1)
         self.assertEqual(qs.filter(recipient=self.stranger).count(), 0)
@@ -206,7 +209,9 @@ class LicenseReviewFailedNotifyTests(TestCase):
 
     def test_failed_result_emits_notification(self):
         self.client.force_login(self.receiver)
-        resp = self._post_review("failed")
+        # on_commit 语义：测试内需捕获提交回调（审查 H2 的配套调整）
+        with self.captureOnCommitCallbacks(execute=True):
+            resp = self._post_review("failed")
         self.assertEqual(resp.status_code, 302)
         qs = Notification.objects.filter(
             template__code="license_review_failed", recipient=self.receiver,
