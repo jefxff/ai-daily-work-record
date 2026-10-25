@@ -19,19 +19,13 @@ from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 
 from accounts.decorators import perm_required
+from work_record.export_utils import sanitize_xlsx_formulas
 from work_record.export_guard import (
-    ExportSlot, export_busy_response, export_too_large_response, max_export_rows,
+    export_too_large_response, guarded_export, max_export_rows,
 )
 from work_record.http_utils import per_page as http_per_page
 
 from .audit import log_operation, snapshot
-
-
-def _sanitize_xlsx_formulas(wb):
-    """导出前防护公式注入（实现已收敛到 work_record.export_utils）。"""
-    from work_record.export_utils import sanitize_xlsx_formulas
-
-    return sanitize_xlsx_formulas(wb)
 
 
 def make_form_view(*, model, form_class, perm_module, log_label, display_field,
@@ -167,15 +161,10 @@ def make_export_view(*, model=None, perm_module, sheet_title, filename_base,
     audit_label = log_label or sheet_title
 
     @perm_required(perm_module, "read")
+    @guarded_export
     def _export_view(request):
-        """导出入口：并发闸门（审查 H5/B3）+ 行数上限，避免导出把整站拖死。"""
-        slot = ExportSlot()
-        if not slot.__enter__():
-            return export_busy_response()
-        try:
-            return _export_impl(request)
-        finally:
-            slot.__exit__(None, None, None)
+        """导出入口：并发闸门（guarded_export）+ 行数上限，避免导出把整站拖死。"""
+        return _export_impl(request)
 
     def _export_impl(request):
         objs = queryset(request) if queryset else model.objects.all()
@@ -223,7 +212,7 @@ def make_export_view(*, model=None, perm_module, sheet_title, filename_base,
         from work_record.export_utils import content_disposition
 
         response['Content-Disposition'] = content_disposition(filename)
-        _sanitize_xlsx_formulas(wb)
+        sanitize_xlsx_formulas(wb)
         wb.save(response)
         # 导出行为留痕（operation_type='导出'）：供审计异常检测识别批量导出
         log_operation(request, audit_label, '导出', f'[{audit_label}]下的导出',

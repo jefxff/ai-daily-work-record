@@ -5,7 +5,7 @@ URL 名称与行为完全不变。
 """
 
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
+
 from django.core.paginator import Paginator
 from django.db import IntegrityError, transaction
 from django.http import JsonResponse
@@ -20,7 +20,6 @@ from .models import Archive, BorrowRecord
 from .services.common import _is_ajax, _log
 
 
-@login_required
 @perm_required("archive", "read")
 def borrow_list(request):
     status = request.GET.get("status")
@@ -39,7 +38,6 @@ def borrow_list(request):
     })
 
 
-@login_required
 @perm_required("archive", "create")
 def borrow_create(request, archive_pk):
     arc = get_object_or_404(Archive, pk=archive_pk)
@@ -78,7 +76,6 @@ def borrow_create(request, archive_pk):
     return render(request, "archive/borrow_form.html", {"form": form, "archive": arc})
 
 
-@login_required
 @perm_required("archive", "update")
 def borrow_return(request, pk):
     rec = get_object_or_404(BorrowRecord, pk=pk)

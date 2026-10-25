@@ -8,7 +8,7 @@ import io
 import os
 
 from django.conf import settings
-from django.contrib.auth.decorators import login_required
+
 from django.db import IntegrityError, transaction
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -21,7 +21,6 @@ from .models import Archive, ArchiveFile
 from .services.common import _is_ajax, _log
 
 
-@login_required
 @perm_required("archive", "create")
 def archive_create(request):
     form = ArchiveForm(request.POST or None, request.FILES or None)
@@ -60,7 +59,6 @@ def archive_create(request):
     return render(request, "archive/archive_form.html", {"form": form, "mode": "create"})
 
 
-@login_required
 @perm_required("archive", "read")
 def archive_detail(request, pk):
     arc = get_object_or_404(Archive, pk=pk)
@@ -81,7 +79,6 @@ def archive_detail(request, pk):
     return render(request, "archive/archive_detail.html", context)
 
 
-@login_required
 @perm_required("archive", "update")
 def archive_edit(request, pk):
     arc = get_object_or_404(Archive, pk=pk)
@@ -107,7 +104,6 @@ def archive_edit(request, pk):
     return render(request, "archive/archive_form.html", {"form": form, "mode": "edit", "archive": arc})
 
 
-@login_required
 @perm_required("archive", "update")
 def archive_move(request, pk):
     """跨空位移动档案位置。"""
@@ -128,7 +124,6 @@ def archive_move(request, pk):
     return render(request, "archive/archive_move.html", {"form": form, "archive": arc})
 
 
-@login_required
 @perm_required("archive", "update")
 def archive_files_upload(request, pk):
     """为档案上传电子附件（支持一次多选，逐个校验类型/大小，成功的保存并返回错误清单）。"""
@@ -157,7 +152,6 @@ def archive_files_upload(request, pk):
     return JsonResponse({"ok": True, "message": msg, "created": len(created), "errors": errors})
 
 
-@login_required
 @perm_required("archive", "update")
 def archive_file_delete(request, pk):
     """删除档案附件（同时删除物理文件）。"""
@@ -173,7 +167,6 @@ def archive_file_delete(request, pk):
     return redirect("archive:archive_detail", pk=arc.pk)
 
 
-@login_required
 @perm_required("archive", "read")
 def archive_file_thumb(request, pk):
     """图片附件缩略图：首次访问用 Pillow 生成并缓存到 media/thumbs/，之后直接回图。"""
@@ -199,7 +192,6 @@ def archive_file_thumb(request, pk):
     return FileResponse(open(thumb_path, "rb"), content_type="image/jpeg")
 
 
-@login_required
 @perm_required("archive", "delete")
 def archive_delete(request, pk):
     arc = get_object_or_404(Archive, pk=pk)
@@ -214,7 +206,6 @@ def archive_delete(request, pk):
 
 # ---------- 二维码 / 操作日志 ----------
 
-@login_required
 @perm_required("archive", "read")
 def qrcode(request, pk):
     """生成档案位置二维码图片（PNG）。"""

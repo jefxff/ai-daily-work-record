@@ -10,7 +10,7 @@ import re
 from datetime import date, datetime
 
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
+
 from django.core.paginator import Paginator
 from django.db import IntegrityError, transaction
 from django.db.models import Q
@@ -66,7 +66,6 @@ def _notify_review_failed(lic, review):
         logger.exception("年审未通过通知发送失败（已忽略，不影响主流程）: %s", lic.code)
 
 
-@login_required
 @perm_required("archive", "read")
 def license_list(request):
     """证照列表：仪表盘统计 + 搜索 + 状态筛选。
@@ -111,7 +110,6 @@ def license_list(request):
     return render(request, "archive/license_list.html", context)
 
 
-@login_required
 @perm_required("archive", "read")
 def license_detail(request, pk):
     """证照详情：基本信息 + 年审历史 + 借阅记录 + 操作历史。"""
@@ -131,7 +129,6 @@ def license_detail(request, pk):
     return render(request, "archive/license_detail.html", context)
 
 
-@login_required
 @perm_required("archive", "create")
 def license_create(request):
     """新增证照（AJAX 弹窗）。"""
@@ -153,7 +150,6 @@ def license_create(request):
     return render(request, "archive/license_form.html", {"form": form, "mode": "create"})
 
 
-@login_required
 @perm_required("archive", "update")
 def license_edit(request, pk):
     """编辑证照（AJAX 弹窗）。"""
@@ -174,7 +170,6 @@ def license_edit(request, pk):
     return render(request, "archive/license_form.html", {"form": form, "mode": "edit", "license": lic})
 
 
-@login_required
 @perm_required("archive", "delete")
 def license_delete(request, pk):
     """删除证照（硬删除）。"""
@@ -193,7 +188,6 @@ def license_delete(request, pk):
     return render(request, "archive/license_confirm_delete.html", {"license": lic})
 
 
-@login_required
 @perm_required("archive", "create")
 def annual_review_create(request, license_pk):
     """年审登记（AJAX 弹窗）。
@@ -242,8 +236,6 @@ def annual_review_create(request, license_pk):
     return render(request, "archive/license_review_form.html", {"form": form, "license": lic})
 
 
-
-@login_required
 @perm_required("archive", "read")
 def license_borrow_list(request):
     """证照借阅记录列表。"""
@@ -261,7 +253,6 @@ def license_borrow_list(request):
     })
 
 
-@login_required
 @perm_required("archive", "create")
 def license_borrow_create(request, license_pk):
     """证照借阅登记（AJAX 弹窗）。"""
@@ -300,7 +291,6 @@ def license_borrow_create(request, license_pk):
     return render(request, "archive/license_borrow_form.html", {"form": form, "license": lic})
 
 
-@login_required
 @perm_required("archive", "update")
 def license_borrow_return(request, pk):
     """证照归还。"""
@@ -396,7 +386,6 @@ def _parse_date_loose(raw_val):
     return None
 
 
-@login_required
 @perm_required("archive", "create")
 def import_licenses(request):
     """证照批量导入：上传 → 列映射 → 执行导入。"""

@@ -8,7 +8,7 @@ import json
 from collections import defaultdict
 
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
+
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Count
@@ -23,7 +23,6 @@ from .models import Archive, Cabinet, CabinetLayer
 from .services.common import _is_ajax, _log
 
 
-@login_required
 @perm_required("archive", "read")
 def cabinet_list(request):
     """档案柜列表：编号、位置、各层格数与空位占用一览。
@@ -94,7 +93,6 @@ def _save_cabinet(request, form, mode):
     return cab
 
 
-@login_required
 @perm_required("archive", "create")
 def cabinet_create(request):
     form = CabinetForm(request.POST or None)
@@ -113,7 +111,6 @@ def cabinet_create(request):
     return render(request, "archive/cabinet_form.html", _cabinet_modal_ctx(form, "create"))
 
 
-@login_required
 @perm_required("archive", "update")
 def cabinet_edit(request, pk):
     cab = get_object_or_404(Cabinet, pk=pk)
@@ -133,7 +130,6 @@ def cabinet_edit(request, pk):
     return render(request, "archive/cabinet_form.html", _cabinet_modal_ctx(form, "edit", cab))
 
 
-@login_required
 @perm_required("archive", "delete")
 def cabinet_delete(request, pk):
     cab = get_object_or_404(Cabinet, pk=pk)

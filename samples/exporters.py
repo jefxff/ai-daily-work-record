@@ -20,13 +20,6 @@ HEADER_FONT = Font(bold=True)
 WRAP = Alignment(wrap_text=True, vertical="center")
 
 
-def _sanitize_xlsx_formulas(wb):
-    """导出前防护公式注入（实现已收敛到 work_record.export_utils）。"""
-    from work_record.export_utils import sanitize_xlsx_formulas
-
-    return sanitize_xlsx_formulas(wb)
-
-
 def _write_sheet(ws, headers, rows):
     ws.append(headers)
     for col_idx, _ in enumerate(headers, start=1):
@@ -192,9 +185,9 @@ def export_samples_xlsx(filter_qs):
     )
     filename = f"试样跟进台账_{timezone.localdate():%Y%m%d}.xlsx"
     # RFC 5987：filename* 携带 URL 编码中文，兼容主流浏览器
-    from work_record.export_utils import content_disposition
+    from work_record.export_utils import content_disposition, sanitize_xlsx_formulas
 
     response["Content-Disposition"] = content_disposition(filename)
-    _sanitize_xlsx_formulas(wb)
+    sanitize_xlsx_formulas(wb)
     wb.save(response)
     return response

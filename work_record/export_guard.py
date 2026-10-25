@@ -14,6 +14,7 @@
 注意：这不是「限制功能」，而是把不可控的失败（OOM / 整站卡死）换成
 可理解、可重试的明确答复。需要更大批量时改 settings 里的两个常量即可。
 """
+import functools
 import threading
 
 from django.conf import settings
@@ -24,6 +25,29 @@ DEFAULT_MAX_ROWS = 30000
 
 _semaphore = None
 _sem_lock = threading.Lock()
+
+
+def guarded_export(view_func):
+    """导出视图装饰器：占不到并发槽位时立刻返回 429。
+
+    统一入口，避免每个导出视图各抄一遍「抢槽 / finally 释放」的六行代码
+    （此前 6 个导出入口只有 3 个抄了，另 3 个裸奔 —— 一致性审计 P0-4）。
+    装饰顺序：``@perm_required`` 在外层（先判权，再占槽），本装饰器在里层。
+    """
+
+    @functools.wraps(view_func)
+    def _wrapped(request, *args, **kwargs):
+        slot = ExportSlot()
+        if not slot.__enter__():
+            return export_busy_response()
+        try:
+            return view_func(request, *args, **kwargs)
+        finally:
+            slot.__exit__(None, None, None)
+
+    # 供覆盖守卫测试识别：所有导出视图都必须带这个标记
+    _wrapped.is_guarded_export = True
+    return _wrapped
 
 
 def _get_semaphore():

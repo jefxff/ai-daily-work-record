@@ -16,7 +16,8 @@ from pathlib import Path
 from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.core.management import call_command
-from django.test import TestCase, override_settings
+from django.http import HttpResponse
+from django.test import SimpleTestCase, TestCase, override_settings
 
 from accounts.models import Role
 from notifications.models import ScheduledTask
@@ -333,3 +334,53 @@ class UnreadablePackageVisibilityTests(TestCase):
             self.assertIn(good.name, by_name, "坏包不能从列表中消失")
             self.assertFalse(by_name[good.name]["readable"])
             self.assertTrue(by_name[readable.name]["readable"])
+
+
+class ExportGuardCoverageTests(SimpleTestCase):
+    """所有导出入口都必须挂 @guarded_export（一致性审计 P0-4）。
+
+    回归来源：`export_guard` 上线时只有 3 个入口接入，`ledger_export` /
+    `ledger_batch_export` / `export_archives` / `expiry_export` 裸奔 —— 其中
+    台账批量导出是「多台账 × 多 sheet 一次性构建」，最该被限流的反而没限。
+    """
+
+    def test_every_export_view_is_guarded(self):
+        from archive import views_io, views_ledger
+        from records import views_expiry
+        from records.crud import make_export_view
+
+        views = {
+            "archive.export_archives": views_io.export_archives,
+            "archive.table_export": views_io.table_export,
+            "archive.ledger_export": views_ledger.ledger_export,
+            "archive.ledger_batch_export": views_ledger.ledger_batch_export,
+            "records.expiry_export": views_expiry.expiry_export,
+        }
+        for name, view in views.items():
+            self.assertTrue(getattr(view, "is_guarded_export", False),
+                            f"{name} 未接入 @guarded_export（导出并发闸门）")
+
+    def test_busy_slot_returns_429(self):
+        """槽位占满时导出立刻 429，而不是排队把线程池吃光。"""
+        from unittest import mock
+        from django.test import RequestFactory
+        from work_record.export_guard import ExportSlot, guarded_export
+
+        @guarded_export
+        def _view(request):
+            return HttpResponse("ok")
+
+        rf = RequestFactory()
+        held = ExportSlot().__enter__()          # 占住一个
+        try:
+            with mock.patch("work_record.export_guard._get_semaphore") as sem:
+                fake = mock.Mock()
+                fake.acquire.return_value = False
+                sem.return_value = fake
+                resp = _view(rf.get("/export/"))
+            self.assertEqual(resp.status_code, 429)
+        finally:
+            if held:
+                from work_record.export_guard import _get_semaphore
+
+                _get_semaphore().release()

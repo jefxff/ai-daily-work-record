@@ -8,7 +8,7 @@ from collections import defaultdict
 from datetime import timedelta
 
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
+
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Count, Exists, F, OuterRef, Q, Window
@@ -18,6 +18,11 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from accounts.decorators import perm_required
+from work_record.export_guard import (
+    export_too_large_response,
+    guarded_export,
+    max_export_rows,
+)
 from records.crud import _per_page
 
 from .forms import LedgerForm
@@ -32,7 +37,6 @@ from .services.import_export import (
 
 # ---------- 档案总览（按台账列表） ----------
 
-@login_required
 @perm_required("archive", "read")
 def overview(request):
     """档案总览页：顶部仪表盘 + 各台账（对应一份 Excel 台账）卡片列表。
@@ -233,7 +237,6 @@ def overview(request):
 
 # ---------- 台账 CRUD / 详情 ----------
 
-@login_required
 @perm_required("archive", "read")
 def ledger_detail(request, pk):
     """台账详情页：完整档案列表（分页 10/30/50，站内搜索）。"""
@@ -274,7 +277,6 @@ def ledger_detail(request, pk):
     })
 
 
-@login_required
 @perm_required("archive", "create")
 def ledger_create(request):
     form = LedgerForm(request.POST or None)
@@ -293,7 +295,6 @@ def ledger_create(request):
     return redirect("archive:overview")
 
 
-@login_required
 @perm_required("archive", "update")
 def ledger_edit(request, pk):
     lg = get_object_or_404(Ledger, pk=pk)
@@ -313,7 +314,6 @@ def ledger_edit(request, pk):
     return redirect("archive:overview")
 
 
-@login_required
 @perm_required("archive", "update")
 def ledger_move(request, pk):
     """台账排序：置顶 / 上移 / 下移（direction=top/up/down）。
@@ -346,7 +346,6 @@ def ledger_move(request, pk):
     return redirect("archive:overview")
 
 
-@login_required
 @perm_required("archive", "delete")
 def ledger_delete(request, pk):
     lg = get_object_or_404(Ledger, pk=pk)
@@ -368,8 +367,8 @@ def ledger_delete(request, pk):
 
 # ---------- 台账档案导入 / 导出（按台账维度：导出 → Excel 修改 → 导入更新 闭环） ----------
 
-@login_required
 @perm_required("archive", "read")
+@guarded_export
 def ledger_export(request, pk):
     """导出单个台账的全部档案（xlsx 单工作表，可修改后通过「导入更新」回导）。"""
     lg = get_object_or_404(Ledger, pk=pk)
@@ -379,8 +378,8 @@ def ledger_export(request, pk):
     return _xlsx_response(data, f"{lg.name}_档案_{timezone.localtime():%Y%m%d_%H%M}.xlsx")
 
 
-@login_required
 @perm_required("archive", "read")
+@guarded_export
 def ledger_batch_export(request):
     """批量导出勾选的台账：一个 xlsx，每个台账一个工作表（工作表名=台账名）。"""
     ids = request.POST.getlist("ledgers")
@@ -390,12 +389,16 @@ def ledger_batch_export(request):
     if not ledgers:
         messages.error(request, "请先勾选要导出的台账")
         return redirect("archive:overview")
+    # 行数上限：多台账 × 多 sheet 一次性构建，最容易把内存打满
+    total = sum(lg.archives.count() for lg in ledgers)
+    row_limit = max_export_rows()
+    if total > row_limit:
+        return export_too_large_response(total, row_limit)
     sheets = [
         (lg.name, lg.archives.select_related("cabinet", "category", "ledger").order_by("id"))
         for lg in ledgers
     ]
     data = _archive_book_bytes(sheets)
-    total = sum(len(s[1]) for s in sheets)
     _log(request, "导出", "台账批量导出", f"导出 {ledgers.count()} 个台账共 {total} 条档案")
     if ledgers.count() == 1:
         fname = f"{ledgers.first().name}_档案_{timezone.localtime():%Y%m%d_%H%M}.xlsx"
@@ -404,7 +407,6 @@ def ledger_batch_export(request):
     return _xlsx_response(data, fname)
 
 
-@login_required
 @perm_required("archive", "update")
 def ledger_import(request, pk):
     """单台账导入更新：上传 Excel（表头与本台账导出一致），按「编号」匹配更新，新增归入本台账。"""
@@ -505,7 +507,6 @@ def ledger_import(request, pk):
     return redirect("archive:overview")
 
 
-@login_required
 @perm_required("archive", "update")
 def ledger_batch_import(request):
     """批量导入更新：上传多工作表 Excel，工作表名=台账名（不存在自动创建），按「编号」匹配更新。"""

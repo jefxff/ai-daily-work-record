@@ -12,6 +12,7 @@ from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 
 from accounts.decorators import perm_required_any
+from work_record.export_guard import guarded_export
 from accounts.services import has_perm
 from work_record.http_utils import parse_date as _parse_date  # 统一实现（复核报告 CODE-01）
 
@@ -146,6 +147,7 @@ def expiry_calendar(request):
 
 
 @perm_required_any(("insurance", "read"), ("archive", "read"))
+@guarded_export
 def expiry_export(request):
     """导出「本月到期清单」：当月到期 / 已过期的全部事项（仅用户可读来源）。"""
     if not _has_any(request.user):

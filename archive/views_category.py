@@ -5,7 +5,7 @@ URL 名称与行为完全不变。
 """
 
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
+
 from django.core.paginator import Paginator
 from django.db.models import Count
 from django.http import JsonResponse
@@ -19,7 +19,6 @@ from .models import Category
 from .services.common import _is_ajax, _log
 
 
-@login_required
 @perm_required("archive", "read")
 def category_list(request):
     # 审计 P2-5：先聚合档案数、预取父链，避免每行 count()/parent 各查一次库。
@@ -37,7 +36,6 @@ def category_list(request):
     })
 
 
-@login_required
 @perm_required("archive", "create")
 def category_create(request):
     form = CategoryForm(request.POST or None)
@@ -56,7 +54,6 @@ def category_create(request):
     return render(request, "archive/category_form.html", {"form": form, "mode": "create"})
 
 
-@login_required
 @perm_required("archive", "update")
 def category_edit(request, pk):
     cat = get_object_or_404(Category, pk=pk)
@@ -76,7 +73,6 @@ def category_edit(request, pk):
     return render(request, "archive/category_form.html", {"form": form, "mode": "edit", "category": cat})
 
 
-@login_required
 @perm_required("archive", "delete")
 def category_delete(request, pk):
     cat = get_object_or_404(Category, pk=pk)

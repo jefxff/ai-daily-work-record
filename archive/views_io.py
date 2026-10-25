@@ -11,12 +11,18 @@ import os
 from django.utils import timezone
 
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
+
 from django.db import IntegrityError, transaction
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from accounts.decorators import perm_required
+
+from work_record.export_guard import (
+    export_too_large_response,
+    guarded_export,
+    max_export_rows,
+)
 
 from .models import Archive, Ledger
 from .services.common import _log
@@ -30,7 +36,6 @@ from .services.import_export import (
 logger = logging.getLogger(__name__)
 
 
-@login_required
 @perm_required("archive", "create")
 def import_template(request):
     """下载批量导入模板（Excel，含填写说明与示例数据）。"""
@@ -98,7 +103,6 @@ def import_template(request):
     return resp
 
 
-@login_required
 @perm_required("archive", "create")
 def import_archives(request):
     """智能列映射导入引擎：上传→列映射→执行导入。"""
@@ -225,14 +229,19 @@ def import_archives(request):
     return redirect("archive:overview")
 
 
-@login_required
 @perm_required("archive", "read")
+@guarded_export
 def export_archives(request):
+    archives = Archive.objects.select_related("cabinet", "category", "creator", "ledger")
+    total = archives.count()
+    row_limit = max_export_rows()
+    if total > row_limit:
+        return export_too_large_response(total, row_limit)
     response = HttpResponse(content_type="text/csv; charset=utf-8-sig")
     response["Content-Disposition"] = f'attachment; filename="archives_{timezone.localtime():%Y%m%d_%H%M}.csv"'
     writer = csv.writer(response)
     writer.writerow(["所属台账", "来源Sheet", "编号", "名称", "档案柜", "位置", "层", "格", "类别", "标签", "创建人", "创建时间"])
-    for a in Archive.objects.select_related("cabinet", "category", "creator", "ledger"):
+    for a in archives.iterator():
         writer.writerow([
             _csv_safe(a.ledger.name if a.ledger else ""), _csv_safe(a.source_sheet),
             _csv_safe(a.code), _csv_safe(a.name),
@@ -246,25 +255,20 @@ def export_archives(request):
     return response
 
 
-@login_required
 @perm_required("archive", "read")
+@guarded_export
 def table_export(request, table):
     """按表导出 xlsx（导出列 = 导入列，可直接修改后回导）。"""
     spec = _get_spec(table)
-    # 审查 H5/B3：与其它导出共用并发闸门，避免多人同时导出打满 runserver 线程
-    from work_record.export_guard import ExportSlot, export_busy_response
-
-    slot = ExportSlot()
-    if not slot.__enter__():
-        return export_busy_response()
-    try:
-        _log(request, "导出", f"{spec['label']}导出", f"导出{spec['label']}清单")
-        return _export_response(spec)
-    finally:
-        slot.__exit__(None, None, None)
+    data_qs = spec["queryset"]()
+    total = data_qs.count()
+    row_limit = max_export_rows()
+    if total > row_limit:
+        return export_too_large_response(total, row_limit)
+    _log(request, "导出", f"{spec['label']}导出", f"导出{spec['label']}清单")
+    return _export_response(spec)
 
 
-@login_required
 @perm_required("archive", "read")
 def table_template(request, table):
     """下载表级导入模板（仅表头 + 首条记录示例）。"""
@@ -273,7 +277,6 @@ def table_template(request, table):
     return _export_response(spec, include_header_only=True)
 
 
-@login_required
 @perm_required("archive", "update")
 def table_import(request, table):
     """表级两步导入：上传预览 → 确认执行（upsert：匹配键存在则仅更新非空列，不存在则新建）。"""
