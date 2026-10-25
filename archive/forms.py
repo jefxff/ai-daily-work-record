@@ -4,6 +4,8 @@ import os
 
 from django import forms
 from django.core.exceptions import ValidationError
+
+from work_record.file_validation import magic_ok, read_head
 from django.utils import timezone
 
 # 附件校验（扩展名 + 大小 + 文件头）收敛到 validators.py，这里保留原有导出名
@@ -25,15 +27,8 @@ from .models import (
 LICENSE_SCAN_ALLOWED_EXTS = {"PNG", "JPG", "JPEG", "GIF", "BMP", "WEBP", "PDF"}
 LICENSE_SCAN_MAX_SIZE = 20 * 1024 * 1024
 
-# 扩展名 -> 文件头（magic byte），双重校验避免仅改后缀绕过
-_SCAN_MAGIC_PREFIXES = {
-    "PDF": (b"%PDF",),
-    "PNG": (b"\x89PNG\r\n\x1a\n",),
-    "JPG": (b"\xff\xd8\xff",),
-    "JPEG": (b"\xff\xd8\xff",),
-    "GIF": (b"GIF87a", b"GIF89a"),
-    "BMP": (b"BM",),
-}
+# 文件头判定统一走 work_record.file_validation（此前这里是第三份 magic 表，
+# 且比同目录 validators.py 更严：PNG 查 8 字节 vs 4 字节 —— 同一类文件两个口径）
 
 
 def validate_license_scan(f) -> None:
@@ -48,13 +43,7 @@ def validate_license_scan(f) -> None:
             f"文件大小 {f.size / 1024 / 1024:.1f}MB 超过上限 "
             f"{LICENSE_SCAN_MAX_SIZE // 1024 // 1024}MB"
         )
-    head = f.read(16)
-    f.seek(0)
-    if ext == "WEBP":
-        ok = head[:4] == b"RIFF" and head[8:12] == b"WEBP"
-    else:
-        ok = any(head.startswith(prefix) for prefix in _SCAN_MAGIC_PREFIXES[ext])
-    if not ok:
+    if not magic_ok(ext, read_head(f, 16)):
         raise ValidationError("文件内容与扩展名不符，已拒绝上传")
 
 

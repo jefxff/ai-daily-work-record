@@ -8,46 +8,22 @@
 from django.conf import settings
 from django.core.exceptions import ValidationError
 
-# ---- 文件头 magic byte 映射（只覆盖常见格式，纯 Python 实现，不引入外部依赖） ----
-# 仅校验扩展名 + magic 都在白名单内——扩展名可被伪造，magic byte 伪造成本高。
-MAGIC_MAP: dict[str, bytes] = {
-    # 图片（前 4 字节足够识别）
-    ".jpg": b"\xff\xd8\xff",
-    ".jpeg": b"\xff\xd8\xff",
-    ".png": b"\x89PNG",
-    ".gif": b"GIF8",
-    ".webp": b"RIFF",    # webp 是 RIFF 容器，后续再校验第 9-12 字节
-    ".bmp": b"BM",
-    ".pdf": b"%PDF-",
-    # 老版 Office（OLE 复合文档）：.doc/.xls/.ppt 三者 magic byte 相同
-    ".doc": b"\xd0\xcf\x11\xe0",
-    ".xls": b"\xd0\xcf\x11\xe0",
-    ".ppt": b"\xd0\xcf\x11\xe0",
-}
+# 文件头表与判定统一在 work_record.file_validation（全站唯一一份）：
+# 此前本模块、archive/validators.py、archive/forms.py 各有一份，PNG/PDF 的
+# 前缀宽严还不一致（4 字节 vs 8 字节、%PDF- vs %PDF）。
+from work_record.file_validation import (  # noqa: E402  （放在常量区，保持原有阅读顺序）
+    HAS_MAGIC as _SHARED_HAS_MAGIC,
+    magic_ok,
+    read_head,
+)
 
-# 有 magic byte 的扩展名集合（新版 Office 是 zip、纯文本无 magic——都不列入）
-HAS_MAGIC = set(MAGIC_MAP.keys())
+# 兼容本模块历史的“带点小写扩展名”写法（供 validate_upload 判断是否需要校验）
+HAS_MAGIC = {f".{ext.lower()}" for ext in _SHARED_HAS_MAGIC}
 
 
 def _check_magic(fileobj, ext: str) -> bool:
-    """读取文件头校验 magic byte。仅对 HAS_MAGIC 扩展名生效。"""
-    ext = ext.lower()
-    if ext not in HAS_MAGIC:
-        return True  # 无对应 magic byte 的扩展名跳过（信任扩展名）
-    expected = MAGIC_MAP[ext]
-    head = fileobj.read(len(expected))
-    fileobj.seek(0)  # 必须复位，Django FileField 后续还要读
-    if len(head) < len(expected):
-        return False
-    if ext == ".webp":
-        # webp: RIFF....WEBP，head 里还应包含 "WEBP"
-        if not head.startswith(b"RIFF"):
-            return False
-        # 再多读 4 字节验证 WEBP
-        extra = fileobj.read(12)
-        fileobj.seek(0)
-        return b"WEBP" in extra
-    return head.startswith(expected)
+    """读取文件头校验 magic byte（实现见 work_record.file_validation.magic_ok）。"""
+    return magic_ok(ext, read_head(fileobj, 16))
 
 
 # 默认扩展名白名单（项目原两份 clean_file 的硬编码列表，去重后保留）
