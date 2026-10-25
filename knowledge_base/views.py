@@ -313,6 +313,21 @@ def document_detail(request, pk):
     # （_render_markdown：净化 + 任务列表 checkbox 化）
     document.content_html = _render_markdown(document.content)
 
+    # 每日记录沉淀容器（UI 反馈 #4）：容器正文只是占位说明，
+    # 真实内容在节点树（每条记录一个节点，text=记录正文）。
+    # 阅读视图此前只有占位文字，用户点开看不到任何记录内容——
+    # 这里把节点正文按排序渲染进阅读流（同走 bleach 净化，零新增攻击面）。
+    sync_nodes = []
+    if document.source == 'daily_record_sync':
+        from knowledge_base.models import KnowledgeNode
+        for n in (KnowledgeNode.objects.filter(document=document, parent=None)
+                  .exclude(node_type='ref').order_by('sort', 'pk')):
+            sync_nodes.append({
+                'label': n.ref_label or '每日记录',
+                'html': _render_markdown(n.text or ''),
+                'is_done': n.is_done,
+            })
+
     # 获取相关文档（同分类或同标签；同样只从可见范围里挑，
     # 否则会通过「相关文档」把私有文档的标题带出来）
     # L4：document.tags 为空时跳过标签分支——icontains='' 会匹配全表，导致相关文档杂乱
@@ -324,6 +339,7 @@ def document_detail(request, pk):
 
     context = {
         'document': document,
+        'sync_nodes': sync_nodes,
         'related_docs': related_docs,
         'category_path': _category_path(document.category),
         'can_edit_doc': access.can_edit(document, request.user),
