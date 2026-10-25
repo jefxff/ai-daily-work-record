@@ -102,15 +102,19 @@
 <div class="kb-reader-body">
     <div class="content markdown-content" id="kbReadView" role="tabpanel">
         {% if document.source != 'daily_record_sync' %}{{ document.content_html|safe }}{% endif %}
-        {% if sync_nodes %}
-        <div class="kb-sync-nodes">
-            {% for n in sync_nodes %}
-            <section class="kb-sync-node" {% if n.is_done %}data-done="1"{% endif %}>
-                <h3 class="kb-sync-node-title">
-                    {% if n.is_done %}<span class="kb-sync-done" title="已完成">✓</span>{% endif %}
-                    {{ n.label }}
-                </h3>
-                <div class="markdown-content">{{ n.html|safe }}</div>
+        {% if sync_days %}
+        <div class="kb-sync-days">
+            {% for d in sync_days %}
+            <section class="kb-sync-day">
+                <h2 class="kb-sync-day-title">{{ d.date }}</h2>
+                <ul class="kb-sync-day-list">
+                    {% for item in d.items %}
+                    <li {% if item.is_done %}data-done="1"{% endif %}>
+                        <span class="kb-sync-bullet" aria-hidden="true"></span>
+                        <div class="markdown-content">{{ item.html|safe }}</div>
+                    </li>
+                    {% endfor %}
+                </ul>
             </section>
             {% endfor %}
         </div>
@@ -494,19 +498,32 @@
 .markdown-content hr { border: none; height: 1px; background: var(--c-border); margin: var(--sp-8) 0; }
 .markdown-content img { max-width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--c-border); }
 
-/* ════════════ 每日记录沉淀节点（阅读视图内联展示，UI 反馈 #4） ════════════ */
-.kb-sync-nodes { margin-top: 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
-.kb-sync-node {
-    border: 1px solid var(--c-border);
-    border-left: 3px solid var(--c-primary);
-    border-radius: 8px;
-    padding: 0.75rem 1rem;
-    background: var(--c-surface);
+/* ════════════ 每日记录沉淀（阅读视图按天分组，UI 反馈 #4） ════════════ */
+/* 同一天一个日期大标题，当天内容用无序列表展示 */
+.kb-sync-days { margin-top: 1.25rem; display: flex; flex-direction: column; gap: 1.75rem; }
+.kb-sync-day-title {
+    margin: 0 0 0.6rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--c-text);
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid var(--c-border);
 }
-.kb-sync-node-title { margin: 0 0 0.5rem; font-size: 0.95rem; color: var(--c-text-secondary); display: flex; align-items: center; gap: 0.4rem; }
-.kb-sync-done { color: var(--c-success, #16a34a); font-weight: 700; }
-.kb-sync-node .markdown-content { font-size: 0.95rem; }
-.kb-sync-node[data-done="1"] { opacity: 0.75; }
+.kb-sync-day-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.55rem; }
+.kb-sync-day-list li { display: flex; align-items: flex-start; gap: 0.55rem; }
+.kb-sync-bullet {
+    flex: 0 0 auto;
+    width: 7px; height: 7px;
+    margin-top: 0.55em;
+    border-radius: 50%;
+    background: var(--c-primary);
+}
+.kb-sync-day-list li[data-done="1"] .kb-sync-bullet { background: var(--c-success, #16a34a); }
+.kb-sync-day-list li[data-done="1"] .markdown-content { opacity: 0.72; }
+.kb-sync-day-list .markdown-content { font-size: 0.95rem; min-width: 0; word-break: break-word; }
+.kb-sync-day-list .markdown-content > :first-child { margin-top: 0; }
+.kb-sync-day-list .markdown-content > :last-child { margin-bottom: 0; }
+
 
 /* ════════════ 大纲模式（参照参考图：大号笔记） ════════════ */
 .kb-outline { font-size: 15px; line-height: 1.7; }

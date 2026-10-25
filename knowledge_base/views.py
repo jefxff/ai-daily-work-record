@@ -314,33 +314,11 @@ def document_detail(request, pk):
     document.content_html = _render_markdown(document.content)
 
     # 每日记录沉淀容器（UI 反馈 #4）：容器正文只是占位说明（模板层已跳过渲染），
-    # 阅读视图只渲染每日记录的正文内容本身；节点标题仅显示记录日期，
+    # 阅读视图按「天」分组渲染记录正文：同一天一个日期大标题，当天内容用无序列表。
     # 不展示状态/进度/截止日等元数据（用户反馈：只沉淀记录内容，不要其他东西）。
-    sync_nodes = []
+    sync_days = []
     if document.source == 'daily_record_sync':
-        from knowledge_base.models import KnowledgeNode
-        from records.models import DailyRecord
-        nodes = list(KnowledgeNode.objects
-                     .filter(document=document, parent=None)
-                     .exclude(node_type='ref')
-                     .order_by('sort', 'pk'))
-        dates = {}
-        rec_ids = [n.ref_object_id for n in nodes
-                   if n.ref_module == 'daily_record' and n.ref_object_id]
-        if rec_ids:
-            dates = {r.pk: r.record_date for r in
-                     DailyRecord.objects.filter(pk__in=rec_ids).only('pk', 'record_date')}
-        for n in nodes:
-            if not (n.text or '').strip():
-                continue
-            rd = dates.get(n.ref_object_id) if n.ref_module == 'daily_record' else None
-            label = (timezone.localtime(rd).strftime('%Y-%m-%d')
-                     if rd else (n.ref_label or '每日记录'))
-            sync_nodes.append({
-                'label': label,
-                'html': _render_markdown(n.text),
-                'is_done': n.is_done,
-            })
+        sync_days = _sync_days(document)
 
     # 获取相关文档（同分类或同标签；同样只从可见范围里挑，
     # 否则会通过「相关文档」把私有文档的标题带出来）
@@ -353,7 +331,7 @@ def document_detail(request, pk):
 
     context = {
         'document': document,
-        'sync_nodes': sync_nodes,
+        'sync_days': sync_days,
         'related_docs': related_docs,
         'category_path': _category_path(document.category),
         'can_edit_doc': access.can_edit(document, request.user),
@@ -451,6 +429,10 @@ def document_edit(request, pk):
                                 **_vis_form_context(document, request.user)}, ok=False)
     else:
         form = KnowledgeDocumentForm(instance=document)
+        if document.source == 'daily_record_sync':
+            # 沉淀容器：编辑弹窗不再预填占位模板文字，改为预填按天生成的
+            # 真实记录 Markdown（只读影子——正文改动请在每日记录中进行）。
+            form.initial['content'] = _sync_markdown(document)
 
     if is_ajax:
         return _modal_form(request, 'knowledge_base/_document_form_modal.html',
@@ -490,12 +472,100 @@ def document_visibility(request, pk):
     })
 
 
+def _sync_nodes_with_dates(document):
+    """沉淀容器的业务节点 + 对应记录日期，按展示顺序返回 [(node, date_or_None)]。"""
+    from knowledge_base.models import KnowledgeNode
+    from records.models import DailyRecord
+
+    nodes = list(KnowledgeNode.objects
+                 .filter(document=document, parent=None)
+                 .exclude(node_type='ref')
+                 .order_by('sort', 'pk'))
+    dates = {}
+    rec_ids = [n.ref_object_id for n in nodes
+               if n.ref_module == 'daily_record' and n.ref_object_id]
+    if rec_ids:
+        dates = {r.pk: r.record_date for r in
+                 DailyRecord.objects.filter(pk__in=rec_ids).only('pk', 'record_date')}
+    out = []
+    for n in nodes:
+        if not (n.text or '').strip():
+            continue
+        rd = dates.get(n.ref_object_id) if n.ref_module == 'daily_record' else None
+        out.append((n, rd))
+    return out
+
+
+def _sync_days(document):
+    """按记录日期分组：[{'date': '2026-10-25', 'items': [{'html':…, 'is_done':…}]}]。
+
+    同一天的记录共用一个日期大标题，当天内容以无序列表展示（UI 反馈 #4）。
+    无日期的节点（理论上不存在）归入 '未知日期' 组垫底。
+    """
+    days = {}
+    order = []
+    for n, rd in _sync_nodes_with_dates(document):
+        key = timezone.localtime(rd).strftime('%Y-%m-%d') if rd else '未知日期'
+        if key not in days:
+            days[key] = []
+            order.append(key)
+        days[key].append({'html': _render_markdown(n.text), 'is_done': n.is_done})
+    return [{'date': k, 'items': days[k]} for k in sorted(order) if k != '未知日期'] + \
+           ([{'date': '未知日期', 'items': days['未知日期']}] if '未知日期' in days else [])
+
+
+def _sync_tree(document):
+    """沉淀容器 → 大纲树：每天一个二级标题节点，当天记录是它的 todo 子节点。"""
+    tree = []
+    for day in _sync_days(document):
+        tree.append({
+            'uid': f'sync-day-{day["date"]}',
+            'type': 'text',
+            'text': day['date'],
+            'done': False,
+            'note': '',
+            'due': None,
+            'heading_level': 2,
+            'collapsed': False,
+            'ref_module': '', 'ref_object_id': None, 'ref_label': '',
+            'children': [
+                {
+                    'uid': f'sync-item-{day["date"]}-{i}',
+                    'type': 'todo',
+                    'text': re.sub(r'<[^>]+>', '', item['html']).strip(),
+                    'done': item['is_done'],
+                    'note': '', 'due': None, 'heading_level': 0, 'collapsed': False,
+                    'ref_module': '', 'ref_object_id': None, 'ref_label': '',
+                    'children': [],
+                }
+                for i, item in enumerate(day['items'])
+            ],
+        })
+    return tree
+
+
+def _sync_markdown(document):
+    """沉淀容器 → 生成的 Markdown（编辑弹窗预填用，替代占位模板文字）。"""
+    lines = []
+    for day in _sync_days(document):
+        lines.append(f'## {day["date"]}')
+        for item in day['items']:
+            text = re.sub(r'<[^>]+>', '', item['html']).strip()
+            lines.append(f'- [{"x" if item["is_done"] else " "}] {text}')
+        lines.append('')
+    return '\n'.join(lines).strip()
+
+
 def _doc_tree(document):
     """文档 → 树 dict（接口/前端统一形状）。
 
     editor_mode=outline 的文档从节点表组装；markdown 文档即时解析 content，
     不落库（P1 只读阶段零数据变更；首次在编辑器保存后才转 outline，见 4b）。
+    沉淀容器（source=daily_record_sync）从每日记录节点按天生成——大纲/导图/
+    编辑大纲看到的都是真实记录内容，不是占位模板文字（UI 反馈 #4）。
     """
+    if document.source == 'daily_record_sync':
+        return _sync_tree(document)
     if document.editor_mode == 'outline':
         nodes = document.nodes.all().order_by('sort', 'id')
         by_parent = {}
@@ -611,6 +681,13 @@ def _api_save_tree(request, document):
         return JsonResponse({'ok': False, 'message': '权限不足，无法保存大纲。'}, status=403)
     if not access.can_edit(document, request.user):
         return JsonResponse({'ok': False, 'message': '只能编辑自己创建的文档'}, status=403)
+    if document.source == 'daily_record_sync':
+        # 沉淀容器是每日记录的影子，大纲树由记录按天生成；在这里保存会覆盖影子结构，
+        # 且下次同步又被改回——直接拒绝并引导去源头改。
+        return JsonResponse({
+            'ok': False,
+            'message': '沉淀容器的大纲由每日记录自动生成，不能在这里编辑；请到「每日记录」修改记录内容。',
+        }, status=400)
 
     try:
         payload = json.loads(request.body or b'{}')
