@@ -49,6 +49,9 @@ class ThreadingWSGIServer(ThreadingMixIn, WSGIServer):
 
     daemon_threads = True
     allow_reuse_address = True
+    # 与 HTTP 入口（work_record/server_patch.py）对齐：不暴露 wsgiref/Python 版本
+    server_version = "WorkRecord"
+    sys_version = ""
 
 
 class KeepAliveServerHandler(_ServerHandler):
@@ -61,6 +64,10 @@ class KeepAliveServerHandler(_ServerHandler):
     """
 
     http_version = "1.1"
+    # Server 响应头脱敏（审计 BE-03）：与 HTTP 入口一致返回 "WorkRecord"，
+    # 不泄露 wsgiref 与 CPython 小版本
+    server_version = "WorkRecord"
+    sys_version = ""
 
 
 class RequestHandler(WSGIRequestHandler):

@@ -26,6 +26,17 @@ logger = logging.getLogger(__name__)
 _SCRIPT_TAG_RE = re.compile(r"<script(?![^>]*\bnonce=)", re.IGNORECASE)
 
 
+def _log_safe(value, limit=200):
+    """清洗来自未认证请求体的日志字段（审计 BE-09）。
+
+    浏览器上报的 blocked-uri / document-uri 等完全由客户端控制，
+    换行符可伪造日志行、超长值会刷爆日志文件——落日志前统一压平并截断。
+    """
+    if not isinstance(value, str):
+        value = str(value)
+    return value.replace("\r", " ").replace("\n", " ")[:limit]
+
+
 class CSPMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
@@ -103,8 +114,9 @@ def csp_report(request):
         report = payload.get("csp-report") or {}
         logger.warning(
             "CSP violation blocked=%s directive=%s uri=%s",
-            report.get("blocked-uri"), report.get("violated-directive"),
-            report.get("document-uri"),
+            _log_safe(report.get("blocked-uri")),
+            _log_safe(report.get("violated-directive")),
+            _log_safe(report.get("document-uri")),
         )
     except Exception:
         logger.debug("CSP 上报体解析失败", exc_info=True)
