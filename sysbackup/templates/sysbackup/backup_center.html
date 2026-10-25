@@ -20,7 +20,14 @@
 </style>
 {% endblock %}
 {% block content %}
-<div class="container">
+<div class="container" id="backupCenter"
+     data-url-scan="{% url 'sysbackup:api_scan' %}"
+     data-url-status="{% url 'sysbackup:api_status' %}"
+     data-url-start="{% url 'sysbackup:api_start_backup' %}"
+     data-url-restore="{% url 'sysbackup:api_start_restore' %}"
+     data-url-delete="{% url 'sysbackup:api_delete' %}"
+     data-url-download="{% url 'sysbackup:download' %}"
+     data-url-oplogs="{% url 'sysbackup:api_oplogs' %}">
     {# 高危动作权限透传给 JS：动态渲染的备份包行与上方静态表格用同一把锁（P1-1） #}
     <div id="bkPerms" class="d-none"
          data-restore="{% can 'system' 'restore' %}1{% endcan %}"
@@ -89,10 +96,22 @@
                     </thead>
                     <tbody id="backupTbody">
                         {% for b in backups %}
-                        <tr data-path="{{ b.path|escapejs }}" data-name="{{ b.name|escapejs }}">
+                        {% comment %}
+                          属性值必须用 |escape（HTML 转义），不能用 |escapejs：
+                          escapejs 是给 JS 字符串字面量用的，会把 Windows 路径的反斜杠
+                          变成转义序列，写进 HTML 属性后后端 is_file() 判否，
+                          点「恢复」就报「备份包路径无效」。
+                          另注：Django 的 {# #} 只支持单行，多行注释必须用 comment 标签，
+                          否则注释内容会被当成正文渲染到页面上。
+                        {% endcomment %}
+                        <tr data-path="{{ b.path|escape }}" data-name="{{ b.name|escape }}">
                             <td data-label="备份包" class="text-break">
                                 <span class="u-bold">{{ b.name }}</span>
-                                {% if b.schema_version != 1 %}<span class="badge bg-secondary">版本未知</span>{% endif %}
+                                {% if b.readable is False %}
+                                <span class="badge bg-danger" title="密钥缺失或包损坏，无法解密">无法解密</span>
+                                {% elif b.schema_version != 1 %}
+                                <span class="badge bg-secondary">版本未知</span>
+                                {% endif %}
                             </td>
                             <td data-label="备份时间">{{ b.created_at|default:b.mtime }}</td>
                             <td data-label="操作人">{{ b.created_by|default:"—" }}</td>
@@ -101,6 +120,7 @@
                             <td data-label="附件">{{ b.media_files }} 个</td>
                             <td data-label="操作">
                                 {# 高危动作按钮与后端权限码一一对应：无权用户不渲染入口（P1-1）#}
+                                {% if b.readable is not False %}
                                 {% can "system" "restore" %}
                                 <button class="btn btn-sm btn-outline-danger btn-restore">恢复</button>
                                 {% endcan %}
@@ -108,6 +128,7 @@
                                 <a class="btn btn-sm btn-outline-secondary btn-download"
                                    href="{% url 'sysbackup:download' %}?path={{ b.path|urlencode }}">下载</a>
                                 {% endcan %}
+                                {% endif %}
                                 {% can "system" "delete" %}
                                 <button class="btn btn-sm btn-outline-secondary btn-delete-bk">删除</button>
                                 {% endcan %}
@@ -270,6 +291,9 @@
         del: _bkPerms.delete === '1'
     };
 
+    /* URL 统一来自根容器 data-* 属性（服务端用 url 模板标签生成），不再硬编码路径 */
+    var U = document.getElementById('backupCenter').dataset;
+
     /* ---------- 通用 AJAX（完整消费响应体后再做后续动作） ---------- */
     function _parseJsonResp(r) {
         return r.text().then(function (txt) {
@@ -352,7 +376,7 @@
     }
     function poll(taskId) {
         if (pollTimer) clearTimeout(pollTimer);
-        apiGet('/system/backup/status/?task=' + taskId).then(function (d) {
+        apiGet(U.urlStatus + '?task=' + taskId).then(function (d) {
             if (!d.ok) { showResult(false, d.message || '任务状态查询失败'); return; }
             var t = d.task;
             $('taskBar').style.width = t.percent + '%';
@@ -401,7 +425,7 @@
             if (!dest) { toast('请填写自定义备份路径', 'error'); return; }
         }
         openTask('全量备份');
-        api('/system/backup/start/', { dest_dir: dest }).then(function (d) {
+        api(U.urlStart, { dest_dir: dest }).then(function (d) {
             if (d.ok) { poll(d.task_id); }
             else { showResult(false, d.message || '发起备份失败'); }
         }).catch(function (e) { showResult(false, '网络错误：' + e); });
@@ -427,7 +451,7 @@
                     needAck: true, danger: true, okText: '开始恢复',
                     onOk: function () {
                         openTask('全量恢复');
-                        api('/system/backup/restore/', { path: path }).then(function (d) {
+                        api(U.urlRestore, { path: path }).then(function (d) {
                             if (d.ok) { poll(d.task_id); }
                             else { showResult(false, d.message || '发起恢复失败'); }
                         }).catch(function (e) { showResult(false, '网络错误：' + e); });
@@ -445,7 +469,7 @@
                     body: '确定删除备份包 <strong>' + name + '</strong> 吗？删除后不可恢复。',
                     needAck: false, danger: true, okText: '删除',
                     onOk: function () {
-                        api('/system/backup/delete/', { path: path }).then(function (d) {
+                        api(U.urlDelete, { path: path }).then(function (d) {
                             if (d.ok) { tr.remove(); checkEmpty(); toast(d.message || '已删除', 'success'); }
                             else { toast(d.message || '删除失败', 'error'); }
                         }).catch(function (e) {
@@ -472,7 +496,7 @@
         var restoreBtn = function () {
             if (scanBtn) { scanBtn.disabled = false; scanBtn.textContent = btnText; }
         };
-        apiGet('/system/backup/scan/?dir=' + encodeURIComponent(dir || '')).then(function (d) {
+        apiGet(U.urlScan + '?dir=' + encodeURIComponent(dir || '')).then(function (d) {
             restoreBtn();
             if (!d.ok) { toast(d.message || '扫描失败', 'error'); return; }
             $('scannedDirText').textContent = d.dir;
@@ -482,15 +506,18 @@
                 tb.insertAdjacentHTML('beforeend',
                     '<tr data-path="' + esc(b.path) + '" data-name="' + esc(b.name) + '">' +
                     '<td data-label="备份包" class="text-break u-bold">' + esc(b.name) +
-                    (b.schema_version !== 1 ? ' <span class="badge bg-secondary">版本未知</span>' : '') + '</td>' +
+                    (b.readable === false
+                        ? ' <span class="badge bg-danger">无法解密</span>'
+                        : (b.schema_version !== 1 ? ' <span class="badge bg-secondary">版本未知</span>' : '')) + '</td>' +
                     '<td data-label="备份时间">' + esc(b.created_at || b.mtime) + '</td>' +
                     '<td data-label="操作人">' + esc(b.created_by || '—') + '</td>' +
                     '<td data-label="大小">' + esc(b.size_text) + '</td>' +
                     '<td data-label="数据库">' + esc(b.db_tables) + ' 表 / ' + esc(b.db_rows) + ' 条</td>' +
                     '<td data-label="附件">' + esc(b.media_files) + ' 个</td>' +
                     '<td data-label="操作">' +
-                        (BK_PERMS.restore ? '<button class="btn btn-sm btn-outline-danger btn-restore">恢复</button> ' : '') +
-                        (BK_PERMS.backup ? '<a class="btn btn-sm btn-outline-secondary btn-download" href="/system/backup/download/?path=' + encodeURIComponent(b.path) + '">下载</a> ' : '') +
+                        (b.readable === false ? '' :
+                            (BK_PERMS.restore ? '<button class="btn btn-sm btn-outline-danger btn-restore">恢复</button> ' : '') +
+                            (BK_PERMS.backup ? '<a class="btn btn-sm btn-outline-secondary btn-download" href="' + U.urlDownload + '?path=' + encodeURIComponent(b.path) + '">下载</a> ' : '')) +
                         (BK_PERMS.del ? '<button class="btn btn-sm btn-outline-secondary btn-delete-bk">删除</button>' : '') +
                     '</td></tr>');
             });
@@ -525,7 +552,7 @@
         var s = $('logStart').value.trim(), e = $('logEnd').value.trim();
         if (s) p.set('start', s);
         if (e) p.set('end', e);
-        return '/system/backup/oplogs/?' + p.toString();
+        return U.urlOplogs + '?' + p.toString();
     }
 
     function loadLogs() {

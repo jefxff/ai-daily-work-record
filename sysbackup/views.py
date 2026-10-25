@@ -119,9 +119,13 @@ def api_delete(request):
 # 通道，system.read 只该覆盖「看健康状态/看备份列表」，下载必须单独授权 system.backup
 @perm_required("system", "backup")
 def download(request):
-    """下载备份包。?path=<绝对路径>（必须在备份目录白名单内）"""
+    """下载备份包。?path=<绝对路径>（必须在备份目录白名单内）
+
+    允许 .zip 明文包与 .zip.enc 加密包（定时任务默认产出加密包，修复前
+    下载按钮对加密包一律 400「备份包路径无效」导致功能失效）。
+    """
     p = Path((request.GET.get("path") or "").strip())
-    if not p.is_absolute() or not p.is_file() or p.suffix.lower() != ".zip":
+    if not p.is_absolute() or not p.is_file() or not services.is_backup_file_name(p.name):
         return JsonResponse({"ok": False, "message": "备份包路径无效"}, status=400)
     try:
         services.ensure_path_allowed(p)

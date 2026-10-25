@@ -48,14 +48,26 @@ DEFAULT_BACKUP_DIR = Path(
     os.environ.get("BACKUP_DIR") or (Path.home() / "WorkRecordBackups")
 )
 
-# 备份包默认 Fernet 加密；密钥优先取环境变量，否则落盘到项目外/内的密钥文件。
-# 审计 SEC-04：默认密钥文件与备份包同目录（项目外），避免整目录拷贝项目时
-# 把「代码 + 可解密历史备份的密钥」一起带走；BACKUP_KEY_FILE 仍可覆盖。
+# 备份包默认 Fernet 加密；密钥优先取环境变量，否则落盘到**与备份目录分离**的位置。
+# 审查 S1：密钥若与备份包同目录（历史默认就是 BACKUP_DIR/.backup_key），
+# 磁盘损坏 / 目录误删 / 整目录拷走时备份与密钥同时消失，历史备份永久不可解密，
+# 加密本身也失去意义（拿到目录的人同时拿到密钥）。现在默认放到用户配置目录
+# （Windows: %LOCALAPPDATA%\WorkRecordKeys，其它平台: ~/.workrecord），
+# 与 DEFAULT_BACKUP_DIR 不再是同一棵树；BACKUP_KEY_FILE 仍可显式覆盖。
 BACKUP_KEY_ENV = "BACKUP_ENCRYPTION_KEY"
-_LEGACY_BACKUP_KEY_FILE = Path(settings.BASE_DIR) / ".backup_key"
+_KEY_HOME = Path(os.environ.get("LOCALAPPDATA") or Path.home()) / "WorkRecordKeys"
 BACKUP_KEY_FILE = Path(
-    os.environ.get("BACKUP_KEY_FILE") or (DEFAULT_BACKUP_DIR / ".backup_key")
+    os.environ.get("BACKUP_KEY_FILE") or (_KEY_HOME / ".backup_key")
 )
+# 历史上出现过的密钥位置（迁移时按顺序探测，保证旧备份仍可解密）：
+# 1) 项目根 .backup_key（早期版本）
+# 2) 备份目录 .backup_key（v2.1 默认，审查前）
+_LEGACY_BACKUP_KEY_FILES = [
+    Path(settings.BASE_DIR) / ".backup_key",
+    DEFAULT_BACKUP_DIR / ".backup_key",
+]
+# 兼容旧代码引用（早期只认项目根那一份）
+_LEGACY_BACKUP_KEY_FILE = _LEGACY_BACKUP_KEY_FILES[0]
 ENCRYPTED_SUFFIX = ".zip.enc"
 
 
@@ -298,29 +310,57 @@ def default_dir():
 
 
 def _key_file() -> Path:
-    """返回当前生效的密钥文件路径。
+    """返回当前生效的密钥文件路径，必要时把旧位置的密钥迁移到新位置。
 
-    旧版本把密钥落在项目根 `.backup_key`。为了不丢已加密的历史备份，
-    新位置不存在而旧位置存在时，把旧密钥原样复制到新位置后再使用
-    （同一份密钥，新旧备份包都能解密）。
+    审查 S1：新位置（用户配置目录）与备份目录分离。历史密钥可能存在于
+    项目根或**备份目录**里 —— 后者尤其危险（备份与密钥同盘同目录），
+    探测到就复制到新位置；复制并校验一致后删除旧副本，真正完成分离。
+    任何一步失败都退回旧位置继续用（宁可少分离，也不能让历史备份解不开）。
     """
-    if BACKUP_KEY_FILE.is_file() or not _LEGACY_BACKUP_KEY_FILE.is_file():
+    if BACKUP_KEY_FILE.is_file():
         return BACKUP_KEY_FILE
-    try:
-        BACKUP_KEY_FILE.parent.mkdir(parents=True, exist_ok=True)
-        BACKUP_KEY_FILE.write_bytes(_LEGACY_BACKUP_KEY_FILE.read_bytes())
+
+    for legacy in _LEGACY_BACKUP_KEY_FILES:
+        if legacy == BACKUP_KEY_FILE or not legacy.is_file():
+            continue
         try:
-            os.chmod(BACKUP_KEY_FILE, 0o600)
+            payload = legacy.read_bytes()
+            BACKUP_KEY_FILE.parent.mkdir(parents=True, exist_ok=True)
+            BACKUP_KEY_FILE.write_bytes(payload)
+            try:
+                os.chmod(BACKUP_KEY_FILE, 0o600)
+            except OSError:
+                pass
+            if BACKUP_KEY_FILE.read_bytes() != payload:
+                raise OSError("密钥复制校验失败")
+            logger.warning(
+                "备份密钥已从旧位置迁移：%s → %s。"
+                "请确保新位置与备份目录分开备份/保管（密钥丢失将使历史加密包永久无法解密）。",
+                legacy, BACKUP_KEY_FILE,
+            )
+            # 校验通过才删除旧副本；删不掉也不影响正确性（新位置已可用）
+            try:
+                legacy.unlink()
+                logger.warning("旧位置密钥已删除：%s（分离完成）", legacy)
+            except OSError:
+                logger.warning("旧位置密钥删除失败，请手工删除：%s", legacy)
+            return BACKUP_KEY_FILE
         except OSError:
-            pass
-        return BACKUP_KEY_FILE
-    except OSError:
-        logger.warning("备份密钥迁移到项目外失败，继续使用旧路径 %s", _LEGACY_BACKUP_KEY_FILE)
-        return _LEGACY_BACKUP_KEY_FILE
+            logger.warning("备份密钥迁移到 %s 失败，继续使用旧位置 %s",
+                           BACKUP_KEY_FILE, legacy, exc_info=True)
+            return legacy
+
+    return BACKUP_KEY_FILE
 
 
 def _fernet():
-    """返回备份包加解密用的 Fernet 实例（密钥持久化，重启后仍可解密旧包）。"""
+    """返回备份包**加密**用的 Fernet 实例。
+
+    审查（2026-10-25 事故）：密钥必须能持久化，否则用完即丢 —— 现场曾出现
+    「旧进程生成的密钥没写成功，包照常生成但从此无法解密」的数据丢失。
+    因此这里在生成新密钥时**必须**写入成功并回读校验，失败即中止本次备份，
+    宁可没有新备份，也不能产生一个永远打不开的包。
+    """
     from cryptography.fernet import Fernet
 
     key = os.environ.get(BACKUP_KEY_ENV)
@@ -330,12 +370,22 @@ def _fernet():
             key = key_file.read_text(encoding="utf-8").strip()
         else:
             key = Fernet.generate_key().decode("ascii")
-            key_file.parent.mkdir(parents=True, exist_ok=True)
-            key_file.write_text(key, encoding="utf-8")
             try:
-                os.chmod(key_file, 0o600)
-            except OSError:
-                pass
+                key_file.parent.mkdir(parents=True, exist_ok=True)
+                key_file.write_text(key, encoding="utf-8")
+                try:
+                    os.chmod(key_file, 0o600)
+                except OSError:
+                    pass
+                if key_file.read_text(encoding="utf-8").strip() != key:
+                    raise OSError("密钥回读校验失败")
+            except OSError as e:
+                raise RuntimeError(
+                    f"备份加密密钥无法保存到 {key_file}（{e}）。已中止本次备份："
+                    f"若继续加密会产生一个永远无法解密的包。"
+                    f"请检查目录权限，或显式设置环境变量 {BACKUP_KEY_ENV}。"
+                ) from e
+            logger.warning("已生成新的备份加密密钥：%s（请与备份目录分开保管）", key_file)
     if isinstance(key, str):
         key = key.encode("utf-8")
     try:
@@ -344,21 +394,149 @@ def _fernet():
         raise ValueError(f"备份加密密钥无效（{BACKUP_KEY_ENV}）：{e}")
 
 
+def _decrypt_fernets():
+    """返回**解密**可用的全部候选 Fernet（主密钥优先，其后是历史/遗留密钥）。
+
+    为什么需要多个：密钥位置在历史上迁移过（项目根 → 备份目录 → 用户配置目录），
+    期间若被旧进程重新生成过，就会出现「同一批备份里不同包用了不同密钥」。
+    解密时逐个尝试，任何一把能解开就恢复成功；加密仍只使用主密钥。
+    """
+    from cryptography.fernet import Fernet
+
+    candidates: list[Path] = []
+    env_key = os.environ.get(BACKUP_KEY_ENV)
+    keys: list[str] = [env_key] if env_key else []
+    if BACKUP_KEY_FILE.is_file():
+        candidates.append(BACKUP_KEY_FILE)
+    for legacy in _LEGACY_BACKUP_KEY_FILES:
+        if legacy.is_file() and legacy not in candidates:
+            candidates.append(legacy)
+    # 隔离/归档的历史密钥（*.legacy*）也纳入尝试范围
+    for legacy in _LEGACY_BACKUP_KEY_FILES:
+        try:
+            for archived in legacy.parent.glob(f"{legacy.name}*"):
+                if archived.is_file() and archived not in candidates:
+                    candidates.append(archived)
+        except OSError:
+            continue
+    keys += [p.read_text(encoding="utf-8").strip() for p in candidates]
+
+    seen, fernets = set(), []
+    for raw in keys:
+        if not raw or raw in seen:
+            continue
+        seen.add(raw)
+        try:
+            fernets.append(Fernet(raw.encode("utf-8")))
+        except Exception:
+            continue
+    return fernets
+
+
 def _encrypt_file(src: Path, dst: Path):
     """把 zip 明文加密为 .zip.enc（Fernet：AES128-CBC + HMAC）。"""
     dst.write_bytes(_fernet().encrypt(src.read_bytes()))
 
 
 def _decrypt_file(src: Path, dst: Path):
-    """把 .zip.enc 解密为临时 zip 明文。"""
-    try:
-        dst.write_bytes(_fernet().decrypt(src.read_bytes()))
-    except Exception as e:
-        raise ValueError(f"备份包解密失败（密钥不匹配或文件损坏）：{e}")
+    """把 .zip.enc 解密为临时 zip 明文（支持历史多密钥）。"""
+    payload = src.read_bytes()
+    errors = []
+    for fernet in _decrypt_fernets():
+        try:
+            dst.write_bytes(fernet.decrypt(payload))
+            return
+        except Exception as e:  # 换下一把密钥继续尝试
+            errors.append(type(e).__name__)
+    raise ValueError(
+        "备份包解密失败：已尝试全部已知密钥（主密钥与历史密钥）均不匹配。"
+        "可能是密钥文件丢失，或该包由已不存在的密钥加密。"
+        f"（尝试次数 {len(errors)}）"
+    )
+
+
+def is_backup_file_name(name: str) -> bool:
+    """是否为受支持的备份包文件名（.zip 明文 / .zip.enc 加密）。
+
+    统一入口：download / restore / delete / scan 全部走这里。
+    改造前同一条规则在 5 处各写一遍（sysbackup 4 处 + views 1 处），
+    实际就出现过「下载放行了 .zip.enc、恢复却只认 .zip」的不一致。
+    """
+    lowered = (name or "").lower()
+    return lowered.endswith(".zip") or lowered.endswith(ENCRYPTED_SUFFIX)
 
 
 def _is_encrypted(path: Path) -> bool:
     return str(path).lower().endswith(ENCRYPTED_SUFFIX)
+
+
+def _mirror_backups(package: Path, task_id: str = "") -> list[dict]:
+    """把刚生成的备份包复制到所有异地/镜像目录（审查 C2）。
+
+    - 目标目录不存在则尝试创建（移动硬盘需先插上并存在盘符）；
+    - 单个镜像失败只记警告并继续下一个，**不影响备份任务状态**；
+    - 返回每个目录的结果，供任务详情与操作留痕展示。
+    """
+    results = []
+    for raw in getattr(settings, "BACKUP_MIRROR_DIRS", []) or []:
+        target_dir = Path(raw)
+        try:
+            target_dir.mkdir(parents=True, exist_ok=True)
+            target = target_dir / package.name
+            shutil.copy2(package, target)
+            # 校验大小一致，避免半截文件被当成有效备份
+            if target.stat().st_size != package.stat().st_size:
+                raise OSError("复制后大小不一致")
+            results.append({"dir": str(target_dir), "ok": True, "path": str(target)})
+            if task_id:
+                _log(task_id, f"已复制异地副本：{target}")
+        except OSError as exc:
+            results.append({"dir": str(target_dir), "ok": False, "error": str(exc)})
+            logger.warning("备份异地复制失败（已跳过）：%s -> %s", package.name, target_dir, exc_info=True)
+            if task_id:
+                _log(task_id, f"⚠️ 异地副本复制失败（{target_dir}）：{exc}")
+    return results
+
+
+def _rotate_backups(dest: Path) -> int:
+    """按保留策略清理过期备份包，返回删除数量。
+
+    规则（settings 可覆盖）：
+    - 最近 ``BACKUP_RETAIN_DAILY``（默认 14）个包无条件保留；
+    - 另外每周（ISO 周）各保留最新的 1 个，最多 ``BACKUP_RETAIN_WEEKLY``（默认 8）周。
+
+    只看本系统命名的 ``backup_*{ENCRYPTED_SUFFIX}``：``safety_snapshots/`` 里的
+    恢复前快照与用户自放的其它文件一律不动（破坏性最小化）。
+    """
+    retain_daily = max(1, int(getattr(settings, "BACKUP_RETAIN_DAILY", 14)))
+    retain_weekly = max(0, int(getattr(settings, "BACKUP_RETAIN_WEEKLY", 8)))
+
+    backups = [p for p in dest.glob(f"backup_*{ENCRYPTED_SUFFIX}") if p.is_file()]
+    if len(backups) <= retain_daily:
+        return 0
+    backups.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+
+    keep = set(backups[:retain_daily])
+    # 每周保底：按 ISO 周取该周最新的一个
+    weekly: dict = {}
+    for path in backups:
+        try:
+            week_key = datetime.fromtimestamp(path.stat().st_mtime).isocalendar()[:2]
+        except (OSError, ValueError):
+            continue
+        weekly.setdefault(week_key, path)
+    keep |= set(list(weekly.values())[:retain_weekly] if retain_weekly else [])
+
+    removed = 0
+    for path in backups:
+        if path in keep:
+            continue
+        try:
+            path.unlink()
+            removed += 1
+        except OSError:
+            logger.warning("备份轮转：删除 %s 失败（已跳过）", path, exc_info=True)
+    return removed
 
 
 def _human_size(n):
@@ -593,9 +771,28 @@ def _run_backup(task_id, dest: Path, operator):
         os.replace(str(tmp_enc), str(final_path))
         _log(task_id, f"备份包已生成：{final_path}（{_human_size(final_path.stat().st_size)}）")
 
+        # 5.1) 保留策略轮转（审查 H7）：每日全量包永不删除会把单盘写满，
+        #      盘满后 SQLite 写入与后续备份会一起失败。轮转失败只记警告，
+        #      绝不影响本次备份的成功状态。
+        try:
+            removed = _rotate_backups(dest)
+            if removed:
+                _log(task_id, f"保留策略：清理 {removed} 个过期备份包"
+                              f"（保留最近 {settings.BACKUP_RETAIN_DAILY} 天 + 每周 1 份 × "
+                              f"{settings.BACKUP_RETAIN_WEEKLY} 周）")
+        except Exception:  # noqa: BLE001 — 轮转属附属动作，不能让备份失败
+            logger.exception("备份轮转失败（已忽略，备份包仍有效）：%s", dest)
+
+        # 5.2) 异地副本（审查 C2）：备份与数据库同盘时，磁盘故障会双失。
+        mirror_results = _mirror_backups(final_path, task_id)
+
         # 6) 操作留痕（先写记录，再标记任务完成，保证轮询到任务结束时记录已存在）
+        mirror_note = ""
+        if mirror_results:
+            ok_n = sum(1 for m in mirror_results if m["ok"])
+            mirror_note = f"；异地副本 {ok_n}/{len(mirror_results)} 成功"
         _write_oplog(operator, "备份", backup_name,
-                     f"全量备份至 {final_path}：{db_tables} 张表 / {len(media_files)} 个附件")
+                     f"全量备份至 {final_path}：{db_tables} 张表 / {len(media_files)} 个附件{mirror_note}")
         _log_operation(
             "backup", operator, backup_name, str(final_path), True,
             f"全量备份至 {final_path}（{_human_size(final_path.stat().st_size)}）："
@@ -612,6 +809,7 @@ def _run_backup(task_id, dest: Path, operator):
             result={
                 "path": str(final_path),
                 "name": backup_name,
+                "mirrors": mirror_results,
                 "size": final_path.stat().st_size,
                 "db_tables": db_tables,
                 "media_files": len(media_files),
@@ -625,6 +823,7 @@ def _run_backup(task_id, dest: Path, operator):
         _update(task_id, status="failed", stage="备份失败", error=str(e),
                 message=f"备份失败：{e}")
     finally:
+        set_maintenance_mode(False)
         _release_slot()
         _cleanup_tmp(tmp_dir)
 
@@ -640,11 +839,11 @@ def _cleanup_tmp(tmp_dir: Path):
 
 
 def _write_oplog(operator, op_type, target, summary):
-    """写操作留痕（复用 records.OperationLog，失败不影响主流程）。"""
+    """写操作留痕（复用 records.audit 的统一写入点，失败不影响主流程）。"""
     try:
-        from records.models import OperationLog
+        from records.audit import write_operation
 
-        OperationLog.objects.create(
+        write_operation(
             operator=operator or "-",
             module_type="系统管理",
             operation_type=op_type,
@@ -763,10 +962,7 @@ def sync_logs_from_file():
 def start_restore(zip_path, operator=""):
     """启动全量恢复异步任务，返回 task_id。路径非法时抛 ValueError。"""
     p = Path(zip_path)
-    name = p.name.lower()
-    if not p.is_absolute() or not p.is_file() or not (
-        name.endswith(".zip") or name.endswith(ENCRYPTED_SUFFIX)
-    ):
+    if not p.is_absolute() or not p.is_file() or not is_backup_file_name(p.name):
         raise ValueError("备份包路径无效")
     ensure_path_allowed(p)
     if not _acquire_slot():
@@ -829,8 +1025,55 @@ def _inspect_backup(zip_path: Path):
     return meta, errors
 
 
+MAINTENANCE_CACHE_KEY = "sysbackup_maintenance_mode"
+
+
+def set_maintenance_mode(on: bool) -> None:
+    """恢复期间置维护标志：中间件据此拒绝非超管的写请求（审查 S2/B2）。
+
+    用 DatabaseCache（settings 已配置）而非进程内字典：恢复在线程里跑、
+    runserver 多线程共享，且将来若换进程也能读到同一状态。
+    """
+    from django.core.cache import cache
+
+    try:
+        if on:
+            cache.set(MAINTENANCE_CACHE_KEY, True, timeout=2 * 3600)
+        else:
+            cache.delete(MAINTENANCE_CACHE_KEY)
+    except Exception:  # 缓存不可用不能阻断恢复/备份主流程
+        logger.warning("维护模式标志写入失败（已忽略）", exc_info=True)
+
+
+def in_maintenance_mode() -> bool:
+    from django.core.cache import cache
+
+    try:
+        return bool(cache.get(MAINTENANCE_CACHE_KEY))
+    except Exception:
+        return False
+
+
+def _restore_db_from(src_db: Path) -> None:
+    """用在线备份 API 把 src_db 灌回活动库并关闭所有连接（失败回滚用）。"""
+    from django.db import connections
+
+    src = sqlite3.connect(str(src_db))
+    dst = sqlite3.connect(str(settings.DATABASES["default"]["NAME"]))
+    try:
+        with dst:
+            src.backup(dst)
+    finally:
+        src.close()
+        dst.close()
+    connections.close_all()
+
+
 def _run_restore(task_id, zip_path: Path, operator):
     tmp_dir = Path(settings.BASE_DIR) / "backups" / f".tmp_{task_id[:8]}"
+    # 维护模式：整个恢复期间拒绝非超管写入，避免「库已换成备份、附件还没恢复」
+    # 的半状态下继续产生新数据（审查 S2/B2）。finally 里一定会解除。
+    set_maintenance_mode(True)
     try:
         tmp_dir.mkdir(parents=True, exist_ok=True)
         package_zip = zip_path
@@ -866,42 +1109,47 @@ def _run_restore(task_id, zip_path: Path, operator):
         dst.close()
         _log(task_id, f"当前数据安全快照：{safety_db.name}")
 
-        # 2) 解出备份中的 db 并通过在线备份 API 导入当前数据库（不覆盖文件，规避占用）
-        _progress(task_id, 20, "恢复数据库")
-        db_tmp = tmp_dir / DB_ENTRY
-        with zipfile.ZipFile(package_zip) as zf:
-            zf.extract(DB_ENTRY, tmp_dir)
-        src = sqlite3.connect(str(db_tmp))
-        dst = sqlite3.connect(str(settings.DATABASES["default"]["NAME"]))
-        with dst:
-            src.backup(dst)
-        src.close()
-        dst.close()
-        # 关闭本线程连接，其他线程的连接在下一个事务自动读取新数据
-        from django.db import connections
+        # 2~3) 换库 + 恢复附件：任一步失败都必须回滚到安全快照，
+        # 否则会停在「库已换、附件只解压了一半」的半状态（审查 S2/B2）。
+        db_replaced = False
+        try:
+            _progress(task_id, 20, "恢复数据库")
+            db_tmp = tmp_dir / DB_ENTRY
+            with zipfile.ZipFile(package_zip) as zf:
+                zf.extract(DB_ENTRY, tmp_dir)
+            _restore_db_from(db_tmp)
+            db_replaced = True
+            _log(task_id, "数据库恢复完成")
 
-        connections.close_all()
-        _log(task_id, "数据库恢复完成")
+            # 3) 恢复附件：解压覆盖 + 清理备份时点之后新增的文件
+            manifest = set(meta["media"]["files"])
+            with zipfile.ZipFile(package_zip) as zf:
+                media_entries = [n for n in zf.namelist()
+                                 if n.startswith(MEDIA_PREFIX) and not n.endswith("/")]
+                total = len(media_entries)
+                for i, entry in enumerate(media_entries):
+                    rel = entry[len(MEDIA_PREFIX):]
+                    _write_storage_file(rel, zf.open(entry))
+                    if i % 50 == 0 or i == total - 1:
+                        _progress(task_id, 30 + int(55 * (i + 1) / max(1, total)), "恢复附件文件")
 
-        # 3) 恢复附件：解压覆盖 + 清理备份时点之后新增的文件
-        manifest = set(meta["media"]["files"])
-        with zipfile.ZipFile(package_zip) as zf:
-            media_entries = [n for n in zf.namelist()
-                             if n.startswith(MEDIA_PREFIX) and not n.endswith("/")]
-            total = len(media_entries)
-            for i, entry in enumerate(media_entries):
-                rel = entry[len(MEDIA_PREFIX):]
-                _write_storage_file(rel, zf.open(entry))
-                if i % 50 == 0 or i == total - 1:
-                    _progress(task_id, 30 + int(55 * (i + 1) / max(1, total)), "恢复附件文件")
-
-        _progress(task_id, 88, "同步附件差异")
-        removed = 0
-        for rel in list(_iter_storage_files()):
-            if rel not in manifest:
-                default_storage.delete(rel)
-                removed += 1
-        _log(task_id, f"附件恢复完成：写入 {len(media_entries)} 个，清理备份后新增文件 {removed} 个")
+            _progress(task_id, 88, "同步附件差异")
+            removed = 0
+            for rel in list(_iter_storage_files()):
+                if rel not in manifest:
+                    default_storage.delete(rel)
+                    removed += 1
+            _log(task_id, f"附件恢复完成：写入 {len(media_entries)} 个，清理备份后新增文件 {removed} 个")
+        except Exception as inner_exc:
+            if db_replaced:
+                _log(task_id, f"恢复中途失败（{inner_exc}），正在回滚到恢复前的安全快照…")
+                try:
+                    _restore_db_from(safety_db)
+                    _log(task_id, f"已自动回滚到安全快照 {safety_db.name}；附件可能处于混合状态，请人工核对")
+                except Exception:
+                    logger.exception("自动回滚失败，需人工用 %s 恢复", safety_db)
+                    _log(task_id, f"⚠️ 自动回滚失败！请人工用安全快照恢复：{safety_db}")
+            raise
 
         # 4) 操作留痕（先回填被数据库回退丢失的操作记录，再写入本次恢复记录）
         _progress(task_id, 95, "写入操作留痕")
@@ -1007,8 +1255,7 @@ def scan_backups(dir_path=None):
     for f in base.iterdir():
         if not f.is_file():
             continue
-        name = f.name.lower()
-        if not (name.endswith(".zip") or name.endswith(ENCRYPTED_SUFFIX)):
+        if not is_backup_file_name(f.name):
             continue
         info = _read_backup_summary(f)
         if info:
@@ -1046,9 +1293,34 @@ def _read_backup_summary(f: Path):
             "media_files": meta.get("media", {}).get("file_count"),
             "schema_version": meta.get("schema_version"),
             "encrypted": _is_encrypted(f),
+            "readable": True,
         }
-    except Exception:
-        return None
+    except Exception as exc:
+        # 读不出 meta（密钥缺失/包损坏）不能静默丢弃 —— 否则用户会看到"备份凭空消失"，
+        # 反而更慌。这里返回降级信息，页面标记「无法解密」并只允许删除。
+        logger.warning("备份包无法读取（%s）：%s", f.name, exc)
+        try:
+            stat = f.stat()
+        except OSError:
+            return None
+        mtime_text = datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
+        return {
+            "name": f.name,
+            "path": str(f),
+            "size": stat.st_size,
+            "size_text": _human_size(stat.st_size),
+            "mtime": mtime_text,
+            "created_at": mtime_text,
+            "created_by": "（无法读取）",
+            "django_version": "",
+            "db_tables": "—",
+            "db_rows": "—",
+            "media_files": None,
+            "schema_version": None,
+            "encrypted": _is_encrypted(f),
+            "readable": False,
+            "unreadable_reason": type(exc).__name__,
+        }
     finally:
         if tmp_name:
             try:
@@ -1059,10 +1331,7 @@ def _read_backup_summary(f: Path):
 
 def delete_backup(zip_path):
     p = Path(zip_path)
-    name = p.name.lower()
-    if not p.is_absolute() or not p.is_file() or not (
-        name.endswith(".zip") or name.endswith(ENCRYPTED_SUFFIX)
-    ):
+    if not p.is_absolute() or not p.is_file() or not is_backup_file_name(p.name):
         raise ValueError("备份包路径无效")
     ensure_path_allowed(p)
     p.unlink()
