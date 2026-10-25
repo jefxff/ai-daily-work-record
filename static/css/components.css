@@ -134,6 +134,9 @@
      仅在 ≤640px 生效，不影响任何桌面端表现。 */
   .table--cards tbody td[data-label] {
     max-width: none !important;
+    /* 复位 extra_css 的 nth-child 百分比列宽（如 .ins-table td:nth-child(1){width:18%}，
+       特异度 (0,2,0) 高于本层且后加载，会把卡片单元格压成竖排一字一行——UI 反馈 #1/#2） */
+    width: 100% !important;
     padding: var(--sp-2) var(--sp-3) !important;
     text-align: right !important;
     font-size: var(--fs-sm) !important;
@@ -148,7 +151,8 @@
      的三张记录表），两种都要覆盖，否则卡片模式仍会提示"已隐藏次要列"。 */
   .table--cards {
     min-width: 0 !important;
-    table-layout: auto;
+    /* extra_css 的 table-layout:fixed（同特异度后加载）会让卡片退化成压缩表格 */
+    table-layout: auto !important;
   }
   .table-container:has(.table--cards) .hidden-cols-hint,
   .table-responsive:has(.table--cards) .hidden-cols-hint {
