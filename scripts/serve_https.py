@@ -64,10 +64,10 @@ class KeepAliveServerHandler(_ServerHandler):
     """
 
     http_version = "1.1"
-    # Server 响应头脱敏（审计 BE-03）：与 HTTP 入口一致返回 "WorkRecord"，
-    # 不泄露 wsgiref 与 CPython 小版本
-    server_version = "WorkRecord"
-    sys_version = ""
+    # Server 响应头脱敏（审计 BE-03）：wsgiref 用 server_software 拼这个头
+    # （simple_server.py: ServerHandler.server_software = "WSGIServer/0.2 CPython/x"），
+    # 改 server_version/sys_version 不生效，必须覆盖 server_software 本身
+    server_software = "WorkRecord"
 
 
 class RequestHandler(WSGIRequestHandler):
