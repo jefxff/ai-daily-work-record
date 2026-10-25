@@ -192,7 +192,15 @@ class BackupMirrorTests(TestCase):
             pkg = root / f"backup_20260101_020000{bk.ENCRYPTED_SUFFIX}"
             pkg.write_bytes(b"package-bytes")
             good = root / "mirror-a"
-            bad = Path("Z:/definitely/not/a/drive/workrecord")
+
+            # 「不可写的镜像目录」必须跨平台成立：
+            # 早期这里用 "Z:/definitely/not/a/drive" 模拟坏盘，在 Windows 上确实失败，
+            # 但在 Linux 上 Z: 只是普通相对路径 → mkdir 成功 → CI 误报功能坏了
+            # （GitHub Actions 上就是这样红的）。改成「父级是文件」，
+            # 两个平台都会抛 NotADirectoryError，与磁盘无关、也不依赖权限。
+            blocker = root / "not-a-dir"
+            blocker.write_text("x", encoding="utf-8")
+            bad = blocker / "mirror-b"
 
             from django.test import override_settings
 
