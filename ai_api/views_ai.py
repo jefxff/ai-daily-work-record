@@ -649,9 +649,9 @@ def get_background_images(request):
         static_dir = settings.STATICFILES_DIRS[0]
     else:
         return Response({
-            'success': False,
-            'error': '未找到静态文件目录'
-        })
+            'ok': False,
+            'message': '未找到静态文件目录',
+        }, status=404)
     
     images_dir = os.path.join(static_dir, 'images')
     
@@ -684,7 +684,7 @@ def get_background_images(request):
     background_images.sort(key=lambda x: x['index'])
     
     return Response({
-        'success': True,
+        'ok': True,
         'count': len(background_images),
-        'images': [img['url'] for img in background_images]
+        'images': [img['url'] for img in background_images],
     })

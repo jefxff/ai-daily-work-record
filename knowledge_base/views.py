@@ -1,3 +1,5 @@
+import logging
+
 import json
 import re
 import uuid
@@ -23,6 +25,8 @@ from . import access
 from . import folders as kb_folders
 from . import outline as kb_outline
 from work_record.http_utils import is_ajax as _is_ajax  # 统一实现（复核报告 CODE-01）
+
+logger = logging.getLogger(__name__)
 
 
 def _int_or_none(value):
@@ -356,8 +360,7 @@ def document_create(request):
                     after=snapshot(doc),
                 )
             except Exception:
-                import logging
-                logging.getLogger(__name__).exception('知识库文档#%s 创建留痕失败', doc.pk)
+                logger.exception('知识库文档#%s 创建留痕失败', doc.pk)
             if is_ajax:
                 return JsonResponse({'ok': True, 'message': f'文档「{doc.title}」创建成功'})
             return redirect('knowledge_base:document_list')
@@ -407,8 +410,7 @@ def document_edit(request, pk):
                     before=before, after=snapshot(document),
                 )
             except Exception:
-                import logging
-                logging.getLogger(__name__).exception('知识库文档#%s 编辑留痕失败', document.pk)
+                logger.exception('知识库文档#%s 编辑留痕失败', document.pk)
             if is_ajax:
                 return JsonResponse({'ok': True, 'message': '文档已更新'})
             return redirect('knowledge_base:document_detail', pk=pk)
@@ -655,8 +657,7 @@ def _api_save_tree(request, document):
             locked.content = kb_outline.tree_to_md(tree)   # 兼容层同步写回
             locked.save(update_fields=['tree_version', 'editor_mode', 'content', 'updated_at'])
     except Exception:
-        import logging
-        logging.getLogger(__name__).exception('知识库文档 #%s 整树保存失败', document.pk)
+        logger.exception('知识库文档 #%s 整树保存失败', document.pk)
         return JsonResponse({'ok': False, 'message': '保存失败，请稍后重试'}, status=500)
 
     try:
@@ -666,8 +667,7 @@ def _api_save_tree(request, document):
             f'v{old_version} → v{locked.tree_version}）',
         )
     except Exception:
-        import logging
-        logging.getLogger(__name__).exception(
+        logger.exception(
             '知识库文档 #%s 大纲保存留痕失败', locked.pk)
 
     return JsonResponse({'ok': True, 'version': locked.tree_version})
@@ -715,8 +715,7 @@ def api_folders(request):
                 f'「{folder.name}」创建',
             )
         except Exception:
-            import logging
-            logging.getLogger(__name__).exception('知识库文件夹#%s 创建留痕失败', folder.pk)
+            logger.exception('知识库文件夹#%s 创建留痕失败', folder.pk)
         return JsonResponse({'ok': True, 'id': folder.pk, 'name': folder.name})
     tree = kb_folders.folder_tree(request.user)
     return JsonResponse({'ok': True, **tree})
@@ -736,8 +735,7 @@ def api_folder_rename(request, pk):
             f'「{folder.name}」重命名',
         )
     except Exception:
-        import logging
-        logging.getLogger(__name__).exception('知识库文件夹#%s 重命名留痕失败', folder.pk)
+        logger.exception('知识库文件夹#%s 重命名留痕失败', folder.pk)
     return JsonResponse({'ok': True, 'id': folder.pk, 'name': folder.name})
 
 
@@ -755,8 +753,7 @@ def api_folder_move(request, pk):
             f'「{folder.name}」{"移至顶层" if folder.parent_id is None else "移动到子文件夹"}',
         )
     except Exception:
-        import logging
-        logging.getLogger(__name__).exception('知识库文件夹#%s 移动留痕失败', folder.pk)
+        logger.exception('知识库文件夹#%s 移动留痕失败', folder.pk)
     return JsonResponse({'ok': True, 'id': folder.pk, 'parent_id': folder.parent_id})
 
 
@@ -774,8 +771,7 @@ def api_folder_delete(request, pk):
             f'删除（{moved_docs} 篇文档上提）',
         )
     except Exception:
-        import logging
-        logging.getLogger(__name__).exception('知识库文件夹#%s 删除留痕失败', pk)
+        logger.exception('知识库文件夹#%s 删除留痕失败', pk)
     return JsonResponse({'ok': True, 'moved_docs': moved_docs})
 
 
@@ -800,8 +796,7 @@ def api_doc_move(request, pk):
             f'「{document.title}」移动到「{target_label or "未归档"}」',
         )
     except Exception:
-        import logging
-        logging.getLogger(__name__).exception('知识库文档#%s 归档留痕失败', pk)
+        logger.exception('知识库文档#%s 归档留痕失败', pk)
     return JsonResponse({'ok': True})
 
 
@@ -828,8 +823,7 @@ def document_delete(request, pk):
                 before=before,
             )
         except Exception:
-            import logging
-            logging.getLogger(__name__).exception('知识库文档#%s 删除留痕失败', doc_id)
+            logger.exception('知识库文档#%s 删除留痕失败', doc_id)
         return redirect('knowledge_base:document_list')
 
     context = {
@@ -889,8 +883,7 @@ def category_create(request):
                     after=snapshot(cat),
                 )
             except Exception:
-                import logging
-                logging.getLogger(__name__).exception('知识库分类#%s 创建留痕失败', cat.pk)
+                logger.exception('知识库分类#%s 创建留痕失败', cat.pk)
             if is_ajax:
                 return JsonResponse({'ok': True, 'message': f'分类「{cat.name}」创建成功'})
             return redirect('knowledge_base:category_list')
@@ -928,8 +921,7 @@ def category_edit(request, pk):
                     before=before, after=snapshot(category),
                 )
             except Exception:
-                import logging
-                logging.getLogger(__name__).exception('知识库分类#%s 编辑留痕失败', category.pk)
+                logger.exception('知识库分类#%s 编辑留痕失败', category.pk)
             if is_ajax:
                 return JsonResponse({'ok': True, 'message': '分类已更新'})
             return redirect('knowledge_base:category_list')
@@ -969,8 +961,7 @@ def category_delete(request, pk):
                 before=before,
             )
         except Exception:
-            import logging
-            logging.getLogger(__name__).exception('知识库分类#%s 删除留痕失败', cat_id)
+            logger.exception('知识库分类#%s 删除留痕失败', cat_id)
         return redirect('knowledge_base:category_list')
     
     context = {

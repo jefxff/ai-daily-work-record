@@ -491,7 +491,7 @@
                     setTimeout(function(){ window.location.reload(); }, 600);
                 }
                 else {
-                    if (window.showToast) window.showToast(data.error || '更新失败', 'error');
+                    if (window.showToast) window.showToast(data.message || data.error || '更新失败', 'error');
                     sel.value = original;
                 }
             })

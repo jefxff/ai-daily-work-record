@@ -238,6 +238,20 @@ sha256；升级依赖后需重新生成并提交。CI 已在每次 push 执行 p
 `docs/multi-worker-migration.md` 的清单改造（任务状态外置、互斥改 DB 级、导出闸门换
 分布式计数、备份恢复独立成命令），不要“先上多进程再说”。
 
+### 开发约定（横切规则）
+
+留痕词表、响应外壳、状态码、权限写法、分页、上传校验、导出闸门、时间、日志、事务
+这十类横切规则统一写在 **`docs/api-conventions.md`**，新增模块照此执行。
+配套的单一出处：
+
+| 能力 | 模块 |
+|---|---|
+| 留痕模块名/动作名/同义词 | `records/audit_vocab.py` |
+| 留痕写入（唯一入口） | `records/audit.py::log_operation` |
+| 文件头校验（唯一表） | `work_record/file_validation.py` |
+| 导出并发闸门 | `work_record/export_guard.py::guarded_export` |
+| 账户/角色共享规则 | `accounts/user_admin.py` |
+
 **自动化校验（CI）**
 `.github/workflows/ci.yml` 在 push / PR 到 `main` 时执行：
 `pip install -r requirements.txt` → `pip install -r requirements-dev.txt` → `pip check` →

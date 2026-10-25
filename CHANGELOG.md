@@ -2,6 +2,70 @@
 
 本文件记录对外可见的功能、部署形态与依赖变更。格式参考 Keep a Changelog。
 
+## [2.1.4] - 2026-10-25
+
+跨模块技术实现一致性整改（审计报告 `impl-consistency-audit-2026-10-25.md`）。
+核心变化：把「同一件事的多套写法」收敛成单一出处，并修掉因此产生的功能缺陷。
+
+### 新增（约定的单一出处）
+
+- **`records/audit_vocab.py`**：模块名 / 动作名 / 历史同义词的唯一词表。
+  写入时归一（`normalize_*`），查询时展开（`expand_*`），页面下拉直接取
+  `MODULE_CHOICES` / `ACTION_CHOICES`。
+- **`work_record/file_validation.py`**：文件头（magic byte）判定的唯一实现。
+  各模块只保留自己的白名单与大小上限。
+- **`work_record/export_guard.py::guarded_export`**：导出并发闸门的统一装饰器。
+- **`docs/api-conventions.md`**：留痕、响应外壳、状态码、权限写法、分页、上传、
+  导出、时间、日志、事务十条约定，作为横切规则的唯一出处。
+
+### 修复（P0，有功能影响）
+
+- **留痕动作词三套 → 归一**：records 记「更新」、samples 记「编辑」、知识库记
+  「文档创建」，而审计规则按字面值 `operation_type__in=["删除","编辑"]` 过滤，
+  导致 records 与知识库的编辑操作**完全不进入**「非工作时间修改」检测；
+  「导出爆发」也只认「导出」，档案的「下载」不计入。现在写入归一、规则用
+  `expand_*` 展开同义词，历史行不动也能命中。
+- **操作人口径混存 → 新增 `OperationLog.operator_username`**（迁移 `0018`）：
+  `operator` 保留展示名（姓名/用户名），账号单独落库并在迁移中回填历史行
+  （`系统管理员` → `admin` 这类唯一映射自动还原，重名不猜）。四处异常检测
+  改为按 `actor`（账号优先、展示名兜底）分组，同一个人不再被拆成两个。
+- **留痕页下拉硬编码 → 由词表生成**：补齐「通知中心」模块与
+  ／重置密码／撤销会话／发布公告／任务配置／手动执行／撤回 等动作
+  （上一轮新增的账户与通知留痕此前在页面上筛不出来）。筛选同样支持旧词。
+- **导出闸门只覆盖 3/6 → 全覆盖**：`ledger_export`、`ledger_batch_export`、
+  `export_archives`、`expiry_export` 接入 `@guarded_export`；台账批量导出与
+  表级导出补行数上限（超限 413）。新增覆盖守卫测试，未来新增导出漏挂会直接红。
+- **archive 模块 42 处冗余 `@login_required` 移除**（共 46 处，另 4 处随导出改造
+  一并去掉）：它叠在 `@perm_required` 外层，导致匿名 AJAX 拿到 302 HTML 而不是
+  全站统一的 401 JSON，前端 `response.json()` 直接抛异常。
+
+### 修复（P1，形式统一）
+
+- **三份 magic byte 表合并为一份**：`samples/validators.py`、
+  `archive/validators.py`、`archive/forms.py` 各有一份且宽严不一
+  （PNG 4 字节 vs 8 字节、PDF `%PDF-` vs `%PDF`）。现统一，同名格式取最严前缀。
+- **响应外壳统一**：`samples` 的 2 处 `{"error": ...}` 与 `views_ai` 的 2 处
+  `{"success": ...}` 改为 `{"ok": ...}`；前端同步改为读 `message`。
+- **分页统一**：通知任务历史、操作留痕列表改用 `_per_page`（10/30/50）。
+- **日志**：`knowledge_base/views.py` 13 处函数体内 `import logging` 改为模块级 logger。
+- **去重**：删除 `records/crud.py` 与 `samples/exporters.py` 里逐字相同的
+  `_sanitize_xlsx_formulas` 转发封装，直接引用 `work_record.export_utils`。
+
+### 行为变化（需知悉）
+
+- 新写入的留痕动作名会归一：`更新`→`编辑`、`文档创建/分类创建`→`新增`、
+  `文档删除/分类删除`→`删除`、`文档归档`→`状态变更`。**历史行不改写**
+  （留痕表不重写是审计底线），靠查询展开兼容。
+- 迁移 `records.0018` 会加列并回填 `operator_username`，反向操作是清空该列。
+- 档案模块的 AJAX 未登录响应从 302 HTML 变成 401 JSON（与其他模块一致）。
+- 供应商类型接口的业务错误从 400 改为 422。
+
+### 测试
+
+- 全量 **615 个测试通过**（新增 12 个：词表归一/展开/筛选、操作人账号落库、
+  导出闸门覆盖与 429、上传校验跨模块一致性）；`check` 无问题；
+  `makemigrations --check` 无变化；ruff 全绿。
+
 ## [2.1.3] - 2026-10-25
 
 变更一致性核查后的收敛：消除重复实现、修复两处真实权限缺陷。**无 URL、模板引用、

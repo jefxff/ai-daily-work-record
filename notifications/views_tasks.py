@@ -4,13 +4,14 @@
 （TaskRunLog，每次执行一行，按任务裁剪至最近 200 条）。
 """
 from django.core.paginator import Paginator
+
+from records.crud import _per_page
 from django.shortcuts import render
 
 from accounts.decorators import perm_required
 
 from .models import ScheduledTask, TaskRunLog
 
-PER_PAGE = 20
 
 
 @perm_required("system", "read")
@@ -29,7 +30,7 @@ def task_run_history(request):
     else:
         status_filter = ""
 
-    page_obj = Paginator(logs, PER_PAGE).get_page(request.GET.get("page"))
+    page_obj = Paginator(logs, _per_page(request)).get_page(request.GET.get("page"))
     return render(request, "notifications/task_run_history.html", {
         "page_obj": page_obj,
         "tasks": ScheduledTask.objects.all(),
