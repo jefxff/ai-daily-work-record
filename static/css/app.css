@@ -1326,3 +1326,21 @@ a.home-kpi:hover .home-kpi__value { color: var(--c-primary-active); }
     .home-tabs { width: 100%; }
     .home-rows__more { text-align: left; }
 }
+
+/* ===== 顶栏浮层小屏适配（UI 反馈 #2）：下拉/通知面板收进视窗，不再左溢 ===== */
+@media (max-width: 640px) {
+    .nav-notify-menu {
+        position: fixed;
+        top: 60px;
+        left: 0.5rem;
+        right: 0.5rem;
+        width: auto;
+        max-width: none;
+    }
+    .nav-user-menu {
+        position: fixed;
+        top: 60px;
+        right: 0.5rem;
+        left: auto;
+    }
+}
