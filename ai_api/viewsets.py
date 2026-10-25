@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 import logging
 import os
 
-from accounts.services import has_perm
+from accounts.services import has_perm, get_display_name
 from records.audit import log_operation, snapshot
 from samples.services import (
     create_partner, create_sample, create_test_record, create_batch_record,
@@ -23,6 +23,17 @@ logger = logging.getLogger(__name__)
 def _can(user, module, action):
     """AI 函数视图的 RBAC 判定（超管在 has_perm 内全部放行）。"""
     return has_perm(user, module, action)
+
+
+def _identity_kwargs(request, *field_names):
+    """身份类字段服务端注入（审计 BE-01/FE-09）。
+
+    序列化器层已把这些字段置只读（IDENTITY_READ_ONLY_FIELDS）；
+    这里在 save() 时按当前登录用户注入显示姓名，与页面端 _current_name()
+    保持同一事实源。客户端提交的任何值都被忽略，无法伪造经办人。
+    """
+    name = get_display_name(request.user)
+    return {f: name for f in field_names}
 
 
 # AI 接口的「模型别名」→ RBAC 权限模块 key 的映射。
@@ -368,6 +379,12 @@ class TestRecordViewSet(EnhancedModelViewSet):
     search_fields = ['test_no', 'test_result', 'report_code', 'operator', 'package_type']
     ordering_fields = ['test_date', 'round_no']
 
+    def perform_create(self, serializer):
+        serializer.save(**_identity_kwargs(self.request, 'operator'))
+
+    def perform_update(self, serializer):
+        serializer.save(**_identity_kwargs(self.request, 'operator'))
+
 
 class BatchRecordViewSet(EnhancedModelViewSet):
     """小批量记录 API"""
@@ -380,6 +397,12 @@ class BatchRecordViewSet(EnhancedModelViewSet):
     serializer_class = BatchRecordSerializer
     search_fields = ['batch_no', 'alternative_model', 'operator', 'remark']
     ordering_fields = ['round_no']
+
+    def perform_create(self, serializer):
+        serializer.save(**_identity_kwargs(self.request, 'operator'))
+
+    def perform_update(self, serializer):
+        serializer.save(**_identity_kwargs(self.request, 'operator'))
 
 
 class AuditRecordViewSet(EnhancedModelViewSet):
@@ -450,6 +473,12 @@ class ArchiveViewSet(EnhancedModelViewSet):
         'department', 'archive_label', 'handler', 'location_code',
     ]
     ordering_fields = ['created_at', 'sign_date', 'expire_date']
+
+    def perform_create(self, serializer):
+        serializer.save(**_identity_kwargs(self.request, 'handler'))
+
+    def perform_update(self, serializer):
+        serializer.save(**_identity_kwargs(self.request, 'handler'))
 
 
 class BorrowRecordViewSet(ReadOnlyEnhancedViewSet):

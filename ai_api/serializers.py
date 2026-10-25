@@ -21,6 +21,11 @@ READ_ONLY_BY_DEFAULT = {
     "registered_at", "terminated_at", "imported_at",
 }
 
+# 身份类字段（审计 BE-01/FE-09）：经办人/审核人由服务端按当前登录用户注入，
+# 页面端走 _current_name() 唯一事实源；API 若允许自由填写即可伪造"谁经手的"，
+# 与页面口径不一致。对应视图集在 perform_create/perform_update 里 save(kwargs) 注入。
+IDENTITY_READ_ONLY_FIELDS = {"operator", "handler", "reviewer"}
+
 
 class EnhancedModelSerializer(serializers.ModelSerializer):
     """统一收窄可写字段的基类。
@@ -32,6 +37,9 @@ class EnhancedModelSerializer(serializers.ModelSerializer):
     def get_fields(self):
         fields = super().get_fields()
         for name in READ_ONLY_BY_DEFAULT & fields.keys():
+            fields[name].read_only = True
+        # 身份类字段一律只读（写值由视图集注入，见 IDENTITY_READ_ONLY_FIELDS 注释）
+        for name in IDENTITY_READ_ONLY_FIELDS & fields.keys():
             fields[name].read_only = True
         return fields
 # 装修记录序列化
