@@ -93,11 +93,19 @@ def doc_visibility_q(user, prefix=''):
 
 
 def visible_docs(user, queryset=None):
-    """当前用户可读的文档集。所有列表/搜索/统计都必须从这里起手。"""
+    """当前用户可读的文档集。所有列表/搜索/统计都必须从这里起手。
+
+    默认预取 ``category`` / ``owner``：列表与搜索页每行都会访问
+    ``document.category.name`` 与 ``document.owner``，不预取会产生
+    每行 1-2 条 SQL 的 N+1（审计 BE-02）。统一收口在这里，调用方无需各自追加。
+    """
     if queryset is None:
         from knowledge_base.models import KnowledgeDocument
 
-        queryset = KnowledgeDocument.objects.all()
+        queryset = KnowledgeDocument.objects.select_related('category', 'owner')
+    else:
+        # 调用方传入自定义 queryset 时同样补预取（幂等，Django 会忽略重复的关联）
+        queryset = queryset.select_related('category', 'owner')
     if can_read_private_of_others(user):
         return queryset
     if not _authed(user):

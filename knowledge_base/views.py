@@ -72,6 +72,7 @@ def _sidebar_context(user, selected_category_id=None, selected_tag=None, current
     docs_by_cat = {}
     visible_published = (access.visible_docs(user)
                          .filter(status='published')
+                         .select_related(None)  # 右栏只用 title/visibility，清除默认预取以兼容 .only()
                          .only('id', 'title', 'visibility', 'category_id')
                          .order_by('-updated_at'))
     for d in visible_published:
