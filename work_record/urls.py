@@ -19,6 +19,8 @@ from django.core.exceptions import PermissionDenied
 from django.http import FileResponse, Http404
 from django.shortcuts import render
 from django.urls import path, re_path, include
+from django.views.generic import RedirectView
+from django.templatetags.static import static
 from django.utils._os import safe_join
 from django.contrib import admin
 import mimetypes
@@ -97,6 +99,8 @@ def protected_media(request, path):
 
 urlpatterns = [
     path('csp-report/', csp_report, name='csp_report'),
+    # 浏览器默认探测 /favicon.ico：重定向到静态图标，避免每会话一条 404（审计 FE-06）
+    path('favicon.ico', RedirectView.as_view(url=static('img/favicon.ico'), permanent=False)),
     path('admin/', admin.site.urls),
     # 长期 Token 签发接口（供外部 Agent 免交互取用，视图内自行鉴权）
     path('api-token-auth/', obtain_api_token, name='api_token_auth'),
