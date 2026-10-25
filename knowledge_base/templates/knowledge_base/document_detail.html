@@ -101,7 +101,7 @@
 
 <div class="kb-reader-body">
     <div class="content markdown-content" id="kbReadView" role="tabpanel">
-        {{ document.content_html|safe }}
+        {% if document.source != 'daily_record_sync' %}{{ document.content_html|safe }}{% endif %}
         {% if sync_nodes %}
         <div class="kb-sync-nodes">
             {% for n in sync_nodes %}

@@ -313,18 +313,32 @@ def document_detail(request, pk):
     # （_render_markdown：净化 + 任务列表 checkbox 化）
     document.content_html = _render_markdown(document.content)
 
-    # 每日记录沉淀容器（UI 反馈 #4）：容器正文只是占位说明，
-    # 真实内容在节点树（每条记录一个节点，text=记录正文）。
-    # 阅读视图此前只有占位文字，用户点开看不到任何记录内容——
-    # 这里把节点正文按排序渲染进阅读流（同走 bleach 净化，零新增攻击面）。
+    # 每日记录沉淀容器（UI 反馈 #4）：容器正文只是占位说明（模板层已跳过渲染），
+    # 阅读视图只渲染每日记录的正文内容本身；节点标题仅显示记录日期，
+    # 不展示状态/进度/截止日等元数据（用户反馈：只沉淀记录内容，不要其他东西）。
     sync_nodes = []
     if document.source == 'daily_record_sync':
         from knowledge_base.models import KnowledgeNode
-        for n in (KnowledgeNode.objects.filter(document=document, parent=None)
-                  .exclude(node_type='ref').order_by('sort', 'pk')):
+        from records.models import DailyRecord
+        nodes = list(KnowledgeNode.objects
+                     .filter(document=document, parent=None)
+                     .exclude(node_type='ref')
+                     .order_by('sort', 'pk'))
+        dates = {}
+        rec_ids = [n.ref_object_id for n in nodes
+                   if n.ref_module == 'daily_record' and n.ref_object_id]
+        if rec_ids:
+            dates = {r.pk: r.record_date for r in
+                     DailyRecord.objects.filter(pk__in=rec_ids).only('pk', 'record_date')}
+        for n in nodes:
+            if not (n.text or '').strip():
+                continue
+            rd = dates.get(n.ref_object_id) if n.ref_module == 'daily_record' else None
+            label = (timezone.localtime(rd).strftime('%Y-%m-%d')
+                     if rd else (n.ref_label or '每日记录'))
             sync_nodes.append({
-                'label': n.ref_label or '每日记录',
-                'html': _render_markdown(n.text or ''),
+                'label': label,
+                'html': _render_markdown(n.text),
                 'is_done': n.is_done,
             })
 

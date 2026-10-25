@@ -33,17 +33,25 @@ class SyncContainerReadingViewTests(TestCase):
 
     def test_reading_view_renders_node_content(self):
         doc = self._make_container()
+        from records.models import DailyRecord
+        rec = DailyRecord.objects.create(
+            user=self.user, work_content="今天完成了登录模块的自测。",
+            status="完成", record_date="2026-10-25T09:00:00+08:00")
         KnowledgeNode.objects.create(
             document=doc, uid="r0000000001", parent=None, sort=0,
             text="今天完成了登录模块的自测。", node_type="todo",
-            is_done=True, ref_module="daily_record", ref_object_id=1,
-            ref_label="每日记录 2026-10-25",
+            is_done=True, ref_module="daily_record", ref_object_id=rec.pk,
+            ref_label="[完成|100%|截至2026-10-25] 今天完成了登录模块的自测。",
         )
         self.client.force_login(self.user)
         resp = self.client.get(reverse("knowledge_base:document_detail", args=[doc.pk]))
         self.assertEqual(resp.status_code, 200)
+        # 只渲染记录正文与记录日期
         self.assertContains(resp, "今天完成了登录模块的自测。")
-        self.assertContains(resp, "每日记录 2026-10-25")
+        self.assertContains(resp, "2026-10-25")
+        # 不渲染容器占位说明，也不渲染状态/进度等元数据
+        self.assertNotContains(resp, "记录为本体，此处为同步视图")
+        self.assertNotContains(resp, "[完成|100%")
 
     def test_normal_document_unaffected(self):
         doc = KnowledgeDocument.objects.create(

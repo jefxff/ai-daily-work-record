@@ -182,6 +182,15 @@
    无论按钮落在哪一行哪个位置都完整可见。桌面端不受影响（规则只在媒体查询内生效）。 */
 @media (max-width: 640px) {
   .page-actions { position: relative; }
+  /* 顶部操作条/页头小屏适配（UI 反馈：待办工作台顶部没做小屏适配）。
+     各页面 extra_css 的 flex-nowrap / 固定 min-width 控件会把顶栏撑出视口，
+     这里统一允许换行、控件可伸缩，页头标题与筛选 chips 也改为纵向堆叠。 */
+  .page-actions,
+  .page-actions > form { flex-wrap: wrap !important; }
+  .page-actions > form { flex: 1 1 100%; }
+  .page-actions .form-select { flex: 1 1 auto !important; min-width: 0 !important; max-width: none !important; width: auto !important; }
+  .page-header { flex-wrap: wrap; }
+  .page-header > * { max-width: 100%; }
   .filter-button,
   .filter-container { position: static !important; }
   .filter-dropdown {
