@@ -22,10 +22,16 @@
      * 8443 HTTPS 下 fetch 带空 token → 全部 POST 403
      * （金属价格刷新、一键备份、每日记录筛选等均命中）。
      * 新代码一律用 window.getCsrfToken()，不要再直接 getCookie('csrftoken')。
+     *
+     * 注意顺序必须 __Host- 优先（用户反馈 21:53-21:59 8443 手机端仍 403）：
+     * cookie 按主机共享、跨端口可见——同一浏览器先访问过 8080（HTTP）就会
+     * 留下旧的普通 csrftoken，8443 页面上也能读到；若先读它，发出去的是
+     * HTTP 会话的过期令牌，与当前 __Host-csrftoken 不匹配 → 403 incorrect。
+     * __Host- 前缀只在 HTTPS 加固模式写入，HTTP 模式下自然读不到，顺序无害。
      */
     window.getCsrfToken = function () {
-        return window.getCookie('csrftoken')
-            || window.getCookie('__Host-csrftoken')
+        return window.getCookie('__Host-csrftoken')
+            || window.getCookie('csrftoken')
             || '';
     };
 })();
