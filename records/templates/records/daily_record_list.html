@@ -42,6 +42,11 @@
             </form>
         </div>
     </div>
+    <a class="btn-transparent quick-filter-btn{% if status_filter == '未完成' %} is-active{% endif %}"
+       id="quickUnfinishedFilter" role="button"
+       aria-pressed="{% if status_filter == '未完成' %}true{% else %}false{% endif %}"
+       href="?{% for k, v in request.GET.items %}{% if k != 'status' %}{{ k }}={{ v|urlencode }}&{% endif %}{% endfor %}{% if status_filter != '未完成' %}status=未完成{% endif %}"
+       title="{% if status_filter == '未完成' %}取消「未完成」筛选{% else %}只看未完成记录{% endif %}">未完成</a>
     {% can "daily_record" "create" %}
     <a href="{% url 'daily_record_add' %}" class="btn-primary" data-modal-add data-modal-title="新增每日记录">新增记录</a>
     <button type="button" class="btn-transparent" id="kbSyncBatchBtn"
@@ -199,6 +204,13 @@
     .filter-apply:hover { background: var(--c-primary-hover) !important; }
     .filter-reset { background: var(--c-surface-sunken) !important; color: var(--c-text-secondary) !important; }
     .filter-reset:hover { background: var(--c-border-strong) !important; }
+
+    /* 「未完成」快捷筛选：与筛选按钮同款，激活时高亮 */
+    .quick-filter-btn.is-active {
+        background: var(--c-primary-subtle) !important;
+        color: var(--c-primary) !important;
+        border-color: var(--c-primary) !important;
+    }
 
     /* 工作进度迷你进度条 */
     .progress-cell { display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 130px; }

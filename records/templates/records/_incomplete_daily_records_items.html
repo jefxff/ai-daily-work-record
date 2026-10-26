@@ -1,0 +1,33 @@
+{% load accounts_tags %}
+{# 首页「未完成记录 · 查看全部」：只返回 <li> 片段，由首页 JS 追加到当前列表并支持收起 #}
+{% for record in records %}
+<li class="home-rows__item">
+    {% if request.user|can_do:'daily_record.update' %}
+    <a class="home-row{% if record.is_overdue %} home-row--danger{% elif record.due_date and record.days_left <= 3 %} home-row--warning{% endif %}"
+       href="{% url 'daily_record_edit' record.pk %}" data-modal-edit data-modal-title="编辑每日记录">
+    {% else %}
+    <a class="home-row{% if record.is_overdue %} home-row--danger{% elif record.due_date and record.days_left <= 3 %} home-row--warning{% endif %}"
+       href="{% url 'daily_record_detail' record.pk %}" data-modal-detail data-modal-title="每日记录详情">
+    {% endif %}
+        <span class="home-row__flag" aria-hidden="true"></span>
+        <div class="home-row__main">
+            <p class="home-row__title" title="{{ record.work_content }}">{{ record.work_content }}</p>
+            <div class="home-row__meta">
+                <span>{{ record.department }}</span>
+                <span class="home-row__sep" aria-hidden="true">·</span>
+                <span>{% if record.due_date %}截止 {{ record.due_date|date:"Y-m-d" }}{% else %}未设截止日期{% endif %}</span>
+                {% if record.is_overdue %}<span class="home-tag home-tag--danger">逾期 {{ record.days_left|cut:"-" }} 天</span>
+                {% elif record.due_date and record.days_left <= 3 %}<span class="home-tag home-tag--warning">剩 {{ record.days_left }} 天</span>{% endif %}
+            </div>
+        </div>
+        <div class="home-row__right">
+            <span class="home-progress">
+                <span class="home-progress__bar" aria-hidden="true"><i data-w="{{ record.progress }}"></i></span>
+                <span>{{ record.progress }}%</span>
+            </span>
+            <span class="home-tag home-tag--gray">{{ record.status }}</span>
+            <span class="home-row__arrow" aria-hidden="true">›</span>
+        </div>
+    </a>
+</li>
+{% endfor %}

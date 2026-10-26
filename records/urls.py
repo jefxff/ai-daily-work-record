@@ -53,6 +53,7 @@ urlpatterns = [
     
     # 每日记录
     path('daily_record/', views.daily_record_list, name='daily_record_list'),
+    path('daily_record/incomplete/', views.daily_record_incomplete, name='daily_record_incomplete'),
     path('daily_record/add/', views.daily_record_add, name='daily_record_add'),
     path('daily_record/detail/<int:pk>/', views.daily_record_detail, name='daily_record_detail'),
     path('daily_record/edit/<int:pk>/', views.daily_record_edit, name='daily_record_edit'),

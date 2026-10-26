@@ -1,4 +1,5 @@
 from django.shortcuts import render, get_object_or_404, redirect
+from django.urls import reverse
 from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest
 from django.views.decorators.http import require_POST
 from django.template.loader import render_to_string
@@ -466,6 +467,36 @@ def daily_record_detail(request, pk):
     if _is_ajax(request):
         return _modal_detail(request, 'records/_daily_record_detail_modal.html', {'record': record})
     return render(request, 'records/daily_record_detail.html', {'record': record})
+
+
+@perm_required("daily_record", "read")
+def daily_record_incomplete(request):
+    """首页「未完成记录 · 查看全部」：页内弹窗列出当前用户全部未完成记录。
+
+    首页面板只渲染最紧急的 5 条，其余记录由本视图一次性补齐；排序与首页一致
+    （截止日期升序、空值置后）。非 AJAX 访问回退到列表页的「未完成」筛选。
+    """
+    today = timezone.localdate()
+    records = list(
+        _my_daily_records(request.user)
+        .filter(status='未完成')
+        .order_by(F('due_date').asc(nulls_last=True), '-record_date')
+    )
+    for rec in records:
+        if rec.due_date:
+            rec.days_left = (rec.due_date - today).days
+            rec.is_overdue = rec.days_left < 0
+        else:
+            rec.days_left = None
+            rec.is_overdue = False
+    if _is_ajax(request):
+        html = render_to_string(
+            'records/_incomplete_daily_records_items.html',
+            {'records': records, 'total': len(records)},
+            request=request,
+        )
+        return JsonResponse({'ok': True, 'html': html})
+    return redirect(f"{reverse('daily_record_list')}?status=未完成")
 
 
 @perm_required("daily_record", "create")
