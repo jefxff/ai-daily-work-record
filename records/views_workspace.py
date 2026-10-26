@@ -40,6 +40,8 @@ URGENCY_BADGE = {"高": "danger", "中": "warning", "低": "info"}
 PER_SOURCE_LIMIT = 50
 # 证照临期窗口（天）
 LICENSE_LEAD_DAYS = 30
+# 证照逾期回溯窗口（天）：超出的陈年证照不再常驻待办，改到证照列表「已过期」查看
+LICENSE_LOOKBACK_DAYS = 90
 
 
 def _todo(urgency, title, source, owner, deadline, status, url, today):
@@ -94,31 +96,40 @@ def collect_todos(user, *, today=None, source_filter=None):
                 f"/archive/archives/{b.archive_id}/", today,
             ))
 
-    # 2) 证照：已过期为高，30 天内到期/年审为中
+    # 2) 证照：一张证照只出一条待办（有效期/年审取更早的一项）
     if wanted("license_due") and has_perm(user, "archive", "read"):
+        from django.db.models import Q
+
         from archive.models import License
 
         threshold = today + timedelta(days=LICENSE_LEAD_DAYS)
-        for lic in License.objects.filter(
-            expire_date__isnull=False, expire_date__lte=threshold,
-        )[:PER_SOURCE_LIMIT]:
-            overdue = lic.expire_date < today
+        floor = today - timedelta(days=LICENSE_LOOKBACK_DAYS)
+        cond = Q(expire_date__gte=floor, expire_date__lte=threshold)
+        # 年审只在设置了年审周期时才提醒：review_cycle=0 表示不需年审，
+        # 历史导入残留的 next_review_date 不应生成脏提醒
+        cond |= Q(
+            next_review_date__gte=floor, next_review_date__lte=threshold,
+            review_cycle__gt=0,
+        )
+        for lic in License.objects.filter(cond)[:PER_SOURCE_LIMIT]:
+            checks = []
+            if lic.expire_date and floor <= lic.expire_date <= threshold:
+                checks.append((lic.expire_date, "有效期", "已过期", "临期"))
+            if (lic.review_cycle and lic.next_review_date
+                    and floor <= lic.next_review_date <= threshold):
+                checks.append((lic.next_review_date, "年审", "年审超期", "年审临期"))
+            if not checks:
+                continue
+            deadline, kind, status_overdue, status_soon = min(checks, key=lambda c: c[0])
+            overdue = deadline < today
+            if kind == "有效期":
+                title = f"证照《{lic.name}》（{lic.code}）有效期{'已过' if overdue else '将至'}"
+            else:
+                title = f"证照《{lic.name}》（{lic.code}）年审{'已超期' if overdue else '临期'}"
             todos.append(_todo(
-                "高" if overdue else "中",
-                f"证照《{lic.name}》（{lic.code}）有效期{'已过' if overdue else '将至'}",
-                "license_due", lic.holder or "-", lic.expire_date,
-                "已过期" if overdue else "临期",
-                f"/archive/licenses/{lic.pk}/", today,
-            ))
-        for lic in License.objects.filter(
-            next_review_date__isnull=False, next_review_date__lte=threshold,
-        )[:PER_SOURCE_LIMIT]:
-            overdue = lic.next_review_date < today
-            todos.append(_todo(
-                "高" if overdue else "中",
-                f"证照《{lic.name}》（{lic.code}）年审{'已超期' if overdue else '临期'}",
-                "license_due", lic.holder or "-", lic.next_review_date,
-                "年审超期" if overdue else "年审临期",
+                "高" if overdue else "中", title, "license_due",
+                lic.holder or "-", deadline,
+                status_overdue if overdue else status_soon,
                 f"/archive/licenses/{lic.pk}/", today,
             ))
 

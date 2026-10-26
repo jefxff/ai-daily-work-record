@@ -57,6 +57,54 @@ def _mk_daily_record(user, content, due_date, status="未完成"):
     )
 
 
+class LicenseTodoDedupTests(TestCase):
+    """证照待办：一证一条；年审周期=0 不提醒；超回溯源不常驻。"""
+
+    def setUp(self):
+        call_command("sync_rbac", verbosity=0)
+        self.user = User.objects.create_user("ws_lic", "l@e.com", "x12345678")
+        grant("archive", ("read",), self.user)
+        self.today = timezone.localdate()
+
+    def _license(self, code, expire_days=None, review_days=None, cycle=0):
+        from archive.models import License
+
+        return License.objects.create(
+            name=f"证照{code}", code=code,
+            expire_date=(
+                self.today + timedelta(days=expire_days)
+                if expire_days is not None else None
+            ),
+            next_review_date=(
+                self.today + timedelta(days=review_days)
+                if review_days is not None else None
+            ),
+            review_cycle=cycle,
+        )
+
+    def _license_todos(self):
+        return [
+            t for t in collect_todos(self.user, today=self.today)
+            if t["source"] == "license_due"
+        ]
+
+    def test_one_row_per_license_when_both_dates_due(self):
+        self._license("LIC-A", expire_days=-5, review_days=-40, cycle=12)
+        todos = self._license_todos()
+        self.assertEqual(len(todos), 1, "同一证照不应同时出有效期与年审两条")
+        self.assertEqual(todos[0]["days_left"], -40, "应取更早的日期作为期限")
+
+    def test_zero_review_cycle_has_no_review_todo(self):
+        self._license("LIC-B", expire_days=10, review_days=-20, cycle=0)
+        todos = self._license_todos()
+        self.assertEqual(len(todos), 1)
+        self.assertEqual(todos[0]["days_left"], 10, "年审周期=0 时不应产生年审提醒")
+
+    def test_old_overdue_license_outside_lookback(self):
+        self._license("LIC-C", expire_days=-120)
+        self.assertEqual(self._license_todos(), [], "超出回溯窗口的陈年证照不应常驻待办")
+
+
 class TerminatedSampleNotTodoTests(TestCase):
     """已终止的试样是终态，不需要人推进，不应进入待办工作台。"""
 
