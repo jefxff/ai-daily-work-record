@@ -928,7 +928,10 @@ def customer_ledger_detail(request, pk):
     ledger = get_object_or_404(CustomerLedger, pk=pk)
     if _is_ajax(request):
         return _modal_detail(request, 'records/_customer_ledger_detail_modal.html', {'ledger': ledger})
-    return render(request, 'records/customer_ledger_detail.html', {'ledger': ledger})
+    return render(request, 'records/customer_ledger_detail.html', {
+        'ledger': ledger,
+        'credit_changes': ledger.credit_changes.all()[:50],
+    })
 
 
 @perm_required("customer_ledger", "read")

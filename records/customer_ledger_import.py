@@ -423,7 +423,9 @@ def apply_rows(rows, overwrite=False):
         for item in preview['items']:
             values = item['values']
             if item['action'] == 'create':
-                CustomerLedger.objects.create(**values)
+                obj = CustomerLedger(**values)
+                obj._credit_change_source = 'Excel导入'
+                obj.save()
                 created += 1
                 continue
             if item['action'] == 'skip':
@@ -443,6 +445,7 @@ def apply_rows(rows, overwrite=False):
                 setattr(obj, field, new)
                 touched = True
             if touched:
+                obj._credit_change_source = 'Excel导入'
                 obj.save()
                 updated += 1
             else:

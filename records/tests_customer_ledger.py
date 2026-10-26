@@ -360,6 +360,82 @@ class CustomerLedgerImportTests(CustomerLedgerTestBase):
         self.assertFalse(CustomerLedger.objects.exists())
 
 
+class CustomerLedgerCreditHistoryTests(CustomerLedgerTestBase):
+    """账期/额度变更历史：创建留初始、编辑只记改动字段、导入标记来源。"""
+
+    def test_create_records_initial_snapshot(self):
+        ledger = self.make_ledger()
+        logs = list(ledger.credit_changes.all())
+        self.assertEqual({log.field for log in logs}, {'账期', '额度'})
+        self.assertTrue(all(log.source == '初始' for log in logs))
+        self.assertTrue(all(log.old_value == '' for log in logs))
+
+    def test_edit_records_only_modified_field(self):
+        ledger = self.make_ledger()
+        ledger.credit_changes.all().delete()
+        resp = self.client.post(reverse('customer_ledger_edit', args=[ledger.pk]), {
+            'customer_name': ledger.customer_name,
+            'credit_code': ledger.credit_code,
+            'archive_no': ledger.archive_no,
+            'payment_terms': '月结60天',
+            'credit_limit_text': '80万',
+        })
+        self.assertEqual(resp.status_code, 302)
+        logs = list(ledger.credit_changes.all())
+        self.assertEqual(len(logs), 1)
+        self.assertEqual(logs[0].field, '账期')
+        self.assertEqual(logs[0].old_value, '月结30天')
+        self.assertEqual(logs[0].new_value, '月结60天')
+        self.assertEqual(logs[0].source, '编辑')
+
+    def test_edit_without_credit_change_creates_no_log(self):
+        ledger = self.make_ledger()
+        ledger.credit_changes.all().delete()
+        self.client.post(reverse('customer_ledger_edit', args=[ledger.pk]), {
+            'customer_name': ledger.customer_name,
+            'credit_code': ledger.credit_code,
+            'archive_no': ledger.archive_no,
+            'payment_terms': ledger.payment_terms,
+            'credit_limit_text': ledger.credit_limit_text,
+        })
+        self.assertEqual(ledger.credit_changes.count(), 0)
+
+    def test_detail_page_renders_history(self):
+        ledger = self.make_ledger()
+        self.client.post(reverse('customer_ledger_edit', args=[ledger.pk]), {
+            'customer_name': ledger.customer_name,
+            'credit_code': ledger.credit_code,
+            'archive_no': ledger.archive_no,
+            'payment_terms': ledger.payment_terms,
+            'credit_limit_text': '120万',
+            'credit_limit': '120',
+        })
+        resp = self.client.get(reverse('customer_ledger_detail', args=[ledger.pk]))
+        self.assertContains(resp, '账期与额度变更历史')
+        self.assertContains(resp, '80万')
+        self.assertContains(resp, '120万')
+
+    def test_import_records_excel_source(self):
+        ledger = self.make_ledger(
+            customer_name='导入客户', credit_code='91330000IMP000001',
+            payment_terms='', credit_limit_text='', credit_limit=None,
+        )
+        self.assertFalse(ledger.credit_changes.exists())
+        upload = build_xlsx([{
+            '客户名称': '导入客户', '统一社会信用代码': '91330000IMP000001',
+            '账期': '月结90天', '额度': '50万',
+        }])
+        resp = self.client.post(reverse('customer_ledger_import'), {'file': upload})
+        self.client.post(reverse('customer_ledger_import_confirm'), {
+            'payload': resp.context['payload'], 'overwrite': '0',
+        })
+        ledger.refresh_from_db()
+        logs = list(ledger.credit_changes.all())
+        self.assertEqual({log.field for log in logs}, {'账期', '额度'})
+        self.assertEqual({log.source for log in logs}, {'Excel导入'})
+        self.assertEqual(ledger.payment_terms, '月结90天')
+
+
 class CustomerLedgerAmountParsingTests(TestCase):
     def test_amount_normalization(self):
         cases = {

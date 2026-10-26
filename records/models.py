@@ -539,6 +539,16 @@ class OperationLog(models.Model):
         ]
 
 
+def _format_credit_limit(text, number):
+    """额度展示值：原文优先；无原文时把 Decimal 万元格式化为「600 万元」。"""
+    text = (text or '').strip()
+    if text:
+        return text
+    if number is None:
+        return ''
+    return f'{number.normalize():f} 万元'
+
+
 def customer_ledger_attachment_upload_to(instance, filename):
     """客户台账汇总附件上传路径：media/customer_ledgers/<编号或uuid>.pdf。
 
@@ -625,11 +635,50 @@ class CustomerLedger(models.Model):
     def __str__(self):
         return self.customer_name
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # 缓存「账期/额度」的加载态，save() 时对比出变更并写变更历史
+        self._credit_baseline = self.credit_snapshot()
+
+    def credit_snapshot(self):
+        """账期与额度的业务展示快照：{'账期': str, '额度': str}。"""
+        return {
+            '账期': (self.payment_terms or '').strip(),
+            '额度': _format_credit_limit(self.credit_limit_text, self.credit_limit),
+        }
+
     def save(self, *args, **kwargs):
         # 档案编号为空串时统一落 NULL：唯一约束允许多个 NULL，但不允许多个 ''
         if self.archive_no is not None:
             self.archive_no = self.archive_no.strip() or None
+        before = getattr(self, '_credit_baseline', None)
+        is_new = self.pk is None
+        source = getattr(self, '_credit_change_source', '')
         super().save(*args, **kwargs)
+
+        after = self.credit_snapshot()
+        if before is None:
+            self._credit_baseline = after
+            return
+        if is_new:
+            entries = [(field, '', value) for field, value in after.items() if value]
+            source = source or '初始'
+        else:
+            entries = [
+                (field, before.get(field, ''), value)
+                for field, value in after.items()
+                if before.get(field, '') != value
+            ]
+            source = source or '编辑'
+        if entries:
+            CustomerLedgerChangeLog.objects.bulk_create([
+                CustomerLedgerChangeLog(
+                    ledger=self, field=field, old_value=old, new_value=new, source=source,
+                )
+                for field, old, new in entries
+            ])
+        self._credit_baseline = after
+        self._credit_change_source = ''
 
     @property
     def has_attachment(self):
@@ -638,3 +687,31 @@ class CustomerLedger(models.Model):
     @property
     def attachment_basename(self):
         return os.path.basename(self.attachment.name) if self.attachment else ''
+
+
+class CustomerLedgerChangeLog(models.Model):
+    """客户台账的账期/额度变更留痕：每次编辑或导入改动账期、额度各记一条。
+
+    独立于操作留痕（records.OperationLog）：后者是整条记录的 before/after 快照，
+    无法直接按「账期」「额度」渲染成一条可读的时间线。本表只记录这两个业务字段，
+    用于详情页的变更历史，不做全字段审计。
+    """
+
+    ledger = models.ForeignKey(
+        CustomerLedger, on_delete=models.CASCADE, related_name='credit_changes',
+        verbose_name='客户台账',
+    )
+    field = models.CharField('变更字段', max_length=20)
+    old_value = models.CharField('变更前', max_length=100, blank=True, default='')
+    new_value = models.CharField('变更后', max_length=100, blank=True, default='')
+    source = models.CharField('来源', max_length=20, blank=True, default='编辑')
+    changed_at = models.DateTimeField('变更时间', default=timezone.now, db_index=True)
+
+    class Meta:
+        verbose_name = '账期/额度变更记录'
+        verbose_name_plural = '账期/额度变更记录'
+        ordering = ['-changed_at', '-id']
+        indexes = [models.Index(fields=['ledger', 'changed_at'], name='idx_ledger_credit_time')]
+
+    def __str__(self):
+        return f'{self.ledger_id} {self.field}: {self.old_value} -> {self.new_value}'

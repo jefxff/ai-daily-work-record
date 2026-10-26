@@ -26,6 +26,21 @@
         </div>
     </div>
 
+    <div class="lgd-modal-credit">
+        <div class="lgd-modal-credit-item">
+            <span class="lgd-modal-credit-label">账期</span>
+            <strong class="lgd-modal-credit-value">{{ ledger.payment_terms|default:"未约定" }}</strong>
+        </div>
+        <div class="lgd-modal-credit-item">
+            <span class="lgd-modal-credit-label">授信额度</span>
+            <strong class="lgd-modal-credit-value">
+                {% if ledger.credit_limit_text %}{{ ledger.credit_limit_text }}
+                {% elif ledger.credit_limit %}{{ ledger.credit_limit|floatformat:"-2" }} 万元
+                {% else %}未设置{% endif %}
+            </strong>
+        </div>
+    </div>
+
     <dl class="lgd-modal-grid">
         <div class="lgd-modal-field">
             <dt>责任业务</dt>
@@ -58,10 +73,6 @@
         <div class="lgd-modal-field">
             <dt>实缴资金</dt>
             <dd>{% if ledger.paid_in_capital_text %}{{ ledger.paid_in_capital_text }}{% elif ledger.paid_in_capital %}{{ ledger.paid_in_capital|floatformat:"-2" }} 万元{% else %}—{% endif %}</dd>
-        </div>
-        <div class="lgd-modal-field">
-            <dt>额度</dt>
-            <dd>{% if ledger.credit_limit_text %}{{ ledger.credit_limit_text }}{% elif ledger.credit_limit %}{{ ledger.credit_limit|floatformat:"-2" }} 万元{% else %}—{% endif %}</dd>
         </div>
         <div class="lgd-modal-field lgd-modal-field--full">
             <dt>地址</dt>
@@ -114,6 +125,18 @@
         line-height: 20px;
         white-space: nowrap;
     }
+    .lgd-modal-credit { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); }
+    .lgd-modal-credit-item {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: var(--sp-3) var(--sp-4);
+        border-radius: var(--r-sm);
+        background: var(--c-primary-subtle);
+        box-shadow: inset 3px 0 0 var(--c-primary);
+    }
+    .lgd-modal-credit-label { font-size: var(--fs-xs); color: var(--c-text-secondary); }
+    .lgd-modal-credit-value { font-size: var(--fs-lg); font-weight: 700; color: var(--c-text); word-break: break-word; }
     .lgd-modal-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
