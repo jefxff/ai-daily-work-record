@@ -19,8 +19,8 @@
 
     <div class="ins-dashboard">
         <div class="ins-stat-card expired">
-            <div class="ins-stat-value">{{ report.should_renew_count }}</div>
-            <div class="ins-stat-label">应续未续标的</div>
+            <div class="ins-stat-value">{{ report.should_renew_count }}{% if summary.one_off_expired %}<span class="ins-stat-sub">+{{ summary.one_off_expired }}一次性</span>{% endif %}</div>
+            <div class="ins-stat-label">应续未续{% if summary.one_off_expired %}（其中 {{ summary.one_off_expired }} 个一次性）{% endif %}</div>
         </div>
         <div class="ins-stat-card gap">
             <div class="ins-stat-value">{{ report.gap_count }}</div>

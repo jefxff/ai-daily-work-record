@@ -61,9 +61,6 @@ def insurance_subject_list(request):
         filtered = [s for s in filtered if not s.is_one_off]
     filtered = grouping.sort_subjects(filtered, sort=sort)
 
-    summary['expired'] = sum(
-        1 for s in subjects if s.status == 'expired' and not s.is_one_off)
-
     paginator = Paginator(filtered, _per_page(request))
     page_obj = paginator.get_page(request.GET.get('page') or 1)
 
@@ -106,8 +103,6 @@ def insurance_renewal_report(request):
     report['upcoming'] = [s for s in report['upcoming'] if not s.is_one_off]
     report['should_renew_count'] = len(report['should_renew'])
     report['upcoming_count'] = len(report['upcoming'])
-    summary['expired'] = sum(
-        1 for s in subjects if s.status == 'expired' and not s.is_one_off)
 
     return render(request, 'records/insurance_renewal_report.html', {
         'report': report,

@@ -394,7 +394,12 @@ def sort_subjects(subjects, sort='expiry'):
 
 
 def summarize(subjects):
-    """汇总卡片数据。"""
+    """汇总卡片数据。
+
+    expired / one_off_expired 分别返回：前者是视图过滤后真正需要续保的，
+    后者是被一次性标记屏蔽的过期标的总数——页面卡片需要同时展示，
+    避免用户看到「应续未续=0」但实际有过期标的的困惑。
+    """
     active = [s for s in subjects if s.status in ('active', 'expiring')]
     return {
         'total': len(subjects),
@@ -402,7 +407,9 @@ def summarize(subjects):
         'non_car': sum(1 for s in subjects if s.kind == 'non_car'),
         'active': len(active),
         'expiring': sum(1 for s in subjects if s.status == 'expiring'),
-        'expired': sum(1 for s in subjects if s.status == 'expired'),
+        'expired': sum(1 for s in subjects if s.status == 'expired' and not getattr(s, 'is_one_off', False)),
+        'one_off_expired': sum(1 for s in subjects if s.status == 'expired' and getattr(s, 'is_one_off', False)),
+        'expired_total': sum(1 for s in subjects if s.status == 'expired'),
         'pending': sum(1 for s in subjects if s.status == 'pending'),
         'gap': sum(1 for s in subjects if s.has_gap),
         'overlap': sum(1 for s in subjects if s.has_overlap),

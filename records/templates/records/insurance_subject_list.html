@@ -31,8 +31,8 @@
             <div class="ins-stat-label">30 天内到期</div>
         </div>
         <div class="ins-stat-card expired">
-            <div class="ins-stat-value">{{ summary.expired }}</div>
-            <div class="ins-stat-label">应续未续</div>
+            <div class="ins-stat-value">{{ summary.expired }}{% if summary.one_off_expired %}<span class="ins-stat-sub">+{{ summary.one_off_expired }}一次性</span>{% endif %}</div>
+            <div class="ins-stat-label">应续未续{% if summary.one_off_expired %}（其中 {{ summary.one_off_expired }} 个一次性）{% endif %}</div>
         </div>
         <div class="ins-stat-card gap">
             <div class="ins-stat-value">{{ summary.gap }}</div>
