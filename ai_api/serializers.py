@@ -2,14 +2,15 @@ from rest_framework import serializers
 
 from records.models import (
     Decoration, CustomerCredit, CustomerComplaint, Regulation,
-    PriceEvaluation, DailyRecord, MetalPrice, Insurance, Complaint
+    PriceEvaluation, DailyRecord, MetalPrice, Insurance, Complaint,
+    InsuranceSubject, InsurancePolicyYear, OperationLog,
 )
 from samples.models import Partner, Sample, TestRecord, BatchRecord, AuditRecord
 from archive.models import (
     Cabinet, Category as ArchiveCategory, Ledger, Archive,
     BorrowRecord, License, AnnualReview, LicenseBorrowRecord,
 )
-from knowledge_base.models import KnowledgeCategory, KnowledgeDocument
+from knowledge_base.models import KnowledgeCategory, KnowledgeDocument, KnowledgeFolder
 
 
 # 系统维护字段：任何业务序列化器都不得通过 API 直写。
@@ -245,3 +246,55 @@ class KnowledgeDocumentSerializer(EnhancedModelSerializer):
     class Meta:
         model = KnowledgeDocument
         fields = '__all__'
+
+
+# ==================== 保险标的 / 保单年度（只读聚合） ====================
+
+class InsuranceSubjectSerializer(EnhancedModelSerializer):
+    kind_label = serializers.CharField(source='get_kind_display', read_only=True)
+
+    class Meta:
+        model = InsuranceSubject
+        fields = [
+            'id', 'kind', 'kind_label', 'label', 'plate', 'insurance_type',
+            'department', 'remarks', 'is_one_off', 'created_at', 'updated_at',
+        ]
+
+
+class InsurancePolicyYearSerializer(EnhancedModelSerializer):
+    subject_label = serializers.CharField(source='subject.label', read_only=True)
+    subject_plate = serializers.CharField(source='subject.plate', read_only=True)
+    kind = serializers.CharField(source='subject.kind', read_only=True)
+
+    class Meta:
+        model = InsurancePolicyYear
+        fields = [
+            'id', 'subject', 'subject_label', 'subject_plate', 'kind',
+            'year', 'start_date', 'end_date', 'premium', 'insurer',
+            'created_at', 'updated_at',
+        ]
+
+
+# ==================== 操作留痕（只读） ====================
+
+class OperationLogSerializer(EnhancedModelSerializer):
+    change_diff = serializers.ReadOnlyField()
+
+    class Meta:
+        model = OperationLog
+        fields = [
+            'id', 'operation_time', 'operator', 'operator_username',
+            'module_type', 'operation_type', 'object_identifier',
+            'change_summary', 'before_json', 'after_json', 'change_diff',
+        ]
+
+
+# ==================== 知识库文件夹（个人书架） ====================
+
+class KnowledgeFolderSerializer(EnhancedModelSerializer):
+    parent_name = serializers.CharField(source='parent.name', read_only=True, default='')
+
+    class Meta:
+        model = KnowledgeFolder
+        fields = ['id', 'name', 'parent', 'parent_name', 'sort', 'created_at']
+        read_only_fields = ['id', 'created_at']

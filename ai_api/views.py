@@ -36,6 +36,10 @@ from .viewsets import (  # noqa: F401
     LicenseBorrowRecordViewSet,
     KnowledgeCategoryViewSet,
     KnowledgeDocumentViewSet,
+    KnowledgeFolderViewSet,
+    InsuranceSubjectViewSet,
+    InsurancePolicyYearViewSet,
+    OperationLogViewSet,
 )
 from .views_ai import (  # noqa: F401
     ai_create,
@@ -75,6 +79,10 @@ __all__ = [
     "LicenseBorrowRecordViewSet",
     "KnowledgeCategoryViewSet",
     "KnowledgeDocumentViewSet",
+    "KnowledgeFolderViewSet",
+    "InsuranceSubjectViewSet",
+    "InsurancePolicyYearViewSet",
+    "OperationLogViewSet",
     "ai_summary",
     "ai_search",
     "ai_query",

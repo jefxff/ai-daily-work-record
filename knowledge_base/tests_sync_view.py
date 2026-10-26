@@ -36,7 +36,11 @@ class SyncContainerReadingViewTests(TestCase):
         from records.models import DailyRecord
         rec = DailyRecord.objects.create(
             user=self.user, work_content="今天完成了登录模块的自测。",
-            status="完成", record_date="2026-10-25T09:00:00+08:00")
+            status="完成")
+        # record_date 是 auto_now_add，create 时传值会被忽略；用 update 固定到
+        # 断言里的日期，否则这条用例只在系统日期恰为 2026-10-25 时通过。
+        DailyRecord.objects.filter(pk=rec.pk).update(
+            record_date="2026-10-25T09:00:00+08:00")
         KnowledgeNode.objects.create(
             document=doc, uid="r0000000001", parent=None, sort=0,
             text="今天完成了登录模块的自测。", node_type="todo",

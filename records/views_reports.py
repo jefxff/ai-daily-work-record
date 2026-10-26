@@ -93,17 +93,16 @@ def _build_weekly_markdown(week_start, week_end, completed, ongoing, not_started
     return "\n".join(lines).rstrip() + "\n"
 
 
-@perm_required("daily_record", "read")
-def weekly_report(request):
-    """本周（默认本周一~周日）周报生成页；仅本人记录。"""
+def _weekly_payload(user, start_raw=None):
+    """周报数据（页面与 API 共用的唯一口径）；仅本人记录。"""
     today = timezone.localdate()
-    week_start = _parse_date(request.GET.get("start"))
+    week_start = _parse_date(start_raw)
     if week_start is None:
         week_start = today - timedelta(days=today.weekday())
     week_end = week_start + timedelta(days=6)
 
     records = (
-        _my_daily_records(request.user)
+        _my_daily_records(user)
         .filter(record_date__date__range=(week_start, week_end))
         .order_by("record_date")
     )
@@ -120,7 +119,7 @@ def weekly_report(request):
         _build_weekly_markdown(week_start, week_end, completed, ongoing, not_started),
         WEEKLY_POLISH_INSTRUCTION,
     )
-    return render(request, "records/weekly_report.html", {
+    return {
         "week_start": week_start,
         "week_end": week_end,
         "prev_start": week_start - timedelta(days=7),
@@ -131,7 +130,14 @@ def weekly_report(request):
                   "not_started": len(not_started)},
         "report_md": report_md,
         "ai_enabled": ai_enabled(),
-    })
+    }
+
+
+@perm_required("daily_record", "read")
+def weekly_report(request):
+    """本周（默认本周一~周日）周报生成页；仅本人记录。"""
+    return render(request, "records/weekly_report.html",
+                  _weekly_payload(request.user, request.GET.get("start")))
 
 
 def _max_streak(days):
@@ -145,11 +151,10 @@ def _max_streak(days):
     return best
 
 
-@perm_required("daily_record", "read")
-def annual_summary(request):
-    """年度个人总结卡片；仅本人记录。"""
-    year = _clamp_year(request.GET.get("year"))
-    records = _my_daily_records(request.user).filter(record_date__year=year)
+def _annual_payload(user, year_raw=None):
+    """年度总结数据（页面与 API 共用的唯一口径）；仅本人记录。"""
+    year = _clamp_year(year_raw)
+    records = _my_daily_records(user).filter(record_date__year=year)
 
     total = records.count()
     done = records.filter(status="完成").count()
@@ -174,7 +179,7 @@ def annual_summary(request):
         f"· 最长连续记录 {_max_streak(days)} 天",
     ]), ANNUAL_POLISH_INSTRUCTION)
 
-    return render(request, "records/annual_summary.html", {
+    return {
         "year": year,
         "total": total,
         "done": done,
@@ -188,7 +193,14 @@ def annual_summary(request):
         "first_date": days[0] if days else None,
         "last_date": days[-1] if days else None,
         "years": list(range(timezone.localdate().year, 2019, -1)),
-        "initial": (request.user.username or "U")[:1].upper(),
+        "initial": (user.username or "U")[:1].upper(),
         "share_text": share_text,
         "ai_enabled": ai_enabled(),
-    })
+    }
+
+
+@perm_required("daily_record", "read")
+def annual_summary(request):
+    """年度个人总结卡片；仅本人记录。"""
+    return render(request, "records/annual_summary.html",
+                  _annual_payload(request.user, request.GET.get("year")))

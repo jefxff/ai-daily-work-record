@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from . import views
-from . import api_admin
+from . import api_admin, api_business
 
 # 路由注册
 router = DefaultRouter()
@@ -12,6 +12,10 @@ router.register(r'regulation', views.RegulationViewSet)
 router.register(r'price-evaluation', views.PriceEvaluationViewSet)
 router.register(r'daily-record', views.DailyRecordViewSet)
 router.register(r'metal-price', views.MetalPriceViewSet)
+# 子路径必须先于父级注册：DRF detail 路由的正则是 [^/.]+，先注册 insurance
+# 会让 'insurance/subjects/' 被当作 pk='subjects' 的详情路由抢先匹配成 404。
+router.register(r'insurance/subjects', views.InsuranceSubjectViewSet, basename='api-insurancesubject')
+router.register(r'insurance/policy-years', views.InsurancePolicyYearViewSet, basename='api-insurancepolicyyear')
 router.register(r'insurance', views.InsuranceViewSet)
 router.register(r'complaint', views.ComplaintViewSet)
 # 试样管理
@@ -32,6 +36,9 @@ router.register(r'archive/license-borrow', views.LicenseBorrowRecordViewSet)
 # 知识库
 router.register(r'knowledge/category', views.KnowledgeCategoryViewSet)
 router.register(r'knowledge/document', views.KnowledgeDocumentViewSet)
+router.register(r'knowledge/folders', views.KnowledgeFolderViewSet, basename='api-knowledgefolder')
+# 操作留痕（只读）
+router.register(r'operation-logs', views.OperationLogViewSet, basename='api-operationlog')
 # 账户管理（用户/角色/登录日志/长期 Token）
 router.register(r'accounts/users', api_admin.UserAdminViewSet)
 router.register(r'accounts/roles', api_admin.RoleAdminViewSet)
@@ -54,6 +61,24 @@ urlpatterns = [
          name='api-system-health'),
     path('system/perf/', api_admin.SystemPerfAPIView.as_view(),
          name='api-system-perf'),
+
+    # 业务聚合 / 报表 / 档案表级导入导出（静态字面量端点，必须早于 router）
+    path('daily-record/weekly-report/',
+         api_business.WeeklyReportAPIView.as_view(), name='api-weekly-report'),
+    path('daily-record/annual-summary/',
+         api_business.AnnualSummaryAPIView.as_view(), name='api-annual-summary'),
+    path('expiry/calendar/',
+         api_business.ExpiryCalendarAPIView.as_view(), name='api-expiry-calendar'),
+    path('operation-logs/anomalies/',
+         api_business.AuditAnomaliesAPIView.as_view(), name='api-audit-anomalies'),
+    path('data-download/summary/',
+         api_business.DataDownloadSummaryAPIView.as_view(), name='api-data-download-summary'),
+    path('archive/tables/<str:table>/export/',
+         api_business.ArchiveTableExportAPIView.as_view(), name='api-archive-table-export'),
+    path('archive/tables/<str:table>/template/',
+         api_business.ArchiveTableTemplateAPIView.as_view(), name='api-archive-table-template'),
+    path('archive/tables/<str:table>/import/',
+         api_business.ArchiveTableImportAPIView.as_view(), name='api-archive-table-import'),
 
     # REST API 路由
     path('', include(router.urls)),

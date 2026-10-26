@@ -62,10 +62,9 @@ def _clamp_days(raw):
     return max(MIN_DAYS, min(MAX_DAYS, value))
 
 
-@perm_required("system", "read")
-def audit_anomalies(request):
-    """在指定窗口内统计删除爆发 / 非工作时间批量 / 单小时高频三类异常。"""
-    days = _clamp_days(request.GET.get("days"))
+def collect_anomalies(days_raw=None):
+    """检测窗口内四类异常（页面与 API 共用的唯一口径）。"""
+    days = _clamp_days(days_raw)
     since = timezone.now() - timedelta(days=days)
     base = OperationLog.objects.filter(operation_time__gte=since)
 
@@ -115,7 +114,7 @@ def audit_anomalies(request):
         .order_by("-cnt")
     )
 
-    return render(request, "records/audit_anomalies.html", {
+    return {
         "days": days,
         "since": since,
         "delete_bursts": delete_bursts,
@@ -127,4 +126,11 @@ def audit_anomalies(request):
         "off_hours_batch_threshold": OFF_HOURS_BATCH_THRESHOLD,
         "high_freq_threshold": HIGH_FREQ_THRESHOLD,
         "export_burst_threshold": EXPORT_BURST_THRESHOLD,
-    })
+    }
+
+
+@perm_required("system", "read")
+def audit_anomalies(request):
+    """在指定窗口内统计删除爆发 / 非工作时间批量 / 单小时高频 / 导出爆发四类异常。"""
+    return render(request, "records/audit_anomalies.html",
+                  collect_anomalies(request.GET.get("days")))

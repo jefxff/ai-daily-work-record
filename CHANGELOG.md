@@ -2,6 +2,48 @@
 
 本文件记录对外可见的功能、部署形态与依赖变更。格式参考 Keep a Changelog。
 
+## [2.1.5] - 2026-10-26
+
+补齐 A 类业务页面缺失的 DRF API。**无 URL、模板、数据与部署步骤变化**；
+页面行为不变，新接口与页面共用同一套数据口径。
+
+### 新增（A 类业务 API）
+
+- **保险标的 / 保单年度只读**：`GET /api/insurance/subjects/`、
+  `GET /api/insurance/policy-years/`（按 `kind` / `subject` / `year` 过滤）。
+- **个人报告 JSON**：`GET /api/daily-record/weekly-report/`、
+  `GET /api/daily-record/annual-summary/`（仅本人记录，与页面同一函数取数）。
+- **到期日历聚合**：`GET /api/expiry/calendar/`（`days` / `day` 参数，跨
+  insurance / archive 任一 read 即可，条目按用户权限过滤）。
+- **操作留痕只读 + 异常检测**：`GET /api/operation-logs/`（模块/动作/操作人/
+  日期筛选）、`GET /api/operation-logs/anomalies/`（四类异常，复用
+  `records.views_audit.collect_anomalies`）。
+- **数据下载汇总**：`GET /api/data-download/summary/`（按模块 read 权限裁剪，
+  每日记录仅统计本人）。
+- **知识库文件夹 CRUD**：`/api/knowledge/folders/`（list/retrieve/create/
+  patch/delete + `move`），一律走 `knowledge_base.folders` 服务层并按 owner
+  隔离；删除 = 内容上提，写操作全部留痕。
+- **档案表级导入导出**：`/api/archive/tables/<table>/export/`、`template/`、
+  `import/`（默认 `dry_run=true` 只预览，`false` 时按页面同一套匹配键与逐行
+  事务 upsert）。导出接 `@guarded_export`，超 `EXPORT_MAX_ROWS` 返回 413。
+
+### 重构（页面与 API 共用取数）
+
+- `records/views_reports.py` 抽出 `_weekly_payload()` / `_annual_payload()`；
+  `records/views_audit.py` 抽出 `collect_anomalies()`。页面视图改为调用同一函数，
+  输出与改造前一致。
+
+### 修复（测试稳定性）
+
+- `knowledge_base/tests_sync_view.py`：`DailyRecord.record_date` 是
+  `auto_now_add`，创建时传参被忽略，原断言写死 `2026-10-25` 只在当天通过；
+  改为创建后 `update()` 固定日期，用例恢复确定性。
+
+### 测试
+
+- 新增 `ai_api/tests_business_api.py`（14 个用例）；全量 **639 个测试通过**
+  （1 跳过），`check` 无问题，`makemigrations --check` 无变化。
+
 ## [2.1.4] - 2026-10-25
 
 跨模块技术实现一致性整改（审计报告 `impl-consistency-audit-2026-10-25.md`）。

@@ -1,5 +1,5 @@
-from rest_framework import viewsets, filters, mixins
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework import viewsets, filters, mixins, status
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 import logging
 import os
 
+from accounts.permissions_drf import ModuleRbacPermission
 from accounts.services import has_perm, get_display_name
 from records.audit import log_operation, snapshot
 from samples.services import (
@@ -211,14 +212,16 @@ class ReadOnlyEnhancedViewSet(
 
 from records.models import (
     Decoration, CustomerCredit, CustomerComplaint, Regulation,
-    PriceEvaluation, DailyRecord, MetalPrice, Insurance, Complaint
+    PriceEvaluation, DailyRecord, MetalPrice, Insurance, Complaint,
+    InsuranceSubject, InsurancePolicyYear, OperationLog,
 )
 from samples.models import Partner, Sample, TestRecord, BatchRecord, AuditRecord
 from archive.models import (
     Cabinet, Category as ArchiveCategory, Ledger, Archive,
     BorrowRecord, License, AnnualReview, LicenseBorrowRecord,
 )
-from knowledge_base.models import KnowledgeCategory, KnowledgeDocument
+from knowledge_base.models import KnowledgeCategory, KnowledgeDocument, KnowledgeFolder
+from knowledge_base import folders as kb_folders
 from .serializers import (
     DecorationSerializer, CustomerCreditSerializer, CustomerComplaintSerializer,
     RegulationSerializer, PriceEvaluationSerializer, DailyRecordSerializer,
@@ -229,6 +232,8 @@ from .serializers import (
     ArchiveSerializer, BorrowRecordSerializer, LicenseSerializer,
     AnnualReviewSerializer, LicenseBorrowRecordSerializer,
     KnowledgeCategorySerializer, KnowledgeDocumentSerializer,
+    InsuranceSubjectSerializer, InsurancePolicyYearSerializer,
+    OperationLogSerializer, KnowledgeFolderSerializer,
 )
 
 
@@ -555,5 +560,173 @@ class KnowledgeDocumentViewSet(EnhancedModelViewSet):
     def get_queryset(self):
         from knowledge_base import access as kb_access
         return kb_access.visible_docs(self.request.user, KnowledgeDocument.objects.all())
+
+
+# ==================== 知识库文件夹（个人书架） ====================
+
+class KnowledgeFolderViewSet(
+    mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet
+):
+    """知识库文件夹 API：本人文件夹树，写入一律走 knowledge_base.folders 服务层。
+
+    文件夹是「个人书架」而非权限边界：get_queryset 只返回 owner=本人，
+    他人的文件夹一律 404；删除 = 内容上提（子夹与文档不跟着删）。
+    """
+    permission_classes = [IsAuthenticated, ModuleRbacPermission]
+    perm_module = 'knowledge'
+    custom_action_perms = {'move': 'update'}
+    serializer_class = KnowledgeFolderSerializer
+    pagination_class = CustomPagination
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['name']
+    ordering_fields = ['sort', 'created_at']
+
+    def get_queryset(self):
+        return kb_folders.visible_folders(self.request.user)
+
+    def _audit(self, op_type, folder_id, summary, before=None, after=None):
+        label = '知识库'
+        identifier = '文件夹#%s' % folder_id
+        log_operation(self.request, label, op_type, identifier, summary,
+                      before=before, after=after)
+
+    def _folder_error(self, exc):
+        # 与页面端一致：业务规则拒绝统一 400（改一下参数就能通过）
+        return Response({'ok': False, 'message': str(exc)},
+                        status=status.HTTP_400_BAD_REQUEST)
+
+    def create(self, request, *args, **kwargs):
+        data = request.data
+        try:
+            folder = kb_folders.create_folder(
+                request.user, data.get('name'), data.get('parent_id') or data.get('parent'))
+        except kb_folders.FolderError as exc:
+            return self._folder_error(exc)
+        self._audit('文件夹创建', folder.pk, '「%s」创建' % folder.name,
+                    after=snapshot(folder))
+        return Response(
+            {'ok': True, 'message': '已创建', **self.get_serializer(folder).data},
+            status=status.HTTP_201_CREATED,
+        )
+
+    def update(self, request, *args, **kwargs):
+        folder = self.get_object()
+        data = request.data
+        before = snapshot(folder)
+        try:
+            if 'name' in data:
+                kb_folders.rename_folder(request.user, folder.pk, data.get('name'))
+            parent_raw = data.get('parent_id', data.get('parent'))
+            if parent_raw is not None:
+                kb_folders.move_folder(request.user, folder.pk, parent_raw)
+        except kb_folders.FolderError as exc:
+            return self._folder_error(exc)
+        folder.refresh_from_db()
+        self._audit('文件夹重命名', folder.pk, '「%s」编辑' % folder.name,
+                    before=before, after=snapshot(folder))
+        return Response({'ok': True, 'message': '已保存',
+                         **self.get_serializer(folder).data})
+
+    def partial_update(self, request, *args, **kwargs):
+        """PATCH 与 PUT 同一条服务层路径（DRF 默认映射 partial_update）。"""
+        return self.update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        folder = self.get_object()
+        pk, name, before = folder.pk, folder.name, snapshot(folder)
+        try:
+            moved = kb_folders.delete_folder(request.user, pk)
+        except kb_folders.FolderError as exc:
+            return self._folder_error(exc)
+        self._audit('文件夹删除', pk, '删除「%s」（%s 篇文档上提）' % (name, moved),
+                    before=before)
+        return Response({'ok': True, 'message': '已删除', 'moved_docs': moved})
+
+    @action(detail=True, methods=['post'])
+    def move(self, request, pk=None):
+        """移动文件夹。body: {"parent_id": <id|null>}"""
+        folder = self.get_object()
+        before = snapshot(folder)
+        try:
+            kb_folders.move_folder(request.user, folder.pk,
+                                   request.data.get('parent_id'))
+        except kb_folders.FolderError as exc:
+            return self._folder_error(exc)
+        folder.refresh_from_db()
+        self._audit('文件夹移动', folder.pk, '「%s」移动' % folder.name,
+                    before=before, after=snapshot(folder))
+        return Response({'ok': True, 'parent_id': folder.parent_id})
+
+
+# ==================== 保险标的 / 保单年度（只读） ====================
+
+class InsuranceSubjectViewSet(ReadOnlyEnhancedViewSet):
+    """保险标的主档只读 API（写入由续保录入等页面流程维护）。"""
+    perm_module = 'insurance'
+    queryset = InsuranceSubject.objects.all()
+    serializer_class = InsuranceSubjectSerializer
+    search_fields = ['label', 'plate', 'insurance_type', 'department', 'remarks']
+    ordering_fields = ['label', 'plate', 'created_at']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        kind = self.request.query_params.get('kind')
+        if kind in ('car', 'non_car'):
+            qs = qs.filter(kind=kind)
+        one_off = self.request.query_params.get('is_one_off')
+        if one_off in ('0', '1', 'true', 'false'):
+            qs = qs.filter(is_one_off=one_off in ('1', 'true'))
+        return qs
+
+
+class InsurancePolicyYearViewSet(ReadOnlyEnhancedViewSet):
+    """保单年度只读 API；支持按标的 / 年份过滤。"""
+    perm_module = 'insurance'
+    queryset = InsurancePolicyYear.objects.select_related('subject').all()
+    serializer_class = InsurancePolicyYearSerializer
+    search_fields = ['subject__label', 'subject__plate', 'insurer']
+    ordering_fields = ['year', 'start_date', 'end_date', 'premium']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        subject = self.request.query_params.get('subject')
+        if subject and str(subject).isdigit():
+            qs = qs.filter(subject_id=int(subject))
+        year = self.request.query_params.get('year')
+        if year and str(year).isdigit():
+            qs = qs.filter(year=int(year))
+        return qs
+
+
+# ==================== 操作留痕（只读） ====================
+
+class OperationLogViewSet(ReadOnlyEnhancedViewSet):
+    """操作留痕只读 API；异常检测走 api_business.AuditAnomaliesAPIView。"""
+    perm_module = 'system'
+    queryset = OperationLog.objects.all().order_by('-operation_time', '-id')
+    serializer_class = OperationLogSerializer
+    search_fields = ['operator', 'operator_username', 'object_identifier', 'change_summary']
+    ordering_fields = ['operation_time', 'id']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        params = self.request.query_params
+        module_type = params.get('module_type')
+        if module_type:
+            qs = qs.filter(module_type=module_type)
+        operation_type = params.get('operation_type')
+        if operation_type:
+            qs = qs.filter(operation_type=operation_type)
+        operator = params.get('operator')
+        if operator:
+            qs = qs.filter(Q(operator__icontains=operator)
+                           | Q(operator_username__icontains=operator))
+        start = params.get('start_date')
+        end = params.get('end_date')
+        if start:
+            qs = qs.filter(operation_time__date__gte=start)
+        if end:
+            qs = qs.filter(operation_time__date__lte=end)
+        return qs
 
 
