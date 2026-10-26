@@ -12,7 +12,7 @@
 {% load accounts_tags %}
 <nav class="sidebar" id="sidebar" aria-label="主导航">
 
-    {% can_view_any "daily_record" "decoration" "customer_credit" "customer_complaint" "customer_ledger" "complaint" "regulation" "price_evaluation" "insurance" "metal_price" "data_view" "knowledge" %}
+    {% can_view_any "daily_record" "decoration" "regulation" "price_evaluation" "insurance" "metal_price" "data_view" "knowledge" %}
     <!-- 分组：工作台（可折叠；交互/动画/状态存储与试样管理/档案管理/系统完全一致） -->
     <button class="sidebar-section-title sidebar-section-toggle" id="workbenchDropdown" aria-expanded="true" aria-controls="workbenchDropdownMenu" type="button">
         <span>工作台</span>
@@ -26,20 +26,16 @@
         {% can_view "daily_record" %}
         <li><a href="{% url 'daily_record_list' %}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg><span>每日记录</span></a></li>
         {% endcan_view %}
+        {# 到期预警：紧跟每日记录之后 #}
+        {% can_view_any "insurance" "archive" %}
+        <li><a href="{% url 'expiry_calendar' %}" class="{% if '/expiry' in request.path %}active{% endif %}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>到期预警</span></a></li>
+        {% endcan_view_any %}
+        {# 知识库：紧跟到期预警之后 #}
+        {% can_view "knowledge" %}
+        <li><a href="{% url 'knowledge_base:document_list' %}" class="{% if 'knowledge' in request.path %}active{% endif %}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 5v14a9 3 0 0 1-18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg><span>知识库</span></a></li>
+        {% endcan_view %}
         {% can_view "decoration" %}
         <li><a href="{% url 'decoration_list' %}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 0 0 1 1h3m10-11l2 2m-2-2v10a1 1 0 0 1-1 1h-3m-6 0a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1m-6 0h6"/></svg><span>装修</span></a></li>
-        {% endcan_view %}
-        {% can_view "customer_credit" %}
-        <li><a href="{% url 'customer_credit_list' %}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg><span>客户账期</span></a></li>
-        {% endcan_view %}
-        {% can_view "customer_complaint" %}
-        <li><a href="{% url 'customer_complaint_list' %}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>客户客诉</span></a></li>
-        {% endcan_view %}
-        {% can_view "customer_ledger" %}
-        <li><a href="{% url 'customer_ledger_list' %}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="14" y2="11"/></svg><span>客户台账</span></a></li>
-        {% endcan_view %}
-        {% can_view "complaint" %}
-        <li><a href="{% url 'complaint_list' %}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="10"/></svg><span>诉讼</span></a></li>
         {% endcan_view %}
         {% can_view "regulation" %}
         <li><a href="{% url 'regulation_list' %}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg><span>制度及处罚</span></a></li>
@@ -57,20 +53,43 @@
         <li><a href="{% url 'dashboard' %}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg><span>数据展示</span></a></li>
         <li><a href="{% url 'data_download' %}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span>数据下载</span></a></li>
         {% endcan_view %}
-        {% can_view "knowledge" %}
-        <li><a href="{% url 'knowledge_base:document_list' %}" class="{% if 'knowledge' in request.path %}active{% endif %}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 5v14a9 3 0 0 1-18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg><span>知识库</span></a></li>
-        {% endcan_view %}
-        {# 到期预警：顶层独立入口，紧跟知识库之后（原在「系统」折叠下拉里，容易被忽略） #}
-        {% can_view_any "insurance" "archive" %}
-        <li><a href="{% url 'expiry_calendar' %}" class="{% if '/expiry' in request.path %}active{% endif %}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>到期预警</span></a></li>
-        {% endcan_view_any %}
     </ul>
     </div>
     {% endcan_view_any %}
 
+    {% can_view_any "samples" "customer_credit" "customer_complaint" "customer_ledger" "complaint" %}
+    <div class="sidebar-section-title">业务模块</div>
+    {% endcan_view_any %}
+
+    <!-- 分组：客户管理（折叠逻辑与试样管理完全一致） -->
+    {% can_view_any "customer_credit" "customer_complaint" "customer_ledger" "complaint" %}
+    <ul class="sidebar-menu-item">
+        <li>
+            <button class="dropdown-toggle {% if '/customer_credit' in request.path or '/customer_complaint' in request.path or '/customer_ledger' in request.path or '/complaint/' in request.path %}active{% endif %}" id="customersDropdown" aria-expanded="{% if '/customer_credit' in request.path or '/customer_complaint' in request.path or '/customer_ledger' in request.path or '/complaint/' in request.path %}true{% else %}false{% endif %}" aria-controls="customersDropdownMenu">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <span>客户管理</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
+            <div class="sidebar-dropdown" id="customersDropdownMenu">
+                {% can_view "customer_credit" %}
+                <a href="{% url 'customer_credit_list' %}" class="{% if '/customer_credit' in request.path %}active{% endif %}">客户账期</a>
+                {% endcan_view %}
+                {% can_view "customer_complaint" %}
+                <a href="{% url 'customer_complaint_list' %}" class="{% if '/customer_complaint' in request.path %}active{% endif %}">客户客诉</a>
+                {% endcan_view %}
+                {% can_view "customer_ledger" %}
+                <a href="{% url 'customer_ledger_list' %}" class="{% if '/customer_ledger' in request.path %}active{% endif %}">客户台账</a>
+                {% endcan_view %}
+                {% can_view "complaint" %}
+                <a href="{% url 'complaint_list' %}" class="{% if '/complaint/' in request.path %}active{% endif %}">诉讼</a>
+                {% endcan_view %}
+            </div>
+        </li>
+    </ul>
+    {% endcan_view_any %}
+
     {% can_view "samples" %}
     <!-- 分组：试样管理 -->
-    <div class="sidebar-section-title">业务模块</div>
     <ul class="sidebar-menu-item">
         <li>
             <button class="dropdown-toggle {% if '/samples' in request.path %}active{% endif %}" id="samplesDropdown" aria-expanded="{% if '/samples' in request.path %}true{% else %}false{% endif %}" aria-controls="samplesDropdownMenu">
@@ -175,7 +194,8 @@
             try { localStorage.setItem(storageKey, willOpen ? 'open' : 'closed'); } catch (e) {}
         });
     }
-    initCollapse('workbenchDropdown', 'workbenchDropdownMenu', 'adw-sidebar-workbench', ['/workspace', '/daily-record', '/decoration', '/customer-credit', '/customer-complaint', '/customer-ledger', '/complaint', '/regulation', '/price-evaluation', '/insurance', '/metal_price', '/dashboard', '/data_download', '/knowledge', '/expiry']);
+    initCollapse('workbenchDropdown', 'workbenchDropdownMenu', 'adw-sidebar-workbench', ['/workspace', '/daily-record', '/expiry', '/knowledge', '/decoration', '/regulation', '/price-evaluation', '/insurance', '/metal_price', '/dashboard', '/data_download']);
+    initCollapse('customersDropdown', 'customersDropdownMenu', 'adw-sidebar-customers', ['/customer_credit', '/customer_complaint', '/customer_ledger', '/complaint']);
     initCollapse('samplesDropdown', 'samplesDropdownMenu', 'adw-sidebar-samples', ['/samples']);
     initCollapse('archiveDropdown', 'archiveDropdownMenu', 'adw-sidebar-archive', ['/archive']);
     initCollapse('systemsDropdown', 'systemsDropdownMenu', 'adw-sidebar-system', ['/system', '/accounts', '/operation_log']);
