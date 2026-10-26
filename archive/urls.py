@@ -32,6 +32,7 @@ urlpatterns = [
     path("archives/<int:pk>/", views.archive_detail, name="archive_detail"),
     path("archives/<int:pk>/edit/", views.archive_edit, name="archive_edit"),
     path("archives/<int:pk>/move/", views.archive_move, name="archive_move"),
+    path("archives/<int:pk>/renewal/", views.archive_set_renewal, name="archive_set_renewal"),
     path("archives/<int:pk>/delete/", views.archive_delete, name="archive_delete"),
     path("archives/<int:pk>/qrcode.png", views.qrcode, name="qrcode"),
 

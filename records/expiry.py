@@ -106,7 +106,10 @@ def collect_expiry_items(user, *, horizon_days=DEFAULT_HORIZON_DAYS,
     if has_perm(user, SOURCE_META["archive_contract"]["module"], "read"):
         from archive.models import Archive, BorrowRecord, License
 
-        for obj in Archive.objects.filter(expire_date__range=(start, end)):
+        # 已续签 / 已结束（不再续签）的合同不再提醒——一次性合同到期后不应长期挂着
+        for obj in Archive.objects.filter(
+            expire_date__range=(start, end), renewal_state="pending",
+        ):
             items.append(_make_item(
                 "archive_contract", obj.name, obj.code, obj.expire_date,
                 today, lead["archive_contract"], f"/archive/archives/{obj.pk}/",

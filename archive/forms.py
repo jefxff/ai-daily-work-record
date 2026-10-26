@@ -123,8 +123,8 @@ class ArchiveForm(forms.ModelForm):
         fields = [
             "code", "name", "ledger", "cabinet", "layer", "cell", "location_code",
             "counterpart", "contract_no", "amount", "sign_date", "expire_date",
-            "department", "security_level", "archive_label", "handler", "copies",
-            "attachment_desc",
+            "department", "security_level", "renewal_state", "archive_label",
+            "handler", "copies", "attachment_desc",
             "category", "tags", "description",
         ]
         widgets = {
@@ -142,6 +142,7 @@ class ArchiveForm(forms.ModelForm):
             "expire_date": forms.DateInput(attrs={"class": "form-control", "type": "date"}, format="%Y-%m-%d"),
             "department": forms.TextInput(attrs={"class": "form-control", "placeholder": "如 行政部、采购部"}),
             "security_level": forms.TextInput(attrs={"class": "form-control", "placeholder": "机密/一般/..."}),
+            "renewal_state": forms.Select(attrs={"class": "form-select"}),
             "archive_label": forms.TextInput(attrs={"class": "form-control", "placeholder": "如 专利合同(一)"}),
             "handler": forms.TextInput(attrs={"class": "form-control"}),
             "copies": forms.NumberInput(attrs={"class": "form-control", "min": 1}),
@@ -155,8 +156,8 @@ class ArchiveForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         for f in ("category", "ledger", "cabinet", "layer", "cell", "location_code",
                   "counterpart", "contract_no", "amount", "sign_date", "expire_date",
-                  "department", "security_level", "archive_label", "handler", "copies",
-                  "attachment_desc"):
+                  "department", "security_level", "renewal_state", "archive_label",
+                  "handler", "copies", "attachment_desc"):
             self.fields[f].required = False
         if exclude_cell:
             for f in ("code", "name", "category", "tags", "description"):
@@ -164,6 +165,12 @@ class ArchiveForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
+        # 续签状态缺省时保持原值（老表单/Excel 导入不带该字段）
+        cleaned["renewal_state"] = (
+            cleaned.get("renewal_state")
+            or getattr(self.instance, "renewal_state", "")
+            or "pending"
+        )
         cabinet = cleaned.get("cabinet")
         layer = cleaned.get("layer")
         cell = cleaned.get("cell")

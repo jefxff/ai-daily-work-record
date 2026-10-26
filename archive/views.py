@@ -23,6 +23,7 @@ from .views_archive import (  # noqa: F401
     archive_file_thumb,
     archive_files_upload,
     archive_move,
+    archive_set_renewal,
     qrcode,
 )
 from .views_borrow import borrow_create, borrow_list, borrow_return  # noqa: F401

@@ -103,6 +103,8 @@
                         <td data-label="经办人">{{ a.handler|default:"—" }}</td>
                         <td data-label="状态">
                             {% if a.is_borrowed %}<span class="status-badge danger">借出中</span>
+                            {% elif a.renewal_state == 'renewed' %}<span class="status-badge info">已续签</span>
+                            {% elif a.renewal_state == 'ended' %}<span class="status-badge success">已结束</span>
                             {% elif a.is_expired %}<span class="status-badge danger">已过期</span>
                             {% elif a.is_expiring %}<span class="status-badge warning">即将到期</span>
                             {% else %}<span class="status-badge success">正常</span>{% endif %}

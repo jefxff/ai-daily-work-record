@@ -10,7 +10,7 @@ import os
 from django.conf import settings
 
 from django.db import IntegrityError, transaction
-from django.http import FileResponse, Http404, HttpResponse, JsonResponse
+from django.http import FileResponse, Http404, HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from accounts.decorators import perm_required
@@ -122,6 +122,25 @@ def archive_move(request, pk):
                 return JsonResponse({"ok": True, "message": "档案已移动"})
             return redirect("archive:archive_detail", pk=arc.pk)
     return render(request, "archive/archive_move.html", {"form": form, "archive": arc})
+
+
+@perm_required("archive", "update")
+def archive_set_renewal(request, pk):
+    """标记合同续签状态：待续 / 已续签 / 已结束（不再续签）。
+
+    已续签、已结束的合同不再进入「到期预警」，避免一次性合同到期后长期挂着。
+    """
+    arc = get_object_or_404(Archive, pk=pk)
+    if request.method != "POST":
+        return redirect("archive:archive_detail", pk=arc.pk)
+    state = request.POST.get("state", "")
+    if state not in dict(Archive.RENEWAL_CHOICES):
+        return HttpResponseBadRequest("无效的续签状态")
+    arc.renewal_state = state
+    arc.save(update_fields=["renewal_state", "updated_at"])
+    label = arc.get_renewal_state_display()
+    _log(request, "编辑", f"档案#{arc.id}", f"续签状态: {arc.code} - {arc.name} → {label}")
+    return redirect("archive:archive_detail", pk=arc.pk)
 
 
 @perm_required("archive", "update")

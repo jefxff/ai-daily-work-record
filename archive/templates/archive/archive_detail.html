@@ -63,8 +63,28 @@
     <div class="card mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h4 class="mb-0">{{ archive.code }} - {{ archive.name }}</h4>
-            <div class="d-flex gap-2">
+            <div class="d-flex gap-2 flex-wrap">
                 {% can "archive" "update" %}
+                {% if archive.expire_date %}
+                    {% if archive.renewal_state == 'pending' %}
+                    <form class="d-inline" method="post" action="{% url 'archive:archive_set_renewal' archive.pk %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="state" value="renewed">
+                        <button type="submit" class="btn btn-sm btn-outline-success">标记已续签</button>
+                    </form>
+                    <form class="d-inline" method="post" action="{% url 'archive:archive_set_renewal' archive.pk %}" data-confirm="标记为「已结束（不再续签）」后，本合同不再进入到期预警。确认？">
+                        {% csrf_token %}
+                        <input type="hidden" name="state" value="ended">
+                        <button type="submit" class="btn btn-sm btn-outline-secondary">标记结束</button>
+                    </form>
+                    {% else %}
+                    <form class="d-inline" method="post" action="{% url 'archive:archive_set_renewal' archive.pk %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="state" value="pending">
+                        <button type="submit" class="btn btn-sm btn-outline-secondary">恢复待续</button>
+                    </form>
+                    {% endif %}
+                {% endif %}
                 <a href="{% url 'archive:archive_edit' archive.pk %}" class="btn btn-sm btn-primary" data-modal-edit data-modal-title="编辑档案">编辑</a>
                 <a href="{% url 'archive:archive_move' archive.pk %}" class="btn btn-sm btn-outline-primary">移动位置</a>
                 {% endcan %}
@@ -106,7 +126,7 @@
                         <div class="arc-info-item">
                             <span class="arc-info-label">到期日期</span>
                             {% if archive.expire_date %}
-                            <span class="arc-info-value">{{ archive.expire_date }}{% if archive.is_expired %} <span class="arc-status-badge out">已过期</span>{% elif archive.is_expiring %} <span class="arc-status-badge out">即将到期</span>{% endif %}</span>
+                            <span class="arc-info-value">{{ archive.expire_date }}{% if archive.renewal_state == 'renewed' %} <span class="arc-status-badge in">已续签</span>{% elif archive.renewal_state == 'ended' %} <span class="arc-status-badge in">已结束</span>{% elif archive.is_expired %} <span class="arc-status-badge out">已过期</span>{% elif archive.is_expiring %} <span class="arc-status-badge out">即将到期</span>{% endif %}</span>
                             {% else %}<span class="arc-info-value empty">—</span>{% endif %}
                         </div>
                         <div class="arc-info-item">

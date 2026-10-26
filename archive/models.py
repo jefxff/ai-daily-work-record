@@ -332,6 +332,16 @@ class Archive(TimeStampedModel):
     sign_date = models.DateField("签订日期", null=True, blank=True)
     expire_date = models.DateField("截止/到期日期", null=True, blank=True)
     department = models.CharField("部门", max_length=50, blank=True)
+    RENEWAL_CHOICES = [
+        ("pending", "待续/正常"),
+        ("renewed", "已续签"),
+        ("ended", "已结束（不再续签）"),
+    ]
+    renewal_state = models.CharField(
+        "续签状态", max_length=10, choices=RENEWAL_CHOICES, default="pending",
+        help_text="一次性合同到期后不再续签、或已换供应商时标为「已结束」，"
+                  "已续签/已结束的合同不再进入到期预警",
+    )
     security_level = models.CharField("保密等级", max_length=20, blank=True, help_text="机密/一般/...")
     archive_label = models.CharField("档案标签", max_length=100, blank=True, help_text="如 专利合同(一)、保险合同(一)")
     handler = models.CharField("移交人/经办人", max_length=50, blank=True)

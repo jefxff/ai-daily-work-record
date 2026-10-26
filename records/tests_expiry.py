@@ -138,6 +138,70 @@ class InsuranceRenewalExpiryTests(TestCase):
         self.assertEqual(self._insurance_items(), [], "一次性标的不应进入续保预警")
 
 
+class ArchiveRenewalStateTests(TestCase):
+    """一次性合同到期后标记「已结束」：不再进入到期预警，可恢复。"""
+
+    def setUp(self):
+        call_command("sync_rbac", verbosity=0)
+        self.user = User.objects.create_user("exp_arc", "ar@e.com", "x12345678")
+        grant("archive", ("read", "update"), self.user)
+        self.today = timezone.localdate()
+
+    def _archive(self, code, expire_days, state="pending"):
+        from archive.models import Archive
+
+        return Archive.objects.create(
+            code=code, name=f"合同-{code}",
+            expire_date=self.today + timedelta(days=expire_days),
+            renewal_state=state,
+        )
+
+    def _contract_titles(self):
+        return [
+            it["title"] for it in expiry.collect_expiry_items(self.user)
+            if it["kind"] == "archive_contract"
+        ]
+
+    def test_ended_and_renewed_contracts_are_hidden(self):
+        self._archive("A-P", 20)
+        self._archive("A-E", -30, "ended")
+        self._archive("A-R", -30, "renewed")
+        self.assertEqual(self._contract_titles(), ["合同-A-P"])
+
+    def test_mark_ended_hides_contract(self):
+        arc = self._archive("A-M", -10)
+        self.assertEqual(self._contract_titles(), ["合同-A-M"])
+
+        self.client.force_login(self.user)
+        resp = self.client.post(
+            reverse("archive:archive_set_renewal", args=[arc.pk]), {"state": "ended"}
+        )
+        self.assertEqual(resp.status_code, 302)
+        arc.refresh_from_db()
+        self.assertEqual(arc.renewal_state, "ended")
+        self.assertEqual(self._contract_titles(), [])
+
+    def test_restore_pending_brings_contract_back(self):
+        arc = self._archive("A-B", -10, "ended")
+        self.client.force_login(self.user)
+        self.client.post(
+            reverse("archive:archive_set_renewal", args=[arc.pk]), {"state": "pending"}
+        )
+        arc.refresh_from_db()
+        self.assertEqual(arc.renewal_state, "pending")
+        self.assertEqual(self._contract_titles(), ["合同-A-B"])
+
+    def test_invalid_state_rejected(self):
+        arc = self._archive("A-X", 10)
+        self.client.force_login(self.user)
+        resp = self.client.post(
+            reverse("archive:archive_set_renewal", args=[arc.pk]), {"state": "bogus"}
+        )
+        self.assertEqual(resp.status_code, 400)
+        arc.refresh_from_db()
+        self.assertEqual(arc.renewal_state, "pending")
+
+
 class SeverityTests(TestCase):
     """直接单测 records.expiry._severity 的分档边界。"""
 
