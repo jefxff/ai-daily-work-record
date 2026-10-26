@@ -20,7 +20,7 @@
     </button>
     <div class="sidebar-section-menu show" id="workbenchDropdownMenu">
     <ul class="sidebar-menu-item">
-        {% can_view_any "daily_record" "archive" "customer_complaint" "complaint" "samples" %}
+        {% can_view_any "daily_record" "archive" "customer_complaint" "complaint" "knowledge" %}
         <li><a href="{% url 'workspace' %}" class="{% if request.path == '/workspace/' %}active{% endif %}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span>待办工作台</span></a></li>
         {% endcan_view_any %}
         {% can_view "daily_record" %}

@@ -57,6 +57,30 @@ def _mk_daily_record(user, content, due_date, status="未完成"):
     )
 
 
+class TerminatedSampleNotTodoTests(TestCase):
+    """已终止的试样是终态，不需要人推进，不应进入待办工作台。"""
+
+    def setUp(self):
+        call_command("sync_rbac", verbosity=0)
+        self.user = User.objects.create_user("ws_sample", "s@e.com", "x12345678")
+        grant("samples", ("read",), self.user)
+        self.today = timezone.localdate()
+
+    def test_terminated_sample_not_collected(self):
+        from samples.models import Sample
+
+        Sample.objects.create(
+            sample_no="S-TERM-1", material_name="铝合金", model="M-1", spec="spec",
+            incoming_qty=1, sample_date=self.today,
+            status=Sample.Status.TERMINATED, terminated_at=timezone.now(),
+        )
+        todos = collect_todos(self.user, today=self.today)
+        self.assertEqual(
+            [t for t in todos if t["source"] == "sample_terminated"], [],
+            "已终止试样不应作为待办",
+        )
+
+
 class WorkspacePermissionTests(TestCase):
     """无任一来源模块 read 权限 → 403；有任一权限 → 200。"""
 

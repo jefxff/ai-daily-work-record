@@ -1,4 +1,7 @@
-"""待办工作台：跨六模块聚合「我的待办」，统一归一为一种行。
+"""待办工作台：跨模块聚合「我的待办」，统一归一为一种行。
+
+口径说明：只收录「还需要人推进」的事项——已终止的试样是终态、不需要跟进，
+不作为待办来源（终止提醒由消息通知承担）。
 
 设计要点：
 - 各模块口径不一，在视图层归一为 {urgency, title, source, owner, deadline,
@@ -26,7 +29,6 @@ SOURCE_META = {
     "license_due": {"module": "archive", "label": "证照管理"},
     "customer_complaint": {"module": "customer_complaint", "label": "客户客诉"},
     "lawsuit": {"module": "complaint", "label": "诉讼"},
-    "sample_terminated": {"module": "samples", "label": "试样管理"},
     "daily_record": {"module": "daily_record", "label": "每日记录"},
     "knowledge_todo": {"module": "knowledge", "label": "知识待办"},
 }
@@ -36,8 +38,6 @@ URGENCY_BADGE = {"高": "danger", "中": "warning", "低": "info"}
 
 # 每来源最多聚合条数（超出部分到对应模块列表页处理）
 PER_SOURCE_LIMIT = 50
-# 已终止样品的回溯窗口（天），避免历史终止件长期占据待办
-SAMPLE_LOOKBACK_DAYS = 90
 # 证照临期窗口（天）
 LICENSE_LEAD_DAYS = 30
 
@@ -147,24 +147,7 @@ def collect_todos(user, *, today=None, source_filter=None):
                 f"/complaint/detail/{l.pk}/", today,
             ))
 
-    # 5) 试样：近 90 天内终止的（失败靠口头传递的缺口，先做到对人可见）
-    if wanted("sample_terminated") and has_perm(user, "samples", "read"):
-        from samples.models import Sample
-
-        cutoff = timezone.now() - timedelta(days=SAMPLE_LOOKBACK_DAYS)
-        for s in Sample.objects.filter(
-            status=Sample.Status.TERMINATED, is_deleted=False,
-            terminated_at__gte=cutoff,
-        )[:PER_SOURCE_LIMIT]:
-            todos.append(_todo(
-                "低",
-                f"样品 {s.sample_no}（{s.material_name}/{s.model}）已终止",
-                "sample_terminated", s.terminated_by or s.registrar or "-",
-                None, "已终止",
-                f"/samples/{s.pk}/", today,
-            ))
-
-    # 6) 每日记录（按用户隔离）：逾期未完成高、3 天内到期中、其余低
+    # 5) 每日记录（按用户隔离）：逾期未完成高、3 天内到期中、其余低
     if wanted("daily_record") and has_perm(user, "daily_record", "read"):
         for r in _my_daily_records(user).filter(status="未完成")[:PER_SOURCE_LIMIT]:
             if r.due_date and r.due_date < today:
@@ -179,7 +162,7 @@ def collect_todos(user, *, today=None, source_filter=None):
                 "未完成", f"/daily_record/detail/{r.pk}/", today,
             ))
 
-    # 7) 知识待办：大纲待办节点；可见性过滤必须走 access.doc_visibility_q
+    # 6) 知识待办：大纲待办节点；可见性过滤必须走 access.doc_visibility_q
     # （公开+本人文档，他人私有文档里的待办绝不出现）
     if wanted("knowledge_todo") and has_perm(user, "knowledge", "read"):
         from knowledge_base.access import doc_visibility_q
@@ -229,7 +212,7 @@ def todo_counts(user, *, today=None):
 
 def _forbidden(request):
     return render(request, "accounts/403.html", {
-        "required_module": "archive/customer_complaint/complaint/samples/"
+        "required_module": "archive/customer_complaint/complaint/"
                            "daily_record/knowledge",
         "required_action": "read",
     }, status=403)
@@ -237,7 +220,7 @@ def _forbidden(request):
 
 @perm_required_any(
     ("archive", "read"), ("customer_complaint", "read"), ("complaint", "read"),
-    ("samples", "read"), ("daily_record", "read"), ("knowledge", "read"),
+    ("daily_record", "read"), ("knowledge", "read"),
 )
 def workspace(request):
     """待办工作台：统一待办列表 + 来源/紧急度筛选（后端分页）。"""
@@ -272,7 +255,6 @@ def workspace(request):
         ("customer_complaint", "客诉"),
         ("complaint", "诉讼"),
         ("archive", "档案"),
-        ("samples", "试样"),
         ("knowledge", "知识库"),
     ]
     return render(request, "records/workspace.html", {

@@ -77,12 +77,30 @@ def collect_expiry_items(user, *, horizon_days=DEFAULT_HORIZON_DAYS,
     items = []
 
     if has_perm(user, SOURCE_META["insurance"]["module"], "read"):
+        from urllib.parse import quote
+
+        from records import insurance_grouping
+        from records.insurance_services import one_off_keys
         from records.models import Insurance
 
-        for obj in Insurance.objects.filter(end_date__range=(start, end)):
+        # 与保险页同一口径：按「标的最新保单年度」聚合，而不是逐条保单流水。
+        # 这样已续保的旧年度不会再以「已过期」出现在预警里；一次性标的不提醒。
+        records = list(Insurance.objects.filter(end_date__gte=start))
+        one_off = one_off_keys()
+        for subject in insurance_grouping.build_subjects(records, today=today):
+            if subject.key in one_off:
+                continue
+            expire_on = subject.latest.end
+            if expire_on > end:
+                continue
+            latest_record = subject.latest.records[-1]
+            subtitle = (latest_record.company_name or '').strip() or '、'.join(
+                subject.latest.insurer_names
+            )
             items.append(_make_item(
-                "insurance", obj.title, obj.company_name, obj.end_date,
-                today, lead["insurance"], f"/insurance/detail/{obj.pk}/",
+                "insurance", subject.label, subtitle, expire_on,
+                today, lead["insurance"],
+                f"/insurance/subjects/detail/?key={quote(subject.key)}",
             ))
 
     if has_perm(user, SOURCE_META["archive_contract"]["module"], "read"):

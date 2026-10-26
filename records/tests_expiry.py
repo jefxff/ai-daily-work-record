@@ -94,6 +94,50 @@ class ExpiryCalendarSourceFilterTests(TestCase):
         self.assertNotIn("insurance", kinds, "无 insurance read 权限不应看到保险来源")
 
 
+class InsuranceRenewalExpiryTests(TestCase):
+    """保险来源按「标的最新保单年度」聚合：已续保的旧年度不再报已过期。"""
+
+    def setUp(self):
+        call_command("sync_rbac", verbosity=0)
+        self.user = User.objects.create_user("exp_ins", "i@e.com", "x12345678")
+        grant("insurance", ("read",), self.user)
+        self.today = timezone.localdate()
+
+    def _policy(self, title, end_days):
+        end = self.today + timedelta(days=end_days)
+        return Insurance.objects.create(
+            company_name="测试保险公司", title=title, premium=100,
+            issue_date=end - timedelta(days=365), end_date=end,
+            department="行政部",
+        )
+
+    def _insurance_items(self):
+        return [it for it in expiry.collect_expiry_items(self.user) if it["kind"] == "insurance"]
+
+    def test_renewed_car_is_not_expired(self):
+        self._policy("车险 粤BC7J68", -87)          # 旧年度：已过期
+        self._policy("车险 粤BC7J68", 300)          # 续保后的新年度
+        self.assertEqual(self._insurance_items(), [], "已续保的标的应只按最新年度判断，不应再报已过期")
+
+    def test_latest_year_reported_when_expiring(self):
+        self._policy("车险 粤BC7J68", -87)
+        self._policy("车险 粤BC7J68", 20)
+        items = self._insurance_items()
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["title"], "粤BC7J68")
+        self.assertEqual(items[0]["days_left"], 20)
+
+    def test_one_off_subject_is_ignored(self):
+        from .models import InsuranceSubject
+
+        InsuranceSubject.objects.create(
+            kind="car", label="粤B00001", plate="粤B00001",
+            insurance_type="车险", is_one_off=True,
+        )
+        self._policy("车险 粤B00001", 10)
+        self.assertEqual(self._insurance_items(), [], "一次性标的不应进入续保预警")
+
+
 class SeverityTests(TestCase):
     """直接单测 records.expiry._severity 的分档边界。"""
 
