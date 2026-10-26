@@ -1,0 +1,99 @@
+{% extends 'records/base.html' %}
+{% load static %}
+
+{% block page_title %}导入预览 - 客户台账{% endblock %}
+
+{% block top_nav_actions %}
+    <a href="{% url 'customer_ledger_import' %}" class="btn-transparent">重新上传</a>
+    <a href="{% url 'customer_ledger_list' %}" class="btn-transparent">返回列表</a>
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h2>导入预览：{{ filename }}</h2>
+        <p class="form-text">确认无误后点击「确认导入」。{% if overwrite %}已选择覆盖已有字段。{% else %}当前为仅补空模式。{% endif %}</p>
+    </div>
+
+    {% if preview.errors %}
+    <div class="alert alert-danger" role="alert">
+        <strong>发现 {{ preview.errors|length }} 个阻断错误，修正后才能导入：</strong>
+        <ul>
+            {% for error in preview.errors %}<li>{{ error }}</li>{% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    {% if preview.warnings %}
+    <div class="alert alert-warning" role="alert">
+        <strong>提示（不影响导入）：</strong>
+        <ul>
+            {% for warning in preview.warnings %}<li>{{ warning }}</li>{% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <div class="import-summary">
+        <span class="badge badge-create">新增 {{ preview.summary.create }}</span>
+        <span class="badge badge-update">更新 {{ preview.summary.update }}</span>
+        <span class="badge badge-skip">跳过 {{ preview.summary.skip }}</span>
+        <span class="badge badge-error">错误 {{ preview.summary.error }}</span>
+    </div>
+
+    <div class="table-container">
+        <div class="table-responsive">
+            <table class="table table-sticky">
+                <thead>
+                    <tr>
+                        <th>行号</th>
+                        <th>客户名称</th>
+                        <th>动作</th>
+                        <th>匹配依据</th>
+                        <th>将写入的字段</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in preview.items %}
+                    <tr>
+                        <td>{{ item.row }}</td>
+                        <td>{{ item.customer_name }}</td>
+                        <td>
+                            {% if item.action == 'create' %}<span class="status-badge success">新增</span>
+                            {% elif item.action == 'update' %}<span class="status-badge warning">更新</span>
+                            {% else %}<span class="status-badge default">跳过</span>{% endif %}
+                        </td>
+                        <td>{{ item.matched_by|default:'—' }}{% if item.matched_name %}（{{ item.matched_name }}）{% endif %}</td>
+                        <td class="changes-cell">
+                            {% for label, value in item.changes %}
+                            <span class="change-chip">{{ label }}：{{ value }}</span>
+                            {% empty %}—
+                            {% endfor %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <form method="post" action="{% url 'customer_ledger_import_confirm' %}" class="import-confirm">
+        {% csrf_token %}
+        <input type="hidden" name="payload" value="{{ payload }}">
+        <input type="hidden" name="overwrite" value="{% if overwrite %}1{% else %}0{% endif %}">
+        <button type="submit" class="btn btn-primary" {% if preview.errors %}disabled title="请先修正阻断错误"{% endif %}>确认导入</button>
+        <a href="{% url 'customer_ledger_import' %}" class="btn btn-outline-secondary">取消</a>
+    </form>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .import-summary { display: flex; gap: 0.75rem; flex-wrap: wrap; margin: 1rem 0; }
+    .badge { padding: 0.35rem 0.75rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600; }
+    .badge-create { background: #e7f7ed; color: #1a7f45; }
+    .badge-update { background: #fff4e5; color: #a15c00; }
+    .badge-skip { background: #eef1f5; color: #556; }
+    .badge-error { background: #fdeaea; color: #b42318; }
+    .changes-cell { max-width: 520px; white-space: normal !important; }
+    .change-chip { display: inline-block; margin: 2px 4px 2px 0; padding: 2px 6px; background: var(--c-surface-sunken); border-radius: 4px; font-size: 12px; }
+    .import-confirm { margin: 1.5rem 0 2rem; display: flex; gap: 0.75rem; }
+</style>
+{% endblock %}

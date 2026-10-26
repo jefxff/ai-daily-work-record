@@ -1,20 +1,22 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
-from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest
+from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest, Http404
 from django.views.decorators.http import require_POST
 from django.template.loader import render_to_string
 from django.db.models import Count, F, Q
 from django.db.models.functions import TruncDate
 from datetime import date, datetime, timedelta
-from .models import Decoration, CustomerCredit, CustomerComplaint, Regulation, PriceEvaluation, DailyRecord, MetalPrice, Insurance, Complaint, OperationLog
-from .forms import DecorationForm, CustomerCreditForm, CustomerComplaintForm, CustomerComplaintClosureForm, RegulationForm, PriceEvaluationForm, InsuranceForm, ComplaintForm
+import json
+from .models import Decoration, CustomerCredit, CustomerComplaint, CustomerLedger, Regulation, PriceEvaluation, DailyRecord, MetalPrice, Insurance, Complaint, OperationLog
+from .forms import DecorationForm, CustomerCreditForm, CustomerComplaintForm, CustomerComplaintClosureForm, CustomerLedgerForm, RegulationForm, PriceEvaluationForm, InsuranceForm, ComplaintForm
 from . import audit_vocab
 from .audit import log_operation, snapshot
 from .crud import make_delete_view, make_export_view, make_form_view, make_list_view
 from . import insurance_grouping, insurance_services
+from . import customer_ledger_import as ledger_io
 from django.utils import timezone
 from accounts.decorators import perm_required, require_any_module
-from accounts.services import visible_modules
+from accounts.services import has_perm, visible_modules
 from knowledge_base.models import KnowledgeDocument
 from samples.models import Sample, Partner
 from archive.models import Archive
@@ -861,3 +863,150 @@ def insurance_detail(request, pk):
     if _is_ajax(request):
         return _modal_detail(request, 'records/_insurance_detail_modal.html', context)
     return render(request, 'records/insurance_detail.html', context)
+
+
+# ---------------------------------------------------------------- 客户台账
+
+customer_ledger_list = make_list_view(
+    perm_module='customer_ledger', template_name='records/customer_ledger_list.html',
+    page_var='ledgers', model=CustomerLedger,
+    search_fields=[
+        'customer_name', 'responsible_salesperson', 'credit_code',
+        'legal_representative', 'address', 'archive_no', 'remarks',
+    ],
+    filters=[
+        ('customer_name', 'customer_name__icontains'),
+        ('customer_category', 'customer_category'),
+        ('responsible_salesperson', 'responsible_salesperson'),
+        ('company_status', 'company_status'),
+        ('attachment', lambda qs, value: (
+            qs.filter(attachment__gt='') if value == 'yes'
+            else qs.filter(Q(attachment='') | Q(attachment__isnull=True))
+        )),
+    ],
+    filter_options={
+        'salespersons': 'responsible_salesperson',
+        'customer_categories': 'customer_category',
+        'company_statuses': 'company_status',
+    },
+    extra_context={
+        'attachment_choices': [('', '全部'), ('yes', '有附件'), ('no', '无附件')],
+    },
+)
+
+customer_ledger_add, customer_ledger_edit = make_form_view(
+    model=CustomerLedger, form_class=CustomerLedgerForm, perm_module='customer_ledger',
+    log_label='客户台账', display_field='customer_name',
+    redirect_name='customer_ledger_list', template_name='records/customer_ledger_form.html',
+    title_add='新增客户台账', title_edit='编辑客户台账',
+)
+
+
+def _delete_ledger_attachment(obj):
+    """记录删除后同步清理 PDF 附件，避免磁盘孤儿文件。"""
+    if obj.attachment:
+        obj.attachment.delete(save=False)
+
+
+customer_ledger_delete = make_delete_view(
+    model=CustomerLedger, perm_module='customer_ledger', label='客户台账',
+    display_field='customer_name', redirect_name='customer_ledger_list',
+    after_delete=_delete_ledger_attachment,
+)
+
+customer_ledger_export = make_export_view(
+    model=CustomerLedger, perm_module='customer_ledger', sheet_title='客户台账', log_label='客户台账',
+    filename_base='客户台账', empty_text='当前无客户台账记录，无法导出Excel',
+    headers=ledger_io.CUSTOMER_LEDGER_HEADERS,
+    row_values=ledger_io.ledger_export_row,
+    column_width=18,
+)
+
+
+@perm_required("customer_ledger", "read")
+def customer_ledger_detail(request, pk):
+    ledger = get_object_or_404(CustomerLedger, pk=pk)
+    if _is_ajax(request):
+        return _modal_detail(request, 'records/_customer_ledger_detail_modal.html', {'ledger': ledger})
+    return render(request, 'records/customer_ledger_detail.html', {'ledger': ledger})
+
+
+@perm_required("customer_ledger", "read")
+def customer_ledger_attachment(request, pk):
+    """附件下载入口：跳转到受保护媒体路由（/media/customer_ledgers/...）。
+
+    真正的鉴权与防穿越由 work_record.urls.protected_media 统一完成，
+    这里仅做记录级存在性校验，避免拿到不存在的附件地址。
+    """
+    ledger = get_object_or_404(CustomerLedger, pk=pk)
+    if not ledger.attachment:
+        raise Http404('该记录没有附件')
+    return redirect(ledger.attachment.url)
+
+
+@perm_required("customer_ledger", "create")
+def customer_ledger_import(request):
+    """导入第 1/2 步：上传 Excel → 预览（新增/更新/跳过/错误）。"""
+    if request.method != 'POST':
+        return render(request, 'records/customer_ledger_import_step1.html')
+
+    upload = request.FILES.get('file')
+    overwrite = request.POST.get('overwrite') == '1'
+    if not upload:
+        return render(request, 'records/customer_ledger_import_step1.html', {
+            'error': '请选择要导入的 Excel 文件',
+        })
+    try:
+        rows = ledger_io.parse_excel(upload)
+        if not rows:
+            raise ValueError('Excel 中没有可导入的数据行')
+        preview = ledger_io.build_preview(rows, overwrite=overwrite)
+    except ValueError as exc:
+        return render(request, 'records/customer_ledger_import_step1.html', {
+            'error': str(exc),
+        })
+    payload = json.dumps(rows, ensure_ascii=False)
+    if len(payload.encode('utf-8')) > 2 * 1024 * 1024:
+        return render(request, 'records/customer_ledger_import_step1.html', {
+            'error': '文件内容过大，无法一次性预览；请拆分为多个 Excel 分批导入。',
+        })
+    return render(request, 'records/customer_ledger_import_step2.html', {
+        'preview': preview,
+        'payload': payload,
+        'overwrite': overwrite,
+        'filename': upload.name,
+    })
+
+
+@perm_required("customer_ledger", "create")
+@require_POST
+def customer_ledger_import_confirm(request):
+    """导入第 3 步：确认写入（单事务全成全败）。"""
+    try:
+        rows = json.loads(request.POST.get('payload') or '[]')
+        if not isinstance(rows, list) or not rows:
+            raise ValueError('导入数据已失效，请重新上传文件')
+        overwrite = request.POST.get('overwrite') == '1'
+        preview = ledger_io.build_preview(rows, overwrite=overwrite)
+        if preview['errors']:
+            raise ValueError('导入数据校验未通过：' + '；'.join(preview['errors'][:10]))
+        if preview['summary']['update'] and not has_perm(
+            request.user, 'customer_ledger', 'update'
+        ):
+            raise ValueError('当前账号缺少编辑权限，无法更新已有记录')
+        result = ledger_io.apply_rows(rows, overwrite=overwrite)
+    except (ValueError, json.JSONDecodeError) as exc:
+        return render(request, 'records/customer_ledger_import_step1.html', {
+            'error': str(exc),
+        })
+
+    log_operation(
+        request, '客户台账', '导入', '[客户台账]下的导入',
+        f'导入客户台账: 新增{result["created"]} 更新{result["updated"]} 跳过{result["skipped"]}',
+    )
+    return render(request, 'records/customer_ledger_import_result.html', {'result': result})
+
+
+@perm_required("customer_ledger", "read")
+def customer_ledger_template(request):
+    return ledger_io.template_response()

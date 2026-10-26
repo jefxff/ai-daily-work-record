@@ -1,0 +1,60 @@
+{% extends 'records/base.html' %}
+{% load static %}
+
+{% block page_title %}导入客户台账 - 每日工作记录管理网站{% endblock %}
+
+{% block top_nav_actions %}
+    <a href="{% url 'customer_ledger_list' %}" class="btn-transparent">返回列表</a>
+    <a href="{% url 'customer_ledger_template' %}" class="btn-transparent">下载导入模板</a>
+{% endblock %}
+
+{% block content %}
+    <div class="form-container">
+        <h2 class="form-title">导入客户台账</h2>
+        <p class="form-text">
+            仅支持 Excel（.xlsx / .xls），单次最多 5000 行。系统会先解析并展示预览，
+            确认后才会写库；同一文件内统一社会信用代码、档案编号不得重复。
+        </p>
+
+        {% if error %}
+        <div class="alert alert-danger" role="alert">{{ error }}</div>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="id_file" class="form-label">选择 Excel 文件 *</label>
+                <input type="file" name="file" id="id_file" class="form-control" accept=".xlsx,.xls" required>
+            </div>
+            <div class="form-group">
+                <label class="form-check-label">
+                    <input type="checkbox" name="overwrite" value="1" class="form-check-input">
+                    覆盖已有记录的非空字段（默认仅补空）
+                </label>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">解析并预览</button>
+                <a href="{% url 'customer_ledger_list' %}" class="btn btn-outline-secondary">取消</a>
+            </div>
+        </form>
+
+        <div class="import-notes">
+            <h3>导入规则</h3>
+            <ul>
+                <li>去重顺序：统一社会信用代码 → 档案编号 → 客户名称+法人姓名。</li>
+                <li>默认仅补空：已有值不会被覆盖；勾选覆盖后才会替换非空字段。</li>
+                <li>金额可填「50万」「0」等原文，系统自动换算为万元，并保留原文。</li>
+                <li>日期支持 2026-01-31、2026/1/31、20260131。</li>
+                <li>附件（营业执照/法人身份证/基本合同合并 PDF）不在 Excel 中导入，请在记录详情或编辑页上传。</li>
+            </ul>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .import-notes { margin-top: 2rem; padding: 1rem 1.25rem; background: var(--c-surface-sunken); border-radius: 8px; }
+    .import-notes h3 { margin: 0 0 0.75rem; font-size: 1rem; font-weight: 600; }
+    .import-notes ul { margin: 0; padding-left: 1.25rem; color: var(--c-text-secondary); font-size: 0.875rem; line-height: 1.8; }
+</style>
+{% endblock %}

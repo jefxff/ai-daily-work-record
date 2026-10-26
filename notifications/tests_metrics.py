@@ -39,9 +39,9 @@ class MetricsHelperTests(TestCase):
         self.assertIsNone(metrics.percentile([], 95))
 
     def test_should_skip_noise_paths(self):
-        for path in ("/static/css/app.css", "/media/x.png", "/favicon.ico", "/probe/", ""):
+        for path in ("/static/css/app.css", "/media/x.png", "/favicon.ico", "/probe/", "/system/perf/", ""):
             self.assertTrue(metrics.should_skip(path), path)
-        for path in ("/", "/system/perf/", "/samples/", "/accounts/login/"):
+        for path in ("/", "/samples/", "/accounts/login/"):
             self.assertFalse(metrics.should_skip(path), path)
 
     def test_query_collector_counts_and_flags_slow(self):

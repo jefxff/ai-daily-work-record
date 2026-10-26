@@ -198,6 +198,39 @@
 </div>
 {% endif %}
 
+<!-- 客户台账结果 -->
+{% if customer_ledger_results %}
+<div class="table-container">
+    <h2 class="section-title">客户台账</h2>
+    <table class="table--cards table table-hover table-sticky">
+        <thead>
+            <tr>
+                <th scope="col">客户名称</th>
+                <th scope="col">客户分类</th>
+                <th scope="col">责任业务</th>
+                <th scope="col">统一社会信用代码</th>
+                <th scope="col">档案编号</th>
+                <th scope="col">操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ledger in customer_ledger_results %}
+            <tr>
+                <td data-label="客户名称">{{ ledger.customer_name }}</td>
+                <td data-label="客户分类">{{ ledger.customer_category|default:'' }}</td>
+                <td data-label="责任业务">{{ ledger.responsible_salesperson|default:'' }}</td>
+                <td data-label="统一社会信用代码">{{ ledger.credit_code|default:'' }}</td>
+                <td data-label="档案编号">{{ ledger.archive_no|default:'' }}</td>
+                <td data-label="操作">
+                    <a href="{% url 'customer_ledger_detail' ledger.id %}" class="btn-transparent" data-modal-detail data-modal-title="客户台账详情">详细</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
 <!-- 制度及处罚结果 -->
 {% if regulation_results %}
 <div class="table-container">

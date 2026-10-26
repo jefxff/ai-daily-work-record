@@ -1,0 +1,228 @@
+{% extends 'records/base.html' %}
+{% load static %}
+{% load accounts_tags %}
+
+{% block page_title %}客户台账列表 - 每日工作记录管理网站{% endblock %}
+
+{% block top_nav_actions %}
+    <form class="d-flex gap-2" method="GET" id="searchForm">
+        <input class="search-input" type="search" placeholder="搜索客户名称/信用代码/档案编号" name="search" value="{{ search_term }}" aria-label="搜索客户台账">
+        <button class="btn-transparent" type="submit">搜索</button>
+    </form>
+    <div class="filter-container">
+        <button class="btn-transparent" id="filterBtn"><span>筛选</span></button>
+        <div class="filter-dropdown" id="filterDropdown">
+            <h4>筛选条件</h4>
+            <form id="filterForm" method="GET">
+                <input type="hidden" name="search" value="{{ search_term }}">
+                <div class="filter-group">
+                    <label>客户名称</label>
+                    <input type="text" name="customer_name" placeholder="模糊搜索客户名称" value="{{ customer_name_filter }}" aria-label="客户名称">
+                </div>
+                <div class="filter-group">
+                    <label>客户分类</label>
+                    <select name="customer_category">
+                        <option value="">全部分类</option>
+                        {% for item in customer_categories %}
+                        <option value="{{ item }}" {% if customer_category_filter == item %}selected{% endif %}>{{ item }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>责任业务</label>
+                    <select name="responsible_salesperson">
+                        <option value="">全部人员</option>
+                        {% for item in salespersons %}
+                        <option value="{{ item }}" {% if responsible_salesperson_filter == item %}selected{% endif %}>{{ item }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>公司现状</label>
+                    <select name="company_status">
+                        <option value="">全部状态</option>
+                        {% for item in company_statuses %}
+                        <option value="{{ item }}" {% if company_status_filter == item %}selected{% endif %}>{{ item }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>附件</label>
+                    <select name="attachment">
+                        {% for value, label in attachment_choices %}
+                        <option value="{{ value }}" {% if attachment_filter == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-actions">
+                    <button type="button" class="filter-reset" id="resetFilter">重置筛选</button>
+                    <button type="submit" class="filter-apply">应用筛选</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% can "customer_ledger" "create" %}
+    <a href="{% url 'customer_ledger_import' %}" class="btn-transparent">导入Excel</a>
+    <a href="{% url 'customer_ledger_add' %}" class="btn-primary">新增客户台账</a>
+    {% endcan %}
+    <a href="{% url 'customer_ledger_template' %}" class="btn-transparent">下载模板</a>
+    <a href="{% url 'customer_ledger_export' %}" class="btn-transparent">下载Excel</a>
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h2>客户台账<span class="total-hint">共 {{ ledgers.paginator.count }} 条记录</span></h2>
+        <div class="filter-chips">
+            {% if search_term %}
+            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'search' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">搜索：{{ search_term }} ✕</a>
+            {% endif %}
+            {% if customer_name_filter %}
+            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'customer_name' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">客户：{{ customer_name_filter }} ✕</a>
+            {% endif %}
+            {% if customer_category_filter %}
+            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'customer_category' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">分类：{{ customer_category_filter }} ✕</a>
+            {% endif %}
+            {% if responsible_salesperson_filter %}
+            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'responsible_salesperson' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">责任业务：{{ responsible_salesperson_filter }} ✕</a>
+            {% endif %}
+            {% if company_status_filter %}
+            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'company_status' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">现状：{{ company_status_filter }} ✕</a>
+            {% endif %}
+            {% if attachment_filter %}
+            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'attachment' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">附件：{% if attachment_filter == 'yes' %}有{% else %}无{% endif %} ✕</a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="table-container">
+        <div class="table-responsive">
+            <div class="hidden-cols-hint">窄屏已隐藏 4 个次要列；需要逐列比对时请横屏或改用桌面端。</div>
+            <table class="table--cards table table-sticky">
+                <thead>
+                    <tr>
+                        <th scope="col" class="col-optional">序号</th>
+                        <th scope="col">客户名称</th>
+                        <th scope="col" class="col-optional">客户分类</th>
+                        <th scope="col">责任业务</th>
+                        <th scope="col" class="col-optional">法人姓名</th>
+                        <th scope="col" class="col-optional">统一社会信用代码</th>
+                        <th scope="col">账期</th>
+                        <th scope="col">额度</th>
+                        <th scope="col" class="col-optional">档案编号</th>
+                        <th scope="col">附件</th>
+                        <th scope="col" class="col-actions">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ledger in ledgers %}
+                    <tr>
+                        <td data-label="序号" class="col-optional">{{ forloop.counter }}</td>
+                        <td data-label="客户名称" title="{{ ledger.customer_name }}">{{ ledger.customer_name }}</td>
+                        <td data-label="客户分类" class="col-optional">{{ ledger.customer_category|default:'—' }}</td>
+                        <td data-label="责任业务">{{ ledger.responsible_salesperson|default:'—' }}</td>
+                        <td data-label="法人姓名" class="col-optional">{{ ledger.legal_representative|default:'—' }}</td>
+                        <td data-label="统一社会信用代码" class="col-optional">{{ ledger.credit_code|default:'—' }}</td>
+                        <td data-label="账期">{{ ledger.payment_terms|default:'—' }}</td>
+                        <td data-label="额度">{{ ledger.credit_limit_text|default:ledger.credit_limit|default:'—' }}</td>
+                        <td data-label="档案编号" class="col-optional">{{ ledger.archive_no|default:'—' }}</td>
+                        <td data-label="附件">
+                            {% if ledger.has_attachment %}
+                            <a class="status-badge success" href="{% url 'customer_ledger_attachment' ledger.id %}" target="_blank" rel="noopener noreferrer">PDF</a>
+                            {% else %}
+                            <span class="status-badge default">无</span>
+                            {% endif %}
+                        </td>
+                        <td data-label="操作" class="col-actions">
+                            <div class="u-toolbar-inline">
+                                <a href="{% url 'customer_ledger_detail' ledger.id %}" class="btn-transparent btn-sm" data-modal-detail data-modal-title="客户台账详情">详细</a>
+                                {% can "customer_ledger" "update" %}
+                                <a href="{% url 'customer_ledger_edit' ledger.id %}" class="btn-transparent btn-sm">编辑</a>
+                                {% endcan %}
+                                {% can "customer_ledger" "delete" %}
+                                <form class="u-inline" method="post" action="{% url 'customer_ledger_delete' ledger.id %}" data-confirm="确定要删除这条记录吗？附件也会一并删除。">{% csrf_token %}<button type="submit" class="btn-transparent btn-sm btn-delete">删除</button></form>
+                                {% endcan %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="11" class="empty-cell">📭 暂无数据</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% include 'records/_pagination.html' with page_obj=ledgers %}
+    </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .table { min-width: 1300px; }
+    .table thead th, .table tbody td { padding: 10px 12px !important; font-size: 13px; }
+    .table tbody td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
+    .table tbody td:last-child { overflow: visible !important; }
+    .table-responsive { overflow-x: auto !important; }
+    .table thead th.col-actions,
+    .table tbody td.col-actions {
+        position: sticky !important;
+        right: 0;
+        background: var(--c-surface) !important;
+        z-index: var(--z-sticky);
+        box-shadow: -3px 0 5px rgba(0,0,0,0.08);
+        border-left: 1px solid var(--c-border);
+    }
+    .table tbody tr:hover td.col-actions { background: var(--c-surface-sunken) !important; }
+    .table thead th.col-actions { z-index: var(--z-sticky-head); background: var(--c-surface-sunken) !important; }
+    .table td { font-variant-numeric: tabular-nums; }
+
+    .filter-container { position: relative; display: inline-block; }
+    .filter-dropdown {
+        position: absolute; top: calc(100% + 0.5rem); right: 0;
+        background: var(--c-surface); border: 1px solid var(--c-border);
+        border-radius: 12px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        padding: 1.25rem; min-width: 320px; max-width: 90vw; max-height: 70vh;
+        overflow-y: auto; z-index: var(--z-dropdown); display: none;
+    }
+    .filter-dropdown.show { display: block; }
+    .filter-dropdown h4 { color: var(--c-text); margin: 0 0 1rem 0; font-size: 1rem; font-weight: 600; }
+    .filter-group { margin-bottom: 1rem; }
+    .filter-group label { display: block; color: var(--c-text-secondary); font-size: 0.875rem; margin-bottom: 0.5rem; font-weight: 500; }
+    .filter-group select, .filter-group input {
+        width: 100%; padding: 0.5rem 0.75rem; border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 6px; font-size: 0.875rem; background: white; color: var(--c-text);
+    }
+    .filter-actions { display: flex; gap: 0.5rem; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid rgba(0, 0, 0, 0.1); }
+    .filter-apply, .filter-reset {
+        flex: 1; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.875rem;
+        font-weight: 500; cursor: pointer; border: none;
+    }
+    .filter-apply { background: rgba(59, 130, 246, 1); color: white; }
+    .filter-reset { background: rgba(0, 0, 0, 0.05); color: var(--c-text-secondary); }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const filterBtn = document.getElementById('filterBtn');
+        if (filterBtn) {
+            filterBtn.addEventListener('click', function(event) {
+                event.stopPropagation();
+                document.getElementById('filterDropdown').classList.toggle('show');
+            });
+        }
+        const resetFilter = document.getElementById('resetFilter');
+        if (resetFilter) {
+            resetFilter.addEventListener('click', function() {
+                document.getElementById('filterForm').reset();
+                document.getElementById('filterForm').submit();
+            });
+        }
+        document.addEventListener('click', function(event) {
+            if (!event.target.closest('#filterBtn') && !event.target.closest('#filterDropdown')) {
+                document.getElementById('filterDropdown').classList.remove('show');
+            }
+        });
+    });
+</script>
+{% endblock %}

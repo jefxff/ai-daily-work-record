@@ -38,6 +38,7 @@ MODULES = [
     {"key": "decoration", "name": "装修", "actions": CRUD},
     {"key": "customer_credit", "name": "客户账期", "actions": CRUD},
     {"key": "customer_complaint", "name": "客户客诉", "actions": CRUD},
+    {"key": "customer_ledger", "name": "客户台账", "actions": CRUD},
     {"key": "complaint", "name": "诉讼", "actions": CRUD},
     {"key": "regulation", "name": "制度及处罚", "actions": CRUD},
     {"key": "price_evaluation", "name": "核价", "actions": CRUD},

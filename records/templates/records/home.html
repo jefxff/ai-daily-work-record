@@ -101,6 +101,15 @@
         </a>
         {% endcan_view %}
 
+        {% can_view "customer_ledger" %}
+        <a class="home-module" href="{% url 'customer_ledger_list' %}">
+            <div class="home-module__top"><span class="home-module__icon">📇</span><span class="home-module__name">客户台账</span></div>
+            <div class="home-module__main">{{ total_customer_ledgers }}</div>
+            <div class="home-module__sub"><span>含附件</span><b>{{ customer_ledgers_with_attachment }}</b></div>
+            <div class="home-module__sub"><span>待补附件</span><b>{{ customer_ledgers_missing_attachment }}</b></div>
+        </a>
+        {% endcan_view %}
+
         {% can_view "regulation" %}
         <a class="home-module" href="{% url 'regulation_list' %}">
             <div class="home-module__top"><span class="home-module__icon">📜</span><span class="home-module__name">制度及处罚</span></div>

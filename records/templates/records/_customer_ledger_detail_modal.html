@@ -1,0 +1,23 @@
+{% load accounts_tags %}
+<div class="detail-card">
+    <h2 class="detail-title">客户台账详情</h2>
+    <div class="detail-row"><div class="detail-label">客户名称：</div><div class="detail-value">{{ ledger.customer_name }}</div></div>
+    <div class="detail-row"><div class="detail-label">客户分类：</div><div class="detail-value">{{ ledger.customer_category|default:"无" }}</div></div>
+    <div class="detail-row"><div class="detail-label">责任业务：</div><div class="detail-value">{{ ledger.responsible_salesperson|default:"无" }}</div></div>
+    <div class="detail-row"><div class="detail-label">法人姓名：</div><div class="detail-value">{{ ledger.legal_representative|default:"无" }}</div></div>
+    <div class="detail-row"><div class="detail-label">统一社会信用代码：</div><div class="detail-value">{{ ledger.credit_code|default:"无" }}</div></div>
+    <div class="detail-row"><div class="detail-label">账期：</div><div class="detail-value">{{ ledger.payment_terms|default:"无" }}</div></div>
+    <div class="detail-row"><div class="detail-label">额度：</div><div class="detail-value">{{ ledger.credit_limit_text|default:ledger.credit_limit|default:"无" }}</div></div>
+    <div class="detail-row"><div class="detail-label">档案编号：</div><div class="detail-value">{{ ledger.archive_no|default:"无" }}</div></div>
+    <div class="detail-row">
+        <div class="detail-label">附件：</div>
+        <div class="detail-value">
+            {% if ledger.has_attachment %}
+            <a href="{% url 'customer_ledger_attachment' ledger.id %}" target="_blank" rel="noopener noreferrer">{{ ledger.attachment_basename }}</a>
+            {% else %}无{% endif %}
+        </div>
+    </div>
+    <div class="detail-actions">
+        <a href="{% url 'customer_ledger_detail' ledger.id %}" class="btn-primary">查看完整详情</a>
+    </div>
+</div>

@@ -33,8 +33,9 @@ def home(request):
         'no_permission': not mods,
         'today_label': f'{today.year}年{today.month}月{today.day}日 星期{"一二三四五六日"[today.weekday()]}',
         'business_module_count': len(mods & {
-            'daily_record', 'customer_credit', 'customer_complaint', 'regulation',
-            'price_evaluation', 'decoration', 'insurance', 'complaint', 'samples', 'archive',
+            'daily_record', 'customer_credit', 'customer_complaint', 'customer_ledger',
+            'regulation', 'price_evaluation', 'decoration', 'insurance', 'complaint',
+            'samples', 'archive',
         }),
         'focus_tab': next(
             (key for key in ('daily_record', 'insurance', 'complaint') if key in mods), ''
@@ -60,6 +61,9 @@ def home(request):
         'disagree_count': 0,
         'total_complaints': 0,
         'incomplete_complaints': 0,
+        'total_customer_ledgers': 0,
+        'customer_ledgers_with_attachment': 0,
+        'customer_ledgers_missing_attachment': 0,
         'total_regulations': 0,
         'total_price_evaluations': 0,
         'total_price_reduction': 0,
@@ -125,6 +129,16 @@ def home(request):
             'incomplete_complaints': cc['incomplete'],
             'complaints_closed': cc['total'] - cc['incomplete'],
         })
+
+    if 'customer_ledger' in mods:
+        from .models import CustomerLedger
+
+        ledger_qs = CustomerLedger.objects.all()
+        total_ledgers = ledger_qs.count()
+        with_attachment = ledger_qs.filter(attachment__gt='').count()
+        context['total_customer_ledgers'] = total_ledgers
+        context['customer_ledgers_with_attachment'] = with_attachment
+        context['customer_ledgers_missing_attachment'] = total_ledgers - with_attachment
 
     if 'regulation' in mods:
         context['total_regulations'] = stats_svc.regulation_count()

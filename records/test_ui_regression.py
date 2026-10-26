@@ -66,7 +66,7 @@ class UiRegressionTests(TestCase):
     def test_key_list_pages_render_ok(self):
         names = [
             'daily_record_list', 'decoration_list', 'customer_credit_list',
-            'customer_complaint_list', 'complaint_list', 'regulation_list',
+            'customer_complaint_list', 'customer_ledger_list', 'complaint_list', 'regulation_list',
             'price_evaluation_list', 'insurance_list', 'operation_log_list',
             'archive:overview', 'archive:cabinet_list', 'archive:category_list',
             'archive:borrow_list', 'archive:license_list', 'archive:license_borrow_list',

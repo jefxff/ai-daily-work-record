@@ -1,0 +1,287 @@
+{% extends 'records/base.html' %}
+{% load static %}
+
+{% block page_title %}{% if form.instance.pk %}编辑客户台账{% else %}新增客户台账{% endif %} - 每日工作记录管理网站{% endblock %}
+
+{% block top_nav_actions %}
+    <a href="{% url 'customer_ledger_list' %}" class="btn-transparent">返回列表</a>
+    <a href="{% url 'home' %}" class="btn-transparent">返回首页</a>
+{% endblock %}
+
+{% block content %}
+    <div class="form-container">
+        <h2 class="form-title">{% if form.instance.pk %}编辑客户台账{% else %}新增客户台账{% endif %}</h2>
+
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            {% if form.errors %}
+                <div class="alert alert-danger" role="alert">
+                    <strong>表单验证失败:</strong>
+                    <ul>
+                        {% for field in form %}
+                            {% for error in field.errors %}
+                                <li>{{ field.label }}: {{ error }}</li>
+                            {% endfor %}
+                        {% endfor %}
+                        {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+
+            <h3 class="form-section-title">基本信息</h3>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="id_customer_name" class="form-label">客户名称 *</label>
+                        {{ form.customer_name }}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="id_customer_category" class="form-label">客户分类</label>
+                        {{ form.customer_category }}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="id_responsible_salesperson" class="form-label">责任业务</label>
+                        {{ form.responsible_salesperson }}
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="id_legal_representative" class="form-label">法人姓名</label>
+                        {{ form.legal_representative }}
+                    </div>
+                </div>
+                <div class="col-md-8">
+                    <div class="form-group">
+                        <label for="id_address" class="form-label">地址</label>
+                        {{ form.address }}
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="id_credit_code" class="form-label">统一社会信用代码</label>
+                {{ form.credit_code }}
+                <small class="form-text">导入时优先按此列去重。</small>
+            </div>
+
+            <h3 class="form-section-title">工商与资金</h3>
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label for="id_registered_capital" class="form-label">注册资金(万元)</label>
+                        {{ form.registered_capital }}
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label for="id_registered_capital_text" class="form-label">注册资金原文</label>
+                        {{ form.registered_capital_text }}
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label for="id_paid_in_capital" class="form-label">实缴资金(万元)</label>
+                        {{ form.paid_in_capital }}
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label for="id_paid_in_capital_text" class="form-label">实缴资金原文</label>
+                        {{ form.paid_in_capital_text }}
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="id_company_status" class="form-label">公司现状</label>
+                        {{ form.company_status }}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="id_business_license" class="form-label">营业执照</label>
+                        {{ form.business_license }}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="id_change_date" class="form-label">变更时间</label>
+                        {{ form.change_date }}
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="id_payment_terms" class="form-label">账期</label>
+                        {{ form.payment_terms }}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="id_credit_limit" class="form-label">额度(万元)</label>
+                        {{ form.credit_limit }}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="id_credit_limit_text" class="form-label">额度原文</label>
+                        {{ form.credit_limit_text }}
+                    </div>
+                </div>
+            </div>
+
+            <h3 class="form-section-title">合同与担保</h3>
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label for="id_basic_contract" class="form-label">基本合同</label>
+                        {{ form.basic_contract }}
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label for="id_contract_sign_date" class="form-label">基本合同签订日期</label>
+                        {{ form.contract_sign_date }}
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label for="id_contract_count" class="form-label">合同份数</label>
+                        {{ form.contract_count }}
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label for="id_contract_issues" class="form-label">基本合同存在的问题</label>
+                        {{ form.contract_issues }}
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label for="id_asset_guarantee" class="form-label">资产担保</label>
+                        {{ form.asset_guarantee }}
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label for="id_asset_guarantor" class="form-label">资产担保人</label>
+                        {{ form.asset_guarantor }}
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label for="id_asset_mortgaged" class="form-label">担保资产是否抵押</label>
+                        {{ form.asset_mortgaged }}
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label for="id_legal_id_card" class="form-label">法代身份证</label>
+                        {{ form.legal_id_card }}
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="id_guarantor_id_card" class="form-label">担保人身份证</label>
+                        {{ form.guarantor_id_card }}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="id_guaranteed_asset_detail" class="form-label">担保资产明细</label>
+                        {{ form.guaranteed_asset_detail }}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="id_asset_guarantee_issues" class="form-label">资产担保存在的问题</label>
+                        {{ form.asset_guarantee_issues }}
+                    </div>
+                </div>
+            </div>
+
+            <h3 class="form-section-title">归档信息</h3>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="id_handling_suggestion" class="form-label">处理建议</label>
+                        {{ form.handling_suggestion }}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="id_system_info" class="form-label">系统信息</label>
+                        {{ form.system_info }}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="id_location" class="form-label">位置</label>
+                        {{ form.location }}
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="id_archive_no" class="form-label">档案编号</label>
+                        {{ form.archive_no }}
+                        <small class="form-text">全库唯一，可留空。</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="id_archive_date" class="form-label">归档日期</label>
+                        {{ form.archive_date }}
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="id_remarks" class="form-label">备注</label>
+                {{ form.remarks }}
+            </div>
+
+            <h3 class="form-section-title">汇总附件</h3>
+            <div class="form-group">
+                <label for="id_attachment" class="form-label">营业执照 / 法人身份证 / 基本合同等合并 PDF</label>
+                {{ form.attachment }}
+                <small class="form-text">仅支持 PDF，单个不超过 20MB；替换或勾选清除后保存，旧附件会被删除。</small>
+                {% if form.instance.attachment %}
+                <div class="current-attachment">
+                    当前附件：<a href="{% url 'customer_ledger_attachment' form.instance.pk %}" target="_blank" rel="noopener noreferrer">{{ form.instance.attachment_basename }}</a>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">{% if form.instance.pk %}保存修改{% else %}保存记录{% endif %}</button>
+                <a href="{% url 'customer_ledger_list' %}" class="btn btn-outline-secondary">取消</a>
+            </div>
+        </form>
+    </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-section-title {
+        margin: 1.75rem 0 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--c-border);
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: var(--c-text);
+    }
+    .current-attachment { margin-top: 0.5rem; font-size: 0.875rem; color: var(--c-text-secondary); }
+</style>
+{% endblock %}

@@ -1,5 +1,9 @@
 from django import forms
-from .models import Decoration, CustomerCredit, CustomerComplaint, Regulation, PriceEvaluation, Insurance, Complaint
+from django.core.files.storage import default_storage
+
+from work_record.file_validation import content_matches, normalize_ext, read_head
+
+from .models import CustomerComplaint, CustomerCredit, CustomerLedger, Decoration, Insurance, Complaint, PriceEvaluation, Regulation
 
 
 class DecorationForm(forms.ModelForm):
@@ -447,3 +451,164 @@ class ComplaintForm(forms.ModelForm):
         if not progress:
             raise forms.ValidationError('进度不能为空')
         return progress
+
+
+class CustomerLedgerForm(forms.ModelForm):
+    """客户台账表单。
+
+    附件规则：单条记录只允许一个 PDF（营业执照/法人身份证/基本合同等合并扫描），
+    扩展名 + 20MB 上限 + 文件头三重校验；替换或清空时删除旧文件。
+    """
+
+    ATTACHMENT_MAX_SIZE = 20 * 1024 * 1024
+
+    class Meta:
+        model = CustomerLedger
+        fields = [
+            'responsible_salesperson', 'customer_name', 'customer_category',
+            'legal_representative', 'address', 'credit_code',
+            'registered_capital', 'registered_capital_text',
+            'paid_in_capital', 'paid_in_capital_text', 'company_status',
+            'business_license', 'payment_terms',
+            'credit_limit', 'credit_limit_text', 'change_date',
+            'basic_contract', 'contract_sign_date', 'contract_issues',
+            'asset_guarantee', 'legal_id_card', 'guarantor_id_card',
+            'asset_guarantor', 'guaranteed_asset_detail', 'asset_mortgaged',
+            'asset_guarantee_issues', 'contract_count',
+            'handling_suggestion', 'system_info', 'location',
+            'archive_no', 'archive_date', 'remarks', 'attachment',
+        ]
+        widgets = {
+            'responsible_salesperson': forms.TextInput(attrs={
+                'class': 'form-control', 'placeholder': '请输入责任业务人员',
+            }),
+            'customer_name': forms.TextInput(attrs={
+                'class': 'form-control', 'placeholder': '请输入客户名称',
+            }),
+            'customer_category': forms.TextInput(attrs={
+                'class': 'form-control', 'placeholder': '如 经销商 / 终端商',
+            }),
+            'legal_representative': forms.TextInput(attrs={
+                'class': 'form-control', 'placeholder': '请输入法人姓名',
+            }),
+            'address': forms.TextInput(attrs={
+                'class': 'form-control', 'placeholder': '请输入注册/经营地址',
+            }),
+            'credit_code': forms.TextInput(attrs={
+                'class': 'form-control', 'placeholder': '请输入统一社会信用代码',
+            }),
+            'registered_capital': forms.NumberInput(attrs={
+                'class': 'form-control', 'step': '0.01', 'placeholder': '万元',
+            }),
+            'registered_capital_text': forms.TextInput(attrs={
+                'class': 'form-control', 'placeholder': '原文，如 50万 / 未披露',
+            }),
+            'paid_in_capital': forms.NumberInput(attrs={
+                'class': 'form-control', 'step': '0.01', 'placeholder': '万元',
+            }),
+            'paid_in_capital_text': forms.TextInput(attrs={
+                'class': 'form-control', 'placeholder': '原文，如 37万 / 查不到',
+            }),
+            'company_status': forms.TextInput(attrs={
+                'class': 'form-control', 'placeholder': '如 存续 / 注销',
+            }),
+            'business_license': forms.TextInput(attrs={
+                'class': 'form-control', 'placeholder': '如 旧（2017年）无 / 过期（2008年）',
+            }),
+            'payment_terms': forms.TextInput(attrs={
+                'class': 'form-control', 'placeholder': '如 月结30天',
+            }),
+            'credit_limit': forms.NumberInput(attrs={
+                'class': 'form-control', 'step': '0.01', 'placeholder': '万元',
+            }),
+            'credit_limit_text': forms.TextInput(attrs={
+                'class': 'form-control', 'placeholder': '原文，如 80万',
+            }),
+            'change_date': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+            'basic_contract': forms.TextInput(attrs={
+                'class': 'form-control', 'placeholder': '如 有 / 无',
+            }),
+            'contract_sign_date': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+            'contract_issues': forms.TextInput(attrs={
+                'class': 'form-control', 'placeholder': '基本合同存在的问题',
+            }),
+            'asset_guarantee': forms.TextInput(attrs={
+                'class': 'form-control', 'placeholder': '如 有 / 无',
+            }),
+            'legal_id_card': forms.TextInput(attrs={
+                'class': 'form-control', 'placeholder': '法代身份证情况',
+            }),
+            'guarantor_id_card': forms.TextInput(attrs={
+                'class': 'form-control', 'placeholder': '担保人身份证情况',
+            }),
+            'asset_guarantor': forms.TextInput(attrs={
+                'class': 'form-control', 'placeholder': '资产担保人',
+            }),
+            'guaranteed_asset_detail': forms.TextInput(attrs={
+                'class': 'form-control', 'placeholder': '担保资产明细',
+            }),
+            'asset_mortgaged': forms.TextInput(attrs={
+                'class': 'form-control', 'placeholder': '如 是 / 否',
+            }),
+            'asset_guarantee_issues': forms.TextInput(attrs={
+                'class': 'form-control', 'placeholder': '资产担保存在的问题',
+            }),
+            'contract_count': forms.TextInput(attrs={
+                'class': 'form-control', 'placeholder': '如 1 / 2 / /',
+            }),
+            'handling_suggestion': forms.TextInput(attrs={
+                'class': 'form-control', 'placeholder': '处理建议',
+            }),
+            'system_info': forms.TextInput(attrs={
+                'class': 'form-control', 'placeholder': '系统信息',
+            }),
+            'location': forms.TextInput(attrs={
+                'class': 'form-control', 'placeholder': '如 12-2',
+            }),
+            'archive_no': forms.TextInput(attrs={
+                'class': 'form-control', 'placeholder': '唯一档案编号，可留空',
+            }),
+            'archive_date': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+            'remarks': forms.Textarea(attrs={
+                'class': 'form-control', 'rows': 3, 'placeholder': '备注信息',
+            }),
+            'attachment': forms.ClearableFileInput(attrs={
+                'class': 'form-control', 'accept': '.pdf,application/pdf',
+            }),
+        }
+
+    def clean_archive_no(self):
+        value = (self.cleaned_data.get('archive_no') or '').strip()
+        return value or None
+
+    def clean_attachment(self):
+        """仅校验新上传文件；未变更时直接返回原值。"""
+        new_file = self.files.get('attachment')
+        if not new_file:
+            return self.cleaned_data.get('attachment')
+        ext = normalize_ext(new_file.name)
+        if ext != 'PDF':
+            raise forms.ValidationError('附件仅支持 PDF 格式（请合并为一个 PDF 后上传）')
+        if new_file.size > self.ATTACHMENT_MAX_SIZE:
+            raise forms.ValidationError(
+                f'附件大小 {new_file.size / 1024 / 1024:.1f}MB 超过上限 '
+                f'{self.ATTACHMENT_MAX_SIZE // 1024 // 1024}MB'
+            )
+        if not content_matches(new_file, 'PDF', read_head(new_file)):
+            raise forms.ValidationError('文件内容与 PDF 扩展名不符，已拒绝上传')
+        return new_file
+
+    def save(self, commit=True):
+        """保存成功后清理被替换/清空的旧附件，避免磁盘残留孤儿文件。"""
+        old_name = None
+        if self.instance.pk:
+            old_name = (
+                CustomerLedger.objects.filter(pk=self.instance.pk)
+                .values_list('attachment', flat=True)
+                .first()
+            )
+        obj = super().save(commit=commit)
+        new_name = obj.attachment.name if obj.attachment else ''
+        if commit and old_name and old_name != new_name:
+            default_storage.delete(old_name)
+        return obj

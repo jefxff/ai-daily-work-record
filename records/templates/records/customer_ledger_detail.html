@@ -1,0 +1,88 @@
+{% extends 'records/base.html' %}
+{% load static %}
+{% load accounts_tags %}
+
+{% block page_title %}客户台账详情 - 每日工作记录管理网站{% endblock %}
+
+{% block top_nav_actions %}
+    <a href="{% url 'customer_ledger_list' %}" class="btn-transparent">返回列表</a>
+    {% if ledger.has_attachment %}
+    <a href="{% url 'customer_ledger_attachment' ledger.id %}" class="btn-transparent" target="_blank" rel="noopener noreferrer">查看附件</a>
+    {% endif %}
+    {% can "customer_ledger" "update" %}
+    <a href="{% url 'customer_ledger_edit' ledger.id %}" class="btn-transparent">编辑记录</a>
+    {% endcan %}
+    {% can "customer_ledger" "delete" %}
+    <form class="u-inline" method="post" action="{% url 'customer_ledger_delete' ledger.id %}" data-confirm="确定要删除这条记录吗？附件也会一并删除。">{% csrf_token %}<button type="submit" class="btn-transparent btn-delete">删除记录</button></form>
+    {% endcan %}
+{% endblock %}
+
+{% block content %}
+    <div class="detail-card">
+        <h2 class="detail-title">客户台账详细信息</h2>
+
+        <h3 class="detail-section">基本信息</h3>
+        <div class="detail-row"><div class="detail-label">客户名称：</div><div class="detail-value">{{ ledger.customer_name }}</div></div>
+        <div class="detail-row"><div class="detail-label">客户分类：</div><div class="detail-value">{{ ledger.customer_category|default:"无" }}</div></div>
+        <div class="detail-row"><div class="detail-label">责任业务：</div><div class="detail-value">{{ ledger.responsible_salesperson|default:"无" }}</div></div>
+        <div class="detail-row"><div class="detail-label">法人姓名：</div><div class="detail-value">{{ ledger.legal_representative|default:"无" }}</div></div>
+        <div class="detail-row"><div class="detail-label">地址：</div><div class="detail-value">{{ ledger.address|default:"无" }}</div></div>
+        <div class="detail-row"><div class="detail-label">统一社会信用代码：</div><div class="detail-value">{{ ledger.credit_code|default:"无" }}</div></div>
+
+        <h3 class="detail-section">工商与资金</h3>
+        <div class="detail-row"><div class="detail-label">注册资金：</div><div class="detail-value">{{ ledger.registered_capital_text|default:ledger.registered_capital|default:"无" }}</div></div>
+        <div class="detail-row"><div class="detail-label">实缴资金：</div><div class="detail-value">{{ ledger.paid_in_capital_text|default:ledger.paid_in_capital|default:"无" }}</div></div>
+        <div class="detail-row"><div class="detail-label">公司现状：</div><div class="detail-value">{{ ledger.company_status|default:"无" }}</div></div>
+        <div class="detail-row"><div class="detail-label">营业执照：</div><div class="detail-value">{{ ledger.business_license|default:"无" }}</div></div>
+        <div class="detail-row"><div class="detail-label">账期：</div><div class="detail-value">{{ ledger.payment_terms|default:"无" }}</div></div>
+        <div class="detail-row"><div class="detail-label">额度：</div><div class="detail-value">{{ ledger.credit_limit_text|default:ledger.credit_limit|default:"无" }}</div></div>
+        <div class="detail-row"><div class="detail-label">变更时间：</div><div class="detail-value">{{ ledger.change_date|date:'Y-m-d'|default:"无" }}</div></div>
+
+        <h3 class="detail-section">合同与担保</h3>
+        <div class="detail-row"><div class="detail-label">基本合同：</div><div class="detail-value">{{ ledger.basic_contract|default:"无" }}</div></div>
+        <div class="detail-row"><div class="detail-label">基本合同签订日期：</div><div class="detail-value">{{ ledger.contract_sign_date|date:'Y-m-d'|default:"无" }}</div></div>
+        <div class="detail-row"><div class="detail-label">基本合同存在的问题：</div><div class="detail-value">{{ ledger.contract_issues|default:"无" }}</div></div>
+        <div class="detail-row"><div class="detail-label">资产担保：</div><div class="detail-value">{{ ledger.asset_guarantee|default:"无" }}</div></div>
+        <div class="detail-row"><div class="detail-label">资产担保人：</div><div class="detail-value">{{ ledger.asset_guarantor|default:"无" }}</div></div>
+        <div class="detail-row"><div class="detail-label">担保资产明细：</div><div class="detail-value">{{ ledger.guaranteed_asset_detail|default:"无" }}</div></div>
+        <div class="detail-row"><div class="detail-label">担保资产是否抵押：</div><div class="detail-value">{{ ledger.asset_mortgaged|default:"无" }}</div></div>
+        <div class="detail-row"><div class="detail-label">资产担保存在的问题：</div><div class="detail-value">{{ ledger.asset_guarantee_issues|default:"无" }}</div></div>
+        <div class="detail-row"><div class="detail-label">法代身份证：</div><div class="detail-value">{{ ledger.legal_id_card|default:"无" }}</div></div>
+        <div class="detail-row"><div class="detail-label">担保人身份证：</div><div class="detail-value">{{ ledger.guarantor_id_card|default:"无" }}</div></div>
+        <div class="detail-row"><div class="detail-label">合同份数：</div><div class="detail-value">{{ ledger.contract_count|default:"无" }}</div></div>
+
+        <h3 class="detail-section">归档信息</h3>
+        <div class="detail-row"><div class="detail-label">处理建议：</div><div class="detail-value">{{ ledger.handling_suggestion|default:"无" }}</div></div>
+        <div class="detail-row"><div class="detail-label">系统信息：</div><div class="detail-value">{{ ledger.system_info|default:"无" }}</div></div>
+        <div class="detail-row"><div class="detail-label">位置：</div><div class="detail-value">{{ ledger.location|default:"无" }}</div></div>
+        <div class="detail-row"><div class="detail-label">档案编号：</div><div class="detail-value">{{ ledger.archive_no|default:"无" }}</div></div>
+        <div class="detail-row"><div class="detail-label">归档日期：</div><div class="detail-value">{{ ledger.archive_date|date:'Y-m-d'|default:"无" }}</div></div>
+        <div class="detail-row"><div class="detail-label">备注：</div><div class="detail-value">{{ ledger.remarks|default:"无" }}</div></div>
+
+        <h3 class="detail-section">汇总附件</h3>
+        <div class="detail-row">
+            <div class="detail-label">附件：</div>
+            <div class="detail-value">
+                {% if ledger.has_attachment %}
+                <a href="{% url 'customer_ledger_attachment' ledger.id %}" target="_blank" rel="noopener noreferrer">{{ ledger.attachment_basename }}</a>
+                {% else %}
+                无
+                {% endif %}
+            </div>
+        </div>
+        <div class="detail-row"><div class="detail-label">更新时间：</div><div class="detail-value">{{ ledger.updated_at|date:'Y-m-d H:i' }}</div></div>
+    </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .detail-section {
+        margin: 1.5rem 0 0.75rem;
+        padding-bottom: 0.4rem;
+        border-bottom: 1px solid var(--c-border);
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--c-text);
+    }
+</style>
+{% endblock %}

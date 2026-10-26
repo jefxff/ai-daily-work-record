@@ -35,6 +35,18 @@ urlpatterns = [
     path('customer_complaint/close/<int:pk>/', views.customer_complaint_close, name='customer_complaint_close'),
     path('customer_detail/<int:pk>/', views.customer_detail, name='customer_detail'),
     
+    # 客户台账
+    path('customer_ledger/', views.customer_ledger_list, name='customer_ledger_list'),
+    path('customer_ledger/add/', views.customer_ledger_add, name='customer_ledger_add'),
+    path('customer_ledger/detail/<int:pk>/', views.customer_ledger_detail, name='customer_ledger_detail'),
+    path('customer_ledger/edit/<int:pk>/', views.customer_ledger_edit, name='customer_ledger_edit'),
+    path('customer_ledger/delete/<int:pk>/', views.customer_ledger_delete, name='customer_ledger_delete'),
+    path('customer_ledger/export/', views.customer_ledger_export, name='customer_ledger_export'),
+    path('customer_ledger/import/', views.customer_ledger_import, name='customer_ledger_import'),
+    path('customer_ledger/import/confirm/', views.customer_ledger_import_confirm, name='customer_ledger_import_confirm'),
+    path('customer_ledger/template/', views.customer_ledger_template, name='customer_ledger_template'),
+    path('customer_ledger/<int:pk>/attachment/', views.customer_ledger_attachment, name='customer_ledger_attachment'),
+    
     # 制度及处罚
     path('regulation/', views.regulation_list, name='regulation_list'),
     path('regulation/add/', views.regulation_add, name='regulation_add'),

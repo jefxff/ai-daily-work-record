@@ -41,6 +41,7 @@ MEDIA_PREFIX_MODULE = {
     "licenses": "archive",
     "proofs": "samples",
     "audits": "samples",
+    "customer_ledgers": "customer_ledger",
 }
 
 

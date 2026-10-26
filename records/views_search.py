@@ -13,6 +13,7 @@ from .models import (
     Complaint,
     CustomerComplaint,
     CustomerCredit,
+    CustomerLedger,
     Decoration,
     Insurance,
     MetalPrice,
@@ -72,6 +73,17 @@ def search(request):
         Q(engineering_analysis__icontains=search_term) |
         Q(missing_materials__icontains=search_term) |
         Q(follow_up_status__icontains=search_term) |
+        Q(remarks__icontains=search_term)
+    )
+
+    # 搜索客户台账
+    customer_ledger_results = CustomerLedger.objects.filter(
+        Q(customer_name__icontains=search_term) |
+        Q(responsible_salesperson__icontains=search_term) |
+        Q(legal_representative__icontains=search_term) |
+        Q(credit_code__icontains=search_term) |
+        Q(address__icontains=search_term) |
+        Q(archive_no__icontains=search_term) |
         Q(remarks__icontains=search_term)
     )
 
@@ -175,6 +187,7 @@ def search(request):
         'decoration': ('decoration_results', decoration_results),
         'customer_credit': ('customer_credit_results', customer_credit_results),
         'customer_complaint': ('customer_complaint_results', customer_complaint_results),
+        'customer_ledger': ('customer_ledger_results', customer_ledger_results),
         'regulation': ('regulation_results', regulation_results),
         'price_evaluation': ('price_evaluation_results', price_evaluation_results),
         'daily_record': ('daily_record_results', daily_record_results),

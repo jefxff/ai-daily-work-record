@@ -1,3 +1,5 @@
+import os
+import uuid
 from datetime import datetime, time, timedelta
 
 from django.conf import settings
@@ -535,3 +537,104 @@ class OperationLog(models.Model):
             models.Index(fields=['operation_time'], name='idx_oplog_time'),
             models.Index(fields=['module_type', 'operation_time'], name='idx_oplog_module_time'),
         ]
+
+
+def customer_ledger_attachment_upload_to(instance, filename):
+    """客户台账汇总附件上传路径：media/customer_ledgers/<编号或uuid>.pdf。
+
+    全文只保留扩展名，避免原始文件名中的路径/中文/特殊字符进入存储路径；
+    重名由 uuid 前缀保证，不覆盖历史文件。
+    """
+    ext = os.path.splitext(filename)[1].lower() or '.pdf'
+    stem = f'ledger_{instance.archive_no or uuid.uuid4().hex[:12]}'
+    return os.path.join('customer_ledgers', f'{stem}{ext}')
+
+
+class CustomerLedger(models.Model):
+    """客户台账：来源 Excel 31 列的结构化主数据 + 单条记录一个 PDF 汇总附件。
+
+    字段设计原则：
+    - 金额类同时保留「万元 Decimal」与「原文文本」：来源表大量出现“50万”、
+      “实缴未披露/查不到”等非纯数字值，结构化值用于统计，原文用于审计追溯；
+    - 档案编号唯一且可空：空值统一存 NULL，避免多条空字符串触发唯一约束；
+    - 附件为单文件字段：营业执照、法人身份证、基本合同等扫描件合并为一个 PDF。
+    """
+
+    responsible_salesperson = models.CharField('责任业务', max_length=50, blank=True, default='')
+    customer_name = models.CharField('客户名称', max_length=200)
+    customer_category = models.CharField('客户分类', max_length=50, blank=True, default='')
+    legal_representative = models.CharField('法人姓名', max_length=50, blank=True, default='')
+    address = models.CharField('地址', max_length=300, blank=True, default='')
+    credit_code = models.CharField(
+        '统一社会信用代码', max_length=50, blank=True, default='', db_index=True
+    )
+
+    registered_capital = models.DecimalField(
+        '注册资金(万元)', max_digits=14, decimal_places=2, null=True, blank=True
+    )
+    registered_capital_text = models.CharField('注册资金原文', max_length=100, blank=True, default='')
+    paid_in_capital = models.DecimalField(
+        '实缴资金(万元)', max_digits=14, decimal_places=2, null=True, blank=True
+    )
+    paid_in_capital_text = models.CharField('实缴资金原文', max_length=100, blank=True, default='')
+    company_status = models.CharField('公司现状', max_length=100, blank=True, default='')
+
+    business_license = models.CharField('营业执照', max_length=100, blank=True, default='')
+    payment_terms = models.CharField('账期', max_length=100, blank=True, default='')
+    credit_limit = models.DecimalField(
+        '额度(万元)', max_digits=14, decimal_places=2, null=True, blank=True
+    )
+    credit_limit_text = models.CharField('额度原文', max_length=100, blank=True, default='')
+    change_date = models.DateField('变更时间', null=True, blank=True)
+
+    basic_contract = models.CharField('基本合同', max_length=100, blank=True, default='')
+    contract_sign_date = models.DateField('基本合同签订日期', null=True, blank=True)
+    contract_issues = models.CharField('基本合同存在的问题', max_length=300, blank=True, default='')
+
+    asset_guarantee = models.CharField('资产担保', max_length=100, blank=True, default='')
+    legal_id_card = models.CharField('法代身份证', max_length=100, blank=True, default='')
+    guarantor_id_card = models.CharField('担保人身份证', max_length=100, blank=True, default='')
+    asset_guarantor = models.CharField('资产担保人', max_length=100, blank=True, default='')
+    guaranteed_asset_detail = models.CharField('担保资产明细', max_length=300, blank=True, default='')
+    asset_mortgaged = models.CharField('担保资产是否抵押', max_length=50, blank=True, default='')
+    asset_guarantee_issues = models.CharField('资产担保存在的问题', max_length=300, blank=True, default='')
+
+    contract_count = models.CharField('合同份数', max_length=50, blank=True, default='')
+    handling_suggestion = models.CharField('处理建议', max_length=300, blank=True, default='')
+    system_info = models.CharField('系统信息', max_length=200, blank=True, default='')
+    location = models.CharField('位置', max_length=50, blank=True, default='')
+    archive_no = models.CharField(
+        '档案编号', max_length=50, unique=True, null=True, blank=True
+    )
+    archive_date = models.DateField('归档日期', null=True, blank=True)
+    remarks = models.TextField('备注', blank=True, default='')
+
+    attachment = models.FileField(
+        '汇总附件(PDF)', upload_to=customer_ledger_attachment_upload_to,
+        null=True, blank=True,
+    )
+
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
+    updated_at = models.DateTimeField('更新时间', auto_now=True)
+
+    class Meta:
+        verbose_name = '客户台账'
+        verbose_name_plural = '客户台账'
+        ordering = ['-id']
+
+    def __str__(self):
+        return self.customer_name
+
+    def save(self, *args, **kwargs):
+        # 档案编号为空串时统一落 NULL：唯一约束允许多个 NULL，但不允许多个 ''
+        if self.archive_no is not None:
+            self.archive_no = self.archive_no.strip() or None
+        super().save(*args, **kwargs)
+
+    @property
+    def has_attachment(self):
+        return bool(self.attachment)
+
+    @property
+    def attachment_basename(self):
+        return os.path.basename(self.attachment.name) if self.attachment else ''
