@@ -21,15 +21,13 @@
 <div class="lgd">
 
     <!-- 客户名片 -->
-    <section class="lgd-hero" aria-labelledby="lgdCustomerName">
+    <section class="lgd-card lgd-hero" aria-labelledby="lgdCustomerName">
         <div class="lgd-avatar" aria-hidden="true">{{ ledger.customer_name|slice:":1" }}</div>
         <div class="lgd-hero-main">
             <div class="lgd-eyebrow">客户台账详细信息</div>
             <h2 class="lgd-name" id="lgdCustomerName">{{ ledger.customer_name }}</h2>
             <div class="lgd-tags">
-                {% if ledger.customer_category %}
-                <span class="lgd-tag">{{ ledger.customer_category }}</span>
-                {% endif %}
+                {% if ledger.customer_category %}<span class="lgd-tag">{{ ledger.customer_category }}</span>{% endif %}
                 {% if ledger.company_status %}
                     {% if '注销' in ledger.company_status or '吊销' in ledger.company_status %}
                     <span class="status-badge danger">{{ ledger.company_status }}</span>
@@ -49,156 +47,127 @@
             </div>
         </div>
         <dl class="lgd-facts">
-            <div class="lgd-fact">
-                <dt>责任业务</dt>
-                <dd>{{ ledger.responsible_salesperson|default:"—" }}</dd>
-            </div>
-            <div class="lgd-fact">
-                <dt>统一社会信用代码</dt>
-                <dd class="lgd-mono">{{ ledger.credit_code|default:"—" }}</dd>
-            </div>
-            <div class="lgd-fact">
-                <dt>档案编号</dt>
-                <dd class="lgd-mono">{{ ledger.archive_no|default:"—" }}</dd>
-            </div>
-            <div class="lgd-fact">
-                <dt>最后更新</dt>
-                <dd class="lgd-mono">{{ ledger.updated_at|date:"Y-m-d H:i" }}</dd>
-            </div>
+            <div class="lgd-fact"><dt>责任业务</dt><dd>{{ ledger.responsible_salesperson|default:"—" }}</dd></div>
+            <div class="lgd-fact"><dt>统一社会信用代码</dt><dd class="lgd-mono">{{ ledger.credit_code|default:"—" }}</dd></div>
+            <div class="lgd-fact"><dt>档案编号</dt><dd class="lgd-mono">{{ ledger.archive_no|default:"—" }}</dd></div>
+            <div class="lgd-fact"><dt>最后更新</dt><dd class="lgd-mono">{{ ledger.updated_at|date:"Y-m-d H:i" }}</dd></div>
         </dl>
     </section>
 
-    <!-- 信用与账期：一个整体区块，账期/额度为主角，注册/实缴作辅证 -->
-    <section class="lgd-credit" aria-label="信用与账期">
-        <div class="lgd-credit-main-wrap">
-            <article class="lgd-credit-item">
-                <span class="lgd-credit-label">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                    账期
-                </span>
-                <strong class="lgd-credit-value">{{ ledger.payment_terms|default:"未约定" }}</strong>
-                <span class="lgd-credit-foot">当前结算账期</span>
-            </article>
-            <span class="lgd-credit-divider" aria-hidden="true"></span>
-            <article class="lgd-credit-item">
-                <span class="lgd-credit-label">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v20"/><path d="M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                    授信额度
-                </span>
-                <strong class="lgd-credit-value">
-                    {% if ledger.credit_limit_text %}{{ ledger.credit_limit_text }}
-                    {% elif ledger.credit_limit %}{{ ledger.credit_limit|floatformat:"-2" }}<small>万元</small>
-                    {% else %}<span class="lgd-credit-empty">未设置</span>{% endif %}
-                </strong>
-                <span class="lgd-credit-foot">当前生效额度</span>
-            </article>
-        </div>
-        <div class="lgd-credit-side-wrap">
-            <div class="lgd-credit-side">
-                <span class="lgd-credit-label">注册资金</span>
-                <span class="lgd-credit-side-value">
-                    {% if ledger.registered_capital_text %}{{ ledger.registered_capital_text }}
-                    {% elif ledger.registered_capital %}{{ ledger.registered_capital|floatformat:"-2" }}<small>万元</small>
-                    {% else %}—{% endif %}
-                </span>
-            </div>
-            <div class="lgd-credit-side">
-                <span class="lgd-credit-label">实缴资金</span>
-                <span class="lgd-credit-side-value">
-                    {% if ledger.paid_in_capital_text %}{{ ledger.paid_in_capital_text }}
-                    {% elif ledger.paid_in_capital %}{{ ledger.paid_in_capital|floatformat:"-2" }}<small>万元</small>
-                    {% else %}—{% endif %}
-                </span>
-            </div>
-        </div>
+    <!-- 信用与账期：四张同规格 KPI 卡，账期/额度用主色强调 -->
+    <section class="lgd-kpis" aria-label="信用与账期">
+        <article class="lgd-card lgd-kpi lgd-kpi--accent">
+            <span class="lgd-kpi-label">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                账期
+            </span>
+            <strong class="lgd-kpi-value">{{ ledger.payment_terms|default:"未约定" }}</strong>
+            <span class="lgd-kpi-foot">当前结算账期</span>
+        </article>
+        <article class="lgd-card lgd-kpi lgd-kpi--accent">
+            <span class="lgd-kpi-label">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v20"/><path d="M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                授信额度
+            </span>
+            <strong class="lgd-kpi-value">
+                {% if ledger.credit_limit_text %}{{ ledger.credit_limit_text }}
+                {% elif ledger.credit_limit %}{{ ledger.credit_limit|floatformat:"-2" }}<small>万元</small>
+                {% else %}未设置{% endif %}
+            </strong>
+            <span class="lgd-kpi-foot">当前生效额度</span>
+        </article>
+        <article class="lgd-card lgd-kpi">
+            <span class="lgd-kpi-label">注册资金</span>
+            <strong class="lgd-kpi-value">
+                {% if ledger.registered_capital_text %}{{ ledger.registered_capital_text }}
+                {% elif ledger.registered_capital %}{{ ledger.registered_capital|floatformat:"-2" }}<small>万元</small>
+                {% else %}—{% endif %}
+            </strong>
+            <span class="lgd-kpi-foot">工商登记</span>
+        </article>
+        <article class="lgd-card lgd-kpi">
+            <span class="lgd-kpi-label">实缴资金</span>
+            <strong class="lgd-kpi-value">
+                {% if ledger.paid_in_capital_text %}{{ ledger.paid_in_capital_text }}
+                {% elif ledger.paid_in_capital %}{{ ledger.paid_in_capital|floatformat:"-2" }}<small>万元</small>
+                {% else %}—{% endif %}
+            </strong>
+            <span class="lgd-kpi-foot">实际缴纳</span>
+        </article>
     </section>
 
-    <!-- 档案信息：左栏基本信息 + 归档信息，右栏合同与担保 -->
-    <div class="lgd-grid">
-        <div class="lgd-col">
-            <section class="lgd-panel" aria-labelledby="lgdBasic">
-                <div class="lgd-panel-head">
-                    <span class="lgd-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/></svg></span>
-                    <h3 id="lgdBasic">基本信息</h3>
-                </div>
-                <div class="lgd-panel-body">
+    <!-- 客户档案信息：一张卡内分三节，避免多卡片高度参差 -->
+    <section class="lgd-card" aria-labelledby="lgdProfile">
+        <div class="lgd-card-head">
+            <svg class="lgd-head-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="14" y2="17"/></svg>
+            <h3 id="lgdProfile">客户档案信息</h3>
+        </div>
+        <div class="lgd-card-body">
+            <div class="lgd-section">
+                <h4 class="lgd-section-title">基本信息</h4>
                 <dl class="lgd-fields">
                     <div class="lgd-field"><dt>法人姓名</dt><dd>{{ ledger.legal_representative|default:"—" }}</dd></div>
                     <div class="lgd-field"><dt>营业执照</dt><dd>{{ ledger.business_license|default:"—" }}</dd></div>
                     <div class="lgd-field"><dt>账期</dt><dd>{{ ledger.payment_terms|default:"—" }}</dd></div>
                     <div class="lgd-field"><dt>变更时间</dt><dd class="lgd-mono">{{ ledger.change_date|date:"Y-m-d"|default:"—" }}</dd></div>
-                    <div class="lgd-field"><dt>地址</dt><dd>{{ ledger.address|default:"—" }}</dd></div>
+                    <div class="lgd-field lgd-field--full"><dt>地址</dt><dd>{{ ledger.address|default:"—" }}</dd></div>
                 </dl>
-                </div>
-            </section>
+            </div>
 
-            <section class="lgd-panel" aria-labelledby="lgdArchive">
-                <div class="lgd-panel-head">
-                    <span class="lgd-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><line x1="10" y1="12" x2="14" y2="12"/></svg></span>
-                    <h3 id="lgdArchive">归档信息</h3>
-                </div>
-                <div class="lgd-panel-body">
+            <div class="lgd-section">
+                <h4 class="lgd-section-title">合同与担保</h4>
+                <dl class="lgd-fields">
+                    <div class="lgd-field"><dt>基本合同</dt><dd>{{ ledger.basic_contract|default:"—" }}</dd></div>
+                    <div class="lgd-field"><dt>签订日期</dt><dd class="lgd-mono">{{ ledger.contract_sign_date|date:"Y-m-d"|default:"—" }}</dd></div>
+                    <div class="lgd-field"><dt>合同份数</dt><dd>{{ ledger.contract_count|default:"—" }}</dd></div>
+                    <div class="lgd-field"><dt>资产担保</dt><dd>{{ ledger.asset_guarantee|default:"—" }}</dd></div>
+                    <div class="lgd-field"><dt>资产担保人</dt><dd>{{ ledger.asset_guarantor|default:"—" }}</dd></div>
+                    <div class="lgd-field">
+                        <dt>担保资产是否抵押</dt>
+                        <dd>
+                            {% if ledger.asset_mortgaged == '是' %}
+                            <span class="status-badge warning">{{ ledger.asset_mortgaged }}</span>
+                            {% elif ledger.asset_mortgaged == '否' %}
+                            <span class="status-badge success">{{ ledger.asset_mortgaged }}</span>
+                            {% else %}{{ ledger.asset_mortgaged|default:"—" }}{% endif %}
+                        </dd>
+                    </div>
+                    <div class="lgd-field"><dt>法代身份证</dt><dd>{{ ledger.legal_id_card|default:"—" }}</dd></div>
+                    <div class="lgd-field"><dt>担保人身份证</dt><dd>{{ ledger.guarantor_id_card|default:"—" }}</dd></div>
+                </dl>
+            </div>
+
+            <div class="lgd-section">
+                <h4 class="lgd-section-title">归档信息</h4>
                 <dl class="lgd-fields">
                     <div class="lgd-field"><dt>归档日期</dt><dd class="lgd-mono">{{ ledger.archive_date|date:"Y-m-d"|default:"—" }}</dd></div>
                     <div class="lgd-field"><dt>位置</dt><dd>{{ ledger.location|default:"—" }}</dd></div>
                     <div class="lgd-field"><dt>系统信息</dt><dd>{{ ledger.system_info|default:"—" }}</dd></div>
                 </dl>
-                </div>
-            </section>
+            </div>
         </div>
-
-        <section class="lgd-panel" aria-labelledby="lgdContract">
-            <div class="lgd-panel-head">
-                <span class="lgd-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/><line x1="9" y1="18" x2="13" y2="18"/></svg></span>
-                <h3 id="lgdContract">合同与担保</h3>
-            </div>
-            <div class="lgd-panel-body">
-            <dl class="lgd-fields">
-                <div class="lgd-field"><dt>基本合同</dt><dd>{{ ledger.basic_contract|default:"—" }}</dd></div>
-                <div class="lgd-field"><dt>签订日期</dt><dd class="lgd-mono">{{ ledger.contract_sign_date|date:"Y-m-d"|default:"—" }}</dd></div>
-                <div class="lgd-field"><dt>合同份数</dt><dd>{{ ledger.contract_count|default:"—" }}</dd></div>
-                <div class="lgd-field"><dt>资产担保</dt><dd>{{ ledger.asset_guarantee|default:"—" }}</dd></div>
-                <div class="lgd-field"><dt>资产担保人</dt><dd>{{ ledger.asset_guarantor|default:"—" }}</dd></div>
-                <div class="lgd-field">
-                    <dt>担保资产是否抵押</dt>
-                    <dd>
-                        {% if ledger.asset_mortgaged == '是' %}
-                        <span class="status-badge warning">{{ ledger.asset_mortgaged }}</span>
-                        {% elif ledger.asset_mortgaged == '否' %}
-                        <span class="status-badge success">{{ ledger.asset_mortgaged }}</span>
-                        {% else %}{{ ledger.asset_mortgaged|default:"—" }}{% endif %}
-                    </dd>
-                </div>
-                <div class="lgd-field"><dt>法代身份证</dt><dd>{{ ledger.legal_id_card|default:"—" }}</dd></div>
-                <div class="lgd-field"><dt>担保人身份证</dt><dd>{{ ledger.guarantor_id_card|default:"—" }}</dd></div>
-            </dl>
-            </div>
-        </section>
-    </div>
+    </section>
 
     <!-- 风险与备注 -->
-    <section class="lgd-panel" aria-labelledby="lgdRisk">
-        <div class="lgd-panel-head">
-            <span class="lgd-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+    <section class="lgd-card" aria-labelledby="lgdRisk">
+        <div class="lgd-card-head">
+            <svg class="lgd-head-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
             <h3 id="lgdRisk">风险与备注</h3>
         </div>
-        <div class="lgd-panel-body">
-        <dl class="lgd-fields lgd-fields--two">
-            <div class="lgd-field"><dt>基本合同存在的问题</dt><dd>{{ ledger.contract_issues|default:"—" }}</dd></div>
-            <div class="lgd-field"><dt>担保资产明细</dt><dd>{{ ledger.guaranteed_asset_detail|default:"—" }}</dd></div>
-            <div class="lgd-field"><dt>资产担保存在的问题</dt><dd>{{ ledger.asset_guarantee_issues|default:"—" }}</dd></div>
-            <div class="lgd-field"><dt>处理建议</dt><dd>{{ ledger.handling_suggestion|default:"—" }}</dd></div>
-            <div class="lgd-field lgd-field--full"><dt>备注</dt><dd class="lgd-prose">{{ ledger.remarks|default:"—" }}</dd></div>
-        </dl>
+        <div class="lgd-card-body">
+            <dl class="lgd-fields">
+                <div class="lgd-field"><dt>基本合同存在的问题</dt><dd>{{ ledger.contract_issues|default:"—" }}</dd></div>
+                <div class="lgd-field"><dt>担保资产明细</dt><dd>{{ ledger.guaranteed_asset_detail|default:"—" }}</dd></div>
+                <div class="lgd-field"><dt>资产担保存在的问题</dt><dd>{{ ledger.asset_guarantee_issues|default:"—" }}</dd></div>
+                <div class="lgd-field"><dt>处理建议</dt><dd>{{ ledger.handling_suggestion|default:"—" }}</dd></div>
+                <div class="lgd-field lgd-field--full"><dt>备注</dt><dd class="lgd-prose">{{ ledger.remarks|default:"—" }}</dd></div>
+            </dl>
         </div>
     </section>
 
     <!-- 汇总附件 -->
-    <section class="lgd-attach{% if not ledger.has_attachment %} lgd-attach--empty{% endif %}" aria-labelledby="lgdAttachTitle">
-        <div class="lgd-attach-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            <span class="lgd-attach-ext">PDF</span>
-        </div>
+    <section class="lgd-card lgd-attach{% if not ledger.has_attachment %} lgd-attach--empty{% endif %}" aria-labelledby="lgdAttachTitle">
+        <svg class="lgd-attach-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
         <div class="lgd-attach-body">
             <h3 id="lgdAttachTitle">汇总附件</h3>
             {% if ledger.has_attachment %}
@@ -220,37 +189,36 @@
     </section>
 
     <!-- 账期与额度变更历史 -->
-    <section class="lgd-panel" aria-labelledby="lgdHistory">
-        <div class="lgd-panel-head">
-            <span class="lgd-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><polyline points="12 7 12 12 15 14"/></svg></span>
+    <section class="lgd-card" aria-labelledby="lgdHistory">
+        <div class="lgd-card-head">
+            <svg class="lgd-head-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><polyline points="12 7 12 12 15 14"/></svg>
             <h3 id="lgdHistory">账期与额度变更历史</h3>
             {% if credit_changes %}<span class="lgd-history-count">{{ credit_changes|length }} 条</span>{% endif %}
         </div>
-        <div class="lgd-panel-body">
-
-        {% if credit_changes %}
-        <ol class="lgd-timeline">
-            {% for change in credit_changes %}
-            <li class="lgd-tl-item">
-                <span class="lgd-tl-dot" aria-hidden="true"></span>
-                <div class="lgd-tl-body">
-                    <div class="lgd-tl-head">
-                        <span class="lgd-tl-field">{{ change.field }}</span>
-                        <span class="lgd-tl-source">{{ change.source }}</span>
-                        <time class="lgd-tl-time" datetime="{{ change.changed_at|date:'c' }}">{{ change.changed_at|date:"Y-m-d H:i" }}</time>
+        <div class="lgd-card-body">
+            {% if credit_changes %}
+            <ol class="lgd-timeline">
+                {% for change in credit_changes %}
+                <li class="lgd-tl-item">
+                    <span class="lgd-tl-dot" aria-hidden="true"></span>
+                    <div class="lgd-tl-body">
+                        <div class="lgd-tl-head">
+                            <span class="lgd-tl-field">{{ change.field }}</span>
+                            <span class="lgd-tl-source">{{ change.source }}</span>
+                            <time class="lgd-tl-time" datetime="{{ change.changed_at|date:'c' }}">{{ change.changed_at|date:"Y-m-d H:i" }}</time>
+                        </div>
+                        <div class="lgd-tl-values">
+                            <span class="lgd-tl-old">{% if change.old_value %}{{ change.old_value }}{% else %}初始录入{% endif %}</span>
+                            <svg class="lgd-tl-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                            <span class="lgd-tl-new">{{ change.new_value|default:"—" }}</span>
+                        </div>
                     </div>
-                    <div class="lgd-tl-values">
-                        <span class="lgd-tl-old">{% if change.old_value %}{{ change.old_value }}{% else %}初始录入{% endif %}</span>
-                        <svg class="lgd-tl-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                        <span class="lgd-tl-new">{{ change.new_value|default:"—" }}</span>
-                    </div>
-                </div>
-            </li>
-            {% endfor %}
-        </ol>
-        {% else %}
-        <p class="lgd-history-empty">暂无账期或额度变更记录，编辑这两项后会自动记录变更。</p>
-        {% endif %}
+                </li>
+                {% endfor %}
+            </ol>
+            {% else %}
+            <p class="lgd-history-empty">暂无账期或额度变更记录，编辑这两项后会自动记录变更。</p>
+            {% endif %}
         </div>
     </section>
 </div>
@@ -258,41 +226,34 @@
 
 {% block extra_css %}
 <style>
-    .lgd { display: grid; gap: var(--sp-5); padding-bottom: var(--sp-6); }
+    .lgd { display: grid; gap: var(--sp-4); padding-bottom: var(--sp-6); }
+
+    /* —— 唯一卡片基类：全页只有这一种背景与边框 —— */
+    .lgd-card {
+        background: var(--c-surface);
+        border: 1px solid var(--c-border);
+        border-radius: var(--r-md);
+    }
 
     /* —— 客户名片 —— */
     .lgd-hero {
-        position: relative;
-        overflow: hidden;
         display: grid;
-        grid-template-columns: auto 1fr;
+        grid-template-columns: auto minmax(0, 1fr);
         align-items: center;
         gap: var(--sp-3) var(--sp-5);
-        padding: var(--sp-6) var(--sp-7);
-        background: linear-gradient(135deg, var(--c-primary-subtle) 0%, var(--c-surface) 62%);
-        border: 1px solid var(--c-border);
-        border-radius: var(--r-lg);
-    }
-    .lgd-hero::before {
-        content: '';
-        position: absolute;
-        left: 0;
-        top: 0;
-        bottom: 0;
-        width: 4px;
-        background: var(--c-primary);
+        padding: var(--sp-5) var(--sp-6);
     }
     .lgd-avatar {
-        width: 52px;
-        height: 52px;
+        width: 48px;
+        height: 48px;
         display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: var(--r-md);
-        background: var(--c-primary);
-        color: var(--c-surface);
+        border-radius: var(--r-sm);
+        background: var(--c-primary-subtle);
+        color: var(--c-primary);
         font-family: var(--font-display);
-        font-size: 24px;
+        font-size: 22px;
         font-weight: 700;
         line-height: 1;
         flex-shrink: 0;
@@ -301,8 +262,8 @@
     .lgd-eyebrow {
         font-size: var(--fs-xs);
         letter-spacing: var(--ls-wide);
-        color: var(--c-text-secondary);
-        margin-bottom: var(--sp-1);
+        color: var(--c-text-tertiary);
+        margin-bottom: 2px;
     }
     .lgd-name {
         margin: 0 0 var(--sp-2);
@@ -317,10 +278,9 @@
     .lgd-tags { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
     .lgd-tag {
         display: inline-block;
-        padding: 2px 10px;
+        padding: 1px 10px;
         border-radius: var(--r-full);
-        background: var(--c-surface);
-        border: 1px solid var(--c-border);
+        background: var(--c-surface-sunken);
         color: var(--c-text-secondary);
         font-size: var(--fs-xs);
         line-height: 20px;
@@ -330,147 +290,99 @@
         grid-column: 1 / -1;
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: var(--sp-4) var(--sp-5);
+        gap: var(--sp-3) var(--sp-5);
         margin: var(--sp-4) 0 0;
         padding-top: var(--sp-4);
-        border-top: 1px dashed var(--c-border);
+        border-top: 1px solid var(--c-border);
     }
-    .lgd-fact { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-    .lgd-fact dt {
-        font-size: var(--fs-xs);
-        color: var(--c-text-tertiary);
-        letter-spacing: var(--ls-wide);
-    }
+    .lgd-fact { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+    .lgd-fact dt { font-size: var(--fs-xs); color: var(--c-text-tertiary); }
     .lgd-fact dd {
         margin: 0;
-        font-size: var(--fs-base);
+        font-size: var(--fs-sm);
         font-weight: 500;
         color: var(--c-text);
-        word-break: break-word;
+        overflow-wrap: anywhere;
     }
     .lgd-mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 
-    /* —— 信用与账期：一个整体区块，账期/额度为主角，注册/实缴作辅证 —— */
-    .lgd-credit {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) 250px;
-        background: var(--c-surface);
-        border: 1px solid var(--c-border);
-        border-radius: var(--r-md);
-        overflow: hidden;
-    }
-    .lgd-credit-main-wrap {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-        gap: var(--sp-5);
-        padding: var(--sp-5) var(--sp-6);
-        background: linear-gradient(180deg, var(--c-primary-subtle) 0%, var(--c-surface) 88%);
-    }
-    .lgd-credit-divider { width: 1px; background: var(--c-border); }
-    .lgd-credit-item { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-    .lgd-credit-side-wrap { display: grid; grid-template-rows: 1fr 1fr; background: var(--c-surface-sunken); }
-    .lgd-credit-side {
+    /* —— 信用与账期：四张等规格 KPI 卡 —— */
+    .lgd-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-4); }
+    .lgd-kpi {
         display: flex;
         flex-direction: column;
-        justify-content: center;
         gap: 2px;
-        padding: var(--sp-3) var(--sp-5);
-        min-width: 0;
+        padding: var(--sp-4) var(--sp-5);
     }
-    .lgd-credit-side + .lgd-credit-side { border-top: 1px dashed var(--c-border); }
-    .lgd-credit-label {
+    .lgd-kpi--accent { border-top: 3px solid var(--c-primary); }
+    .lgd-kpi-label {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
+        gap: 5px;
         font-size: var(--fs-xs);
-        letter-spacing: var(--ls-wide);
         color: var(--c-text-secondary);
+        letter-spacing: var(--ls-wide);
     }
-    .lgd-credit-label svg { width: 14px; height: 14px; color: var(--c-primary); }
-    .lgd-credit-value {
+    .lgd-kpi-label svg { width: 13px; height: 13px; }
+    .lgd-kpi--accent .lgd-kpi-label { color: var(--c-primary); font-weight: 600; }
+    .lgd-kpi-value {
         font-family: var(--font-display);
-        font-size: 30px;
+        font-size: var(--fs-xl);
         font-weight: 700;
-        line-height: 1.15;
-        letter-spacing: var(--ls-tight);
+        line-height: 1.25;
         color: var(--c-text);
-        word-break: break-word;
+        overflow-wrap: anywhere;
     }
-    .lgd-credit-value small,
-    .lgd-credit-side-value small {
-        margin-left: 4px;
+    .lgd-kpi--accent .lgd-kpi-value { color: var(--c-primary); }
+    .lgd-kpi-value small {
+        margin-left: 3px;
         font-family: var(--font-body);
         font-size: var(--fs-xs);
         font-weight: 400;
         color: var(--c-text-secondary);
     }
-    .lgd-credit-foot { font-size: var(--fs-xs); color: var(--c-text-tertiary); }
-    .lgd-credit-empty { font-size: var(--fs-lg); color: var(--c-text-tertiary); font-weight: 500; }
-    .lgd-credit-side-value {
-        font-family: var(--font-mono);
-        font-variant-numeric: tabular-nums;
-        font-size: var(--fs-lg);
-        font-weight: 600;
-        color: var(--c-text);
-        word-break: break-word;
-    }
+    .lgd-kpi-foot { font-size: var(--fs-xs); color: var(--c-text-tertiary); }
 
-    /* —— 档案信息 —— */
-    .lgd-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
-    .lgd-col { display: grid; gap: var(--sp-4); align-content: start; min-width: 0; }
-    .lgd-panel {
-        min-width: 0;
-        padding: 0;
-        overflow: hidden;
-        background: var(--c-surface);
-        border: 1px solid var(--c-border);
-        border-radius: var(--r-md);
-    }
-    .lgd-panel-head {
+    /* —— 卡片标题与正文 —— */
+    .lgd-card-head {
         display: flex;
         align-items: center;
         gap: var(--sp-2);
-        margin: 0;
-        padding: var(--sp-3) var(--sp-5);
-        background: var(--c-surface-sunken);
+        padding: var(--sp-4) var(--sp-5);
         border-bottom: 1px solid var(--c-border);
     }
-    .lgd-panel-head h3 {
+    .lgd-card-head h3 {
         margin: 0;
         font-family: var(--font-display);
         font-size: var(--fs-md);
         font-weight: 600;
         color: var(--c-text);
     }
-    .lgd-panel-body { padding: var(--sp-2) var(--sp-5) var(--sp-4); }
-    .lgd-icon {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 26px;
-        height: 26px;
-        flex-shrink: 0;
-        border-radius: var(--r-sm);
-        background: var(--c-primary-subtle);
-        color: var(--c-primary);
+    .lgd-head-icon { width: 17px; height: 17px; flex-shrink: 0; color: var(--c-primary); }
+    .lgd-card-body { padding: var(--sp-2) var(--sp-5) var(--sp-4); }
+
+    .lgd-section + .lgd-section {
+        margin-top: var(--sp-3);
+        padding-top: var(--sp-4);
+        border-top: 1px solid var(--c-border);
     }
-    .lgd-icon svg { width: 15px; height: 15px; }
-    .lgd-fields { display: grid; gap: 0; margin: 0; }
-    .lgd-fields--two { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--sp-7); }
+    .lgd-section-title {
+        margin: var(--sp-3) 0 var(--sp-1);
+        font-size: var(--fs-sm);
+        font-weight: 600;
+        color: var(--c-text-secondary);
+        letter-spacing: 0.02em;
+    }
+    .lgd-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--sp-7); margin: 0; }
     .lgd-field {
         display: grid;
         grid-template-columns: 116px minmax(0, 1fr);
         gap: var(--sp-3);
-        padding: 7px 0;
-        border-bottom: 1px dashed var(--c-border);
+        padding: 6px 0;
+        min-width: 0;
     }
-    .lgd-field:last-child { border-bottom: none; }
     .lgd-field--full { grid-column: 1 / -1; }
-    .lgd-field dt {
-        font-size: var(--fs-sm);
-        color: var(--c-text-secondary);
-        line-height: var(--lh-base);
-    }
+    .lgd-field dt { font-size: var(--fs-sm); color: var(--c-text-secondary); line-height: var(--lh-base); }
     .lgd-field dd {
         margin: 0;
         min-width: 0;
@@ -478,96 +390,42 @@
         line-height: var(--lh-base);
         color: var(--c-text);
         overflow-wrap: anywhere;
-        word-break: break-word;
     }
     .lgd-prose { white-space: pre-wrap; }
 
     /* —— 汇总附件 —— */
-    .lgd-attach {
-        display: flex;
-        align-items: center;
-        gap: var(--sp-4);
-        padding: var(--sp-4) var(--sp-5);
-        background: var(--c-surface);
-        border: 1px solid var(--c-border);
-        border-radius: var(--r-md);
-    }
-    .lgd-attach--empty {
-        background: var(--c-accent-subtle);
-        border-color: var(--c-accent-line);
-    }
-    .lgd-attach-icon {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 1px;
-        width: 42px;
-        height: 42px;
-        flex-shrink: 0;
-        border-radius: var(--r-sm);
-        background: var(--c-primary-subtle);
-        color: var(--c-primary);
-    }
-    .lgd-attach--empty .lgd-attach-icon { background: var(--c-surface); color: var(--c-accent); }
-    .lgd-attach-icon svg { width: 18px; height: 18px; }
-    .lgd-attach-ext { font-size: 9px; font-weight: 600; letter-spacing: 0.04em; line-height: 1; }
+    .lgd-attach { display: flex; align-items: center; gap: var(--sp-4); padding: var(--sp-4) var(--sp-5); }
+    .lgd-attach--empty { border-left: 3px solid var(--c-accent); }
+    .lgd-attach-icon { width: 26px; height: 26px; flex-shrink: 0; color: var(--c-primary); }
+    .lgd-attach--empty .lgd-attach-icon { color: var(--c-accent); }
     .lgd-attach-body { flex: 1; min-width: 0; }
     .lgd-attach-body h3 { margin: 0 0 1px; font-size: var(--fs-base); font-weight: 600; color: var(--c-text); }
-    .lgd-attach-file { margin: 0; font-size: var(--fs-base); color: var(--c-text); word-break: break-all; }
+    .lgd-attach-file { margin: 0; font-size: var(--fs-sm); color: var(--c-text); overflow-wrap: anywhere; }
     .lgd-attach-hint { margin: 1px 0 0; font-size: var(--fs-xs); color: var(--c-text-secondary); }
     .lgd-empty-text { color: var(--c-text-secondary); }
     .lgd-attach-action { display: flex; gap: var(--sp-2); flex-wrap: wrap; flex-shrink: 0; }
     .lgd-attach-action .btn-secondary { text-decoration: none; display: inline-block; }
 
-    /* —— 变更历史时间线 —— */
+    /* —— 变更历史 —— */
     .lgd-history-count {
         margin-left: auto;
-        padding: 1px 8px;
+        padding: 0 8px;
         border-radius: var(--r-full);
         background: var(--c-surface-sunken);
         color: var(--c-text-secondary);
         font-size: var(--fs-xs);
         line-height: 18px;
     }
-    .lgd-timeline {
-        position: relative;
-        list-style: none;
-        margin: 0;
-        padding: 0 0 0 var(--sp-5);
+    .lgd-timeline { list-style: none; margin: 0; padding: 0; }
+    .lgd-tl-item {
+        display: grid;
+        grid-template-columns: 8px minmax(0, 1fr);
+        gap: var(--sp-3);
+        padding: var(--sp-3) 0;
     }
-    .lgd-timeline::before {
-        content: '';
-        position: absolute;
-        left: 4px;
-        top: 6px;
-        bottom: 6px;
-        width: 1px;
-        background: var(--c-border);
-    }
-    .lgd-tl-item { position: relative; padding: var(--sp-2) 0; }
-    .lgd-tl-dot {
-        position: absolute;
-        left: calc(-1 * var(--sp-5) + 1px);
-        top: 16px;
-        width: 7px;
-        height: 7px;
-        border-radius: 50%;
-        background: var(--c-primary);
-        box-shadow: 0 0 0 3px var(--c-primary-subtle);
-    }
-    .lgd-tl-body {
-        padding: var(--sp-3) var(--sp-4);
-        background: var(--c-surface-sunken);
-        border-radius: var(--r-sm);
-    }
-    .lgd-tl-head {
-        display: flex;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: var(--sp-2);
-        margin-bottom: 4px;
-    }
+    .lgd-tl-item + .lgd-tl-item { border-top: 1px solid var(--c-border); }
+    .lgd-tl-dot { width: 8px; height: 8px; margin-top: 7px; border-radius: 50%; background: var(--c-primary); }
+    .lgd-tl-head { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2); margin-bottom: 2px; }
     .lgd-tl-field { font-size: var(--fs-sm); font-weight: 600; color: var(--c-text); }
     .lgd-tl-source {
         padding: 0 8px;
@@ -584,46 +442,31 @@
         font-size: var(--fs-xs);
         color: var(--c-text-tertiary);
     }
-    .lgd-tl-values {
-        display: flex;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: var(--sp-2);
-        font-size: var(--fs-sm);
-    }
+    .lgd-tl-values { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2); font-size: var(--fs-sm); }
     .lgd-tl-old { color: var(--c-text-secondary); text-decoration: line-through; }
     .lgd-tl-arrow { width: 14px; height: 14px; color: var(--c-text-tertiary); flex-shrink: 0; }
-    .lgd-tl-new { color: var(--c-text); font-weight: 600; word-break: break-word; }
-    .lgd-history-empty { margin: 0; font-size: var(--fs-sm); color: var(--c-text-secondary); }
+    .lgd-tl-new { color: var(--c-text); font-weight: 600; overflow-wrap: anywhere; }
+    .lgd-history-empty { margin: var(--sp-2) 0 0; font-size: var(--fs-sm); color: var(--c-text-secondary); }
 
     @media (max-width: 1080px) {
-        .lgd-credit { grid-template-columns: minmax(0, 1fr) 210px; }
+        .lgd-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .lgd-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     @media (max-width: 820px) {
         .lgd-hero { grid-template-columns: 1fr; padding: var(--sp-5); }
         .lgd-avatar { display: none; }
-        .lgd-grid { grid-template-columns: 1fr; }
-        .lgd-fields--two { grid-template-columns: 1fr; }
+        .lgd-fields { grid-template-columns: 1fr; }
         .lgd-name { font-size: var(--fs-xl); }
         .lgd-attach { flex-wrap: wrap; }
         .lgd-attach-action { width: 100%; }
         .lgd-field { grid-template-columns: 96px minmax(0, 1fr); }
-        .lgd-credit { grid-template-columns: 1fr; }
-        .lgd-credit-main-wrap { grid-template-columns: 1fr; gap: var(--sp-3); padding: var(--sp-4) var(--sp-5); }
-        .lgd-credit-divider { width: auto; height: 1px; }
-        .lgd-credit-value { font-size: var(--fs-2xl); }
-        .lgd-credit-side-wrap { grid-template-rows: none; grid-template-columns: 1fr 1fr; }
-        .lgd-credit-side + .lgd-credit-side { border-top: none; border-left: 1px dashed var(--c-border); }
     }
     @media (max-width: 560px) {
+        .lgd-kpis { grid-template-columns: 1fr; }
         .lgd-facts { grid-template-columns: 1fr; }
-        .lgd-field { grid-template-columns: 1fr; gap: 2px; padding: 8px 0; }
+        .lgd-field { grid-template-columns: 1fr; gap: 2px; }
         .lgd-field dt { color: var(--c-text-tertiary); }
-        .lgd-panel-head, .lgd-panel-body { padding-left: var(--sp-4); padding-right: var(--sp-4); }
-        .lgd-credit-side-wrap { grid-template-columns: 1fr; }
-        .lgd-credit-side + .lgd-credit-side { border-left: none; border-top: 1px dashed var(--c-border); }
-        .lgd-attach { padding: var(--sp-4); }
+        .lgd-card-head, .lgd-card-body, .lgd-attach { padding-left: var(--sp-4); padding-right: var(--sp-4); }
         .lgd-attach-action { flex-direction: column; }
         .lgd-attach-action .btn-primary,
         .lgd-attach-action .btn-secondary { width: 100%; text-align: center; }
