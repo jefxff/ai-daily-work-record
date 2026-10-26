@@ -500,3 +500,62 @@
         });
     });
 })();
+
+
+/* ═══ 脚本三：复制 Markdown 原文（导图右侧按钮）═══
+   原文由模板以 window.KB_COPY_MARKDOWN 注入（沉淀容器为按天汇总的
+   真实 Markdown，普通文档为 content 字段原文）。优先走异步剪贴板，
+   非安全上下文（http 内网 IP）回退到 textarea + execCommand。 */
+(function () {
+    var btn = document.getElementById('kbCopyMarkdown');
+    if (!btn) return;
+    var label = document.getElementById('kbCopyMarkdownText');
+    var defaultText = label ? label.textContent : '复制 Markdown';
+    var resetTimer = null;
+
+    function legacyCopy(text) {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.top = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        var ok = false;
+        try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+        document.body.removeChild(ta);
+        return ok;
+    }
+
+    function feedback(ok) {
+        if (label) {
+            label.textContent = ok ? '已复制' : defaultText;
+        }
+        btn.classList.toggle('is-copied', ok);
+        clearTimeout(resetTimer);
+        resetTimer = setTimeout(function () {
+            if (label) label.textContent = defaultText;
+            btn.classList.remove('is-copied');
+        }, 1600);
+        if (window.showToast) {
+            window.showToast(ok ? '已复制 Markdown 原文' : '复制失败，请手动选择正文复制',
+                             ok ? 'success' : 'error');
+        }
+    }
+
+    btn.addEventListener('click', function () {
+        var text = window.KB_COPY_MARKDOWN || '';
+        if (!text.trim()) {
+            if (window.showToast) window.showToast('本文没有可复制的 Markdown 内容', 'error');
+            return;
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(
+                function () { feedback(true); },
+                function () { feedback(legacyCopy(text)); }
+            );
+        } else {
+            feedback(legacyCopy(text));
+        }
+    });
+})();

@@ -319,8 +319,12 @@ def document_detail(request, pk):
     # 阅读视图按「天」分组渲染记录正文：同一天一个日期大标题，当天内容用无序列表。
     # 不展示状态/进度/截止日等元数据（用户反馈：只沉淀记录内容，不要其他东西）。
     sync_days = []
+    # 详情页「复制 Markdown」按钮的复制源：普通文档就是原文；
+    # 沉淀容器正文只是占位说明，复制按天汇总后的真实 Markdown。
+    copy_markdown = document.content or ''
     if document.source == 'daily_record_sync':
         sync_days = _sync_days(document)
+        copy_markdown = _sync_markdown(document, sync_days)
 
     # 获取相关文档（同分类或同标签；同样只从可见范围里挑，
     # 否则会通过「相关文档」把私有文档的标题带出来）
@@ -334,6 +338,7 @@ def document_detail(request, pk):
     context = {
         'document': document,
         'sync_days': sync_days,
+        'copy_markdown': copy_markdown,
         'related_docs': related_docs,
         'category_path': _category_path(document.category),
         'can_edit_doc': access.can_edit(document, request.user),
@@ -546,10 +551,13 @@ def _sync_tree(document):
     return tree
 
 
-def _sync_markdown(document):
-    """沉淀容器 → 生成的 Markdown（编辑弹窗预填用，替代占位模板文字）。"""
+def _sync_markdown(document, days=None):
+    """沉淀容器 → 生成的 Markdown（编辑弹窗预填 / 复制原文用，替代占位模板文字）。
+
+    days 可传入已算好的 _sync_days(document)，避免详情页重复查节点表。
+    """
     lines = []
-    for day in _sync_days(document):
+    for day in (_sync_days(document) if days is None else days):
         lines.append(f'## {day["date"]}')
         for item in day['items']:
             text = re.sub(r'<[^>]+>', '', item['html']).strip()
