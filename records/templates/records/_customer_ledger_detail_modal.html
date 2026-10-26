@@ -1,23 +1,144 @@
 {% load accounts_tags %}
-<div class="detail-card">
-    <h2 class="detail-title">客户台账详情</h2>
-    <div class="detail-row"><div class="detail-label">客户名称：</div><div class="detail-value">{{ ledger.customer_name }}</div></div>
-    <div class="detail-row"><div class="detail-label">客户分类：</div><div class="detail-value">{{ ledger.customer_category|default:"无" }}</div></div>
-    <div class="detail-row"><div class="detail-label">责任业务：</div><div class="detail-value">{{ ledger.responsible_salesperson|default:"无" }}</div></div>
-    <div class="detail-row"><div class="detail-label">法人姓名：</div><div class="detail-value">{{ ledger.legal_representative|default:"无" }}</div></div>
-    <div class="detail-row"><div class="detail-label">统一社会信用代码：</div><div class="detail-value">{{ ledger.credit_code|default:"无" }}</div></div>
-    <div class="detail-row"><div class="detail-label">账期：</div><div class="detail-value">{{ ledger.payment_terms|default:"无" }}</div></div>
-    <div class="detail-row"><div class="detail-label">额度：</div><div class="detail-value">{{ ledger.credit_limit_text|default:ledger.credit_limit|default:"无" }}</div></div>
-    <div class="detail-row"><div class="detail-label">档案编号：</div><div class="detail-value">{{ ledger.archive_no|default:"无" }}</div></div>
-    <div class="detail-row">
-        <div class="detail-label">附件：</div>
-        <div class="detail-value">
+<div class="lgd-modal">
+    <div class="lgd-modal-head">
+        <div>
+            <div class="lgd-modal-eyebrow">客户台账详情</div>
+            <h2 class="lgd-modal-name">{{ ledger.customer_name }}</h2>
+        </div>
+        <div class="lgd-modal-tags">
+            {% if ledger.customer_category %}<span class="lgd-modal-tag">{{ ledger.customer_category }}</span>{% endif %}
+            {% if ledger.company_status %}
+                {% if '注销' in ledger.company_status or '吊销' in ledger.company_status %}
+                <span class="status-badge danger">{{ ledger.company_status }}</span>
+                {% elif '异常' in ledger.company_status %}
+                <span class="status-badge warning">{{ ledger.company_status }}</span>
+                {% elif '存续' in ledger.company_status or '在业' in ledger.company_status or '正常' in ledger.company_status %}
+                <span class="status-badge success">{{ ledger.company_status }}</span>
+                {% else %}
+                <span class="status-badge info">{{ ledger.company_status }}</span>
+                {% endif %}
+            {% endif %}
             {% if ledger.has_attachment %}
-            <a href="{% url 'customer_ledger_attachment' ledger.id %}" target="_blank" rel="noopener noreferrer">{{ ledger.attachment_basename }}</a>
-            {% else %}无{% endif %}
+            <span class="status-badge success">附件齐全</span>
+            {% else %}
+            <span class="status-badge warning">待补附件</span>
+            {% endif %}
         </div>
     </div>
+
+    <dl class="lgd-modal-grid">
+        <div class="lgd-modal-field">
+            <dt>责任业务</dt>
+            <dd>{{ ledger.responsible_salesperson|default:"—" }}</dd>
+        </div>
+        <div class="lgd-modal-field">
+            <dt>法人姓名</dt>
+            <dd>{{ ledger.legal_representative|default:"—" }}</dd>
+        </div>
+        <div class="lgd-modal-field lgd-modal-field--full">
+            <dt>统一社会信用代码</dt>
+            <dd class="lgd-modal-mono">{{ ledger.credit_code|default:"—" }}</dd>
+        </div>
+        <div class="lgd-modal-field">
+            <dt>档案编号</dt>
+            <dd class="lgd-modal-mono">{{ ledger.archive_no|default:"—" }}</dd>
+        </div>
+        <div class="lgd-modal-field">
+            <dt>归档日期</dt>
+            <dd class="lgd-modal-mono">{{ ledger.archive_date|date:"Y-m-d"|default:"—" }}</dd>
+        </div>
+        <div class="lgd-modal-field">
+            <dt>账期</dt>
+            <dd>{{ ledger.payment_terms|default:"—" }}</dd>
+        </div>
+        <div class="lgd-modal-field">
+            <dt>注册资金</dt>
+            <dd>{% if ledger.registered_capital_text %}{{ ledger.registered_capital_text }}{% elif ledger.registered_capital %}{{ ledger.registered_capital|floatformat:"-2" }} 万元{% else %}—{% endif %}</dd>
+        </div>
+        <div class="lgd-modal-field">
+            <dt>实缴资金</dt>
+            <dd>{% if ledger.paid_in_capital_text %}{{ ledger.paid_in_capital_text }}{% elif ledger.paid_in_capital %}{{ ledger.paid_in_capital|floatformat:"-2" }} 万元{% else %}—{% endif %}</dd>
+        </div>
+        <div class="lgd-modal-field">
+            <dt>额度</dt>
+            <dd>{% if ledger.credit_limit_text %}{{ ledger.credit_limit_text }}{% elif ledger.credit_limit %}{{ ledger.credit_limit|floatformat:"-2" }} 万元{% else %}—{% endif %}</dd>
+        </div>
+        <div class="lgd-modal-field lgd-modal-field--full">
+            <dt>地址</dt>
+            <dd>{{ ledger.address|default:"—" }}</dd>
+        </div>
+    </dl>
+
+    <div class="lgd-modal-attach">
+        <span class="lgd-modal-attach-label">汇总附件</span>
+        {% if ledger.has_attachment %}
+        <a href="{% url 'customer_ledger_attachment' ledger.id %}" target="_blank" rel="noopener noreferrer">{{ ledger.attachment_basename }}</a>
+        {% else %}
+        <span class="lgd-modal-attach-empty">尚未上传（营业执照、法人身份证、合同等合并为一个 PDF）</span>
+        {% endif %}
+    </div>
+
     <div class="detail-actions">
         <a href="{% url 'customer_ledger_detail' ledger.id %}" class="btn-primary">查看完整详情</a>
     </div>
 </div>
+<style>
+    .lgd-modal { display: grid; gap: var(--sp-4); }
+    .lgd-modal-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: var(--sp-3);
+        flex-wrap: wrap;
+        padding-bottom: var(--sp-3);
+        border-bottom: 1px solid var(--c-border);
+    }
+    .lgd-modal-eyebrow { font-size: var(--fs-xs); letter-spacing: var(--ls-wide); color: var(--c-text-secondary); margin-bottom: 2px; }
+    .lgd-modal-name {
+        margin: 0;
+        font-family: var(--font-display);
+        font-size: var(--fs-xl);
+        font-weight: 700;
+        line-height: var(--lh-tight);
+        color: var(--c-text);
+        word-break: break-word;
+    }
+    .lgd-modal-tags { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
+    .lgd-modal-tag {
+        display: inline-block;
+        padding: 2px 10px;
+        border-radius: var(--r-full);
+        background: var(--c-surface-sunken);
+        color: var(--c-text-secondary);
+        font-size: var(--fs-xs);
+        line-height: 20px;
+        white-space: nowrap;
+    }
+    .lgd-modal-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: var(--sp-3) var(--sp-4);
+        margin: 0;
+        padding: var(--sp-4);
+        background: var(--c-surface-sunken);
+        border-radius: var(--r-md);
+    }
+    .lgd-modal-field { min-width: 0; }
+    .lgd-modal-field--full { grid-column: 1 / -1; }
+    .lgd-modal-field dt { font-size: var(--fs-xs); color: var(--c-text-tertiary); margin-bottom: 2px; }
+    .lgd-modal-field dd { margin: 0; font-size: var(--fs-sm); color: var(--c-text); line-height: var(--lh-base); word-break: break-word; }
+    .lgd-modal-mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+    .lgd-modal-attach {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sp-2);
+        padding: var(--sp-3) var(--sp-4);
+        background: var(--c-surface);
+        border: 1px dashed var(--c-border);
+        border-radius: var(--r-sm);
+        font-size: var(--fs-sm);
+    }
+    .lgd-modal-attach-label { color: var(--c-text-tertiary); font-size: var(--fs-xs); }
+    .lgd-modal-attach-empty { color: var(--c-text-secondary); }
+</style>

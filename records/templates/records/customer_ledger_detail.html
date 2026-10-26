@@ -2,15 +2,15 @@
 {% load static %}
 {% load accounts_tags %}
 
-{% block page_title %}客户台账详情 - 每日工作记录管理网站{% endblock %}
+{% block page_title %}客户台账 · {{ ledger.customer_name }} - 每日工作记录管理网站{% endblock %}
 
-{% block top_nav_actions %}
+{% block page_actions %}
     <a href="{% url 'customer_ledger_list' %}" class="btn-transparent">返回列表</a>
     {% if ledger.has_attachment %}
     <a href="{% url 'customer_ledger_attachment' ledger.id %}" class="btn-transparent" target="_blank" rel="noopener noreferrer">查看附件</a>
     {% endif %}
     {% can "customer_ledger" "update" %}
-    <a href="{% url 'customer_ledger_edit' ledger.id %}" class="btn-transparent">编辑记录</a>
+    <a href="{% url 'customer_ledger_edit' ledger.id %}" class="btn-primary">编辑记录</a>
     {% endcan %}
     {% can "customer_ledger" "delete" %}
     <form class="u-inline" method="post" action="{% url 'customer_ledger_delete' ledger.id %}" data-confirm="确定要删除这条记录吗？附件也会一并删除。">{% csrf_token %}<button type="submit" class="btn-transparent btn-delete">删除记录</button></form>
@@ -18,71 +18,440 @@
 {% endblock %}
 
 {% block content %}
-    <div class="detail-card">
-        <h2 class="detail-title">客户台账详细信息</h2>
+<div class="lgd">
 
-        <h3 class="detail-section">基本信息</h3>
-        <div class="detail-row"><div class="detail-label">客户名称：</div><div class="detail-value">{{ ledger.customer_name }}</div></div>
-        <div class="detail-row"><div class="detail-label">客户分类：</div><div class="detail-value">{{ ledger.customer_category|default:"无" }}</div></div>
-        <div class="detail-row"><div class="detail-label">责任业务：</div><div class="detail-value">{{ ledger.responsible_salesperson|default:"无" }}</div></div>
-        <div class="detail-row"><div class="detail-label">法人姓名：</div><div class="detail-value">{{ ledger.legal_representative|default:"无" }}</div></div>
-        <div class="detail-row"><div class="detail-label">地址：</div><div class="detail-value">{{ ledger.address|default:"无" }}</div></div>
-        <div class="detail-row"><div class="detail-label">统一社会信用代码：</div><div class="detail-value">{{ ledger.credit_code|default:"无" }}</div></div>
-
-        <h3 class="detail-section">工商与资金</h3>
-        <div class="detail-row"><div class="detail-label">注册资金：</div><div class="detail-value">{{ ledger.registered_capital_text|default:ledger.registered_capital|default:"无" }}</div></div>
-        <div class="detail-row"><div class="detail-label">实缴资金：</div><div class="detail-value">{{ ledger.paid_in_capital_text|default:ledger.paid_in_capital|default:"无" }}</div></div>
-        <div class="detail-row"><div class="detail-label">公司现状：</div><div class="detail-value">{{ ledger.company_status|default:"无" }}</div></div>
-        <div class="detail-row"><div class="detail-label">营业执照：</div><div class="detail-value">{{ ledger.business_license|default:"无" }}</div></div>
-        <div class="detail-row"><div class="detail-label">账期：</div><div class="detail-value">{{ ledger.payment_terms|default:"无" }}</div></div>
-        <div class="detail-row"><div class="detail-label">额度：</div><div class="detail-value">{{ ledger.credit_limit_text|default:ledger.credit_limit|default:"无" }}</div></div>
-        <div class="detail-row"><div class="detail-label">变更时间：</div><div class="detail-value">{{ ledger.change_date|date:'Y-m-d'|default:"无" }}</div></div>
-
-        <h3 class="detail-section">合同与担保</h3>
-        <div class="detail-row"><div class="detail-label">基本合同：</div><div class="detail-value">{{ ledger.basic_contract|default:"无" }}</div></div>
-        <div class="detail-row"><div class="detail-label">基本合同签订日期：</div><div class="detail-value">{{ ledger.contract_sign_date|date:'Y-m-d'|default:"无" }}</div></div>
-        <div class="detail-row"><div class="detail-label">基本合同存在的问题：</div><div class="detail-value">{{ ledger.contract_issues|default:"无" }}</div></div>
-        <div class="detail-row"><div class="detail-label">资产担保：</div><div class="detail-value">{{ ledger.asset_guarantee|default:"无" }}</div></div>
-        <div class="detail-row"><div class="detail-label">资产担保人：</div><div class="detail-value">{{ ledger.asset_guarantor|default:"无" }}</div></div>
-        <div class="detail-row"><div class="detail-label">担保资产明细：</div><div class="detail-value">{{ ledger.guaranteed_asset_detail|default:"无" }}</div></div>
-        <div class="detail-row"><div class="detail-label">担保资产是否抵押：</div><div class="detail-value">{{ ledger.asset_mortgaged|default:"无" }}</div></div>
-        <div class="detail-row"><div class="detail-label">资产担保存在的问题：</div><div class="detail-value">{{ ledger.asset_guarantee_issues|default:"无" }}</div></div>
-        <div class="detail-row"><div class="detail-label">法代身份证：</div><div class="detail-value">{{ ledger.legal_id_card|default:"无" }}</div></div>
-        <div class="detail-row"><div class="detail-label">担保人身份证：</div><div class="detail-value">{{ ledger.guarantor_id_card|default:"无" }}</div></div>
-        <div class="detail-row"><div class="detail-label">合同份数：</div><div class="detail-value">{{ ledger.contract_count|default:"无" }}</div></div>
-
-        <h3 class="detail-section">归档信息</h3>
-        <div class="detail-row"><div class="detail-label">处理建议：</div><div class="detail-value">{{ ledger.handling_suggestion|default:"无" }}</div></div>
-        <div class="detail-row"><div class="detail-label">系统信息：</div><div class="detail-value">{{ ledger.system_info|default:"无" }}</div></div>
-        <div class="detail-row"><div class="detail-label">位置：</div><div class="detail-value">{{ ledger.location|default:"无" }}</div></div>
-        <div class="detail-row"><div class="detail-label">档案编号：</div><div class="detail-value">{{ ledger.archive_no|default:"无" }}</div></div>
-        <div class="detail-row"><div class="detail-label">归档日期：</div><div class="detail-value">{{ ledger.archive_date|date:'Y-m-d'|default:"无" }}</div></div>
-        <div class="detail-row"><div class="detail-label">备注：</div><div class="detail-value">{{ ledger.remarks|default:"无" }}</div></div>
-
-        <h3 class="detail-section">汇总附件</h3>
-        <div class="detail-row">
-            <div class="detail-label">附件：</div>
-            <div class="detail-value">
+    <!-- 客户名片：名称 + 状态标签 + 关键事实 -->
+    <section class="lgd-hero" aria-labelledby="lgdCustomerName">
+        <div class="lgd-hero-top">
+            <div>
+                <div class="lgd-eyebrow">客户台账详细信息</div>
+                <h2 class="lgd-name" id="lgdCustomerName">{{ ledger.customer_name }}</h2>
+            </div>
+            <div class="lgd-tags">
+                {% if ledger.customer_category %}
+                <span class="lgd-tag">{{ ledger.customer_category }}</span>
+                {% endif %}
+                {% if ledger.company_status %}
+                    {% if '注销' in ledger.company_status or '吊销' in ledger.company_status %}
+                    <span class="status-badge danger">{{ ledger.company_status }}</span>
+                    {% elif '异常' in ledger.company_status %}
+                    <span class="status-badge warning">{{ ledger.company_status }}</span>
+                    {% elif '存续' in ledger.company_status or '在业' in ledger.company_status or '正常' in ledger.company_status %}
+                    <span class="status-badge success">{{ ledger.company_status }}</span>
+                    {% else %}
+                    <span class="status-badge info">{{ ledger.company_status }}</span>
+                    {% endif %}
+                {% endif %}
                 {% if ledger.has_attachment %}
-                <a href="{% url 'customer_ledger_attachment' ledger.id %}" target="_blank" rel="noopener noreferrer">{{ ledger.attachment_basename }}</a>
+                <span class="status-badge success">附件齐全</span>
                 {% else %}
-                无
+                <span class="status-badge warning">待补附件</span>
                 {% endif %}
             </div>
         </div>
-        <div class="detail-row"><div class="detail-label">更新时间：</div><div class="detail-value">{{ ledger.updated_at|date:'Y-m-d H:i' }}</div></div>
+
+        <dl class="lgd-facts">
+            <div class="lgd-fact">
+                <dt>责任业务</dt>
+                <dd>{{ ledger.responsible_salesperson|default:"—" }}</dd>
+            </div>
+            <div class="lgd-fact">
+                <dt>统一社会信用代码</dt>
+                <dd class="lgd-mono">{{ ledger.credit_code|default:"—" }}</dd>
+            </div>
+            <div class="lgd-fact">
+                <dt>档案编号</dt>
+                <dd class="lgd-mono">{{ ledger.archive_no|default:"—" }}</dd>
+            </div>
+            <div class="lgd-fact">
+                <dt>最后更新</dt>
+                <dd class="lgd-mono">{{ ledger.updated_at|date:"Y-m-d H:i" }}</dd>
+            </div>
+        </dl>
+    </section>
+
+    <!-- 资金规模：金额原文优先，无原文时按万元展示 -->
+    <section class="lgd-stats" aria-label="资金规模">
+        <div class="lgd-stat">
+            <span class="lgd-stat-label">注册资金</span>
+            <span class="lgd-stat-value">
+                {% if ledger.registered_capital_text %}{{ ledger.registered_capital_text }}
+                {% elif ledger.registered_capital %}{{ ledger.registered_capital|floatformat:"-2" }}<small>万元</small>
+                {% else %}<span class="lgd-stat-empty">—</span>{% endif %}
+            </span>
+        </div>
+        <div class="lgd-stat">
+            <span class="lgd-stat-label">实缴资金</span>
+            <span class="lgd-stat-value">
+                {% if ledger.paid_in_capital_text %}{{ ledger.paid_in_capital_text }}
+                {% elif ledger.paid_in_capital %}{{ ledger.paid_in_capital|floatformat:"-2" }}<small>万元</small>
+                {% else %}<span class="lgd-stat-empty">—</span>{% endif %}
+            </span>
+        </div>
+        <div class="lgd-stat">
+            <span class="lgd-stat-label">授信额度</span>
+            <span class="lgd-stat-value">
+                {% if ledger.credit_limit_text %}{{ ledger.credit_limit_text }}
+                {% elif ledger.credit_limit %}{{ ledger.credit_limit|floatformat:"-2" }}<small>万元</small>
+                {% else %}<span class="lgd-stat-empty">—</span>{% endif %}
+            </span>
+        </div>
+    </section>
+
+    <!-- 信息分区：三列自适应，长文本分区独占整行 -->
+    <div class="lgd-grid">
+        <section class="lgd-panel" aria-labelledby="lgdBasic">
+            <div class="lgd-panel-head">
+                <svg class="lgd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/></svg>
+                <h3 id="lgdBasic">基本信息</h3>
+            </div>
+            <dl class="lgd-fields">
+                <div class="lgd-field">
+                    <dt>法人姓名</dt>
+                    <dd>{{ ledger.legal_representative|default:"—" }}</dd>
+                </div>
+                <div class="lgd-field">
+                    <dt>营业执照</dt>
+                    <dd>{{ ledger.business_license|default:"—" }}</dd>
+                </div>
+                <div class="lgd-field">
+                    <dt>账期</dt>
+                    <dd>{{ ledger.payment_terms|default:"—" }}</dd>
+                </div>
+                <div class="lgd-field">
+                    <dt>变更时间</dt>
+                    <dd class="lgd-mono">{{ ledger.change_date|date:"Y-m-d"|default:"—" }}</dd>
+                </div>
+                <div class="lgd-field lgd-field--full">
+                    <dt>地址</dt>
+                    <dd>{{ ledger.address|default:"—" }}</dd>
+                </div>
+            </dl>
+        </section>
+
+        <section class="lgd-panel" aria-labelledby="lgdContract">
+            <div class="lgd-panel-head">
+                <svg class="lgd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/><line x1="9" y1="18" x2="13" y2="18"/></svg>
+                <h3 id="lgdContract">合同与担保</h3>
+            </div>
+            <dl class="lgd-fields">
+                <div class="lgd-field">
+                    <dt>基本合同</dt>
+                    <dd>{{ ledger.basic_contract|default:"—" }}</dd>
+                </div>
+                <div class="lgd-field">
+                    <dt>签订日期</dt>
+                    <dd class="lgd-mono">{{ ledger.contract_sign_date|date:"Y-m-d"|default:"—" }}</dd>
+                </div>
+                <div class="lgd-field">
+                    <dt>合同份数</dt>
+                    <dd>{{ ledger.contract_count|default:"—" }}</dd>
+                </div>
+                <div class="lgd-field">
+                    <dt>资产担保</dt>
+                    <dd>{{ ledger.asset_guarantee|default:"—" }}</dd>
+                </div>
+                <div class="lgd-field">
+                    <dt>资产担保人</dt>
+                    <dd>{{ ledger.asset_guarantor|default:"—" }}</dd>
+                </div>
+                <div class="lgd-field">
+                    <dt>担保资产是否抵押</dt>
+                    <dd>
+                        {% if ledger.asset_mortgaged == '是' %}
+                        <span class="status-badge warning">{{ ledger.asset_mortgaged }}</span>
+                        {% elif ledger.asset_mortgaged == '否' %}
+                        <span class="status-badge success">{{ ledger.asset_mortgaged }}</span>
+                        {% else %}{{ ledger.asset_mortgaged|default:"—" }}{% endif %}
+                    </dd>
+                </div>
+                <div class="lgd-field">
+                    <dt>法代身份证</dt>
+                    <dd>{{ ledger.legal_id_card|default:"—" }}</dd>
+                </div>
+                <div class="lgd-field">
+                    <dt>担保人身份证</dt>
+                    <dd>{{ ledger.guarantor_id_card|default:"—" }}</dd>
+                </div>
+            </dl>
+        </section>
+
+        <section class="lgd-panel" aria-labelledby="lgdArchive">
+            <div class="lgd-panel-head">
+                <svg class="lgd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+                <h3 id="lgdArchive">归档信息</h3>
+            </div>
+            <dl class="lgd-fields">
+                <div class="lgd-field">
+                    <dt>归档日期</dt>
+                    <dd class="lgd-mono">{{ ledger.archive_date|date:"Y-m-d"|default:"—" }}</dd>
+                </div>
+                <div class="lgd-field">
+                    <dt>位置</dt>
+                    <dd>{{ ledger.location|default:"—" }}</dd>
+                </div>
+                <div class="lgd-field lgd-field--full">
+                    <dt>系统信息</dt>
+                    <dd>{{ ledger.system_info|default:"—" }}</dd>
+                </div>
+            </dl>
+        </section>
+
+        <section class="lgd-panel lgd-panel--wide" aria-labelledby="lgdRisk">
+            <div class="lgd-panel-head">
+                <svg class="lgd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <h3 id="lgdRisk">风险与备注</h3>
+            </div>
+            <dl class="lgd-fields">
+                <div class="lgd-field">
+                    <dt>基本合同存在的问题</dt>
+                    <dd>{{ ledger.contract_issues|default:"—" }}</dd>
+                </div>
+                <div class="lgd-field">
+                    <dt>担保资产明细</dt>
+                    <dd>{{ ledger.guaranteed_asset_detail|default:"—" }}</dd>
+                </div>
+                <div class="lgd-field">
+                    <dt>资产担保存在的问题</dt>
+                    <dd>{{ ledger.asset_guarantee_issues|default:"—" }}</dd>
+                </div>
+                <div class="lgd-field">
+                    <dt>处理建议</dt>
+                    <dd>{{ ledger.handling_suggestion|default:"—" }}</dd>
+                </div>
+                <div class="lgd-field lgd-field--full">
+                    <dt>备注</dt>
+                    <dd class="lgd-prose">{{ ledger.remarks|default:"—" }}</dd>
+                </div>
+            </dl>
+        </section>
     </div>
+
+    <!-- 汇总附件：营业执照 / 法人身份证 / 基本合同合并 PDF -->
+    <section class="lgd-attach{% if not ledger.has_attachment %} lgd-attach--empty{% endif %}" aria-labelledby="lgdAttachTitle">
+        <div class="lgd-attach-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <span class="lgd-attach-ext">PDF</span>
+        </div>
+        <div class="lgd-attach-body">
+            <h3 id="lgdAttachTitle">汇总附件</h3>
+            {% if ledger.has_attachment %}
+            <p class="lgd-attach-file">{{ ledger.attachment_basename }}</p>
+            <p class="lgd-attach-hint">营业执照、法人身份证、基本合同等资料的合并扫描件</p>
+            {% else %}
+            <p class="lgd-attach-file lgd-empty-text">尚未上传附件</p>
+            <p class="lgd-attach-hint">请将本客户的营业执照、法人身份证、基本合同等资料合并为一个 PDF 后上传</p>
+            {% endif %}
+        </div>
+        <div class="lgd-attach-action">
+            {% if ledger.has_attachment %}
+            <a href="{% url 'customer_ledger_attachment' ledger.id %}" class="btn-primary" target="_blank" rel="noopener noreferrer">查看 PDF</a>
+            {% endif %}
+            {% can "customer_ledger" "update" %}
+            <a href="{% url 'customer_ledger_edit' ledger.id %}" class="btn-secondary">{% if ledger.has_attachment %}替换附件{% else %}上传附件{% endif %}</a>
+            {% endcan %}
+        </div>
+    </section>
+</div>
 {% endblock %}
 
 {% block extra_css %}
 <style>
-    .detail-section {
-        margin: 1.5rem 0 0.75rem;
-        padding-bottom: 0.4rem;
+    .lgd { display: grid; gap: var(--sp-5); padding-bottom: var(--sp-6); }
+
+    /* —— 客户名片 —— */
+    .lgd-hero {
+        position: relative;
+        overflow: hidden;
+        padding: var(--sp-6) var(--sp-7);
+        background: linear-gradient(135deg, var(--c-primary-subtle) 0%, var(--c-surface) 58%);
+        border: 1px solid var(--c-border);
+        border-radius: var(--r-lg);
+    }
+    .lgd-hero::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        background: var(--c-primary);
+    }
+    .lgd-hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-4); flex-wrap: wrap; }
+    .lgd-eyebrow {
+        font-size: var(--fs-xs);
+        letter-spacing: var(--ls-wide);
+        color: var(--c-text-secondary);
+        margin-bottom: var(--sp-2);
+    }
+    .lgd-name {
+        margin: 0;
+        font-family: var(--font-display);
+        font-size: var(--fs-2xl);
+        font-weight: 700;
+        line-height: var(--lh-tight);
+        letter-spacing: var(--ls-tight);
+        color: var(--c-text);
+        word-break: break-word;
+    }
+    .lgd-tags { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
+    .lgd-tag {
+        display: inline-block;
+        padding: 2px 10px;
+        border-radius: var(--r-full);
+        background: var(--c-surface);
+        border: 1px solid var(--c-border);
+        color: var(--c-text-secondary);
+        font-size: var(--fs-xs);
+        line-height: 20px;
+        white-space: nowrap;
+    }
+    .lgd-facts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--sp-5) var(--sp-8);
+        margin: var(--sp-5) 0 0;
+        padding-top: var(--sp-4);
+        border-top: 1px dashed var(--c-border);
+    }
+    .lgd-fact { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+    .lgd-fact dt {
+        font-size: var(--fs-xs);
+        color: var(--c-text-tertiary);
+        letter-spacing: var(--ls-wide);
+    }
+    .lgd-fact dd {
+        margin: 0;
+        font-size: var(--fs-md);
+        font-weight: 500;
+        color: var(--c-text);
+        word-break: break-word;
+    }
+    .lgd-mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+    /* —— 资金规模 —— */
+    .lgd-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: var(--sp-4); }
+    .lgd-stat {
+        padding: var(--sp-4) var(--sp-5);
+        background: var(--c-surface);
+        border: 1px solid var(--c-border);
+        border-radius: var(--r-md);
+    }
+    .lgd-stat-label {
+        display: block;
+        font-size: var(--fs-xs);
+        color: var(--c-text-tertiary);
+        letter-spacing: var(--ls-wide);
+        margin-bottom: var(--sp-2);
+    }
+    .lgd-stat-value {
+        display: block;
+        font-family: var(--font-mono);
+        font-variant-numeric: tabular-nums;
+        font-size: var(--fs-xl);
+        font-weight: 600;
+        line-height: 1.2;
+        color: var(--c-text);
+        word-break: break-word;
+    }
+    .lgd-stat-value small {
+        margin-left: 4px;
+        font-family: var(--font-body);
+        font-size: var(--fs-xs);
+        font-weight: 400;
+        color: var(--c-text-secondary);
+    }
+    .lgd-stat-empty { color: var(--c-text-disabled); }
+
+    /* —— 信息分区 —— */
+    .lgd-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--sp-4); }
+    .lgd-panel {
+        padding: var(--sp-5);
+        background: var(--c-surface);
+        border: 1px solid var(--c-border);
+        border-radius: var(--r-md);
+    }
+    .lgd-panel--wide { grid-column: 1 / -1; }
+    .lgd-panel-head {
+        display: flex;
+        align-items: center;
+        gap: var(--sp-2);
+        margin-bottom: var(--sp-4);
+        padding-bottom: var(--sp-3);
         border-bottom: 1px solid var(--c-border);
-        font-size: 1rem;
+    }
+    .lgd-panel-head h3 {
+        margin: 0;
+        font-family: var(--font-display);
+        font-size: var(--fs-md);
         font-weight: 600;
         color: var(--c-text);
+    }
+    .lgd-icon { width: 17px; height: 17px; flex-shrink: 0; color: var(--c-primary); }
+    .lgd-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--sp-4) var(--sp-5); margin: 0; }
+    .lgd-field { min-width: 0; }
+    .lgd-field--full { grid-column: 1 / -1; }
+    .lgd-field dt {
+        margin-bottom: 3px;
+        font-size: var(--fs-xs);
+        color: var(--c-text-tertiary);
+        letter-spacing: 0.02em;
+    }
+    .lgd-field dd {
+        margin: 0;
+        font-size: var(--fs-base);
+        line-height: var(--lh-base);
+        color: var(--c-text);
+        word-break: break-word;
+    }
+    .lgd-prose { white-space: pre-wrap; }
+
+    /* —— 汇总附件 —— */
+    .lgd-attach {
+        display: flex;
+        align-items: center;
+        gap: var(--sp-5);
+        padding: var(--sp-5) var(--sp-6);
+        background: var(--c-surface);
+        border: 1px solid var(--c-border);
+        border-radius: var(--r-md);
+    }
+    .lgd-attach--empty {
+        background: var(--c-accent-subtle);
+        border-color: var(--c-accent-line);
+    }
+    .lgd-attach-icon {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+        width: 46px;
+        height: 46px;
+        flex-shrink: 0;
+        border-radius: var(--r-md);
+        background: var(--c-primary-subtle);
+        color: var(--c-primary);
+    }
+    .lgd-attach--empty .lgd-attach-icon { background: var(--c-surface); color: var(--c-accent); }
+    .lgd-attach-icon svg { width: 20px; height: 20px; }
+    .lgd-attach-ext { font-size: 9px; font-weight: 600; letter-spacing: 0.04em; line-height: 1; }
+    .lgd-attach-body { flex: 1; min-width: 0; }
+    .lgd-attach-body h3 { margin: 0 0 2px; font-size: var(--fs-base); font-weight: 600; color: var(--c-text); }
+    .lgd-attach-file { margin: 0; font-size: var(--fs-base); color: var(--c-text); word-break: break-all; }
+    .lgd-attach-hint { margin: 2px 0 0; font-size: var(--fs-xs); color: var(--c-text-secondary); }
+    .lgd-empty-text { color: var(--c-text-secondary); }
+    .lgd-attach-action { display: flex; gap: var(--sp-2); flex-wrap: wrap; flex-shrink: 0; }
+    .lgd-attach-action .btn-secondary { text-decoration: none; display: inline-block; }
+
+    @media (max-width: 720px) {
+        .lgd-hero { padding: var(--sp-5); }
+        .lgd-name { font-size: var(--fs-xl); }
+        .lgd-facts { gap: var(--sp-4) var(--sp-6); }
+        .lgd-stat-value { font-size: var(--fs-lg); }
+        .lgd-attach { flex-wrap: wrap; }
+        .lgd-attach-body { flex: 1 1 100%; order: 2; }
+        .lgd-attach-action { order: 3; width: 100%; }
     }
 </style>
 {% endblock %}
