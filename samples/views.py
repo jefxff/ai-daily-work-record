@@ -274,7 +274,7 @@ def sample_create(request):
 
 @perm_required("samples", "update")
 def sample_edit(request, pk):
-    sample = get_object_or_404(Sample, pk=pk)
+    sample = get_object_or_404(Sample.objects.select_related("registrar", "handler"), pk=pk)
     is_ajax = request.headers.get("x-requested-with") == "XMLHttpRequest"
     if sample.is_deleted:
         messages.error(request, "样品已删除，请先恢复后再编辑。")
@@ -637,7 +637,7 @@ def _build_timeline(sample, test_records, batch_records, proof_stages=None, audi
 
 @perm_required("samples", "delete")
 def sample_delete(request, pk):
-    sample = get_object_or_404(Sample, pk=pk)
+    sample = get_object_or_404(Sample.objects.select_related("registrar", "handler"), pk=pk)
     if request.method == "POST":
         try:
             services.soft_delete_sample(sample, _current_name(request), services.client_ip(request))
@@ -650,7 +650,7 @@ def sample_delete(request, pk):
 
 @perm_required("samples", "update")
 def sample_restore(request, pk):
-    sample = get_object_or_404(Sample, pk=pk)
+    sample = get_object_or_404(Sample.objects.select_related("registrar", "handler"), pk=pk)
     if request.method == "POST":
         try:
             services.restore_sample(sample, _current_name(request), services.client_ip(request))
@@ -662,7 +662,7 @@ def sample_restore(request, pk):
 
 @perm_required("samples", "update")
 def sample_terminate(request, pk):
-    sample = get_object_or_404(Sample, pk=pk)
+    sample = get_object_or_404(Sample.objects.select_related("registrar", "handler"), pk=pk)
     operator = _current_name(request)
     if request.method == "POST":
         form = TerminateForm(request.POST)
@@ -691,7 +691,7 @@ def sample_terminate(request, pk):
 
 @perm_required("samples", "create")
 def test_create(request, pk):
-    sample = get_object_or_404(Sample, pk=pk)
+    sample = get_object_or_404(Sample.objects.select_related("registrar", "handler"), pk=pk)
     operator = _current_name(request)
     is_ajax = _is_ajax(request)
     if request.method == "POST":
@@ -738,7 +738,7 @@ def test_create(request, pk):
 
 @perm_required("samples", "update")
 def test_edit(request, pk, record_pk):
-    sample = get_object_or_404(Sample, pk=pk)
+    sample = get_object_or_404(Sample.objects.select_related("registrar", "handler"), pk=pk)
     record = get_object_or_404(TestRecord, pk=record_pk, sample=sample)
     # 操作人为历史事实：保持原值，不允许借编辑篡改
     operator = record.operator
@@ -779,7 +779,7 @@ def test_edit(request, pk, record_pk):
 
 @perm_required("samples", "delete")
 def test_delete(request, pk, record_pk):
-    sample = get_object_or_404(Sample, pk=pk)
+    sample = get_object_or_404(Sample.objects.select_related("registrar", "handler"), pk=pk)
     record = get_object_or_404(TestRecord, pk=record_pk, sample=sample)
     if request.method == "POST":
         try:
@@ -801,7 +801,7 @@ def test_delete(request, pk, record_pk):
 
 @perm_required("samples", "create")
 def batch_create(request, pk):
-    sample = get_object_or_404(Sample, pk=pk)
+    sample = get_object_or_404(Sample.objects.select_related("registrar", "handler"), pk=pk)
     operator = _current_name(request)
     is_ajax = _is_ajax(request)
     if request.method == "POST":
@@ -848,7 +848,7 @@ def batch_create(request, pk):
 
 @perm_required("samples", "update")
 def batch_edit(request, pk, record_pk):
-    sample = get_object_or_404(Sample, pk=pk)
+    sample = get_object_or_404(Sample.objects.select_related("registrar", "handler"), pk=pk)
     record = get_object_or_404(BatchRecord, pk=record_pk, sample=sample)
     # 操作人为历史事实：保持原值，不允许借编辑篡改
     operator = record.operator
@@ -889,7 +889,7 @@ def batch_edit(request, pk, record_pk):
 
 @perm_required("samples", "delete")
 def batch_delete(request, pk, record_pk):
-    sample = get_object_or_404(Sample, pk=pk)
+    sample = get_object_or_404(Sample.objects.select_related("registrar", "handler"), pk=pk)
     record = get_object_or_404(BatchRecord, pk=record_pk, sample=sample)
     if request.method == "POST":
         try:
@@ -914,7 +914,7 @@ def supplier_type_update(request, pk):
     """AJAX 更新样品的供应商类型。"""
     if request.method != "POST":
         return JsonResponse({"ok": False, "message": "仅支持 POST"}, status=405)
-    sample = get_object_or_404(Sample, pk=pk)
+    sample = get_object_or_404(Sample.objects.select_related("registrar", "handler"), pk=pk)
     new_type = (request.POST.get("supplier_type") or "").strip()
     if new_type not in dict(Sample.SupplierType.choices):
         return JsonResponse({"ok": False, "message": "无效的供应商类型"},
@@ -1094,7 +1094,7 @@ def proof_upload(request, pk, stage):
     保持 redirect-after-POST 模式；表单错误同样回详情页以 messages 提示。
     上传人由后端强制取当前登录用户，客户端提交值忽略。
     """
-    sample = get_object_or_404(Sample, pk=pk)
+    sample = get_object_or_404(Sample.objects.select_related("registrar", "handler"), pk=pk)
     if stage not in dict(ProofAttachment.Stage.choices):
         messages.error(request, "无效的证明材料阶段。")
         return redirect("samples:detail", pk=pk)
@@ -1127,7 +1127,7 @@ def proof_upload(request, pk, stage):
 @perm_required("samples", "delete")
 def proof_delete(request, pk, attachment_pk):
     """删除证明材料附件（仅 POST，详情页内联表单带确认）。"""
-    sample = get_object_or_404(Sample, pk=pk)
+    sample = get_object_or_404(Sample.objects.select_related("registrar", "handler"), pk=pk)
     attachment = get_object_or_404(ProofAttachment, pk=attachment_pk, sample=sample)
     if request.method == "POST":
         try:

@@ -2,6 +2,7 @@ import logging
 
 import json
 import re
+import functools
 import uuid
 from datetime import date, timedelta
 
@@ -227,6 +228,7 @@ _NOOPENER_RE = re.compile(r'(<a\b[^>]*?\btarget=["\']_blank["\'][^>]*?)\srel=["\
 _NO_REL_PATTERN = re.compile(r'(<a\b[^>]*?\btarget=["\']_blank["\'])(?![^>]*\brel=)', re.IGNORECASE)
 
 
+@functools.lru_cache(maxsize=256)
 def _sanitize_html(html: str) -> str:
     import bleach
 

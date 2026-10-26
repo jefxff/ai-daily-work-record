@@ -53,8 +53,7 @@ jobs:
       # 本项目按「内网 HTTP 单机」部署，HSTS / SSL 重定向 / 安全 Cookie 有意关闭
       # （security.W004/W008/W012/W016 为已知项），因此该检查只做留痕不阻断。
       - name: 生产形态检查（HTTP 内网部署，安全项为已知收敛项）
-        continue-on-error: true
-        # HTTPS 开关只对本步骤生效：模拟「已前置 HTTPS 反代」的生产形态
+                # HTTPS 开关只对本步骤生效：模拟「已前置 HTTPS 反代」的生产形态
         env:
           DJANGO_HTTPS_ONLY: "1"
           DJANGO_BEHIND_HTTPS_PROXY: "1"

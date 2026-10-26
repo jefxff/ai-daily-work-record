@@ -11,6 +11,8 @@ DJANGO_CSP_MODE=enforce 即可把完整策略切换为强制模式，无需改�
 
 import json
 import logging
+import logging.handlers as _lh
+import os
 import re
 import secrets
 
@@ -22,6 +24,17 @@ from django.views.decorators.http import require_POST
 from accounts.decorators import login_exempt
 
 logger = logging.getLogger(__name__)
+
+# CSP 违规独立审计通道：JSON Lines 格式写入 csp_violations.log
+_CSP_LOG_DIR = os.environ.get('DJANGO_CSP_LOG_DIR', os.path.join(settings.BASE_DIR, 'logs'))
+os.makedirs(_CSP_LOG_DIR, exist_ok=True)
+_csp_file_handler = _lh.RotatingFileHandler(
+    os.path.join(_CSP_LOG_DIR, 'csp_violations.log'),
+    maxBytes=5*1024*1024, backupCount=3, encoding='utf-8',
+)
+_csp_file_handler.setFormatter(logging.Formatter('%(asctime)s %(message)s'))
+logger.addHandler(_csp_file_handler)
+
 
 _SCRIPT_TAG_RE = re.compile(r"<script(?![^>]*\bnonce=)", re.IGNORECASE)
 
@@ -78,6 +91,7 @@ class CSPMiddleware:
         report_policy = "; ".join([
             "default-src 'self'",
             f"script-src 'self' 'nonce-{nonce}'",
+            "script-src-attr 'unsafe-inline'",
             "style-src 'self' 'unsafe-inline'",
             "img-src 'self' data: blob:",
             "font-src 'self' data:",
@@ -112,7 +126,7 @@ def csp_report(request):
     try:
         payload = json.loads(request.body.decode("utf-8", errors="ignore") or "{}")
         report = payload.get("csp-report") or {}
-        logger.warning(
+        logger.info(
             "CSP violation blocked=%s directive=%s uri=%s",
             _log_safe(report.get("blocked-uri")),
             _log_safe(report.get("violated-directive")),
