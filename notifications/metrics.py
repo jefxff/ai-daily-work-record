@@ -52,10 +52,14 @@ def reset():
 
 
 def should_skip(path):
-    """噪声路径不采集：静态资源、媒体文件、favicon、探针自身。"""
+    """噪声路径不采集：静态资源、媒体文件、favicon、探针自身、perf 自举。
+
+    /system/perf/ 自身也写 RequestMetric，会形成自举递归放大：越频繁访问 perf，
+    它自己的统计数据就越多、查询越慢，越容易在慢查询里看到自己。直接跳过。
+    """
     if not path:
         return True
-    for prefix in ("/static/", "/media/", "/favicon.ico", "/probe/"):
+    for prefix in ("/static/", "/media/", "/favicon.ico", "/probe/", "/system/perf/"):
         if path == prefix.rstrip("/") or path.startswith(prefix):
             return True
     return False

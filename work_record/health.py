@@ -5,15 +5,24 @@
 实现产生漂移。
 
 探测函数内部绝不抛异常：逐项 try/except 兜底并记录日志，返回结构化结果。
+
+性能提示：MigrationExecutor 构造需扫描 70+ 迁移文件，Windows 上 ~140ms。
+probe_health 结果 60 秒 TTL 缓存，过期才重算。
 """
 import logging
 import os
+import time
 
 from django.conf import settings
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 
 logger = logging.getLogger(__name__)
+
+# probe_health 缓存：60 秒过期（数据库连接/迁移状态/日志目录都是秒级以上才变）
+_CACHE_TTL = 60
+_CACHED_RESULT = None   # (checks, healthy) 元组
+_CACHED_AT = 0          # 时间戳
 
 
 def probe_health():
@@ -25,7 +34,14 @@ def probe_health():
       log_dir    : 'ok' / 'error'
 
     healthy = checks['database'] == 'ok' and checks['log_dir'] == 'ok'。
+
+    60 秒内直接返回上次结果，过期才重算（MigrationExecutor 构造是主要耗时点）。
     """
+    global _CACHED_RESULT, _CACHED_AT
+    now = time.monotonic()
+    if _CACHED_RESULT is not None and (now - _CACHED_AT) < _CACHE_TTL:
+        return _CACHED_RESULT
+
     checks = {}
 
     # 1) 数据库连接（SELECT 1）
@@ -60,4 +76,6 @@ def probe_health():
         checks['log_dir'] = 'error'
 
     healthy = checks['database'] == 'ok' and checks['log_dir'] == 'ok'
-    return checks, healthy
+    _CACHED_RESULT = (checks, healthy)
+    _CACHED_AT = now
+    return _CACHED_RESULT
