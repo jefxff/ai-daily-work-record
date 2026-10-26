@@ -42,7 +42,7 @@
             </div>
             <div class="annual-metric">
                 <span class="annual-metric-num">{{ department_count }}</span>
-                <span class="annual-metric-label">涉及部门（个）</span>
+                <span class="annual-metric-label">涉及来源（个）</span>
             </div>
             <div class="annual-metric">
                 <span class="annual-metric-num">{{ active_months }}</span>
@@ -55,7 +55,7 @@
         </div>
 
         {% if top_departments %}
-        <div class="annual-section-title">涉及部门 TOP</div>
+        <div class="annual-section-title">涉及来源 TOP</div>
         <ul class="annual-dept-list">
             {% for row in top_departments %}
             <li>

@@ -57,6 +57,24 @@ class CustomerCreditSerializer(EnhancedModelSerializer):
 
 # 客户客诉序列化
 class CustomerComplaintSerializer(EnhancedModelSerializer):
+    """客诉 API 序列化器。
+
+    complaint_status 禁止直接改为「已完成」——必须通过闭环动作推导。
+    校验与 models.py clean() 双重复盖，形成表单 + API 双重防线。
+    """
+
+    def validate(self, attrs):
+        status = attrs.get('complaint_status')
+        # 只有当请求要把状态改成「已完成」时才拦截
+        if status == '已完成':
+            existing = getattr(self.instance, 'complaint_status', None)
+            closed_at = getattr(self.instance, 'closed_at', None) if self.instance else None
+            if existing != '已完成' and not closed_at:
+                raise serializers.ValidationError(
+                    {'complaint_status': '客诉状态不能直接改为「已完成」，请通过闭环接口操作'}
+                )
+        return attrs
+
     class Meta:
         model = CustomerComplaint
         fields = '__all__'
@@ -98,6 +116,23 @@ class MetalPriceSerializer(EnhancedModelSerializer):
 class InsuranceSerializer(EnhancedModelSerializer):
     is_expired = serializers.ReadOnlyField()
     expired_days = serializers.ReadOnlyField()
+    # 只读字段：供外部按年度/保司/当前有效期筛选，不影响写操作
+    policy_year_year = serializers.IntegerField(source='policy_year.year', read_only=True, default=None)
+    subject_label = serializers.CharField(source='subject.label', read_only=True, default='')
+    insurer_canonical = serializers.SerializerMethodField()
+    is_current_term = serializers.SerializerMethodField()
+
+    def get_insurer_canonical(self, obj):
+        from records.insurance_grouping import normalize_insurer
+        return normalize_insurer(obj.company_name)
+
+    def get_is_current_term(self, obj):
+        """判断该保单是否为其标的的最新一期（当前保障是否有效）。"""
+        if not obj.subject_id:
+            return None
+        # 标的最新一期的截止日期就是「当前是否在保」的判定基准
+        latest_end = obj.subject.records.order_by('-end_date').values_list('end_date', flat=True).first()
+        return obj.end_date == latest_end
 
     class Meta:
         model = Insurance

@@ -125,8 +125,10 @@
                                 <button class="btn btn-sm btn-outline-danger btn-restore">恢复</button>
                                 {% endcan %}
                                 {% can "system" "backup" %}
+                                {# download 属性：让浏览器按下载处理而不是导航，避免 DevTools 里出现「net::ERR_ABORTED」——那是页面导航被下载接管时的正常取消信号 #}
                                 <a class="btn btn-sm btn-outline-secondary btn-download"
-                                   href="{% url 'sysbackup:download' %}?path={{ b.path|urlencode }}">下载</a>
+                                   href="{% url 'sysbackup:download' %}?path={{ b.path|urlencode }}"
+                                   download="{{ b.name }}">下载</a>
                                 {% endcan %}
                                 {% endif %}
                                 {% can "system" "delete" %}
@@ -514,7 +516,7 @@
                     '<td data-label="操作">' +
                         (b.readable === false ? '' :
                             (BK_PERMS.restore ? '<button class="btn btn-sm btn-outline-danger btn-restore">恢复</button> ' : '') +
-                            (BK_PERMS.backup ? '<a class="btn btn-sm btn-outline-secondary btn-download" href="' + U.urlDownload + '?path=' + encodeURIComponent(b.path) + '">下载</a> ' : '')) +
+                            (BK_PERMS.backup ? '<a class="btn btn-sm btn-outline-secondary btn-download" href="' + U.urlDownload + '?path=' + encodeURIComponent(b.path) + '" download="' + esc(b.name) + '">下载</a> ' : '')) +
                         (BK_PERMS.del ? '<button class="btn btn-sm btn-outline-secondary btn-delete-bk">删除</button>' : '') +
                     '</td></tr>');
             });

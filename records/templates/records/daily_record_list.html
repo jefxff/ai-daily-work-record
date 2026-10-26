@@ -18,7 +18,7 @@
             <form id="filterForm" method="GET">
                 <input type="hidden" name="search" value="{{ search_term }}">
                 <div class="filter-group">
-                    <label for="departmentSelect">提出部门</label>
+                    <label for="departmentSelect">提出部门/提出人</label>
                     <select id="departmentSelect" name="department">
                         <option value="">全部部门</option>
                         {% for dept in departments %}
@@ -60,7 +60,7 @@
             <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'search' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">搜索：{{ search_term }} ✕</a>
             {% endif %}
             {% if department_filter %}
-            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'department' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">部门：{{ department_filter }} ✕</a>
+            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'department' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">来源：{{ department_filter }} ✕</a>
             {% endif %}
             {% if status_filter %}
             <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'status' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">状态：{{ status_filter }} ✕</a>
@@ -74,7 +74,7 @@
                     <tr>
                         <th scope="col" class="col-optional">序号</th>
                         <th scope="col">日期及时间</th>
-                        <th scope="col">提出部门</th>
+                        <th scope="col">提出部门/提出人</th>
                         <th scope="col">工作内容</th>
                         <th scope="col">截至日期</th>
                         <th scope="col">工作状态</th>
@@ -87,7 +87,7 @@
                     <tr>
                         <td data-label="序号" class="col-optional">{{ forloop.counter }}</td>
                         <td data-label="日期及时间" title="{{ record.record_date|date:'Y-m-d H:i:s' }}">{{ record.record_date|date:'Y-m-d H:i:s' }}</td>
-                        <td data-label="提出部门">{{ record.department }}</td>
+                        <td data-label="提出部门/提出人">{{ record.department }}</td>
                         <td data-label="工作内容">
                             {{ record.work_content|truncatechars:50 }}
                             {% if record.kb_enabled %}<span class="status-badge success kb-badge-mini" title="已沉淀到知识库，可在知识库「工作沉淀」分类查看">已沉淀</span>{% endif %}

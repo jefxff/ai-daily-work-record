@@ -66,8 +66,22 @@ class CustomerComplaint(models.Model):
     engineering_report = models.TextField(verbose_name='工程报告', null=True, blank=True)
     engineering_analysis = models.TextField(verbose_name='工程部分析原因报告', null=True, blank=True)
     missing_materials = models.CharField(max_length=200, verbose_name='欠缺材料', null=True, blank=True)
-    complaint_status = models.CharField(max_length=20, verbose_name='客诉状态', null=False, blank=False, choices=[('未完成', '未完成'), ('处理中', '处理中'), ('已完成', '已完成')])
+    complaint_status = models.CharField(max_length=20, verbose_name='客诉状态', null=False, blank=False, default='未完成', choices=[('未完成', '未完成'), ('处理中', '处理中'), ('已完成', '已完成')])
     follow_up_status = models.TextField(verbose_name='跟进情况', null=True, blank=True)
+    # 跟进阶段（结构化统计用）：按关键词从 follow_up_status 归一，保留原始自由文本
+    LEGAL_STAGE_CHOICES = [
+        ('', '无'),
+        ('内部处理', '内部处理'),
+        ('保险理赔', '保险理赔'),
+        ('协商中', '协商中'),
+        ('准备诉讼', '准备诉讼'),
+        ('诉讼中', '诉讼中'),
+        ('已判决', '已判决'),
+    ]
+    legal_stage = models.CharField(
+        max_length=20, blank=True, default='', verbose_name='跟进阶段',
+        choices=LEGAL_STAGE_CHOICES,
+    )
     remarks = models.TextField(verbose_name='备注', null=True, blank=True)
 
     # —— 闭环字段群（P2 客诉闭环）——
@@ -83,7 +97,15 @@ class CustomerComplaint(models.Model):
     )
     closure_note = models.TextField(verbose_name='闭环说明', blank=True)
     # SLA 承诺时限（小时），0 表示不考核
-    sla_hours = models.PositiveIntegerField(verbose_name='SLA时限(小时)', default=48)
+    sla_hours = models.PositiveIntegerField(verbose_name='SLA时限(小时)', default=0, help_text='0 表示不考核')
+
+    def clean(self):
+        """客诉状态必须由闭环动作推导，禁止在编辑表单或 API 中直接改为「已完成」。"""
+        from django.core.exceptions import ValidationError
+        if self.complaint_status == '已完成' and not self.closed_at:
+            raise ValidationError({
+                'complaint_status': '客诉状态不能直接改为「已完成」，请通过「闭环」操作完成',
+            })
 
     class Meta:
         verbose_name = '客户客诉'
@@ -211,7 +233,7 @@ class DailyRecord(models.Model):
         help_text='记录归属用户，查询/操作均按此字段隔离',
     )
     record_date = models.DateTimeField(verbose_name='日期及时间', null=False, blank=False, auto_now_add=True)
-    department = models.CharField(max_length=50, verbose_name='提出部门', null=False, blank=False)
+    department = models.CharField(max_length=50, verbose_name='提出部门/提出人', null=False, blank=False)
     work_content = models.TextField(verbose_name='工作内容', null=False, blank=False)
     due_date = models.DateField(verbose_name='截至日期', null=True, blank=True)
     status = models.CharField(max_length=10, verbose_name='工作状态', null=False, blank=False, choices=[('完成', '完成'), ('未完成', '未完成')])
@@ -332,6 +354,8 @@ class InsurancePolicyYear(models.Model):
 class Insurance(models.Model):
     """保险模型"""
     company_name = models.CharField(max_length=100, verbose_name='公司名称', null=False, blank=False)
+    # 保司归一名称（由 insurance_grouping.normalize_insurer 回填，保留 company_name 原始值）
+    canonical_name = models.CharField(max_length=100, blank=True, default='', verbose_name='保司（归一）')
     title = models.CharField(max_length=200, verbose_name='标题', null=False, blank=False)
     order_number = models.CharField(max_length=100, verbose_name='单号', null=True, blank=True)
     premium = models.DecimalField(max_digits=12, decimal_places=2, verbose_name='保费', null=False, blank=False)

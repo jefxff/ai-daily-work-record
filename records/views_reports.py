@@ -174,7 +174,7 @@ def _annual_payload(user, year_raw=None):
         f"{year} 年度工作总结",
         f"· 记录 {total} 条，完成 {done} 条（完成率 {done_rate}%）",
         f"· 平均进度 {avg_value}%",
-        f"· 涉及部门 {len(dept_rows)} 个",
+        f"· 涉及来源 {len(dept_rows)} 个",
         f"· 覆盖月份 {active_months} 个月",
         f"· 最长连续记录 {_max_streak(days)} 天",
     ]), ANNUAL_POLISH_INSTRUCTION)

@@ -120,10 +120,14 @@ class CustomerCreditForm(forms.ModelForm):
 
 
 class CustomerComplaintForm(forms.ModelForm):
-    """客户客诉表单"""
+    """客户客诉表单
+
+    complaint_status 已从 fields 中移除——状态只能由闭环动作推导，
+    编辑表单禁止直接改状态。新增时模型 default='未完成' 自动生效。
+    """
     class Meta:
         model = CustomerComplaint
-        fields = ['customer_name', 'responsible_salesperson', 'complaint_date', 'terminal_customer', 'product_model', 'our_shipment', 'customer_shipment', 'complaint_description', 'compensation_amount', 'is_insured', 'engineering_report', 'engineering_analysis', 'missing_materials', 'complaint_status', 'follow_up_status', 'remarks', 'closure_result', 'closure_note', 'sla_hours']
+        fields = ['customer_name', 'responsible_salesperson', 'complaint_date', 'terminal_customer', 'product_model', 'our_shipment', 'customer_shipment', 'complaint_description', 'compensation_amount', 'is_insured', 'engineering_report', 'engineering_analysis', 'missing_materials', 'follow_up_status', 'remarks', 'closure_result', 'closure_note', 'sla_hours']
         widgets = {
             'complaint_date': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
             'customer_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '请输入客户名称'}),
@@ -138,7 +142,6 @@ class CustomerComplaintForm(forms.ModelForm):
             'engineering_report': forms.Textarea(attrs={'class': 'form-control', 'placeholder': '请输入工程报告', 'rows': 3}),
             'engineering_analysis': forms.Textarea(attrs={'class': 'form-control', 'placeholder': '请输入工程部分析原因报告', 'rows': 3}),
             'missing_materials': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '请输入欠缺材料'}),
-            'complaint_status': forms.Select(attrs={'class': 'form-select'}),
             'follow_up_status': forms.Textarea(attrs={'class': 'form-control', 'placeholder': '请输入跟进情况', 'rows': 3}),
             'remarks': forms.Textarea(attrs={'class': 'form-control', 'placeholder': '请输入备注', 'rows': 3}),
             'closure_result': forms.Select(attrs={'class': 'form-select'}),
@@ -159,7 +162,6 @@ class CustomerComplaintForm(forms.ModelForm):
             'engineering_report': '工程报告',
             'engineering_analysis': '工程部分析原因报告',
             'missing_materials': '欠缺材料',
-            'complaint_status': '客诉状态',
             'follow_up_status': '跟进情况',
             'remarks': '备注',
             'closure_result': '闭环结论',
@@ -184,12 +186,6 @@ class CustomerComplaintForm(forms.ModelForm):
         if not complaint_date:
             raise forms.ValidationError('客诉申请日期不能为空')
         return complaint_date
-    
-    def clean_complaint_status(self):
-        complaint_status = self.cleaned_data.get('complaint_status')
-        if not complaint_status:
-            raise forms.ValidationError('客诉状态不能为空')
-        return complaint_status
 
 
 class CustomerComplaintClosureForm(forms.Form):

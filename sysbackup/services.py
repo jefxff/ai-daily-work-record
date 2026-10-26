@@ -539,6 +539,54 @@ def _rotate_backups(dest: Path) -> int:
     return removed
 
 
+def _atomic_move(src: Path, dst: Path, retries=3) -> None:
+    """把 src 原子移动/复制到 dst，Windows 下自动回退。
+
+    Windows 的 os.replace 底层是 MoveFileEx，目标文件被杀毒/索引/预览进程短暂锁住时
+    会抛 WinError 5（拒绝访问）或 WinError 32（文件被占用）。本函数依次尝试：
+    1. os.replace（原子覆盖，最理想）；
+    2. shutil.move（跨盘自动走 copy+unlink）；
+    3. shutil.copy2 + unlink（最保守，一定能成）。
+    每级之间 sleep 0.3s + 清掉可能残留的半截文件，最多重试 retries 次。
+    """
+    last_exc = None
+    for attempt in range(retries):
+        # 清理可能残留的目标文件（上次失败留下的半截）
+        try:
+            if dst.exists():
+                dst.unlink()
+        except OSError:
+            pass
+
+        try:
+            # 路径 1：os.replace——同盘原子覆盖
+            os.replace(str(src), str(dst))
+            return
+        except OSError as e:
+            last_exc = e
+            logger.debug("os.replace 失败（%s），尝试 shutil.move（重试 %d/%d）", e, attempt + 1, retries)
+
+        try:
+            # 路径 2：shutil.move——跨盘自动走 copy+unlink
+            shutil.move(str(src), str(dst))
+            return
+        except OSError as e:
+            last_exc = e
+            logger.debug("shutil.move 失败（%s），尝试 copy2+unlink（重试 %d/%d）", e, attempt + 1, retries)
+
+        try:
+            # 路径 3：copy2 + unlink——最保守
+            shutil.copy2(str(src), str(dst))
+            src.unlink()
+            return
+        except OSError as e:
+            last_exc = e
+
+        time.sleep(0.3 * (attempt + 1))  # 线性退避
+
+    raise OSError(f"备份包落盘失败：{src} → {dst}（已重试 {retries} 次）：{last_exc}")
+
+
 def _human_size(n):
     for unit in ("B", "KB", "MB", "GB"):
         if n < 1024 or unit == "GB":
@@ -768,7 +816,7 @@ def _run_backup(task_id, dest: Path, operator):
         _progress(task_id, 97, "加密并写入目标路径")
         tmp_enc = tmp_dir / "package.zip.enc"
         _encrypt_file(tmp_zip, tmp_enc)
-        os.replace(str(tmp_enc), str(final_path))
+        _atomic_move(tmp_enc, final_path)
         _log(task_id, f"备份包已生成：{final_path}（{_human_size(final_path.stat().st_size)}）")
 
         # 5.1) 保留策略轮转（审查 H7）：每日全量包永不删除会把单盘写满，

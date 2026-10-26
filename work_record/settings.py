@@ -188,7 +188,8 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     # 请求性能采集（批次 C）：置于最外层以覆盖整条请求链路（会话/认证/视图）
     'notifications.middleware.RequestMetricsMiddleware',
-    'django.middleware.gzip.GZipMiddleware',
+    # gzip：附件下载（备份包/归档导出）不压缩，保住 Content-Length
+    'work_record.gzip_download.SkipGzipForDownloadMiddleware',
     'django.middleware.security.SecurityMiddleware',
     # 安全响应头：CSP（默认 report-only，逐项放量后可通过 DJANGO_CSP_MODE=enforce 收紧）
     'work_record.csp.CSPMiddleware',

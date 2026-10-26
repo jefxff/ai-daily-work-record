@@ -8,7 +8,7 @@
     </div>
 
     <div class="form-group mb-3">
-        <label for="department" class="form-label">提出部门 <span class="u-text-danger">*</span></label>
+        <label for="department" class="form-label">提出部门/提出人 <span class="u-text-danger">*</span></label>
         <input type="text" class="form-control" id="department" name="department" value="{% if record %}{{ record.department }}{% else %}{{ form_data.department }}{% endif %}" required>
         {% if errors.department %}<div class="form-text u-text-danger">{{ errors.department }}</div>{% endif %}
     </div>
