@@ -8,10 +8,12 @@
 性能：年报把 6 次独立聚合合并为 1 次 `.only().iterator()` 全量拉取，
 在 SQLite 本地数据量下单次读取比 6 次聚合快，数据量上来后优势更明显。
 """
+import hashlib
 import logging
 from collections import Counter
 from datetime import datetime, timedelta
 
+from django.core.cache import caches
 from django.shortcuts import render
 from django.utils import timezone
 
@@ -46,13 +48,44 @@ def ai_enabled():
     return bool(config and config.is_enabled)
 
 
+# 润色结果缓存：成功 1 小时（同一内容不重复调外部接口）；失败负缓存 60 秒，
+# 防止外部接口故障时每次刷新页面都白等一个超时周期。
+_POLISH_CACHE_TTL = 3600
+_POLISH_FAIL_TTL = 60
+
+
+def _polish_cache_key(config, text, instruction):
+    digest = hashlib.sha256(
+        f"{config.pk}|{config.updated_at.timestamp()}|{instruction}|{text}".encode("utf-8")
+    ).hexdigest()
+    return f"ai_polish:{digest}"
+
+
 def maybe_ai_polish(text, instruction):
-    """按当前 AI 配置润色文本；未启用或调用失败时原样返回模板文本。"""
+    """按当前 AI 配置润色文本；未启用或调用失败时原样返回模板文本。
+
+    硬性门槛：只有「存在配置 + 勾选启用 AI 润色 + 已填模型」三者同时满足
+    才会发起外部调用；未启用时零外部请求、零缓存查询，直接回模板文本。
+    结果按（配置版本 + 文本内容）缓存到 'fast' 进程内缓存，
+    同一周报/年报在 1 小时内反复打开不会重复调用外部 AI。
+    """
     try:
-        polished = polish_text(text, instruction)
+        config = AiProviderConfig.current()
     except Exception:
-        logger.exception("AI 润色异常，回退模板文本")
+        logger.exception("读取 AI 配置异常，回退模板文本")
         return text
+    if config is None or not config.is_enabled or not (config.model or "").strip():
+        return text
+
+    cache = caches["fast"]
+    key = _polish_cache_key(config, text, instruction)
+    cached = cache.get(key)
+    if cached is not None:
+        return cached or text  # 空串 = 上次调用失败的负缓存
+
+    polished = polish_text(text, instruction, config=config)
+    cache.set(key, polished or "",
+              _POLISH_CACHE_TTL if polished else _POLISH_FAIL_TTL)
     return polished or text
 
 

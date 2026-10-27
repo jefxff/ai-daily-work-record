@@ -470,6 +470,65 @@ def _is_encrypted(path: Path) -> bool:
     return str(path).lower().endswith(ENCRYPTED_SUFFIX)
 
 
+# ---------- meta 旁路文件（2026-10 性能改造） ----------
+# 现状：备份中心列表页对每个加密包整体解密只为读 meta.json，包含全库 + 全部
+# 附件（几十上百 MB），页面上每个包都要等一次秒级解密。
+# 方案：包旁放一份明文 meta 旁路文件（<包名>.meta.json），只含统计信息
+# （时间/操作人/表行数/附件数，不含密钥与业务数据）；列表页优先读旁路，
+# 命中即零解密；未命中（历史包/异地副本）才整包解密一次并回写旁路。
+# 一致性：旁路记录包的 size+mtime，包被替换/损坏即视为失效回退解密；
+# 包删除时（手动删除/轮转）顺带清理旁路。
+
+def _sidecar_path(package: Path) -> Path:
+    return package.with_name(package.name + ".meta.json")
+
+
+def _read_sidecar_meta(package: Path):
+    """读旁路 meta；包大小/mtime 与记录不一致（包被替换/损坏）视为失效。"""
+    sp = _sidecar_path(package)
+    try:
+        if not sp.is_file():
+            return None
+        data = json.loads(sp.read_text(encoding="utf-8"))
+        stat = package.stat()
+        saved = data.get("_package_stat") or {}
+        if saved.get("size") != stat.st_size or int(saved.get("mtime", -1)) != int(stat.st_mtime):
+            return None
+        meta = data.get("meta")
+        return meta if isinstance(meta, dict) else None
+    except (OSError, ValueError):
+        return None
+
+
+def _write_sidecar_meta(package: Path, meta: dict) -> None:
+    """把 meta 落为明文旁路文件（原子写）。失败仅记警告，不影响主流程。"""
+    sp = _sidecar_path(package)
+    tmp = sp.with_name(sp.name + ".tmp")
+    try:
+        stat = package.stat()
+        payload = json.dumps({
+            "meta": meta,
+            "_package_stat": {"size": stat.st_size, "mtime": int(stat.st_mtime)},
+        }, ensure_ascii=False)
+        tmp.write_text(payload, encoding="utf-8")
+        os.replace(tmp, sp)
+    except OSError:
+        logger.warning("备份 meta 旁路文件写入失败（已忽略，列表页将回退整包解密）：%s",
+                       sp, exc_info=True)
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
+def _unlink_sidecar(package: Path) -> None:
+    """删除备份包时顺带清理旁路 meta（静默容错）。"""
+    try:
+        _sidecar_path(package).unlink(missing_ok=True)
+    except OSError:
+        logger.warning("备份 meta 旁路文件删除失败：%s", _sidecar_path(package), exc_info=True)
+
+
 def _mirror_backups(package: Path, task_id: str = "") -> list[dict]:
     """把刚生成的备份包复制到所有异地/镜像目录（审查 C2）。
 
@@ -484,6 +543,10 @@ def _mirror_backups(package: Path, task_id: str = "") -> list[dict]:
             target_dir.mkdir(parents=True, exist_ok=True)
             target = target_dir / package.name
             shutil.copy2(package, target)
+            # 旁路 meta 一并镜像，异地目录的列表扫描同样免整包解密
+            sidecar = _sidecar_path(package)
+            if sidecar.is_file():
+                shutil.copy2(sidecar, _sidecar_path(target))
             # 校验大小一致，避免半截文件被当成有效备份
             if target.stat().st_size != package.stat().st_size:
                 raise OSError("复制后大小不一致")
@@ -533,6 +596,7 @@ def _rotate_backups(dest: Path) -> int:
             continue
         try:
             path.unlink()
+            _unlink_sidecar(path)
             removed += 1
         except OSError:
             logger.warning("备份轮转：删除 %s 失败（已跳过）", path, exc_info=True)
@@ -817,6 +881,9 @@ def _run_backup(task_id, dest: Path, operator):
         tmp_enc = tmp_dir / "package.zip.enc"
         _encrypt_file(tmp_zip, tmp_enc)
         _atomic_move(tmp_enc, final_path)
+        # meta 旁路文件（2026-10 性能）：备份中心列表页凭它直接展示摘要，
+        # 不再每次打开页面都对每个加密包整包解密一遍
+        _write_sidecar_meta(final_path, meta)
         _log(task_id, f"备份包已生成：{final_path}（{_human_size(final_path.stat().st_size)}）")
 
         # 5.1) 保留策略轮转（审查 H7）：每日全量包永不删除会把单盘写满，
@@ -1313,19 +1380,28 @@ def scan_backups(dir_path=None):
 
 
 def _read_backup_summary(f: Path):
+    tmp_name = None
     try:
-        summary_zip = f
-        tmp_name = None
         if _is_encrypted(f):
-            # 加密包无明文索引，解密到临时文件读 meta 后立即删除
-            fd, tmp_name = tempfile.mkstemp(suffix=".zip")
-            os.close(fd)
-            summary_zip = Path(tmp_name)
-            _decrypt_file(f, summary_zip)
-        with zipfile.ZipFile(summary_zip) as zf:
-            if META_ENTRY not in zf.namelist():
-                return None
-            meta = json.loads(zf.read(META_ENTRY).decode("utf-8"))
+            # 快路径：meta 旁路文件命中则零解密（列表页主要耗时即在此）
+            meta = _read_sidecar_meta(f)
+            if meta is None:
+                # 加密包无明文索引，解密到临时文件读 meta 后立即删除；
+                # 并回写旁路 meta，之后的列表页不再重复整包解密
+                fd, tmp_name = tempfile.mkstemp(suffix=".zip")
+                os.close(fd)
+                summary_zip = Path(tmp_name)
+                _decrypt_file(f, summary_zip)
+                with zipfile.ZipFile(summary_zip) as zf:
+                    if META_ENTRY not in zf.namelist():
+                        return None
+                    meta = json.loads(zf.read(META_ENTRY).decode("utf-8"))
+                _write_sidecar_meta(f, meta)
+        else:
+            with zipfile.ZipFile(f) as zf:
+                if META_ENTRY not in zf.namelist():
+                    return None
+                meta = json.loads(zf.read(META_ENTRY).decode("utf-8"))
         stat = f.stat()
         return {
             "name": f.name,
@@ -1383,6 +1459,7 @@ def delete_backup(zip_path):
         raise ValueError("备份包路径无效")
     ensure_path_allowed(p)
     p.unlink()
+    _unlink_sidecar(p)
     return p.name
 
 

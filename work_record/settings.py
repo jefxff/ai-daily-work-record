@@ -225,11 +225,20 @@ LOGIN_LOCKOUT_SECONDS = 15 * 60
 # 计数落库、跨重启留存，且天然在多进程间共享，无需引入 Redis。
 # 首次部署须执行一次：python manage.py createcachetable
 # 缓存表位于默认 SQLite 库内（表名 = LOCATION），与业务表互不干扰。
+#
+# 'fast'（2026-10 性能改造）：进程内 LocMemCache，专供「丢了无所谓、只求快」
+# 的热点缓存（性能页聚合、备份包 meta、AI 润色结果）。不要放登录锁定计数等
+# 安全数据——那类数据仍走 default（落库、跨重启、跨进程）。
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
         'LOCATION': 'django_cache_table',
-    }
+    },
+    'fast': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'fast-hotspot',
+        'TIMEOUT': 60,
+    },
 }
 
 # === 密码哈希 ===
@@ -280,6 +289,12 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
+        # 性能（2026-10）：持久化连接（按线程复用；默认 0 = 每个请求都新建连接）。
+        # 每个新连接都会经 connection_created 信号执行 3 条 PRAGMA，其中
+        # journal_mode=WAL 在写入繁忙时需要排队拿锁，实测给每个请求增加约
+        # 300ms 固定开销（性能页慢查询里大量 PRAGMA journal_mode=WAL 即此）。
+        # 60s 内同线程复用连接，PRAGMA 只在新建连接时执行一次。
+        'CONN_MAX_AGE': 60,
         # 局域网多用户并发：提高 SQLite 忙等超时，缓解 database is locked
         'OPTIONS': {
             'timeout': 20,
@@ -566,8 +581,11 @@ OPERATION_LOG_RETENTION_DAYS = int(os.environ.get('OPERATION_LOG_RETENTION_DAYS'
 REQUEST_METRICS_ENABLED = os.environ.get('DJANGO_REQUEST_METRICS', '1') == '1'
 REQUEST_METRICS_SLOW_MS = int(os.environ.get('DJANGO_REQUEST_METRICS_SLOW_MS', '300'))
 REQUEST_METRICS_SLOW_QUERY_MS = int(os.environ.get('DJANGO_REQUEST_METRICS_SLOW_QUERY_MS', '200'))
-REQUEST_METRICS_FLUSH_SIZE = 50
-REQUEST_METRICS_FLUSH_INTERVAL = 5
+# 写入压力（2026-10）：落库是全局写锁（BEGIN IMMEDIATE）上的写事务，
+# 频繁 flush 会与其他业务的写入互相排队。放宽阈值把「每 5 秒最多 1 次写」
+# 降为「每 30 秒 / 每 100 条」，页面数据最多延迟一个 flush 周期，可接受。
+REQUEST_METRICS_FLUSH_SIZE = 100
+REQUEST_METRICS_FLUSH_INTERVAL = 30
 REQUEST_METRICS_RETENTION_DAYS = int(os.environ.get('DJANGO_REQUEST_METRICS_RETENTION_DAYS', '30'))
 REQUEST_METRICS_CLEANUP_INTERVAL = 3600
 

@@ -9,6 +9,7 @@ from datetime import timedelta
 from math import ceil
 
 from django.conf import settings
+from django.core.cache import caches
 from django.db.models import Avg, Count, Max, Sum
 from django.db.models.functions import TruncDate
 from django.http import JsonResponse
@@ -24,6 +25,10 @@ MIN_DAYS = 1
 MAX_DAYS = 90
 TOP_N = 10
 RECENT_N = 20
+# 聚合结果缓存秒数：页面一次要跑约 10 个全窗口聚合（COUNT/Avg/P95 全排序/
+# 分组 Top），窗口内数据量大时单条 300-500ms。缓存 30s 内复用，
+# 监控页本身对实时性要求不高，最多延迟一个刷新周期。
+DASHBOARD_CACHE_TTL = 30
 
 _PROCESS_START = time.monotonic()
 
@@ -54,6 +59,31 @@ def _percentile_value(qs, field, pct):
 @perm_required("system", "read")
 def perf_dashboard(request):
     days = _clamp_days(request.GET.get("days"))
+    slow_ms = getattr(settings, "REQUEST_METRICS_SLOW_MS", 300)
+
+    cache = caches["fast"]
+    cache_key = f"perf_dashboard:{days}"
+    data = cache.get(cache_key)
+    if data is None:
+        data = _dashboard_data(days)
+        cache.set(cache_key, data, DASHBOARD_CACHE_TTL)
+
+    return render(request, "notifications/perf_dashboard.html", {
+        "days": days,
+        "since": data["since"],
+        "slow_ms": slow_ms,
+        "summary": data["summary"],
+        "top_paths": data["top_paths"],
+        "slow_paths": data["slow_paths"],
+        "recent_slow": data["recent_slow"],
+        "recent_slow_queries": data["recent_slow_queries"],
+        "daily": data["daily"],
+        "probe_url": "/probe/",
+    })
+
+
+def _dashboard_data(days):
+    """窗口内全部聚合查询（结果整包缓存 DASHBOARD_CACHE_TTL 秒）。"""
     since = timezone.now() - timedelta(days=days)
     qs = RequestMetric.objects.filter(created_at__gte=since)
 
@@ -103,18 +133,15 @@ def perf_dashboard(request):
         .order_by("day")
     )
 
-    return render(request, "notifications/perf_dashboard.html", {
-        "days": days,
+    return {
         "since": since,
-        "slow_ms": slow_ms,
         "summary": summary,
         "top_paths": top_paths,
         "slow_paths": slow_paths,
         "recent_slow": recent_slow,
         "recent_slow_queries": recent_slow_queries,
         "daily": daily,
-        "probe_url": "/probe/",
-    })
+    }
 
 
 @login_exempt

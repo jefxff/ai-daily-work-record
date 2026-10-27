@@ -6,6 +6,7 @@ import time
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
+from django.core.cache import caches
 from django.core.management import call_command
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
@@ -187,6 +188,9 @@ class PerfDashboardViewTests(TestCase):
 
     def setUp(self):
         metrics.reset()
+        # perf_dashboard 聚合结果缓存（'fast'，进程级）跨测试残留会导致
+        # 统计断言读到上一条用例的数据，每条用例前清空
+        caches["fast"].clear()
 
     def tearDown(self):
         metrics.reset()
