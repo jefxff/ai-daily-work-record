@@ -127,7 +127,11 @@
                         <td data-label="附件">
                             {% if ledger.has_attachment %}
                             <a class="status-badge success" href="{% url 'customer_ledger_attachment' ledger.id %}" target="_blank" rel="noopener noreferrer">PDF</a>
-                            {% else %}
+                            {% endif %}
+                            {% if ledger.attachment_count %}
+                            <span class="status-badge info" title="补充附件数">+{{ ledger.attachment_count }}</span>
+                            {% endif %}
+                            {% if not ledger.has_attachment and not ledger.attachment_count %}
                             <span class="status-badge default">无</span>
                             {% endif %}
                         </td>

@@ -192,6 +192,9 @@
         </div>
     </div>
 
+    <!-- 附件资料（受理证据/处理过程/闭环资料） -->
+    {% include 'attachments/_panel.html' with att_obj=complaint %}
+
     <!-- 其他客诉记录 -->
     {% if other_complaints.exists %}
     <div class="other-complaints">

@@ -123,6 +123,7 @@
                         <th scope="col">客诉状态</th>
                         <th scope="col">跟进情况</th>
                         <th scope="col" class="col-optional">备注</th>
+                        <th scope="col">附件</th>
                         <th scope="col" class="col-actions">操作</th>
                     </tr>
                 </thead>
@@ -158,6 +159,13 @@
                         </td>
                         <td data-label="跟进情况" title="{{ complaint.follow_up_status|default:'' }}">{{ complaint.follow_up_status|default:''|truncatechars:30 }}</td>
                         <td data-label="备注" class="col-optional" title="{{ complaint.remarks|default:'' }}">{{ complaint.remarks|default:''|truncatechars:30 }}</td>
+                        <td data-label="附件">
+                            {% if complaint.attachment_count %}
+                            <span class="status-badge success" title="证据附件数">{{ complaint.attachment_count }} 个</span>
+                            {% else %}
+                            <span class="status-badge default">无</span>
+                            {% endif %}
+                        </td>
                         <td data-label="操作" class="col-actions">
                             <div class="u-toolbar-inline">
                                 <a href="{% url 'customer_detail' complaint.id %}" class="btn-transparent btn-sm">详细</a>
@@ -172,7 +180,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="18" class="empty-cell">📭 暂无数据</td>
+                        <td colspan="19" class="empty-cell">📭 暂无数据</td>
                     </tr>
                     {% endfor %}
                 </tbody>

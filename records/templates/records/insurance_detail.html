@@ -86,4 +86,7 @@
         {% include 'records/_insurance_timeline.html' with subject=subject highlight_id=insurance.id show_head=False %}
     </div>
     {% endif %}
+
+    <!-- 附件资料（电子保单/批单/缴费凭证/理赔材料） -->
+    {% include 'attachments/_panel.html' with att_obj=insurance %}
 {% endblock %}

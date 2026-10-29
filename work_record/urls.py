@@ -27,6 +27,7 @@ import mimetypes
 from pathlib import Path
 
 from accounts.services import has_perm
+from accounts.registry import MODULE_KEYS
 from accounts.views_token import obtain_api_token
 from work_record.csp import csp_report
 from work_record.export_utils import content_disposition
@@ -46,9 +47,16 @@ MEDIA_PREFIX_MODULE = {
 
 
 def media_module_for(path: str):
-    """返回路径所属模块 key；未登记返回 None。"""
-    first = (path or "").replace("\\", "/").split("/", 1)[0]
-    return MEDIA_PREFIX_MODULE.get(first)
+    """返回路径所属模块 key；未登记返回 None。
+
+    通用附件（attachments 应用）的路径为 ``attachments/<模块key>/<模型>/<id>/文件``，
+    二级目录即模块 key（与 attachments.models.MODEL_MODULE_MAP 同源），按它判定
+    下载权限；其余前缀走原有的一级目录映射表。
+    """
+    parts = (path or "").replace("\\", "/").split("/")
+    if parts[0] == "attachments" and len(parts) >= 2:
+        return parts[1] if parts[1] in MODULE_KEYS else None
+    return MEDIA_PREFIX_MODULE.get(parts[0])
 
 
 def protected_media(request, path):
@@ -115,6 +123,8 @@ urlpatterns = [
     path('archive/', include('archive.urls')),
     path('notifications/', include('notifications.urls')),
     path('system/backup/', include('sysbackup.urls')),
+    # 通用附件（客户客诉/诉讼/保险/客户台账等多模块复用）
+    path('attachments/', include('attachments.urls')),
     # 系统健康面板（只读）：挂在 system/ 下，与「系统」侧栏组语义一致
     path('system/health/', views_health.system_health, name='system_health'),
     # 性能监控（请求量 / P95 / 慢查询，system.read 只读）
