@@ -121,9 +121,10 @@ def make_delete_view(*, model=None, perm_module, label, display_field,
     - redirect_name:删除成功后跳转的 URL 名称；
     - getter:       自定义取数 (request, pk) -> obj，用于行级数据隔离
                     （如每日记录必须经 _get_my_record 校验归属，禁止跨用户删除）；
-    - after_delete: 可选删除后钩子 after_delete(obj)，在 obj.delete() 之后、
-                    留痕之前调用；obj 的 pk 已置 None，其余字段值仍在
-                    （如保险删除后按原 policy_year_id 重算/清理保单年度）。
+    - after_delete: 可选删除后钩子 after_delete(obj, obj_id)，在 obj.delete() 之后、
+                    留痕之前调用；obj 的 pk 已置 None（故透传删除前的 obj_id），
+                    其余字段值仍在（如保险删除后按原 policy_year_id 重算/清理保单年度，
+                    或清理业务对象的通用附件——附件按 object_id 删除，必须用 obj_id）。
     """
     @perm_required(perm_module, "delete")
     @require_POST
@@ -134,7 +135,7 @@ def make_delete_view(*, model=None, perm_module, label, display_field,
         before_snap = snapshot(obj)
         obj.delete()
         if after_delete is not None:
-            after_delete(obj)
+            after_delete(obj, obj_id)
         log_operation(request, label, '删除', f'[{label}]下的记录#{obj_id}', info,
                       before=before_snap)
         return redirect(redirect_name)
@@ -272,7 +273,7 @@ def _apply_filters(qs, request, filters):
 def make_list_view(*, perm_module, template_name, page_var, model=None,
                    queryset=None, search_fields=None, filters=None,
                    filter_options=None, option_queries=None, extra_context=None,
-                   search_param='search', per_page=None):
+                   search_param='search', per_page=None, row_hook=None):
     """生成标准列表视图：全文搜索 + 多条件筛选 + 下拉选项 + 分页。
 
     - perm_module:    权限模块标识（perm_required 第一参数，动作为 read）；
@@ -293,6 +294,10 @@ def make_list_view(*, perm_module, template_name, page_var, model=None,
                       值 strip（samples 模块语义，如 keyword）；
     - per_page:       固定每页条数（如操作留痕固定 20）；None 时按 GET['per_page']
                       在 10/30/50 中取值（默认 10）。
+    - row_hook:       可选行级加工钩子 row_hook(object_list, request)，分页后、
+                      渲染前调用，用于给本页对象批量注入派生属性
+                      （如 attachments.services.inject_counts 注入每行附件数，
+                      一次 GROUP BY 完成，无 N+1）。
     """
 
     @perm_required(perm_module, "read")
@@ -325,6 +330,10 @@ def make_list_view(*, perm_module, template_name, page_var, model=None,
         # 分页（固定条数优先，否则按 GET 10/30/50）
         paginator = Paginator(base, per_page if per_page else _per_page(request))
         page = paginator.get_page(request.GET.get('page', 1))
+
+        # 行级派生属性（如附件计数），在渲染前批量注入
+        if row_hook is not None:
+            row_hook(page.object_list, request)
 
         context = {page_var: page, search_key: search_term, **filter_ctx, **options}
         context.update(extra_context or {})

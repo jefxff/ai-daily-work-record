@@ -16,4 +16,6 @@
     {% include 'records/_insurance_timeline.html' with subject=subject highlight_id=insurance.id compact=True show_head=True %}
 </div>
 {% endif %}
+<!-- 附件资料（电子保单/批单/缴费凭证/理赔材料） -->
+{% include 'attachments/_panel.html' with att_obj=insurance %}
 <style>#formModal.form-modal { width: 720px; }</style>

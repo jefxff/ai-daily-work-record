@@ -38,6 +38,11 @@ WHITELIST = {
     "records.views_home.home": "首页按 visible_modules 裁剪内容；登录由 LoginRequiredMiddleware 保证",
     # —— 媒体下载：三层校验在视图内部完成 ——
     "work_record.urls.protected_media": "媒体下载在视图内做模块归属/登录/存在性三层校验",
+    # —— 通用附件：模块 key 由业务对象动态解析（MODEL_MODULE_MAP），
+    #    无法用静态 @perm_required；视图内按归属模块做 update/read 判定 ——
+    "attachments.views.attachment_upload": "上传权限按附件归属模块动态判定：MODEL_MODULE_MAP 解析模块 key 后 has_perm(module,'update')，未登记模型 404",
+    "attachments.views.attachment_delete": "删除权限按附件归属模块动态判定（同上），删除后同步清理物理文件",
+    "attachments.views.attachment_thumb": "缩略图仅 read 权限，按附件归属模块动态判定；仅图片可生成",
     # —— 静态资源：CSS/JS/图片本就公开，不含业务数据（审查 H4 改由 STATIC_ROOT 提供）——
     "work_record.urls.serve_static": "静态资源（/static/）为公开资产，无业务数据；原先由 django staticfiles 视图承担",
     # —— DRF：权限挂在 permission_classes / 视图内部 _can 判定上 ——

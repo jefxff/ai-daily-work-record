@@ -17,6 +17,7 @@ from . import customer_ledger_import as ledger_io
 from django.utils import timezone
 from accounts.decorators import perm_required, require_any_module
 from accounts.services import has_perm, visible_modules
+from attachments import services as attachment_services
 from knowledge_base.models import KnowledgeDocument
 from samples.models import Sample, Partner
 from archive.models import Archive
@@ -106,6 +107,11 @@ customer_credit_export = make_export_view(
 )
 
 
+def _inject_attachment_counts(objs, request):
+    """列表页行钩子：批量注入每行的附件数量（见 attachments.services.inject_counts）。"""
+    attachment_services.inject_counts(objs)
+
+
 # 客户客诉视图
 customer_complaint_list = make_list_view(
     perm_module='customer_complaint', template_name='records/customer_complaint_list.html',
@@ -120,6 +126,7 @@ customer_complaint_list = make_list_view(
     ],
     filter_options={'responsible_salespersons': 'responsible_salesperson', 'product_models': 'product_model'},
     extra_context={'complaint_status_choices': [('未完成', '未完成'), ('处理中', '处理中'), ('已完成', '已完成')]},
+    row_hook=_inject_attachment_counts,
 )
 
 customer_complaint_add, customer_complaint_edit = make_form_view(
@@ -161,7 +168,8 @@ def customer_detail(request, pk):
 
     context = {
         'complaint': complaint,
-        'other_complaints': other_complaints
+        'other_complaints': other_complaints,
+        **attachment_services.panel_context(request, complaint),
     }
     return render(request, 'records/customer_detail.html', context)
 
@@ -543,6 +551,7 @@ customer_credit_delete = make_delete_view(
 customer_complaint_delete = make_delete_view(
     model=CustomerComplaint, perm_module='customer_complaint', label='客户客诉',
     display_field='customer_name', redirect_name='customer_complaint_list',
+    after_delete=lambda obj, obj_id: attachment_services.delete_for_object(obj, obj_id),
 )
 
 regulation_delete = make_delete_view(
@@ -586,6 +595,7 @@ insurance_list = make_list_view(
         ('date_end', 'end_date__lte', None, 'date_end'),
     ],
     filter_options={'departments': 'department'},
+    row_hook=_inject_attachment_counts,
 )
 
 insurance_add, insurance_edit = make_form_view(
@@ -596,10 +606,16 @@ insurance_add, insurance_edit = make_form_view(
     after_save=lambda obj, created: insurance_services.attach_record_safe(obj),
 )
 
+def _delete_insurance_files(obj, obj_id):
+    """保险删除后清理：通用附件（按删除前的 obj_id）+ 原属保单年度重算。"""
+    attachment_services.delete_for_object(obj, obj_id)
+    insurance_services.detach_record(obj)
+
+
 insurance_delete = make_delete_view(
     model=Insurance, perm_module='insurance', label='保险',
     display_field='company_name', redirect_name='insurance_list',
-    after_delete=insurance_services.detach_record,
+    after_delete=_delete_insurance_files,
 )
 
 insurance_export = make_export_view(
@@ -730,6 +746,7 @@ complaint_list = make_list_view(
     ],
     filter_options={'dispute_types': 'dispute_type', 'courts': 'court', 'lawyers': 'lawyer'},
     extra_context={'progress_choices': [('立案', '立案'), ('审理中', '审理中'), ('判决', '判决'), ('执行', '执行'), ('结案', '结案')]},
+    row_hook=_inject_attachment_counts,
 )
 
 # 诉讼留痕模块名为「诉讼」，页面标题为「客诉」（与原实现一致）
@@ -743,6 +760,7 @@ complaint_add, complaint_edit = make_form_view(
 complaint_delete = make_delete_view(
     model=Complaint, perm_module='complaint', label='客诉',
     display_field='case_number', redirect_name='complaint_list',
+    after_delete=lambda obj, obj_id: attachment_services.delete_for_object(obj, obj_id),
 )
 
 complaint_export = make_export_view(
@@ -784,7 +802,11 @@ def customer_credit_detail(request, pk):
 def complaint_detail(request, pk):
     """诉讼详情视图（已取消 AJAX 弹窗，一律整页渲染）"""
     complaint = get_object_or_404(Complaint, pk=pk)
-    return render(request, 'records/complaint_detail.html', {'complaint': complaint})
+    context = {
+        'complaint': complaint,
+        **attachment_services.panel_context(request, complaint),
+    }
+    return render(request, 'records/complaint_detail.html', context)
 
 
 @perm_required("complaint", "update")
@@ -859,6 +881,7 @@ def insurance_detail(request, pk):
         'insurance': insurance,
         'subject': subject,
         'highlight_id': insurance.pk,
+        **attachment_services.panel_context(request, insurance),
     }
     if _is_ajax(request):
         return _modal_detail(request, 'records/_insurance_detail_modal.html', context)
@@ -892,6 +915,7 @@ customer_ledger_list = make_list_view(
     extra_context={
         'attachment_choices': [('', '全部'), ('yes', '有附件'), ('no', '无附件')],
     },
+    row_hook=_inject_attachment_counts,
 )
 
 customer_ledger_add, customer_ledger_edit = make_form_view(
@@ -902,16 +926,22 @@ customer_ledger_add, customer_ledger_edit = make_form_view(
 )
 
 
-def _delete_ledger_attachment(obj):
+def _delete_ledger_attachment(obj, obj_id=None):
     """记录删除后同步清理 PDF 附件，避免磁盘孤儿文件。"""
     if obj.attachment:
         obj.attachment.delete(save=False)
 
 
+def _delete_ledger_files(obj, obj_id):
+    """客户台账删除后清理：汇总 PDF + 通用附件（按删除前的 obj_id）。"""
+    _delete_ledger_attachment(obj)
+    attachment_services.delete_for_object(obj, obj_id)
+
+
 customer_ledger_delete = make_delete_view(
     model=CustomerLedger, perm_module='customer_ledger', label='客户台账',
     display_field='customer_name', redirect_name='customer_ledger_list',
-    after_delete=_delete_ledger_attachment,
+    after_delete=_delete_ledger_files,
 )
 
 customer_ledger_export = make_export_view(
@@ -927,10 +957,14 @@ customer_ledger_export = make_export_view(
 def customer_ledger_detail(request, pk):
     ledger = get_object_or_404(CustomerLedger, pk=pk)
     if _is_ajax(request):
-        return _modal_detail(request, 'records/_customer_ledger_detail_modal.html', {'ledger': ledger})
+        return _modal_detail(request, 'records/_customer_ledger_detail_modal.html', {
+            'ledger': ledger,
+            **attachment_services.panel_context(request, ledger),
+        })
     return render(request, 'records/customer_ledger_detail.html', {
         'ledger': ledger,
         'credit_changes': ledger.credit_changes.all()[:50],
+        **attachment_services.panel_context(request, ledger),
     })
 
 

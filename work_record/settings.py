@@ -183,6 +183,7 @@ INSTALLED_APPS = [
     'archive',
     'notifications',
     'sysbackup',
+    'attachments',
 ]
 
 MIDDLEWARE = [

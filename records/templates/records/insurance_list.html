@@ -110,6 +110,7 @@
                         <th scope="col">是否已经到期</th>
                         <th scope="col">部门</th>
                         <th scope="col" class="col-optional">备注</th>
+                        <th scope="col">附件</th>
                         <th scope="col" class="col-actions">操作</th>
                     </tr>
                 </thead>
@@ -132,6 +133,13 @@
                         </td>
                         <td data-label="部门">{{ insurance.department }}</td>
                         <td data-label="备注" class="col-optional">{{ insurance.remarks|default:''|truncatechars:30 }}</td>
+                        <td data-label="附件">
+                            {% if insurance.attachment_count %}
+                            <span class="status-badge success" title="保单相关附件数">{{ insurance.attachment_count }} 个</span>
+                            {% else %}
+                            <span class="status-badge default">无</span>
+                            {% endif %}
+                        </td>
                         <td data-label="操作" class="col-actions">
                             <div class="u-toolbar-inline">
                                 <a href="{% url 'insurance_detail' insurance.pk %}" class="btn-transparent btn-sm" data-modal-detail data-modal-title="保险详情">详细</a>
@@ -146,7 +154,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="11" class="empty-cell">📭 暂无数据</td>
+                        <td colspan="12" class="empty-cell">📭 暂无数据</td>
                     </tr>
                     {% endfor %}
                 </tbody>

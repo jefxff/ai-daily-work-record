@@ -1,0 +1,234 @@
+{% load humanize %}
+{% comment %}
+通用附件面板（attachments 应用）——业务详情页 include 本片段即可获得
+「多附件上传 / 预览 / 下载 / 删除」完整能力。
+
+调用方约定：
+  att_obj                 业务对象实例（用于推导 app_label/model/pk 与鉴权）
+  attachments             Attachment 查询集（attachments.services.panel_context 提供）
+  attachment_categories   [(value, label)] 业务分类；空列表 = 不显示分类选择
+  can_manage_attachments  是否有上传/删除权限（面板据此显隐操作）
+  attachment_max_mb       大小上限（MB），用于提示文案
+{% endcomment %}
+<style>
+    .att-panel {
+        background: var(--c-surface);
+        border: 1px solid var(--c-border);
+        border-radius: var(--r-md);
+        padding: var(--sp-4) var(--sp-5);
+        margin-bottom: var(--sp-4);
+    }
+    .att-panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: var(--sp-3);
+        margin-bottom: var(--sp-3);
+    }
+    .att-panel-title {
+        margin: 0;
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: var(--c-text);
+        display: flex;
+        align-items: center;
+        gap: var(--sp-2);
+    }
+    .att-count-badge {
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: var(--c-primary-active);
+        background: var(--c-primary-subtle);
+        border-radius: 10px;
+        padding: 2px 10px;
+    }
+    .att-upload-bar { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+    .att-category-select { width: auto; min-width: 110px; }
+    .att-file-input { width: auto; max-width: 320px; }
+    .att-hint {
+        margin: 0 0 var(--sp-3);
+        font-size: 0.78rem;
+        color: var(--c-text-tertiary);
+    }
+    .att-list { display: flex; flex-direction: column; gap: var(--sp-2); }
+    .att-row {
+        display: flex;
+        align-items: center;
+        gap: var(--sp-3);
+        padding: 0.55rem 0.6rem;
+        border: 1px solid var(--c-border);
+        border-radius: var(--r-sm);
+        background: var(--c-surface-sunken);
+    }
+    .att-row:hover { border-color: var(--c-border-hover); }
+    .att-row-icon { flex-shrink: 0; }
+    .att-thumb {
+        width: 44px;
+        height: 44px;
+        object-fit: cover;
+        border-radius: 6px;
+        border: 1px solid var(--c-border);
+        display: block;
+    }
+    .att-ext {
+        width: 44px;
+        height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        background: var(--c-primary-subtle);
+        color: var(--c-primary-active);
+        font-size: 0.72rem;
+        font-weight: 700;
+    }
+    .att-ext-pdf { background: #fde8e8; color: #c0392b; }
+    .att-row-main { flex: 1; min-width: 0; }
+    .att-name {
+        font-weight: 600;
+        color: var(--c-text);
+        font-size: 0.9rem;
+        word-break: break-all;
+    }
+    .att-meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--sp-2);
+        margin-top: 3px;
+        font-size: 0.76rem;
+        color: var(--c-text-secondary);
+    }
+    .att-row-actions { display: flex; align-items: center; gap: var(--sp-1); flex-shrink: 0; }
+    .att-empty {
+        margin: 0;
+        padding: var(--sp-3) 0;
+        font-size: 0.85rem;
+        color: var(--c-text-tertiary);
+        text-align: center;
+    }
+</style>
+
+<div class="att-panel" id="attPanel">
+    <div class="att-panel-head">
+        <h3 class="att-panel-title">附件资料 <span class="att-count-badge" id="attCount">{{ attachments|length }}</span></h3>
+        {% if can_manage_attachments %}
+        <div class="att-upload-bar">
+            {% if attachment_categories %}
+            <select id="attCategory" class="form-select form-select-sm att-category-select" aria-label="附件分类">
+                {% for value, label in attachment_categories %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+            {% endif %}
+            <input type="file" id="attFileInput" class="form-control form-control-sm att-file-input" multiple
+                   accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.7z,.txt,.csv">
+            <button type="button" id="attUploadBtn" class="btn btn-sm btn-primary">上传附件</button>
+        </div>
+        {% endif %}
+    </div>
+    <p class="att-hint">支持图片 / PDF / Office / 压缩包 / 文本，单个不超过 {{ attachment_max_mb }}MB，可多选。</p>
+    <div class="att-list">
+        {% for att in attachments %}
+        <div class="att-row" id="att-row-{{ att.pk }}">
+            <div class="att-row-icon">
+                {% if att.is_image %}
+                <a href="{{ att.file.url }}" target="_blank" rel="noopener noreferrer" title="点击查看原图">
+                    <img src="{% url 'attachments:thumb' att.pk %}" alt="{{ att.original_name }}" class="att-thumb">
+                </a>
+                {% elif att.is_pdf %}
+                <a href="{{ att.file.url }}" target="_blank" rel="noopener noreferrer" title="在线预览"><span class="att-ext att-ext-pdf">PDF</span></a>
+                {% else %}
+                <span class="att-ext">{{ att.ext|default:"文件" }}</span>
+                {% endif %}
+            </div>
+            <div class="att-row-main">
+                <div class="att-name" title="{{ att.original_name }}">{{ att.original_name }}</div>
+                <div class="att-meta">
+                    {% if att.category_label %}<span class="status-badge info">{{ att.category_label }}</span>{% endif %}
+                    <span>{{ att.size|filesizeformat }}</span>
+                    <span>{{ att.uploaded_by|default:'—' }} · {{ att.created_at|date:"Y-m-d H:i" }}</span>
+                    {% if att.remark %}<span title="{{ att.remark }}">📝 {{ att.remark }}</span>{% endif %}
+                </div>
+            </div>
+            <div class="att-row-actions">
+                <a href="{{ att.file.url }}" target="_blank" rel="noopener noreferrer" class="btn-transparent btn-sm">预览</a>
+                <a href="{{ att.file.url }}" download class="btn-transparent btn-sm">下载</a>
+                {% if can_manage_attachments %}
+                <button type="button" class="btn-transparent btn-sm btn-delete att-del-btn"
+                        data-pk="{{ att.pk }}" data-name="{{ att.original_name }}"
+                        data-del-url="{% url 'attachments:delete' att.pk %}">删除</button>
+                {% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <p class="att-empty">暂无附件。{% if can_manage_attachments %}点击右上角「上传附件」添加证据文件。{% endif %}</p>
+        {% endfor %}
+    </div>
+</div>
+
+{% if can_manage_attachments %}
+<script>
+(function () {
+    var btn = document.getElementById('attUploadBtn');
+    var input = document.getElementById('attFileInput');
+    var cat = document.getElementById('attCategory');
+    if (!btn || !input) return;
+
+    btn.addEventListener('click', function () {
+        if (!input.files.length) {
+            if (window.showToast) window.showToast('请先选择要上传的文件', 'error');
+            return;
+        }
+        var fd = new FormData();
+        for (var i = 0; i < input.files.length; i++) fd.append('files', input.files[i]);
+        if (cat && cat.value) fd.append('category', cat.value);
+        btn.disabled = true;
+        fetch('{% url "attachments:upload" att_app_label att_model_name att_obj.pk %}', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': '{{ csrf_token }}' },
+            body: fd
+        }).then(function (r) { return r.json().then(function (j) { return { status: r.status, j: j }; }); })
+          .then(function (res) {
+              var j = res.j || {};
+              if (window.showToast) window.showToast(j.message || (j.ok ? '上传成功' : '上传失败'), j.ok ? 'success' : 'error');
+              if (j.ok) { setTimeout(function () { window.location.reload(); }, 600); }
+              else { btn.disabled = false; }
+          })
+          .catch(function () {
+              if (window.showToast) window.showToast('上传请求失败，请重试', 'error');
+              btn.disabled = false;
+          });
+    });
+
+    // 删除：AJAX 成功后移除对应行并更新计数
+    document.querySelectorAll('.att-del-btn').forEach(function (b) {
+        b.addEventListener('click', function () {
+            if (!window.confirm('确认删除附件「' + (b.dataset.name || '') + '」？删除后不可恢复。')) return;
+            fetch(b.dataset.delUrl, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': '{{ csrf_token }}' }
+            }).then(function (r) { return r.json(); })
+              .then(function (j) {
+                  if (j && j.ok) {
+                      var row = document.getElementById('att-row-' + b.dataset.pk);
+                      if (row) row.remove();
+                      var badge = document.getElementById('attCount');
+                      if (badge) {
+                          var n = parseInt(badge.textContent, 10) || 0;
+                          badge.textContent = Math.max(0, n - 1);
+                      }
+                      if (window.showToast) window.showToast('附件已删除', 'success');
+                  } else if (window.showToast) {
+                      window.showToast((j && j.message) || '删除失败', 'error');
+                  }
+              })
+              .catch(function () {
+                  if (window.showToast) window.showToast('删除请求失败，请重试', 'error');
+              });
+        });
+    });
+})();
+</script>
+{% endif %}

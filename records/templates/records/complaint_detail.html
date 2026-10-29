@@ -158,6 +158,9 @@
             </div>
         </div>
     </div>
+
+    <!-- 附件资料（起诉材料/证据材料/庭审文书/执行材料） -->
+    {% include 'attachments/_panel.html' with att_obj=complaint %}
 {% endblock %}
 
 {% block extra_css %}
