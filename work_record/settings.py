@@ -589,6 +589,37 @@ REQUEST_METRICS_FLUSH_INTERVAL = 30
 REQUEST_METRICS_RETENTION_DAYS = int(os.environ.get('DJANGO_REQUEST_METRICS_RETENTION_DAYS', '30'))
 REQUEST_METRICS_CLEANUP_INTERVAL = 3600
 
+# === 日志中心（运行日志入库检索）===
+# 只采集 LOG_DIR 下白名单文件的增量内容，解析成结构化行入库；页面按级别 / 来源 /
+# 关键字 / 时间窗检索。「采集最新」按钮或页面打开（60s 节流）触发，不占用调度进程。
+LOG_INGEST_ENABLED = os.environ.get('DJANGO_LOG_INGEST', '1') == '1'
+# 白名单 glob（相对 logs/ 目录）：只纳管这些文件名，其余文件（心跳、脚本、状态文件）一律忽略
+LOG_INGEST_FILES = (
+    'debug.log*',
+    'csp_violations.log',
+    'notify_worker.log',
+    'daily_incomplete.log',
+    'expiry_notices.log',
+    'runserver*.log',
+    'run_scheduler*.log',
+    'web.out',
+    'web.err',
+    'sched.out',
+    'sched.err',
+)
+# 单次最多读取的字节数：避免首次纳管时一次性解析整个 5MB 归档把页面拖住
+LOG_INGEST_MAX_BYTES = int(os.environ.get('DJANGO_LOG_INGEST_MAX_BYTES', str(1024 * 1024)))
+# 单条消息（含续行堆栈）最大长度，超出截断，避免异常长行撑爆页面与数据库
+LOG_INGEST_MAX_MESSAGE = int(os.environ.get('DJANGO_LOG_INGEST_MAX_MESSAGE', '4000'))
+# 采集时跳过的 logger（仅跳过其 INFO/DEBUG 访问流水，警告与错误仍保留）
+LOG_INGEST_SKIP_LOGGERS = ('django.server',)
+# 入库前对 password / token / SECRET_KEY / Authorization 等敏感形态做掩码
+LOG_MASK_SENSITIVE = os.environ.get('DJANGO_LOG_MASK_SENSITIVE', '1') == '1'
+LOG_RETENTION_DAYS = int(os.environ.get('DJANGO_LOG_RETENTION_DAYS', '30'))
+LOG_MAX_ROWS = int(os.environ.get('DJANGO_LOG_MAX_ROWS', '100000'))
+# 页面打开时的懒采集节流窗口（秒）；「采集最新」按钮不受限制
+LOG_INGEST_THROTTLE_SECONDS = int(os.environ.get('DJANGO_LOG_INGEST_THROTTLE', '60'))
+
 # === 知识库可见性（批次 1）===
 # 规则见 knowledge_base/access.py：新文档默认私有 + 主动公开 + 可随时收回。
 # KB_ADMIN_CAN_READ_PRIVATE：管理员能否读别人的私有文档。默认 False——

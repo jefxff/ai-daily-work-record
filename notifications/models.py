@@ -383,3 +383,51 @@ class RequestMetric(models.Model):
     @property
     def is_slow(self):
         return self.duration_ms >= self.SLOW_BADGE_MS
+
+
+class SystemLog(models.Model):
+    """运行日志（由 ``notifications.logs_service`` 从 logs/ 目录增量采集入库）。
+
+    只读展示 + 入库检索：``logs/`` 下的日志文件会被解析成结构化行，页面按级别 /
+    来源 / 关键字 / 时间窗检索。``fingerprint`` 是内容指纹，轮转重复读取时靠
+    ``ignore_conflicts`` 幂等去重；数据按 ``LOG_RETENTION_DAYS`` / ``LOG_MAX_ROWS`` 裁剪。
+    """
+
+    LEVEL_CHOICES = [
+        ("DEBUG", "调试"),
+        ("INFO", "信息"),
+        ("WARNING", "警告"),
+        ("ERROR", "错误"),
+        ("CRITICAL", "严重"),
+    ]
+    LEVEL_BADGES = {
+        "DEBUG": "default",
+        "INFO": "info",
+        "WARNING": "warning",
+        "ERROR": "danger",
+        "CRITICAL": "danger",
+    }
+
+    logged_at = models.DateTimeField("日志时间", db_index=True)
+    level = models.CharField("级别", max_length=10, choices=LEVEL_CHOICES, db_index=True)
+    logger = models.CharField("来源", max_length=120, db_index=True)
+    source = models.CharField("文件", max_length=120, db_index=True)
+    message = models.TextField("内容")
+    fingerprint = models.CharField("指纹", max_length=64, unique=True)
+    created_at = models.DateTimeField("入库时间", auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = "运行日志"
+        verbose_name_plural = verbose_name
+        ordering = ["-logged_at", "-id"]
+        indexes = [
+            models.Index(fields=["level", "logged_at"], name="notif_syslog_level_time_idx"),
+            models.Index(fields=["source", "logged_at"], name="notif_syslog_source_time_idx"),
+        ]
+
+    @property
+    def level_badge_class(self):
+        return self.LEVEL_BADGES.get(self.level, "default")
+
+    def __str__(self):
+        return f"{self.logged_at:%Y-%m-%d %H:%M:%S} {self.level} {self.logger}"

@@ -32,7 +32,7 @@ from work_record.csp import csp_report
 from work_record.export_utils import content_disposition
 from ai_api import views_config as ai_config_views
 from knowledge_base import views as kb_views
-from notifications import views_health, views_tasks, views_metrics
+from notifications import views_health, views_tasks, views_metrics, views_logs
 
 # 媒体文件一级目录 -> 所属业务模块（与 accounts/registry.py 的模块 key 对齐）。
 # 未登记的前缀一律拒绝：宁可让新目录"打不开"，也不能让它默认对所有登录用户开放。
@@ -119,6 +119,10 @@ urlpatterns = [
     path('system/health/', views_health.system_health, name='system_health'),
     # 性能监控（请求量 / P95 / 慢查询，system.read 只读）
     path('system/perf/', views_metrics.perf_dashboard, name='perf_dashboard'),
+    # 日志中心（运行日志入库检索 / 手动采集 / 导出，system.read 只读）
+    path('system/logs/', views_logs.log_center, name='system_logs'),
+    path('system/logs/ingest/', views_logs.log_ingest_now, name='system_logs_ingest'),
+    path('system/logs/export/', views_logs.log_export, name='system_logs_export'),
     # 知识库阅读报告（system.read）：挂在 system/ 下，避免对普通知识库用户暴露他人阅读轨迹
     path('system/knowledge-report/', kb_views.knowledge_report, name='knowledge_report'),
     # 定时任务执行历史（system.read 只读）

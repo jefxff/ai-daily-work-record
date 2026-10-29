@@ -61,6 +61,8 @@ urlpatterns = [
          name='api-system-health'),
     path('system/perf/', api_admin.SystemPerfAPIView.as_view(),
          name='api-system-perf'),
+    path('system/logs/', api_admin.SystemLogsAPIView.as_view(),
+         name='api-system-logs'),
 
     # 业务聚合 / 报表 / 档案表级导入导出（静态字面量端点，必须早于 router）
     path('daily-record/weekly-report/',

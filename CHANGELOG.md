@@ -2,6 +2,32 @@
 
 本文件记录对外可见的功能、部署形态与依赖变更。格式参考 Keep a Changelog。
 
+## [2.1.6] - 2026-10-29
+
+新增「日志中心」（左侧「系统」→「日志中心」，`/system/logs/`）。**既有页面、URL
+与业务数据零改动**；仅新增一张日志表和只读页面，权限复用 `system.read`。
+
+### 新增
+
+- **日志入库**：`SystemLog` 表 + `notifications/logs_service.py` 增量采集 `logs/`
+  白名单文件；按字节偏移续读，轮转/截断自动归零，`fingerprint` 唯一约束去重；
+  多行异常堆栈归并为一条；`password/token/SECRET_KEY` 等敏感值入库前掩码。
+- **日志中心页面**：近 24 小时摘要卡、级别分布、错误来源 Top5、纳管文件采集进度、
+  分页日志流（行内展开完整堆栈）；级别 / 文件 / 关键字 / 时间窗筛选；≤640px 卡片模式。
+- **手动采集**：`POST /system/logs/ingest/`（system.update），返回新增/重复/裁剪条数。
+- **CSV 导出**：`GET /system/logs/export/`（system.read），走 `@guarded_export`、
+  行数上限与公式注入防护，并写入操作留痕。
+- **API**：`GET /api/system/logs/`（system.read，level/source/search/days/page/per_page）。
+- **配置**：`LOG_INGEST_ENABLED`、`LOG_INGEST_FILES`、`LOG_INGEST_MAX_BYTES`、
+  `LOG_INGEST_MAX_MESSAGE`、`LOG_INGEST_SKIP_LOGGERS`、`LOG_MASK_SENSITIVE`、
+  `LOG_RETENTION_DAYS`、`LOG_MAX_ROWS`、`LOG_INGEST_THROTTLE_SECONDS`。
+
+### 部署
+
+1. `python manage.py migrate`（新增 `notifications.0015_systemlog`）
+2. `python manage.py collectstatic --noinput`（新增 `static/js/pages/log_center.js`）
+3. 重启 web 与 `run_scheduler` 进程
+
 ## [2.1.5] - 2026-10-26
 
 补齐 A 类业务页面缺失的 DRF API。**无 URL、模板、数据与部署步骤变化**；

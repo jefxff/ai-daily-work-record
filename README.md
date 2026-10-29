@@ -102,6 +102,7 @@ python manage.py rotate_default_passwords --force     # 额外强制轮换上述
 5. **核价管理** - 价格评估和供应商管理
 6. **金属价格** - 实时金属价格监控
 7. **档案管理** - 档案柜/层/格物理定位、电子档案、借阅归还、二维码、批量导入导出（验收前仅超级管理员可见）
+8. **日志中心** - `logs/` 运行日志增量入库、按级别/文件/关键字/时间窗检索、手动采集与 CSV 导出（左侧「系统」分组，仅管理员）
 
 ### 档案管理模块说明
 
@@ -285,7 +286,12 @@ python manage.py sync_rbac
 定期备份数据库文件 `db.sqlite3`
 
 ### 日志管理
-日志文件保存在 `logs/` 目录
+日志文件保存在 `logs/` 目录。左侧「系统」→「日志中心」（`/system/logs/`）会把白名单文件
+（`LOG_INGEST_FILES`，默认 `debug.log*`、`csp_violations.log`、`runserver*.log` 等）的增量内容
+解析成结构化日志入库，支持级别 / 文件 / 关键字 / 时间窗检索与 CSV 导出。页面打开时按
+`LOG_INGEST_THROTTLE_SECONDS`（默认 60s）节流采集，也可点「采集最新」立即拉取；数据按
+`LOG_RETENTION_DAYS`（30 天）与 `LOG_MAX_ROWS`（10 万条）自动裁剪，入库前对
+`password/token/SECRET_KEY` 形态做掩码。采集状态保存在 `logs/.log_ingest_state.json`（不进 Git）。
 
 ### 监控
 监控系统运行状态和性能指标

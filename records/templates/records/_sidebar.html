@@ -148,6 +148,7 @@
                 <a href="{% url 'sysbackup:center' %}" class="{% if '/system/backup' in request.path %}active{% endif %}">数据备份</a>
                 <a href="{% url 'system_health' %}" class="{% if '/system/health' in request.path %}active{% endif %}">系统健康</a>
                 <a href="{% url 'perf_dashboard' %}" class="{% if '/system/perf' in request.path %}active{% endif %}">性能监控</a>
+                <a href="{% url 'system_logs' %}" class="{% if '/system/logs' in request.path %}active{% endif %}">日志中心</a>
                 <a href="{% url 'task_run_history' %}" class="{% if '/system/tasks' in request.path %}active{% endif %}">任务历史</a>
                 {% endcan_view %}
                 {% can "system" "update" %}

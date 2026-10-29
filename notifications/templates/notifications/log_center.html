@@ -1,0 +1,407 @@
+{% extends "records/base.html" %}
+{% load static accounts_tags %}
+
+{% block page_title %}日志中心 - 每日工作记录管理网站{% endblock %}
+
+{% block top_nav_actions %}
+    <form class="d-flex gap-2" method="GET" id="logSearchForm">
+        <input class="search-input" type="search" name="search" value="{{ search_term }}"
+               placeholder="搜索日志内容或来源 logger" aria-label="搜索日志内容或来源">
+        {% if level %}<input type="hidden" name="level" value="{{ level }}">{% endif %}
+        {% if source %}<input type="hidden" name="source" value="{{ source }}">{% endif %}
+        <input type="hidden" name="days" value="{{ days }}">
+        <button class="btn-transparent" type="submit">搜索</button>
+    </form>
+    <div class="filter-container">
+        <button class="btn-transparent" type="button" id="filterBtn"
+                aria-expanded="false" aria-controls="filterDropdown">筛选</button>
+        <div class="filter-dropdown" id="filterDropdown">
+            <h4>筛选条件</h4>
+            <form id="filterForm" method="GET">
+                <input type="hidden" name="search" value="{{ search_term }}">
+                <div class="filter-group">
+                    <label for="logLevel">日志级别</label>
+                    <select id="logLevel" name="level">
+                        <option value="">全部</option>
+                        {% for value, text in level_choices %}
+                        <option value="{{ value }}" {% if level == value %}selected{% endif %}>{{ text }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="logSource">日志文件</label>
+                    <select id="logSource" name="source">
+                        <option value="">全部</option>
+                        {% for name in sources %}
+                        <option value="{{ name }}" {% if source == name %}selected{% endif %}>{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="logDays">时间范围</label>
+                    <select id="logDays" name="days">
+                        {% for value, text in days_choices %}
+                        <option value="{{ value }}" {% if days == value %}selected{% endif %}>{{ text }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-actions">
+                    <button type="submit" class="filter-apply">应用筛选</button>
+                    <a href="{% url 'system_logs' %}" class="filter-reset text-center u-no-underline">重置</a>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% if ingest_enabled %}{% can "system" "update" %}
+    <button type="button" class="btn-transparent" id="logIngestBtn"
+            data-url="{% url 'system_logs_ingest' %}">采集最新</button>
+    {% endcan %}{% endif %}
+    <a href="{% url 'system_logs_export' %}?{{ request.GET.urlencode }}" class="btn-transparent">导出</a>
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h2>日志中心<span class="total-hint">共 {{ logs.paginator.count }} 条匹配记录</span></h2>
+        <div class="filter-chips">
+            {% if level %}
+            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'level' %}{{ k }}={{ v|urlencode }}&{% endif %}{% endfor %}">级别：{{ level }} ✕</a>
+            {% endif %}
+            {% if source %}
+            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'source' %}{{ k }}={{ v|urlencode }}&{% endif %}{% endfor %}">文件：{{ source }} ✕</a>
+            {% endif %}
+            {% if search_term %}
+            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'search' %}{{ k }}={{ v|urlencode }}&{% endif %}{% endfor %}">搜索：{{ search_term }} ✕</a>
+            {% endif %}
+            {% if days != 7 %}
+            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'days' %}{{ k }}={{ v|urlencode }}&{% endif %}{% endfor %}">时间：{% if days %}近 {{ days }} 天{% else %}全部{% endif %} ✕</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="log-cards">
+        <div class="log-card">
+            <div class="log-card-label">近 24 小时日志</div>
+            <div class="log-card-value">{{ stats.total }}</div>
+            <div class="log-card-sub">条（含全部级别）</div>
+        </div>
+        <div class="log-card">
+            <div class="log-card-label">ERROR / CRITICAL</div>
+            <div class="log-card-value{% if stats.errors %} is-alert{% endif %}">{{ stats.errors }}</div>
+            <div class="log-card-sub">近 24 小时</div>
+        </div>
+        <div class="log-card">
+            <div class="log-card-label">WARNING</div>
+            <div class="log-card-value">{{ stats.warnings }}</div>
+            <div class="log-card-sub">近 24 小时</div>
+        </div>
+        <div class="log-card">
+            <div class="log-card-label">纳管文件</div>
+            <div class="log-card-value">{{ files|length }}<span class="log-card-unit"> 个</span></div>
+            <div class="log-card-sub">
+                上次采集 {% if stats.last_ingest %}{{ stats.last_ingest|date:"m-d H:i" }}{% else %}尚未采集{% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="log-levelrow" role="list" aria-label="近 24 小时级别分布">
+        {% for item in stats.breakdown %}
+        <span class="log-levelchip" role="listitem">
+            <span class="status-badge {{ item.badge }}">{{ item.label }}</span>
+            <span class="log-levelchip-num">{{ item.count }}</span>
+        </span>
+        {% endfor %}
+        <span class="log-levelrow-hint">近 24 小时级别分布</span>
+    </div>
+
+    <div class="log-panels">
+        <section class="log-panel">
+            <h3 class="log-panel-title">近 24 小时错误来源 Top 5</h3>
+            {% if stats.error_sources %}
+            <ul class="log-rank">
+                {% for item in stats.error_sources %}
+                <li>
+                    <span class="log-rank-name" title="{{ item.logger }}">{{ item.logger }}</span>
+                    <span class="log-rank-num">{{ item.cnt }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="log-panel-empty">近 24 小时没有 ERROR / CRITICAL 日志</p>
+            {% endif %}
+        </section>
+        <section class="log-panel">
+            <h3 class="log-panel-title">纳管文件（{{ files|length }}）</h3>
+            {% if files %}
+            <table class="log-filetable">
+                <thead>
+                    <tr><th scope="col">文件</th><th scope="col">大小</th><th scope="col">最后写入</th><th scope="col">采集进度</th></tr>
+                </thead>
+                <tbody>
+                    {% for f in files %}
+                    <tr>
+                        <td>{{ f.name }}</td>
+                        <td>{{ f.size|filesizeformat }}</td>
+                        <td>{{ f.mtime|date:"m-d H:i" }}</td>
+                        <td>{% if f.size %}{% widthratio f.offset f.size 100 %}%{% else %}0%{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="log-panel-empty">logs/ 目录下暂无可采集文件</p>
+            {% endif %}
+        </section>
+    </div>
+
+    <div class="table-container">
+        <table class="table--cards table table-sticky log-table">
+            <thead>
+                <tr>
+                    <th scope="col">时间</th>
+                    <th scope="col">级别</th>
+                    <th scope="col">来源</th>
+                    <th scope="col">文件</th>
+                    <th scope="col">内容</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in logs %}
+                <tr class="{% if row.level == 'ERROR' or row.level == 'CRITICAL' %}log-row--alert{% endif %}">
+                    <td data-label="时间"><span class="log-time">{{ row.logged_at|date:"m-d H:i:s" }}</span></td>
+                    <td data-label="级别"><span class="status-badge {{ row.level_badge_class }}">{{ row.get_level_display }}</span></td>
+                    <td data-label="来源"><span class="log-logger">{{ row.logger }}</span></td>
+                    <td data-label="文件"><span class="log-source">{{ row.source }}</span></td>
+                    <td data-label="内容" class="log-msg-cell">
+                        <details class="log-detail">
+                            <summary><span class="log-msg-preview">{{ row.message }}</span></summary>
+                            <pre class="log-msg-full">{{ row.message }}</pre>
+                        </details>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="empty-cell">📭 暂无日志，可点击「采集最新」拉取 logs/ 目录下的日志</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% include 'records/_pagination.html' with page_obj=logs %}
+    </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .log-cards {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 14px;
+    }
+    @media (max-width: 1100px) { .log-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 640px) { .log-cards { grid-template-columns: minmax(0, 1fr); } }
+    .log-card {
+        background: var(--c-surface);
+        border: 1px solid var(--c-border);
+        border-radius: var(--r-md);
+        padding: 14px 16px;
+    }
+    .log-card-label {
+        color: var(--c-text-secondary);
+        font-size: 0.78rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .log-card-value {
+        margin-top: 6px;
+        color: var(--c-text);
+        font-size: var(--fs-lg);
+        font-weight: 600;
+        line-height: 1.2;
+        font-variant-numeric: tabular-nums;
+    }
+    .log-card-value.is-alert { color: var(--c-danger); }
+    .log-card-unit { font-size: 0.8rem; font-weight: 400; color: var(--c-text-secondary); }
+    .log-card-sub { margin-top: 4px; color: var(--c-text-tertiary); font-size: 0.75rem; }
+
+    .log-levelrow {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px 14px;
+        padding: 0 2px 14px;
+    }
+    .log-levelchip { display: inline-flex; align-items: center; gap: 6px; }
+    .log-levelchip-num {
+        color: var(--c-text-secondary);
+        font-size: 0.8rem;
+        font-variant-numeric: tabular-nums;
+    }
+    .log-levelrow-hint { margin-left: auto; color: var(--c-text-tertiary); font-size: 0.75rem; }
+
+    .log-panels {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+    @media (max-width: 900px) { .log-panels { grid-template-columns: minmax(0, 1fr); } }
+    .log-panel {
+        background: var(--c-surface);
+        border: 1px solid var(--c-border);
+        border-radius: var(--r-md);
+        padding: 14px 16px;
+    }
+    .log-panel-title {
+        margin: 0 0 10px;
+        color: var(--c-text);
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+    .log-panel-empty { margin: 0; color: var(--c-text-tertiary); font-size: 0.8rem; }
+    .log-rank { margin: 0; padding: 0; list-style: none; }
+    .log-rank li {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 6px 0;
+        border-bottom: 1px solid var(--c-divider);
+        font-size: 0.8rem;
+    }
+    .log-rank li:last-child { border-bottom: 0; }
+    .log-rank-name {
+        color: var(--c-text-secondary);
+        font-family: var(--font-mono);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .log-rank-num { color: var(--c-danger); font-weight: 600; font-variant-numeric: tabular-nums; }
+    .log-filetable { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+    .log-filetable th {
+        padding: 4px 6px;
+        color: var(--c-text-secondary);
+        font-weight: 500;
+        text-align: left;
+        border-bottom: 1px solid var(--c-border);
+    }
+    .log-filetable td {
+        padding: 5px 6px;
+        color: var(--c-text-secondary);
+        border-bottom: 1px solid var(--c-divider);
+        word-break: break-all;
+    }
+    .log-filetable tr:last-child td { border-bottom: 0; }
+
+    .log-table { min-width: 1080px; }
+    .log-time, .log-logger, .log-source, .log-msg-preview {
+        font-family: var(--font-mono);
+        font-size: 0.8rem;
+        color: var(--c-text-secondary);
+    }
+    .log-time { white-space: nowrap; }
+    .log-logger, .log-source { word-break: break-all; }
+    .log-msg-cell { text-align: left; }
+    .log-detail summary { cursor: pointer; display: block; list-style: none; }
+    .log-detail summary::-webkit-details-marker { display: none; }
+    .log-msg-preview {
+        display: block;
+        max-width: 620px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .log-detail[open] .log-msg-preview { white-space: normal; }
+    .log-msg-full {
+        margin: 0.5rem 0 0;
+        padding: 10px 12px;
+        max-height: 320px;
+        overflow: auto;
+        background: var(--c-surface-sunken);
+        border: 1px solid var(--c-border);
+        border-radius: var(--r-sm);
+        color: var(--c-text);
+        font-family: var(--font-mono);
+        font-size: 0.78rem;
+        line-height: 1.55;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+    .log-row--alert td:first-child { box-shadow: inset 3px 0 0 var(--c-danger); }
+
+    /* 筛选下拉（与操作留痕一致的结构） */
+    .filter-container { position: relative; display: inline-block; }
+    .filter-dropdown {
+        position: absolute;
+        top: calc(100% + 0.5rem);
+        right: 0;
+        z-index: var(--z-dropdown);
+        display: none;
+        min-width: 320px;
+        max-width: 90vw;
+        padding: 1.25rem;
+        background: var(--c-surface);
+        border: 1px solid var(--c-border);
+        border-radius: 12px;
+        box-shadow: var(--sh-pop);
+    }
+    .filter-dropdown.show { display: block; }
+    .filter-dropdown h4 { margin: 0 0 1rem; color: var(--c-text); font-size: 1rem; font-weight: 600; }
+    .filter-group { margin-bottom: 1rem; }
+    .filter-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        color: var(--c-text-secondary);
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+    .filter-group select {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        background: var(--c-surface);
+        border: 1px solid var(--c-border-strong);
+        border-radius: var(--r-sm);
+        color: var(--c-text);
+        font-size: 0.875rem;
+        cursor: pointer;
+    }
+    .filter-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 1.25rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--c-border);
+    }
+    .filter-apply {
+        flex: 1;
+        padding: 0.5rem 1rem;
+        border: 0;
+        border-radius: var(--r-sm);
+        background: var(--c-primary);
+        color: var(--c-text-inverse);
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+    }
+    .filter-reset {
+        flex: 1;
+        padding: 0.5rem 1rem;
+        border-radius: var(--r-sm);
+        background: var(--c-surface-sunken);
+        color: var(--c-text-secondary);
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    @media (max-width: 640px) {
+        .log-table { min-width: 0; }
+        .log-msg-cell { text-align: left; }
+        .log-msg-preview { max-width: none; }
+        .log-levelrow-hint { margin-left: 0; }
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/pages/log_center.js' %}?v=20261029a"></script>
+{% endblock %}

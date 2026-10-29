@@ -767,6 +767,55 @@ class SystemPerfAPIView(APIView):
                          "top_paths": top_paths, "slow_paths": slow_paths})
 
 
+class SystemLogsAPIView(APIView):
+    """日志中心 API（只读，system.read）：运行日志检索。
+
+    查询参数：level / source / search / days / page / per_page（5~100）。
+    权限在视图内显式 ``_require``，并声明 ``perm_explicit_checks`` 供守卫识别。
+    """
+    permission_classes = [IsAuthenticated]
+    perm_explicit_checks = True
+
+    def get(self, request):
+        from notifications import logs_service
+        from notifications import views_logs as vl
+
+        _require(request, "system", "read")
+        try:
+            level, source, search, days = vl.parse_filters(request.query_params)
+        except vl.LogFilterError as exc:
+            return Response({"ok": False, "message": str(exc)},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        qs = vl.build_queryset(level, source, search, days)
+        try:
+            page = max(1, int(request.query_params.get("page", 1)))
+        except (TypeError, ValueError):
+            page = 1
+        try:
+            per_page = min(100, max(5, int(request.query_params.get("per_page", 20))))
+        except (TypeError, ValueError):
+            per_page = 20
+
+        total = qs.count()
+        rows = list(qs[(page - 1) * per_page: page * per_page])
+        return Response({
+            "ok": True,
+            "total": total,
+            "page": page,
+            "per_page": per_page,
+            "has_next": page * per_page < total,
+            "filters": {
+                "level": level,
+                "source": source,
+                "search": search,
+                "days": days,
+            },
+            "stats": logs_service.dashboard_stats(),
+            "items": [vl.serialize_log(row) for row in rows],
+        })
+
+
 # ============================== 定时任务（超管） ==============================
 
 class ScheduledTaskViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
