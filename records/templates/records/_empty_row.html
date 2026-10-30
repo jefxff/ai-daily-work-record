@@ -1,0 +1,16 @@
+{% comment %}
+    列表页共用空态行。用法：
+        {% include 'records/_empty_row.html' with colspan=19 %}
+        {% include 'records/_empty_row.html' with colspan=5 empty_title="暂无日志" empty_desc="可点击「采集最新」拉取 logs/ 目录下的日志" %}
+    为什么做成 include：原来 12 个列表页各写一格 `📭 暂无数据`，
+    改文案/改样式要改 12 处，且没有任何"下一步做什么"的指引。
+{% endcomment %}
+<tr>
+    <td colspan="{{ colspan|default:1 }}" class="empty-cell">
+        <div class="empty-cell__inner" role="status">
+            <span class="empty-cell__icon" aria-hidden="true">📭</span>
+            <p class="empty-cell__title">{{ empty_title|default:"暂无数据" }}</p>
+            <p class="empty-cell__desc">{{ empty_desc|default:"换个搜索词或调整筛选条件后再试" }}</p>
+        </div>
+    </td>
+</tr>

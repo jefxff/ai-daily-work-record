@@ -266,8 +266,8 @@ class ServicesTests(TestCase):
             media_module_for("attachments/complaint/complaint/1/a.png"), "complaint"
         )
         self.assertEqual(
-            media_module_for("attachments/customer_ledger/customerledger/1/a.png"),
-            "customer_ledger",
+            media_module_for("attachments/insurance/insurance/1/a.png"),
+            "insurance",
         )
         # 未登记的二级目录（伪造模块名）一律拒认
         self.assertIsNone(media_module_for("attachments/notamodule/x/1/a.png"))

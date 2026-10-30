@@ -584,19 +584,22 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
             overflow: hidden;
         }
         .table { margin: 0; width: 100%; color: var(--c-text-secondary); }
+        /* 行高统一：表头与数据格同一套垂直节奏（内容 13px/1.5 + 12px 上下内边距 ≈ 44px），
+           横向内边距收到 14px —— 宽表格的列多，24px 会无谓撑宽表格、加剧横向滚动。 */
         .table thead th {
             background: var(--c-surface-sunken);
             color: var(--c-text);
             font-weight: 500;
             border: none;
             border-bottom: 1px solid var(--c-border);
-            padding: 12px 24px;
+            padding: 12px 14px;
             text-align: center;
             white-space: nowrap;
-            font-size: 14px;
+            font-size: var(--fs-sm);
+            line-height: 1.5;
         }
         .table tbody td {
-            padding: 12px 24px;
+            padding: 12px 14px;
             vertical-align: middle;
             background: var(--c-surface);
             color: var(--c-text-secondary);
@@ -605,7 +608,8 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
             border-bottom: 1px solid var(--c-border);
             word-wrap: break-word;
             max-width: 300px;
-            font-size: 14px;
+            font-size: var(--fs-sm);
+            line-height: 1.5;
         }
         .table tbody tr:last-child td { border-bottom: none; }
         .table tbody tr { transition: background-color 0.15s ease; }
@@ -1058,7 +1062,13 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
         .empty-state { text-align: center; padding: 3rem 1rem; color: var(--c-text-secondary); }
         .empty-state .empty-icon { font-size: 3rem; margin-bottom: 0.75rem; opacity: 0.65; }
         .empty-state .empty-text { margin-bottom: 1rem; }
-        .empty-cell { text-align: center; padding: 2.5rem 1rem; color: var(--c-text-tertiary); }
+        /* 表格空态（records/_empty_row.html）：
+           图标 + 标题 + 一句可执行的下一步提示，替代原来只有「📭 暂无数据」的一格。 */
+        .empty-cell { padding: var(--sp-9) var(--sp-4); color: var(--c-text-tertiary); }
+        .empty-cell__inner { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); }
+        .empty-cell__icon { font-size: 1.75rem; line-height: 1; opacity: 0.7; }
+        .empty-cell__title { margin: 0; font-size: var(--fs-base); font-weight: 600; color: var(--c-text-secondary); }
+        .empty-cell__desc { margin: 0; font-size: var(--fs-sm); color: var(--c-text-tertiary); }
 
         /* 页头信息区 */
         .page-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.25rem; }
@@ -1113,8 +1123,10 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
             *, *::before, *::after { animation: none; transition: none; }
         }
 
-        /* 窄屏隐藏次要列（模板给 th/td 加 .col-optional 启用） */
-        @media (max-width: 992px) {
+        /* 窄屏隐藏次要列（模板给 th/td 加 .col-optional 启用）。
+           断点必须与 components.css 的 .hidden-cols-hint（≤1280 显示「已隐藏 N 个次要列」）
+           一致；否则 1280 宽度下提示条在说谎：声称隐藏了列，实际一列不少。 */
+        @media (max-width: 1280px) {
             .col-optional { display: none; }
         }
 
@@ -1343,4 +1355,367 @@ a.home-kpi:hover .home-kpi__value { color: var(--c-primary-active); }
         right: 0.5rem;
         left: auto;
     }
+}
+
+/* 操作列吸附在右侧：宽表格横向滚动时，行内操作按钮始终可见。
+   （另有 6 个页面在自己的 extra_css 里写了同样的规则，取值一致；
+     这里给后接入的页面一个共享兜底，避免「有 min-width 就看不到操作列」） */
+.table thead th.col-actions,
+.table tbody td.col-actions {
+    position: sticky;
+    right: 0;
+    z-index: var(--z-sticky);
+    background: var(--c-surface);
+    border-left: 1px solid var(--c-border);
+    box-shadow: -3px 0 5px rgba(0, 0, 0, 0.06);
+}
+.table thead th.col-actions { z-index: var(--z-sticky-head); background: var(--c-surface-sunken); }
+.table tbody tr:hover td.col-actions { background: var(--c-surface-sunken); }
+
+/* ============================================================================
+   筛选下拉面板（全站共用）
+   ----------------------------------------------------------------------------
+   9 个带筛选的页面（客诉/账期/台账/每日记录/装修/保险/诉讼/操作留痕/日志中心）
+   原先各自内联一份样式：主按钮硬编码 rgba(59,130,246,1)、输入框写死 white，
+   深色主题下白底刺眼；面板尺寸也各不相同（280/320px、有无 max-height）。
+   字段结构（.filter-container/.filter-group/.filter-actions）保持不变，
+   样式统一收在这里；开合、Esc、点击外部、重置行为由 base.html 的公共脚本接管。
+   ≤640px 的贴边定位仍由 components.css 负责，那里优先级更高。
+   ========================================================================== */
+.filter-container,
+.filter-button { position: relative; display: inline-block; }
+
+.filter-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: var(--z-dropdown);
+    display: none;
+    width: 340px;
+    max-width: calc(100vw - 32px);
+    max-height: min(70vh, 560px);
+    overflow-y: auto;
+    padding: var(--sp-5);
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-lg);
+    box-shadow: var(--sh-pop);
+}
+.filter-dropdown.show { display: block; }
+
+.filter-dropdown h4 {
+    margin: 0 0 var(--sp-4);
+    padding-bottom: var(--sp-3);
+    border-bottom: 1px solid var(--c-divider);
+    color: var(--c-text);
+    font-size: var(--fs-base);
+    font-weight: 600;
+}
+
+.filter-group { margin-bottom: var(--sp-4); }
+.filter-group label {
+    display: block;
+    margin-bottom: var(--sp-2);
+    color: var(--c-text-secondary);
+    font-size: var(--fs-sm);
+    font-weight: 500;
+}
+.filter-group select,
+.filter-group input {
+    width: 100%;
+    min-height: 34px;
+    padding: 6px 10px;
+    background: var(--c-surface);
+    color: var(--c-text);
+    border: 1px solid var(--c-border-strong);
+    border-radius: var(--r-sm);
+    font-size: var(--fs-sm);
+}
+.filter-group select:focus,
+.filter-group input:focus {
+    outline: none;
+    border-color: var(--c-primary);
+    box-shadow: var(--sh-focus);
+}
+.filter-group input::placeholder { color: var(--c-text-tertiary); }
+
+/* 单选组（客诉「是否报保险」） */
+.radio-group { display: flex; flex-wrap: wrap; gap: var(--sp-4); }
+.radio-group label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-weight: 400;
+    cursor: pointer;
+}
+.radio-group input[type="radio"] { width: auto; min-height: 0; margin: 0; }
+
+/* 日期范围（保险「到期日」） */
+.date-range-container { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.date-range-container input { flex: 1 1 120px; min-width: 0; }
+.date-range-separator { color: var(--c-text-secondary); font-size: var(--fs-sm); }
+
+.filter-actions {
+    display: flex;
+    gap: var(--sp-2);
+    margin-top: var(--sp-4);
+    padding-top: var(--sp-4);
+    border-top: 1px solid var(--c-divider);
+}
+.filter-apply,
+.filter-reset {
+    flex: 1;
+    min-height: 34px;
+    padding: 6px 12px;
+    border: 1px solid transparent;
+    border-radius: var(--r-sm);
+    font-size: var(--fs-sm);
+    font-weight: 500;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color var(--dur-fast) var(--ease-out),
+                border-color var(--dur-fast) var(--ease-out),
+                color var(--dur-fast) var(--ease-out);
+}
+.filter-apply { background: var(--c-primary); color: var(--c-text-inverse); }
+.filter-apply:hover { background: var(--c-primary-hover); color: var(--c-text-inverse); }
+.filter-reset { background: var(--c-surface-sunken); color: var(--c-text-secondary); border-color: var(--c-border); }
+.filter-reset:hover { background: var(--c-surface); color: var(--c-text); border-color: var(--c-border-strong); }
+
+/* ============================================================================
+   宽表格固定布局（第 2 批）
+   ----------------------------------------------------------------------------
+   问题：默认 table-layout:auto 时，列宽由「最长内容」决定。客诉列表 19 列、
+   几乎每个单元格都 white-space:nowrap，表格被内容撑到 2600px 以上，1920 分辨率
+   下仍溢出 1232px；表头与数据在横向滚动时还会错位。
+   解法：给表格加 .table--fixed 改用固定布局 —— 列宽只由 thead 里声明的宽度决定，
+   内容超出时截断/换行，表格宽度恒等于卡片宽度，不再产生横向滚动。
+   每页在 {% block extra_css %} 里用 th:nth-child(n) 给列预算（百分比，合计 100%）。
+   ========================================================================== */
+.table--fixed { table-layout: fixed; }
+/* 固定布局下列宽完全由表头决定，app.css 基线的 `td { max-width: 300px }` 会把
+   宽屏下的长文本列再截一刀，造成列宽参差 —— 这里对固定布局表格复位。 */
+.table--fixed tbody td { max-width: none; }
+/* 固定布局表格：表头与数据格统一左对齐。
+   基线里 th/td 都是 text-align:center，但数据格内部大量使用 .cell-stack / .cell-clamp
+   （它们强制 text-align:left），于是「表头居中、内容左对齐」在同一列里错开半个列宽，
+   账期 / 客诉 / 核价 / 保险 / 诉讼等页都能看到这种纵向错位。
+   固定布局的列宽只由表头决定，把两侧对齐方式统一到同一侧即可彻底消除错位；
+   左对齐也更适合放长串文本（公司名、案号、标题）。 */
+.table--fixed > thead > tr > th,
+.table--fixed > tbody > tr > td {
+    text-align: left;
+}
+/* 编号列与操作列是短内容/图标工具条，保持居中（表头与数据同步，仍然对齐） */
+.table--fixed > thead > tr > th:first-child,
+.table--fixed > tbody > tr > td:first-child,
+.table--fixed > thead > tr > th.col-actions,
+.table--fixed > tbody > tr > td[data-label="操作"] {
+    text-align: center;
+}
+/* 居中列：进度条、进度文字这类「按中轴摆位」的内容，表头必须同步居中，
+   否则「表头靠左、内容居中」在同一列里又错开半个列宽（每日记录的工作进度列）。 */
+.table--fixed > thead > tr > th.col-center,
+.table--fixed > tbody > tr > td.col-center {
+    text-align: center;
+}
+/* 单行截断：固定布局下 nowrap + hidden + ellipsis 才会出现省略号（换行不会） */
+.table--fixed tbody td.cell-ellipsis {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+/* 两行截断：长文本列（客诉现象、工作内容、备注…）最多占两行，超出省略，
+   完整内容由行内展开行（.row-detail）承载，不再依赖 truncatechars 硬截字符数。 */
+.table--fixed tbody td.cell-clamp {
+    white-space: normal;
+    word-break: break-word;
+    text-align: left;
+}
+.cell-clamp > span:not(.status-badge) {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    line-height: 1.55;
+}
+/* 单元格里附带的小徽章（如每日记录的「已沉淀」）跟在两行文本之后，单独一行 */
+.cell-clamp > .status-badge { margin-top: 4px; }
+/* 单元格内「主行 + 次行」堆叠：把同族字段（客户/终端、型号/出货量、状态/报保险）
+   合并进一列，主行保持强调，次行小一号弱化，避免为次要信息各开一列。 */
+.cell-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    text-align: left;
+}
+.cell-stack__main {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    color: var(--c-text);
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.cell-stack__sub {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    color: var(--c-text-tertiary);
+    font-size: var(--fs-xs);
+    line-height: 1.45;
+}
+.cell-stack__sub > * {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ============================================================================
+   行内展开（.row-detail）
+   ----------------------------------------------------------------------------
+   把「客诉现象 / 工程报告 / 工程分析 / 欠缺材料 / 备注」这类长文本从列里撤出，
+   收进紧跟数据行的第二行 <tr class="row-detail" hidden>，由首列小三角按钮切换。
+   好处：列数从 19 收到 9，一屏能横向扫完；长文本也不必再按 30 字符硬截断。
+   纯 CSS 结构 + 30 行原生 JS（base.html），不引入第三方组件。
+   ========================================================================== */
+.row-detail > td {
+    padding: 0 !important;
+    /* 与数据行同一底色：不再用 sunken 灰块，避免展开区像「另起一块面板」 */
+    background: var(--c-surface) !important;
+    /* 上边框交给数据行自己的 border-bottom，避免两条 1px 线叠成 2px */
+    border-top: 0;
+    border-bottom: 1px solid var(--c-border);
+}
+.row-detail[hidden] { display: none; }
+/* 展开区 = 一张「内嵌描述表」：左边浅灰标签格、右边白底值格，
+   1px 描边直接复用列表行线的 --c-border，缩进停在第二列左边界
+   （62px = 展开列 4% ≈46px + 单元格内边距 14px），读起来是上一行的续读。 */
+.row-detail__inner {
+    padding: 12px 14px 14px 62px;
+}
+.row-detail__grid {
+    display: grid;
+    /* 一行两组「标签 + 值」：标签列固定 160px（内容宽 140px，容得下 11 字的
+       「客诉现象及客户诉求描述」不折行），值列各分剩余一半，最窄也有 350px。 */
+    grid-template-columns: 160px minmax(0, 1fr) 160px minmax(0, 1fr);
+    gap: 1px;
+    background: var(--c-border);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-sm);
+    overflow: hidden;
+    margin: 0;
+    text-align: left;
+}
+/* label / value 直接落进外层网格：中间不再套一层网格，1px 线才能连成整格 */
+.row-detail__item { display: contents; }
+.row-detail__label {
+    margin: 0;
+    padding: 8px 10px;
+    white-space: nowrap;
+    background: var(--c-surface-sunken);
+    color: var(--c-text-secondary);
+    font-size: var(--fs-xs);
+    font-weight: 500;
+    line-height: 1.6;
+}
+/* 值与列表单元格主行同一套字（--fs-sm / --c-text / 500）：
+   之前的灰次级字让展开区像脚注，现在与上面的数据行同一层级 */
+.row-detail__value {
+    margin: 0;
+    padding: 8px 12px;
+    background: var(--c-surface);
+    color: var(--c-text);
+    font-size: var(--fs-sm);
+    font-weight: 500;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+.row-detail__value.is-empty { color: var(--c-text-tertiary); font-weight: 400; }
+/* 长字段（客诉描述）独占一整行：值格跨到最右列 */
+.row-detail__item--wide > .row-detail__value { grid-column: 2 / -1; }
+
+/* 展开按钮（放在首列，作为行首的「可展开」提示） */
+.row-expand-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-sm);
+    background: var(--c-surface);
+    color: var(--c-text-secondary);
+    cursor: pointer;
+    transition: background-color var(--dur-fast) var(--ease-out),
+                border-color var(--dur-fast) var(--ease-out),
+                color var(--dur-fast) var(--ease-out);
+}
+.row-expand-btn:hover { color: var(--c-primary); border-color: var(--c-primary); background: var(--c-primary-subtle); }
+.row-expand-btn__chev {
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid currentColor;
+    transition: transform var(--dur-fast) var(--ease-out);
+}
+.row-expand-btn[aria-expanded="true"] .row-expand-btn__chev { transform: rotate(180deg); }
+
+/* 固定布局下，首列吸附（.table-sticky）会连带把展开行整行钉在左侧；
+   展开行横跨全部列，必须退出吸附。 */
+.table-sticky .row-detail > td {
+    position: static;
+    box-shadow: none;
+    background: var(--c-surface) !important;
+}
+/* ≤640px 卡片模式：展开行的描述表退成单列 */
+@media (max-width: 640px) {
+    .row-detail > td { display: block !important; }
+    /* 窄屏：内嵌描述表退成单列，标签一行、值一行（144px 标签列会把值挤成两三字一行） */
+    .row-detail__inner { padding: 10px 12px 12px; }
+    .row-detail__grid { grid-template-columns: 1fr; }
+    .row-detail__item--wide > .row-detail__value { grid-column: auto; }
+    .row-detail__label { padding: 7px 10px; }
+    .row-detail__value { padding: 8px 10px; }
+    /* 卡片模式的「首列标题加粗 / 灰底」会连带套到展开区，展开区正文被整体加粗；
+       这里复位成普通正文，避免展开后突然变成一整段粗体 */
+    .table--cards tr.row-detail > td:first-child {
+        font-weight: 400;
+        background: var(--c-surface);
+        border-radius: 0;
+    }
+
+    /* 卡片模式下展开按钮本来是首行，会顶掉「客户名称」的标题行位置。
+       改成 flex 纵向排列：客户单元格回到第一行做标题，展开按钮下移到卡片底部做「更多信息」条。 */
+    .table--cards tr:has(> td.col-expand) { display: flex; flex-direction: column; }
+    .table--cards tr:has(> td.col-expand) > td { order: 1; }
+    .table--cards tr:has(> td.col-expand) > td:nth-child(2) {
+        order: 0;
+        background: var(--c-surface-sunken);
+        border-radius: var(--r-sm) var(--r-sm) 0 0;
+    }
+    .table--cards tr:has(> td.col-expand) > td.col-expand {
+        order: 2;
+        justify-content: center;
+        padding: 2px var(--sp-3) !important;
+        background: transparent;
+        border-top: 1px solid var(--c-divider);
+        border-bottom: 0;
+        border-radius: 0 0 var(--r-sm) var(--r-sm);
+    }
+    .table--cards td.col-expand::before { flex: 0 0 auto; margin-right: var(--sp-2); }
 }

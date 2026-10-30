@@ -89,9 +89,6 @@
         {% endif %}
     </div>
 
-    <!-- 附件资料（补充附件，与汇总 PDF 并存） -->
-    {% include 'attachments/_panel.html' with att_obj=ledger %}
-
     <div class="detail-actions">
         <a href="{% url 'customer_ledger_detail' ledger.id %}" class="btn-primary">查看完整详情</a>
     </div>

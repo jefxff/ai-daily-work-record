@@ -387,6 +387,8 @@ daily_record_list = make_list_view(
     filters=[('department', 'department'), ('status', 'status')],
     option_queries={'departments': ('department', lambda request: _my_daily_records(request.user))},
     extra_context={'status_choices': [('完成', '完成'), ('未完成', '未完成')]},
+    # 纯 queryset 视图（model=None）需显式声明排序白名单；默认仍按日期倒序
+    sortable=['record_date', 'due_date', 'status', 'progress'],
 )
 
 @perm_required("daily_record", "update")
@@ -915,7 +917,6 @@ customer_ledger_list = make_list_view(
     extra_context={
         'attachment_choices': [('', '全部'), ('yes', '有附件'), ('no', '无附件')],
     },
-    row_hook=_inject_attachment_counts,
 )
 
 customer_ledger_add, customer_ledger_edit = make_form_view(
@@ -959,12 +960,10 @@ def customer_ledger_detail(request, pk):
     if _is_ajax(request):
         return _modal_detail(request, 'records/_customer_ledger_detail_modal.html', {
             'ledger': ledger,
-            **attachment_services.panel_context(request, ledger),
         })
     return render(request, 'records/customer_ledger_detail.html', {
         'ledger': ledger,
         'credit_changes': ledger.credit_changes.all()[:50],
-        **attachment_services.panel_context(request, ledger),
     })
 
 

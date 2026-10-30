@@ -1,0 +1,16 @@
+{% comment %}
+    列表页可排序表头（服务端排序，与分页 / 筛选参数一并透传）。
+    用法：
+        {% include 'records/_sort_th.html' with label="开工日期" field="start_date" %}
+        {% include 'records/_sort_th.html' with label="提出 / 现场" field="proposal_date" th_class="col-optional" %}
+
+    - 点击表头按该字段升序，再点一次反向；未带 sort 参数时保持页面原有顺序，
+      因此不改动用户已习惯的默认列表顺序；
+    - 合并列（如「业务员 / 申请日期」）只按主字段排序，title 已注明，避免误解；
+    - 排序值始终经视图层白名单校验，模板里的 field 只是「发起请求的键」。
+{% endcomment %}
+<th scope="col"{% if th_class %} class="{{ th_class }}"{% endif %} aria-sort="{% if sort_field == field %}{% if sort_dir == 'desc' %}descending{% else %}ascending{% endif %}{% else %}none{% endif %}">
+    <a class="th-sort{% if sort_field == field %} is-active{% endif %}"
+       href="?{% for k, v in request.GET.items %}{% if k != 'sort' and k != 'dir' and k != 'page' %}{{ k|urlencode }}={{ v|urlencode }}&{% endif %}{% endfor %}sort={{ field|urlencode }}&dir={% if sort_field == field and sort_dir == 'asc' %}desc{% else %}asc{% endif %}"
+       title="按{{ label }}排序">{{ label }}<span class="th-sort__ind" aria-hidden="true"></span></a>
+</th>

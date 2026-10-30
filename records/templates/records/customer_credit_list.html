@@ -11,7 +11,7 @@
     </form>
     <!-- 筛选按钮 -->
     <div class="filter-container">
-        <button class="btn-transparent" id="filterBtn">
+        <button class="btn-transparent" type="button" id="filterBtn" aria-expanded="false" aria-controls="filterDropdown">
             <span>筛选</span>
         </button>
         <div class="filter-dropdown" id="filterDropdown">
@@ -98,22 +98,19 @@
     <div class="table-container">
         <!-- 表格 -->
         <div class="table-responsive">
-            <div class="hidden-cols-hint">窄屏已隐藏 5 个次要列；需要逐列比对时请横屏或改用桌面端。</div><table class="table--cards table table-sticky">
+            <div class="hidden-cols-hint">窄屏已隐藏 2 个次要列；需要逐列比对时请横屏或改用桌面端。</div><table class="table--cards table table-sticky table--fixed">
                 <thead>
                     <tr>
                         <th scope="col" class="col-optional">序号</th>
-                        <th scope="col">提出日期</th>
-                        <th scope="col">现场日期</th>
+                        {% include 'records/_sort_th.html' with label="提出 / 现场" field="proposal_date" %}
                         <th scope="col">客户名称</th>
                         <th scope="col">客户类型</th>
                         <th scope="col" class="col-optional">业务员</th>
                         <th scope="col">工作内容</th>
                         <th scope="col">具体内容</th>
-                        <th scope="col" class="col-optional">前期调查表</th>
-                        <th scope="col" class="col-optional">工作方式</th>
-                        <th scope="col">结果</th>
-                        <th scope="col" class="col-optional">备注</th>
-                        <th scope="col">是否有业绩考核期</th>
+                        <th scope="col">调查方式</th>
+                        <th scope="col">结果 / 备注</th>
+                        <th scope="col">考核期</th>
                         <th scope="col" class="col-actions">操作</th>
                     </tr>
                 </thead>
@@ -121,39 +118,51 @@
                     {% for credit in credits %}
                     <tr>
                         <td data-label="序号" class="col-optional">{{ forloop.counter }}</td>
-                        <td data-label="提出日期">{{ credit.proposal_date|date:'Y-m-d' }}</td>
-                        <td data-label="现场日期">{{ credit.site_date|date:'Y-m-d'|default:'' }}</td>
-                        <td data-label="客户名称">{{ credit.customer_name }}</td>
-                        <td data-label="客户类型">{{ credit.customer_type }}</td>
-                        <td data-label="业务员" class="col-optional">{{ credit.salesperson }}</td>
-                        <td data-label="工作内容" title="{{ credit.work_content|default:'' }}">{{ credit.work_content|default:''|truncatechars:30 }}</td>
-                        <td data-label="具体内容" title="{{ credit.specific_content|default:'' }}">{{ credit.specific_content|default:''|truncatechars:30 }}</td>
-                        <td data-label="前期调查表" class="col-optional">
-                            {% if credit.pre_survey == '有' %}
-                            <span class="status-badge info">有</span>
-                            {% elif credit.pre_survey == '无' %}
-                            <span class="status-badge default">无</span>
-                            {% else %}
-                            {{ credit.pre_survey|default:'' }}
-                            {% endif %}
+                        <td data-label="提出 / 现场">
+                            <div class="cell-stack">
+                                <span class="cell-stack__main">{{ credit.proposal_date|date:'Y-m-d' }}</span>
+                                <span class="cell-stack__sub"><span>现场 {{ credit.site_date|date:'Y-m-d'|default:"—" }}</span></span>
+                            </div>
                         </td>
-                        <td data-label="工作方式" class="col-optional" title="{{ credit.work_method|default:'' }}">{{ credit.work_method|default:'' }}</td>
-                        <td data-label="结果">
-                            {% if credit.result == '不同意' %}
-                            <span class="status-badge danger">{{ credit.result }}</span>
-                            {% elif credit.result == '待定' %}
-                            <span class="status-badge warning">{{ credit.result }}</span>
-                            {% elif credit.result == '同意' %}
-                            <span class="status-badge success">{{ credit.result }}</span>
-                            {% else %}
-                            <span class="status-badge default">{{ credit.result }}</span>
-                            {% endif %}
+                        <td data-label="客户名称" class="cell-ellipsis" title="{{ credit.customer_name }}">{{ credit.customer_name }}</td>
+                        <td data-label="客户类型" class="cell-ellipsis" title="{{ credit.customer_type }}">{{ credit.customer_type }}</td>
+                        <td data-label="业务员" class="col-optional cell-ellipsis">{{ credit.salesperson }}</td>
+                        <td data-label="工作内容" class="cell-clamp" title="{{ credit.work_content|default:'' }}"><span>{{ credit.work_content|default:'' }}</span></td>
+                        <td data-label="具体内容" class="cell-clamp" title="{{ credit.specific_content|default:'' }}"><span>{{ credit.specific_content|default:'' }}</span></td>
+                        <td data-label="调查方式">
+                            <div class="cell-stack">
+                                <span class="cell-stack__main" title="{{ credit.work_method|default:'' }}">{{ credit.work_method|default:"—" }}</span>
+                                <span class="cell-stack__sub">
+                                    {% if credit.pre_survey == '有' %}
+                                    <span class="status-badge info">调查表 有</span>
+                                    {% elif credit.pre_survey == '无' %}
+                                    <span class="status-badge default">调查表 无</span>
+                                    {% else %}
+                                    <span>{{ credit.pre_survey|default:"—" }}</span>
+                                    {% endif %}
+                                </span>
+                            </div>
                         </td>
-                        <td data-label="备注" class="col-optional" title="{{ credit.remarks|default:'' }}">{{ credit.remarks|default:''|truncatechars:50 }}</td>
-                        <td data-label="是否有业绩考核期">
+                        <td data-label="结果 / 备注">
+                            <div class="cell-stack">
+                                <span>
+                                    {% if credit.result == '不同意' %}
+                                    <span class="status-badge danger">{{ credit.result }}</span>
+                                    {% elif credit.result == '待定' %}
+                                    <span class="status-badge warning">{{ credit.result }}</span>
+                                    {% elif credit.result == '同意' %}
+                                    <span class="status-badge success">{{ credit.result }}</span>
+                                    {% else %}
+                                    <span class="status-badge default">{{ credit.result }}</span>
+                                    {% endif %}
+                                </span>
+                                <span class="cell-stack__sub" title="{{ credit.remarks|default:'' }}"><span>{{ credit.remarks|default:"—" }}</span></span>
+                            </div>
+                        </td>
+                        <td data-label="考核期">
                             {% if credit.customer_type == '普通客户' and credit.has_assessment_period %}
                             <span class="status-badge warning" title="{{ credit.assessment_start_date|date:'Y-m-d' }} 至 {{ credit.assessment_end_date|date:'Y-m-d' }}&#10;{{ credit.assessment_content|default:'' }}">⚠️ 有</span>
-                            <span class="assessment-range" title="{{ credit.assessment_content|default:'' }}">{{ credit.assessment_start_date|date:'Y/m' }}-{{ credit.assessment_end_date|date:'Y/m' }}</span>
+                            <span class="assessment-range" title="{{ credit.assessment_start_date|date:'Y/m' }} - {{ credit.assessment_end_date|date:'Y/m' }}&#10;{{ credit.assessment_content|default:'' }}">至 {{ credit.assessment_end_date|date:'Y/m' }}</span>
                             {% elif credit.customer_type == '普通客户' %}
                             <span class="status-badge success">✅ 无</span>
                             {% else %}
@@ -173,9 +182,7 @@
                 </td>
                         </tr>
                         {% empty %}
-                        <tr>
-                            <td colspan="14" class="empty-cell">📭 暂无数据</td>
-                        </tr>
+                        {% include 'records/_empty_row.html' with colspan=11 %}
                         {% endfor %}
                     </tbody>
                 </table>
@@ -188,202 +195,32 @@
 
 {% block extra_css %}
 <style>
-    /* 宽表格优化：横向滚动 + 紧凑行高 + 单行省略 */
-    .table { min-width: 1400px; }
-    .table thead th, .table tbody td { padding: 10px 12px !important; font-size: 13px; }
-    .table tbody td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
-    .table tbody td:last-child { overflow: visible !important; }
-
-    /* 操作列固定在右侧，横向滚动时始终可见 */
-    .table-responsive { overflow-x: auto !important; }
-
-    .table thead th.col-actions,
-    .table tbody td.col-actions {
-        position: sticky !important;
-        right: 0;
-        background: var(--c-surface) !important;
-        z-index: var(--z-sticky);
-        box-shadow: -3px 0 5px rgba(0,0,0,0.08);
-        border-left: 1px solid var(--c-border);
-    }
-    .table tbody tr:hover td.col-actions {
-        background: var(--c-surface-sunken) !important;
-    }
-    .table thead th.col-actions {
-        z-index: var(--z-sticky-head);
-        background: var(--c-surface-sunken) !important;
-    }
+    /* 列预算（合计 100%）：固定布局，列宽只由表头决定，长文本列两行截断。
+       最小宽度 1080px —— 低于此值仍允许横向滚动。 */
+    .table { min-width: 1080px; }
+    .table--fixed th:nth-child(1)  { width: 4%; }
+    .table--fixed th:nth-child(2)  { width: 10%; }
+    .table--fixed th:nth-child(3)  { width: 11%; }
+    .table--fixed th:nth-child(4)  { width: 9%; }
+    .table--fixed th:nth-child(5)  { width: 6%; }
+    .table--fixed th:nth-child(6)  { width: 10%; }
+    .table--fixed th:nth-child(7)  { width: 11%; }
+    .table--fixed th:nth-child(8)  { width: 9%; }
+    .table--fixed th:nth-child(9)  { width: 10%; }
+    .table--fixed th:nth-child(10) { width: 8%; }
+    .table--fixed th:nth-child(11) { width: 12%; }
     .table td { font-variant-numeric: tabular-nums; }
-    .assessment-range { font-size: 12px; color: var(--c-text-secondary); margin-left: 4px; }
-
-    /* 筛选按钮容器 */
-    .filter-container {
-        position: relative;
-        display: inline-block;
-    }
-
-    .filter-dropdown {
-        position: absolute;
-        top: calc(100% + 0.5rem);
-        right: 0;
-        background: var(--c-surface);
-        backdrop-filter: blur(10px);
-        border: 1px solid var(--c-border);
-        border-radius: 12px;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-        padding: 1.25rem;
-        min-width: 320px;
-        max-width: 90vw;
-        max-height: 70vh;
-        overflow-y: auto;
-        z-index: var(--z-dropdown);
-        display: none;
-    }
-
-    .filter-dropdown.show {
+    /* 考核期区间是次要信息（完整区间与考核内容都在 title 里），固定布局下压成一行省略，
+       避免「2026/09-2027/02」折成三行把行高撑到 108px。 */
+    .assessment-range {
         display: block;
-    }
-
-    .filter-dropdown h4 {
-        color: var(--c-text);
-        margin: 0 0 1rem 0;
-        font-size: 1rem;
-        font-weight: 600;
-    }
-
-    .filter-group {
-        margin-bottom: 1rem;
-    }
-
-    .filter-group label {
-        display: block;
+        max-width: 100%;
+        overflow: hidden;
+        font-size: 11px;
         color: var(--c-text-secondary);
-        font-size: 0.875rem;
-        margin-bottom: 0.5rem;
-        font-weight: 500;
-    }
-
-    .filter-group select,
-    .filter-group input {
-        width: 100%;
-        padding: 0.5rem 0.75rem;
-        border: 1px solid rgba(0, 0, 0, 0.1);
-        border-radius: 6px;
-        font-size: 0.875rem;
-        background: white;
-        color: var(--c-text);
-        cursor: pointer;
-    }
-
-    .filter-group select:focus,
-    .filter-group input:focus {
-        outline: none;
-        border-color: rgba(59, 130, 246, 0.5);
-    }
-
-    .filter-group input::placeholder {
-        color: var(--c-text-tertiary);
-    }
-
-    .filter-actions {
-        display: flex;
-        gap: 0.5rem;
-        margin-top: 1.25rem;
-        padding-top: 1rem;
-        border-top: 1px solid rgba(0, 0, 0, 0.1);
-    }
-
-    .filter-apply,
-    .filter-reset {
-        flex: 1;
-        padding: 0.5rem 1rem;
-        border-radius: 6px;
-        font-size: 0.875rem;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        border: none;
-    }
-
-    .filter-apply {
-        background: rgba(59, 130, 246, 1);
-        color: white;
-    }
-
-    .filter-apply:hover {
-        background: rgba(59, 130, 246, 0.9);
-    }
-
-    .filter-reset {
-        background: rgba(0, 0, 0, 0.05);
-        color: var(--c-text-secondary);
-    }
-
-    .filter-reset:hover {
-        background: rgba(0, 0, 0, 0.1);
-    }
-
-    /* 加载状态 */
-    .loading-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 12px;
-        display: none;
-    }
-
-    .loading-overlay.show {
-        display: flex;
-    }
-
-    .loading-spinner {
-        width: 40px;
-        height: 40px;
-        border: 4px solid rgba(255, 255, 255, 0.3);
-        border-top-color: white;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-        to { transform: rotate(360deg); }
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 </style>
 {% endblock %}
 
-{% block extra_js %}
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // 筛选按钮交互
-        const filterBtn = document.getElementById('filterBtn');
-        if (filterBtn) {
-            filterBtn.addEventListener('click', function(event) {
-                event.stopPropagation();
-                document.getElementById('filterDropdown').classList.toggle('show');
-            });
-        }
-
-        // 重置筛选按钮
-        const resetFilter = document.getElementById('resetFilter');
-        if (resetFilter) {
-            resetFilter.addEventListener('click', function() {
-                document.getElementById('filterForm').reset();
-                document.getElementById('filterForm').submit();
-            });
-        }
-
-        // 点击其他地方关闭筛选下拉菜单
-        document.addEventListener('click', function(event) {
-            if (!event.target.closest('#filterBtn') && !event.target.closest('#filterDropdown')) {
-                document.getElementById('filterDropdown').classList.remove('show');
-            }
-        });
-    });
-</script>
-{% endblock %}

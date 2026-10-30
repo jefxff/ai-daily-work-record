@@ -10,7 +10,7 @@
         <button class="btn-transparent" type="submit">搜索</button>
     </form>
     <div class="filter-button">
-        <button class="btn-transparent" id="filterBtn">
+        <button class="btn-transparent" type="button" id="filterBtn" aria-expanded="false" aria-controls="filterDropdown">
             <span>筛选</span>
         </button>
         <div class="filter-dropdown" id="filterDropdown">
@@ -74,30 +74,30 @@
     </div>
     <div class="table-container">
         <div class="table-responsive">
-            <div class="hidden-cols-hint">窄屏已隐藏 1 个次要列；需要逐列比对时请横屏或改用桌面端。</div><table class="table--cards table table-sticky">
+            <div class="hidden-cols-hint">窄屏已隐藏 1 个次要列；需要逐列比对时请横屏或改用桌面端。</div><table class="table--cards table table-sticky table--fixed">
                 <thead>
                     <tr>
                         <th scope="col" class="col-optional">序号</th>
-                        <th scope="col">日期及时间</th>
+                        {% include 'records/_sort_th.html' with label="日期及时间" field="record_date" %}
                         <th scope="col">提出部门/提出人</th>
                         <th scope="col">工作内容</th>
-                        <th scope="col">截至日期</th>
+                        {% include 'records/_sort_th.html' with label="截至日期" field="due_date" %}
                         <th scope="col">工作状态</th>
-                        <th scope="col">工作进度</th>
-                        <th scope="col">操作</th>
+                        {% include 'records/_sort_th.html' with label="工作进度" field="progress" th_class="col-center" %}
+                        <th scope="col" class="col-actions">操作</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for record in records %}
                     <tr>
                         <td data-label="序号" class="col-optional">{{ forloop.counter }}</td>
-                        <td data-label="日期及时间" title="{{ record.record_date|date:'Y-m-d H:i:s' }}">{{ record.record_date|date:'Y-m-d H:i:s' }}</td>
-                        <td data-label="提出部门/提出人">{{ record.department }}</td>
-                        <td data-label="工作内容">
-                            {{ record.work_content|truncatechars:50 }}
+                        <td data-label="日期及时间" class="cell-ellipsis" title="{{ record.record_date|date:'Y-m-d H:i:s' }}">{{ record.record_date|date:'Y-m-d H:i:s' }}</td>
+                        <td data-label="提出部门/提出人" class="cell-ellipsis">{{ record.department }}</td>
+                        <td data-label="工作内容" class="cell-clamp" title="{{ record.work_content|default:'' }}">
+                            <span>{{ record.work_content|default:'' }}</span>
                             {% if record.kb_enabled %}<span class="status-badge success kb-badge-mini" title="已沉淀到知识库，可在知识库「工作沉淀」分类查看">已沉淀</span>{% endif %}
                         </td>
-                        <td data-label="截至日期">{% if record.due_date %}{{ record.due_date|date:'Y-m-d' }}{% else %}—{% endif %}</td>
+                        <td data-label="截至日期" class="cell-ellipsis">{% if record.due_date %}{{ record.due_date|date:'Y-m-d' }}{% else %}—{% endif %}</td>
                         <td data-label="工作状态">
                             {% if record.status == '未完成' %}
                             <span class="status-badge danger">{{ record.status }}</span>
@@ -126,9 +126,7 @@
                         </td>
                     </tr>
                     {% empty %}
-                    <tr>
-                        <td colspan="8" class="empty-cell">📭 暂无数据</td>
-                    </tr>
+                    {% include 'records/_empty_row.html' with colspan=8 %}
                     {% endfor %}
                 </tbody>
             </table>
@@ -140,70 +138,6 @@
 
 {% block extra_css %}
 <style>
-    /* 筛选下拉 */
-    .filter-button { position: relative; }
-    .filter-dropdown {
-        position: absolute;
-        top: 100%;
-        right: 0;
-        margin-top: 0.5rem;
-        background: var(--c-surface) !important;
-        border: 1px solid var(--c-border) !important;
-        border-radius: 8px !important;
-        box-shadow: var(--sh-pop) !important;
-        padding: 1rem;
-        min-width: 280px;
-        z-index: var(--z-dropdown);
-        display: none;
-    }
-    .filter-dropdown.show { display: block; }
-    .filter-dropdown h4 {
-        color: var(--c-text) !important;
-        margin: 0 0 1rem 0;
-        font-size: 0.95rem;
-        font-weight: 600;
-        border-bottom: 1px solid var(--c-border);
-        padding-bottom: 0.5rem;
-    }
-    .filter-group { margin-bottom: 1rem; }
-    .filter-group label {
-        display: block;
-        color: var(--c-text-secondary) !important;
-        font-size: 0.8125rem;
-        font-weight: 500;
-        margin-bottom: 0.5rem;
-    }
-    .filter-group select {
-        width: 100%;
-        padding: 0.375rem 0.75rem;
-        border: 1px solid var(--c-border) !important;
-        border-radius: 4px !important;
-        background: var(--c-surface) !important;
-        color: var(--c-text) !important;
-        font-size: 0.85rem;
-        cursor: pointer;
-    }
-    .filter-actions {
-        display: flex;
-        gap: 0.5rem;
-        margin-top: 1rem;
-        padding-top: 1rem;
-        border-top: 1px solid var(--c-border);
-    }
-    .filter-actions button {
-        flex: 1;
-        padding: 0.375rem;
-        border: none;
-        border-radius: 4px;
-        font-size: 0.85rem;
-        font-weight: 400;
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-    .filter-apply { background: var(--c-primary) !important; color: var(--c-surface) !important; }
-    .filter-apply:hover { background: var(--c-primary-hover) !important; }
-    .filter-reset { background: var(--c-surface-sunken) !important; color: var(--c-text-secondary) !important; }
-    .filter-reset:hover { background: var(--c-border-strong) !important; }
 
     /* 「未完成」快捷筛选：与筛选按钮同款，激活时高亮 */
     .quick-filter-btn.is-active {
@@ -212,8 +146,21 @@
         border-color: var(--c-primary) !important;
     }
 
+    /* 行高收敛：固定布局（.table--fixed）后列宽由表头决定，「工作内容」两行截断，
+       不再出现某一列被挤成 40px 宽、50 字折十几行、行高冲到 277px 的情况。
+       最小宽度 1000px：低于此值仍允许横向滚动，避免每列被压成几个字。 */
+    .table { min-width: 1000px; }
+    .table--fixed th:nth-child(1) { width: 4%; }
+    .table--fixed th:nth-child(2) { width: 15%; }
+    .table--fixed th:nth-child(3) { width: 13%; }
+    .table--fixed th:nth-child(4) { width: 29%; }
+    .table--fixed th:nth-child(5) { width: 9%; }
+    .table--fixed th:nth-child(6) { width: 8%; }
+    .table--fixed th:nth-child(7) { width: 11%; }
+    .table--fixed th:nth-child(8) { width: 11%; }
+
     /* 工作进度迷你进度条 */
-    .progress-cell { display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 130px; }
+    .progress-cell { display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 0; }
     .mini-progress { flex: 1; max-width: 90px; height: 6px; background: var(--c-border); border-radius: 3px; overflow: hidden; }
     .mini-progress-fill { display: block; height: 100%; width: 0; background: var(--c-primary); border-radius: 3px; transition: width 0.4s ease; }
     .mini-progress.done .mini-progress-fill { background: var(--c-success); }
@@ -239,29 +186,6 @@
 {% block extra_js %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const filterBtn = document.getElementById('filterBtn');
-        const filterDropdown = document.getElementById('filterDropdown');
-        if (filterBtn && filterDropdown) {
-            filterBtn.addEventListener('click', function(event) {
-                event.stopPropagation();
-                filterDropdown.classList.toggle('show');
-            });
-        }
-        const filterReset = document.getElementById('filterReset');
-        const filterForm = document.getElementById('filterForm');
-        if (filterReset && filterForm) {
-            filterReset.addEventListener('click', function() {
-                document.getElementById('departmentSelect').value = '';
-                document.getElementById('statusSelect').value = '';
-                filterForm.submit();
-            });
-        }
-        document.addEventListener('click', function(event) {
-            if (!event.target.closest('#filterBtn') && !event.target.closest('#filterDropdown')) {
-                if (filterDropdown) filterDropdown.classList.remove('show');
-            }
-        });
-
         // 迷你进度条注入（data-pct -> width）
         document.querySelectorAll('.mini-progress').forEach(function(el) {
             var pct = parseInt(el.getAttribute('data-pct'), 10) || 0;

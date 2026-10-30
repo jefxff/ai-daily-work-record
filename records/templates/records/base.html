@@ -24,8 +24,10 @@
     <link href="{% static 'css/bootstrap.min.css' %}?v=5.3" rel="stylesheet">
     <!-- 设计令牌 + 外壳 + 组件：外置后可被浏览器缓存；版本号用于发布瞬间避免「新 HTML + 旧 CSS」 -->
     <link href="{% static 'css/tokens.css' %}?v=20261022b" rel="stylesheet">
-    <link href="{% static 'css/app.css' %}?v=20261025c" rel="stylesheet">
-    <link href="{% static 'css/components.css' %}?v=20261025c" rel="stylesheet">
+    <link href="{% static 'css/app.css' %}?v=20261030s" rel="stylesheet">
+    <link href="{% static 'css/components.css' %}?v=20261030h" rel="stylesheet">
+    <!-- 列表页通用表格工具（列设置 / 表头语义 / 操作列收纳），defer 不阻塞首屏 -->
+    <script src="{% static 'js/table-tools.js' %}?v=20261030d" defer></script>
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -208,6 +210,88 @@
                     }
                 });
             });
+
+            // 0) 筛选下拉面板（各列表页共用，样式见 app.css「筛选下拉面板」）
+            //    原先 8 个列表页各写一份内联脚本，行为还不一致（有的没有 Esc、
+            //    有的不重提交、重置只是把当前筛选值再提交一遍）。这里统一：
+            //    开合 + aria-expanded 同步 + Esc 关闭 + 点击外部关闭 + 重置筛选。
+            (function () {
+                var boxes = Array.prototype.slice.call(
+                    document.querySelectorAll('.filter-container, .filter-button')
+                );
+                if (!boxes.length) return;
+                var items = [];
+
+                function setOpen(item, open) {
+                    item.panel.classList.toggle('show', open);
+                    item.btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+                }
+
+                // 「重置」必须把字段清空再提交：form.reset() 只是恢复成初始 HTML 里的
+                // value，而那些 value 正是当前已生效的筛选值，等于什么都没重置。
+                function resetForm(form) {
+                    Array.prototype.forEach.call(
+                        form.querySelectorAll('input:not([type="hidden"]), select, textarea'),
+                        function (el) {
+                            if (el.type === 'radio' || el.type === 'checkbox') el.checked = false;
+                            else el.value = '';
+                        }
+                    );
+                    // 单选组恢复「全部」（value 为空的选项）
+                    Array.prototype.forEach.call(form.querySelectorAll('input[type="radio"]'), function (el) {
+                        if (el.value === '') el.checked = true;
+                    });
+                    // 空字段不参与提交：否则重置后地址栏会留下一串 ?search=&customer_name=&…
+                    // （disabled 的表单控件不会被序列化，页面随即跳转，无需恢复）
+                    Array.prototype.forEach.call(form.querySelectorAll('input, select'), function (el) {
+                        if (el.type === 'hidden' && (el.name === 'csrfmiddlewaretoken' || el.name === 'page')) return;
+                        if (!el.value) el.disabled = true;
+                    });
+                    if (form.requestSubmit) form.requestSubmit(); else form.submit();
+                }
+
+                boxes.forEach(function (box) {
+                    var btn = box.querySelector('button[id="filterBtn"], .filter-toggle');
+                    var panel = box.querySelector('.filter-dropdown');
+                    if (!btn || !panel) return;
+                    btn.setAttribute('type', 'button');
+                    btn.setAttribute('aria-expanded', 'false');
+                    if (panel.id) btn.setAttribute('aria-controls', panel.id);
+                    var item = { btn: btn, panel: panel };
+                    items.push(item);
+
+                    btn.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        var open = !panel.classList.contains('show');
+                        items.forEach(function (it) { setOpen(it, false); });
+                        if (open) setOpen(item, true);
+                    });
+                    // 面板内部的点击（选择、输入、滚动）不算「点击外部」
+                    panel.addEventListener('click', function (e) { e.stopPropagation(); });
+
+                    var form = panel.querySelector('form');
+                    if (!form) return;
+                    form.addEventListener('submit', function () { setOpen(item, false); });
+                    Array.prototype.forEach.call(panel.querySelectorAll('.filter-reset'), function (rb) {
+                        if (rb.tagName !== 'BUTTON') return;   // 重置为链接的页面交给浏览器跳转
+                        rb.setAttribute('type', 'button');
+                        rb.addEventListener('click', function () { resetForm(form); });
+                    });
+                });
+
+                document.addEventListener('click', function () {
+                    items.forEach(function (it) { setOpen(it, false); });
+                });
+                document.addEventListener('keydown', function (e) {
+                    if (e.key !== 'Escape') return;
+                    items.forEach(function (it) {
+                        if (it.panel.classList.contains('show')) {
+                            setOpen(it, false);
+                            it.btn.focus();
+                        }
+                    });
+                });
+            })();
 
             // ===== 全局交互组件 =====
             // 1) 搜索框防抖：输入停顿 500ms 后自动提交所在表单
@@ -578,12 +662,22 @@
             }
 
             /* 先看文字再看类名：文字最可靠，类名只作兜底。
-               「恢复 / 下载 / 归还 / 撤销」等非图标动作一律不命中。 */
+               「恢复 / 下载 / 归还 / 撤销」等非图标动作一律不命中。
+               保险续保视图里「时间线 / 当前保单 / 续保」都跳到不同页面，
+               若统一归到 detail 会出现三个一模一样的眼睛图标；
+               因此这里拆成 timeline / policy / renew 三个独立动作，
+               由 components.css §6 各配一枚语义图标。 */
             function actOf(el, text) {
                 if (text.indexOf('删除') > -1) return 'delete';
-                if (text.indexOf('详情') > -1 || text.indexOf('详细') > -1 ||
-                    text.indexOf('查看') > -1) return 'detail';
                 if (text.indexOf('编辑') > -1) return 'edit';
+                if (text.indexOf('续保') > -1) return 'renew';
+                if (text.indexOf('时间线') > -1) return 'timeline';
+                if (text.indexOf('当前保单') > -1) return 'policy';
+                if (/详情|详细|查看|档案|明细/.test(text)) return 'detail';
+                if (el.matches('[data-modal-detail]')) return 'detail';
+                /* href 兜底放在语义文字之后：/insurance/subjects/detail/ 的「时间线」
+                   已在上面命中 timeline，不会被这条统归成 detail。 */
+                if (el.matches('a[href*="detail"]')) return 'detail';
                 if (el.matches('.btn-delete, .btn-delete-bk, a[href*="delete"]')) return 'delete';
                 return '';
             }
@@ -619,6 +713,32 @@
             } else {
                 run();
             }
+        })();
+    </script>
+    <script>
+        /* 行内展开（列表页「首列小三角 → 展开长文本详情行」）
+           结构约定：数据行首列放 [data-row-toggle] 按钮，紧跟其后的兄弟行是
+           <tr class="row-detail" hidden>。按钮只做开合，不做任何业务读写。
+           aria-expanded / aria-controls 同步，键盘可达（原生 button）。 */
+        (function () {
+            var btns = document.querySelectorAll('[data-row-toggle]');
+            if (!btns.length) return;
+            Array.prototype.forEach.call(btns, function (btn) {
+                var tr = btn.closest('tr');
+                var detail = tr && tr.nextElementSibling;
+                if (!detail || !detail.classList.contains('row-detail')) return;
+                if (detail.id) btn.setAttribute('aria-controls', detail.id);
+                btn.setAttribute('aria-expanded', 'false');
+                if (!btn.getAttribute('aria-label')) btn.setAttribute('aria-label', '展开详情');
+                if (!btn.getAttribute('title')) btn.setAttribute('title', '展开详情');
+                btn.addEventListener('click', function () {
+                    var open = detail.hidden;
+                    detail.hidden = !open;
+                    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+                    btn.setAttribute('aria-label', open ? '收起详情' : '展开详情');
+                    btn.setAttribute('title', open ? '收起详情' : '展开详情');
+                });
+            });
         })();
     </script>
     {% block extra_js %}{% endblock %}

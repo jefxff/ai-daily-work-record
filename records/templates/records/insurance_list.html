@@ -12,7 +12,7 @@
     </form>
     <!-- 筛选按钮 -->
     <div class="filter-container">
-        <button class="btn-transparent" id="filterBtn">
+        <button class="btn-transparent" type="button" id="filterBtn" aria-expanded="false" aria-controls="filterDropdown">
             <span>筛选</span>
         </button>
         <div class="filter-dropdown" id="filterDropdown">
@@ -97,19 +97,17 @@
     <div class="table-container">
         <!-- 表格 -->
         <div class="table-responsive">
-            <div class="hidden-cols-hint">窄屏已隐藏 2 个次要列；需要逐列比对时请横屏或改用桌面端。</div><table class="table--cards table table-sticky">
+            <table class="table--cards table table-sticky table--fixed">
                 <thead>
                     <tr>
                         <th scope="col" class="col-optional">序号</th>
                         <th scope="col">公司名称</th>
                         <th scope="col">标题</th>
                         <th scope="col">单号</th>
-                        <th scope="col">保费</th>
-                        <th scope="col">签发日期</th>
-                        <th scope="col">截止日期</th>
+                        {% include 'records/_sort_th.html' with label="保费" field="premium" %}
+                        {% include 'records/_sort_th.html' with label="签发 / 截止" field="end_date" %}
                         <th scope="col">是否已经到期</th>
-                        <th scope="col">部门</th>
-                        <th scope="col" class="col-optional">备注</th>
+                        <th scope="col">部门 / 备注</th>
                         <th scope="col">附件</th>
                         <th scope="col" class="col-actions">操作</th>
                     </tr>
@@ -118,21 +116,29 @@
                     {% for insurance in insurances %}
                     <tr>
                         <td data-label="序号" class="col-optional">{{ forloop.counter }}</td>
-                        <td data-label="公司名称">{{ insurance.company_name }}</td>
-                        <td data-label="标题">{{ insurance.title }}</td>
-                        <td data-label="单号">{{ insurance.order_number|default:'' }}</td>
-                        <td data-label="保费">{{ insurance.premium|floatformat:2|intcomma }}</td>
-                        <td data-label="签发日期">{{ insurance.issue_date|date:'Y-m-d' }}</td>
-                        <td data-label="截止日期">{{ insurance.end_date|date:'Y-m-d' }}</td>
+                        <td data-label="公司名称" class="cell-ellipsis" title="{{ insurance.company_name }}">{{ insurance.company_name }}</td>
+                        <td data-label="标题" class="cell-ellipsis" title="{{ insurance.title }}">{{ insurance.title }}</td>
+                        <td data-label="单号" class="cell-ellipsis" title="{{ insurance.order_number|default:'' }}">{{ insurance.order_number|default:'' }}</td>
+                        <td data-label="保费" class="cell-ellipsis">¥{{ insurance.premium|floatformat:2|intcomma }}</td>
+                        <td data-label="签发 / 截止">
+                            <div class="cell-stack">
+                                <span class="cell-stack__main">{{ insurance.issue_date|date:'Y-m-d' }}</span>
+                                <span class="cell-stack__sub"><span>至 {{ insurance.end_date|date:'Y-m-d' }}</span></span>
+                            </div>
+                        </td>
                         <td data-label="是否已经到期">
                             {% if '已到期' in insurance.expired_days %}
-                            <span class="status-badge warning">⚠️ {{ insurance.expired_days }}</span>
+                            <span class="status-badge warning" title="{{ insurance.expired_days }}">{{ insurance.expired_days }}</span>
                             {% else %}
-                            <span class="status-badge success">✅ {{ insurance.expired_days }}</span>
+                            <span class="status-badge success" title="{{ insurance.expired_days }}">{{ insurance.expired_days }}</span>
                             {% endif %}
                         </td>
-                        <td data-label="部门">{{ insurance.department }}</td>
-                        <td data-label="备注" class="col-optional">{{ insurance.remarks|default:''|truncatechars:30 }}</td>
+                        <td data-label="部门 / 备注">
+                            <div class="cell-stack">
+                                <span class="cell-stack__main">{{ insurance.department|default:"—" }}</span>
+                                <span class="cell-stack__sub" title="{{ insurance.remarks|default:'' }}"><span>{{ insurance.remarks|default:"—" }}</span></span>
+                            </div>
+                        </td>
                         <td data-label="附件">
                             {% if insurance.attachment_count %}
                             <span class="status-badge success" title="保单相关附件数">{{ insurance.attachment_count }} 个</span>
@@ -142,7 +148,7 @@
                         </td>
                         <td data-label="操作" class="col-actions">
                             <div class="u-toolbar-inline">
-                                <a href="{% url 'insurance_detail' insurance.pk %}" class="btn-transparent btn-sm" data-modal-detail data-modal-title="保险详情">详细</a>
+                                <a href="{% url 'insurance_detail' insurance.pk %}" class="btn-transparent btn-sm">详细</a>
                                 {% can "insurance" "update" %}
                                 <a href="{% url 'insurance_edit' insurance.pk %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑保险">编辑</a>
                                 {% endcan %}
@@ -153,9 +159,7 @@
                         </td>
                     </tr>
                     {% empty %}
-                    <tr>
-                        <td colspan="12" class="empty-cell">📭 暂无数据</td>
-                    </tr>
+                    {% include 'records/_empty_row.html' with colspan=10 %}
                     {% endfor %}
                 </tbody>
             </table>
@@ -168,226 +172,19 @@
 
 {% block extra_css %}
 <style>
-    /* 宽表格优化：横向滚动 + 紧凑行高 + 单行省略 */
-    .table { min-width: 1100px; }
-    .table thead th, .table tbody td { padding: 10px 12px !important; font-size: 13px; }
-    .table tbody td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
-    .table tbody td:last-child { overflow: visible !important; }
-
-    /* 操作列固定在右侧，横向滚动时始终可见 */
-    .table-responsive { overflow-x: auto !important; }
-
-    .table thead th.col-actions,
-    .table tbody td.col-actions {
-        position: sticky !important;
-        right: 0;
-        background: var(--c-surface) !important;
-        z-index: var(--z-sticky);
-        box-shadow: -3px 0 5px rgba(0,0,0,0.08);
-        border-left: 1px solid var(--c-border);
-    }
-    .table tbody tr:hover td.col-actions {
-        background: var(--c-surface-sunken) !important;
-    }
-    .table thead th.col-actions {
-        z-index: var(--z-sticky-head);
-        background: var(--c-surface-sunken) !important;
-    }
-
-    /* 筛选按钮容器 */
-    .filter-container {
-        position: relative;
-        display: inline-block;
-    }
-
-    .filter-dropdown {
-        position: absolute;
-        top: calc(100% + 0.5rem);
-        right: 0;
-        background: var(--c-surface);
-        backdrop-filter: blur(10px);
-        border: 1px solid var(--c-border);
-        border-radius: 12px;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-        padding: 1.25rem;
-        min-width: 320px;
-        max-width: 90vw;
-        max-height: 70vh;
-        overflow-y: auto;
-        z-index: var(--z-dropdown);
-        display: none;
-    }
-
-    .filter-dropdown.show {
-        display: block;
-    }
-
-    .filter-dropdown h4 {
-        color: var(--c-text);
-        margin: 0 0 1rem 0;
-        font-size: 1rem;
-        font-weight: 600;
-    }
-
-    .filter-group {
-        margin-bottom: 1rem;
-    }
-
-    .filter-group label {
-        display: block;
-        color: var(--c-text-secondary);
-        font-size: 0.875rem;
-        margin-bottom: 0.5rem;
-        font-weight: 500;
-    }
-
-    .filter-group select,
-    .filter-group input {
-        width: 100%;
-        padding: 0.5rem 0.75rem;
-        border: 1px solid rgba(0, 0, 0, 0.1);
-        border-radius: 6px;
-        font-size: 0.875rem;
-        background: white;
-        color: var(--c-text);
-        cursor: pointer;
-    }
-
-    .filter-group select:focus,
-    .filter-group input:focus {
-        outline: none;
-        border-color: rgba(59, 130, 246, 0.5);
-    }
-
-    .filter-group input::placeholder {
-        color: var(--c-text-tertiary);
-    }
-
-    /* 日期范围选择 */
-    .date-range-container {
-        display: flex;
-        gap: 0.5rem;
-        align-items: center;
-    }
-
-    .date-range-container input {
-        flex: 1;
-    }
-
-    .date-range-separator {
-        color: var(--c-text-secondary);
-        font-size: 0.875rem;
-        padding: 0 0.25rem;
-    }
-
-    .filter-actions {
-        display: flex;
-        gap: 0.5rem;
-        margin-top: 1.25rem;
-        padding-top: 1rem;
-        border-top: 1px solid rgba(0, 0, 0, 0.1);
-    }
-
-    .filter-apply,
-    .filter-reset {
-        flex: 1;
-        padding: 0.5rem 1rem;
-        border-radius: 6px;
-        font-size: 0.875rem;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        border: none;
-    }
-
-    .filter-apply {
-        background: rgba(59, 130, 246, 1);
-        color: white;
-    }
-
-    .filter-apply:hover {
-        background: rgba(59, 130, 246, 0.9);
-    }
-
-    .filter-reset {
-        background: rgba(0, 0, 0, 0.05);
-        color: var(--c-text-secondary);
-    }
-
-    .filter-reset:hover {
-        background: rgba(0, 0, 0, 0.1);
-    }
-
-    /* 加载状态 */
-    .loading-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 12px;
-        display: none;
-    }
-
-    .loading-overlay.show {
-        display: flex;
-    }
-
-    .loading-spinner {
-        width: 40px;
-        height: 40px;
-        border: 4px solid rgba(255, 255, 255, 0.3);
-        border-top-color: white;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-        to { transform: rotate(360deg); }
-    }
+    /* 列预算（合计 100%）：固定布局；公司名称 / 标题 / 单号为长串，单行省略。 */
+    .table { min-width: 1040px; }
+    .table--fixed th:nth-child(1)  { width: 4%; }
+    .table--fixed th:nth-child(2)  { width: 13%; }
+    .table--fixed th:nth-child(3)  { width: 13%; }
+    .table--fixed th:nth-child(4)  { width: 11%; }
+    .table--fixed th:nth-child(5)  { width: 11%; }
+    .table--fixed th:nth-child(6)  { width: 10%; }
+    .table--fixed th:nth-child(7)  { width: 11%; }
+    .table--fixed th:nth-child(8)  { width: 10%; }
+    .table--fixed th:nth-child(9)  { width: 5%; }
+    .table--fixed th:nth-child(10) { width: 12%; }
+    .table td { font-variant-numeric: tabular-nums; }
 </style>
 {% endblock %}
 
-{% block extra_js %}
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // 筛选按钮交互
-        const filterBtn = document.getElementById('filterBtn');
-        if (filterBtn) {
-            filterBtn.addEventListener('click', function(event) {
-                event.stopPropagation();
-                const filterDropdown = document.getElementById('filterDropdown');
-                if (filterDropdown) {
-                    filterDropdown.classList.toggle('show');
-                }
-            });
-        }
-
-        // 重置筛选按钮
-        const resetFilter = document.getElementById('resetFilter');
-        if (resetFilter) {
-            resetFilter.addEventListener('click', function() {
-                const filterForm = document.getElementById('filterForm');
-                if (filterForm) {
-                    filterForm.reset();
-                    filterForm.submit();
-                }
-            });
-        }
-
-        // 点击其他地方关闭筛选下拉菜单
-        document.addEventListener('click', function(event) {
-            if (!event.target.closest('#filterBtn') && !event.target.closest('#filterDropdown')) {
-                const filterDropdown = document.getElementById('filterDropdown');
-                if (filterDropdown) {
-                    filterDropdown.classList.remove('show');
-                }
-            }
-        });
-    });
-</script>
-{% endblock %}

@@ -17,260 +17,678 @@
 {% endblock %}
 
 {% block content %}
-    <div class="page-header">
-        <h2>客诉详情 · {{ complaint.customer_name }}<span class="total-hint">登记于 {{ complaint.complaint_date|date:'Y-m-d' }}</span></h2>
-        {% if complaint.is_closed %}
-        <span class="status-badge success">已闭环</span>
-        {% elif complaint.is_sla_overdue %}
-        <span class="status-badge danger">处理中 · 已超时</span>
-        {% else %}
-        <span class="status-badge warning">{{ complaint.complaint_status }}</span>
-        {% endif %}
-    </div>
+<div class="cc-page">
 
-    <div class="row g-4">
-        <div class="col-lg-7">
-            <!-- 客诉基本信息 -->
-            <div class="detail-card">
-                <h2 class="detail-title">客诉信息</h2>
-
-                <div class="detail-row">
-                    <div class="detail-label">客户名称：</div>
-                    <div class="detail-value">{{ complaint.customer_name }}</div>
-                </div>
-
-                <div class="detail-row">
-                    <div class="detail-label">责任业务员：</div>
-                    <div class="detail-value">{{ complaint.responsible_salesperson }}</div>
-                </div>
-
-                <div class="detail-row">
-                    <div class="detail-label">客诉申请日期：</div>
-                    <div class="detail-value">{{ complaint.complaint_date|date:'Y-m-d' }}</div>
-                </div>
-
-                <div class="detail-row">
-                    <div class="detail-label">终端客户：</div>
-                    <div class="detail-value">{{ complaint.terminal_customer|default:'-' }}</div>
-                </div>
-
-                <div class="detail-row">
-                    <div class="detail-label">产品型号：</div>
-                    <div class="detail-value">{{ complaint.product_model|default:'-' }}</div>
-                </div>
-
-                <div class="detail-row">
-                    <div class="detail-label">我司出货量：</div>
-                    <div class="detail-value">{{ complaint.our_shipment|default:'-' }}</div>
-                </div>
-
-                <div class="detail-row">
-                    <div class="detail-label">客户出货量：</div>
-                    <div class="detail-value">{{ complaint.customer_shipment|default:'-' }}</div>
-                </div>
-
-                <div class="detail-row">
-                    <div class="detail-label">客诉现象及客户诉求描述：</div>
-                    <div class="detail-value">{{ complaint.complaint_description|default:'-' }}</div>
-                </div>
-
-                <div class="detail-row">
-                    <div class="detail-label">客户诉求（赔偿金额）：</div>
-                    <div class="detail-value">{% if complaint.compensation_amount %}¥{{ complaint.compensation_amount|floatformat:2 }}{% else %}-{% endif %}</div>
-                </div>
-
-                <div class="detail-row">
-                    <div class="detail-label">是否报保险：</div>
-                    <div class="detail-value">{% if complaint.is_insured %}是{% else %}否{% endif %}</div>
-                </div>
-
-                <div class="detail-row">
-                    <div class="detail-label">工程报告：</div>
-                    <div class="detail-value">{{ complaint.engineering_report|default:'-' }}</div>
-                </div>
-
-                <div class="detail-row">
-                    <div class="detail-label">工程部分析原因报告：</div>
-                    <div class="detail-value">{{ complaint.engineering_analysis|default:'-' }}</div>
-                </div>
-
-                <div class="detail-row">
-                    <div class="detail-label">欠缺材料：</div>
-                    <div class="detail-value">{{ complaint.missing_materials|default:'-' }}</div>
-                </div>
-
-                <div class="detail-row">
-                    <div class="detail-label">客诉状态：</div>
-                    <div class="detail-value">{{ complaint.complaint_status }}</div>
-                </div>
-
-                <div class="detail-row">
-                    <div class="detail-label">跟进情况：</div>
-                    <div class="detail-value">{{ complaint.follow_up_status|default:'-' }}</div>
-                </div>
-
-                <div class="detail-row">
-                    <div class="detail-label">备注：</div>
-                    <div class="detail-value">{{ complaint.remarks|default:'-' }}</div>
-                </div>
-
-                {% if complaint.is_closed %}
-                <div class="detail-row">
-                    <div class="detail-label">闭环结论：</div>
-                    <div class="detail-value">{{ complaint.closure_result_display|default:'-' }}</div>
-                </div>
-                <div class="detail-row">
-                    <div class="detail-label">闭环说明：</div>
-                    <div class="detail-value">{{ complaint.closure_note|default:'-' }}</div>
-                </div>
-                <div class="detail-row">
-                    <div class="detail-label">闭环时间：</div>
-                    <div class="detail-value">{{ complaint.closed_at|date:'Y-m-d H:i' }}</div>
-                </div>
-                <div class="detail-row">
-                    <div class="detail-label">闭环人：</div>
-                    <div class="detail-value">{{ complaint.closed_by|default:'-' }}</div>
-                </div>
-                {% endif %}
+    <!-- ═══ 卷宗头部：案由 / 状态 / SLA / 诉求金额 ═══ -->
+    <section class="dc-hero">
+        <div class="dc-hero-main">
+            <div class="dc-overline">CASE FILE · 客户客诉<span class="dc-case-no">No. {{ complaint.id }}</span></div>
+            <h1 class="dc-hero-title">{{ complaint.customer_name }}</h1>
+            <div class="dc-hero-meta">
+                <span><em>终端客户</em>{{ complaint.terminal_customer|default:'-' }}</span>
+                <span><em>产品型号</em>{{ complaint.product_model|default:'-' }}</span>
+                <span><em>登记日期</em><span class="dc-mono">{{ complaint.complaint_date|date:'Y-m-d' }}</span></span>
+                <span><em>责任业务员</em>{{ complaint.responsible_salesperson }}</span>
             </div>
         </div>
-
-        <div class="col-lg-5">
-            <!-- SLA 计时 -->
-            <div class="detail-card u-mb-4">
-                <div class="detail-title u-fs-115">SLA 计时</div>
-                {% if complaint.sla_hours %}
-                <div class="sla-row">
-                    <span class="sla-figure {% if complaint.is_sla_overdue %}is-overdue{% elif complaint.is_closed %}is-closed{% else %}is-normal{% endif %}">
-                        {% if complaint.is_closed %}已闭环{% elif complaint.is_sla_overdue %}超时 {{ complaint.sla_overdue_days }} 天{% elif complaint.sla_remaining %}{{ complaint.sla_remaining.days }}天{% else %}—{% endif %}
-                    </span>
-                    <span class="sla-caption">/ 承诺 {{ complaint.sla_hours }}h</span>
-                </div>
-                <div class="sla-progress{% if complaint.is_sla_overdue %} overdue{% endif %}">
-                    <div class="sla-progress-fill {% if complaint.is_closed or complaint.is_sla_overdue %}is-full{% else %}is-half{% endif %}"></div>
-                </div>
-                <p class="sla-deadline{% if complaint.is_sla_overdue %} is-overdue{% endif %}">
-                    截止：{% if complaint.sla_deadline %}{{ complaint.sla_deadline|date:'Y-m-d H:i' }}{% else %}—{% endif %}
-                    {% if complaint.is_sla_overdue %} · 已超时{% elif complaint.is_closed %} · 已闭环{% endif %}
-                </p>
+        <div class="dc-hero-side">
+            <div class="dc-hero-statusline">
+                {% if complaint.is_closed %}
+                <span class="status-badge success">已闭环</span>
+                {% elif complaint.is_sla_overdue %}
+                <span class="status-badge danger">处理中 · 已超时</span>
                 {% else %}
-                <p class="sla-empty">未设置 SLA 时限（不考核）</p>
+                <span class="status-badge warning">{{ complaint.complaint_status }}</span>
+                {% endif %}
+                {% if complaint.compensation_amount %}
+                <span class="dc-claim">赔偿诉求 <b class="dc-mono">¥{{ complaint.compensation_amount|floatformat:2 }}</b></span>
                 {% endif %}
             </div>
-
-            <!-- 处理时间线 -->
-            <div class="detail-card u-mb-4">
-                <div class="detail-title u-fs-115">处理时间线</div>
-                {% include 'records/_timeline.html' with steps=complaint.closure_timeline_steps %}
+            {% if complaint.sla_hours %}
+            <div class="dc-sla{% if complaint.is_sla_overdue %} is-overdue{% endif %}">
+                <div class="dc-sla-figure">
+                    {% if complaint.is_closed %}已闭环{% elif complaint.is_sla_overdue %}超时 {{ complaint.sla_overdue_days }} 天{% elif complaint.sla_remaining %}{{ complaint.sla_remaining.days }} 天{% else %}—{% endif %}
+                    <span class="dc-sla-caption">/ 承诺 {{ complaint.sla_hours }}h</span>
+                </div>
+                <div class="dc-sla-meta">
+                    截止 <span class="dc-mono">{% if complaint.sla_deadline %}{{ complaint.sla_deadline|date:'Y-m-d H:i' }}{% else %}—{% endif %}</span>
+                </div>
+                <div class="dc-sla-track">
+                    <span class="{% if complaint.is_closed or complaint.is_sla_overdue %}is-full{% else %}is-half{% endif %}"></span>
+                </div>
             </div>
+            {% else %}
+            <div class="dc-sla is-empty">未设置 SLA 时限（不考核）</div>
+            {% endif %}
+        </div>
 
-            <!-- 闭环操作区 -->
+        <!-- 处理进程：通栏横向步骤条 -->
+        <ol class="dc-flow">
+            {% for title, meta, stage in complaint.closure_timeline_steps %}
+            <li class="dc-flow-step dc-step--{{ stage }}">
+                <span class="dc-step-dot">
+                    {% if stage == 'done' %}
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                    {% else %}{{ forloop.counter }}{% endif %}
+                </span>
+                <span class="dc-flow-title">{{ title }}</span>
+                {% if meta %}<span class="dc-flow-meta">{{ meta }}</span>{% endif %}
+            </li>
+            {% endfor %}
+        </ol>
+    </section>
+
+    <!-- ═══ 主体：字段卷宗（左） + 闭环 / 附件（右） ═══ -->
+    <div class="dc-layout">
+
+        <div class="dc-main">
+            <!-- 01 诉求事实 -->
+            <section class="dc-card">
+                <div class="dc-sec-head">
+                    <span class="dc-sec-idx">01</span>
+                    <h2>诉求事实</h2>
+                    <span class="dc-sec-line"></span>
+                </div>
+                <div class="dc-facts">
+                    <div class="dc-cell">
+                        <div class="dc-label">客户名称</div>
+                        <div class="dc-value">{{ complaint.customer_name }}</div>
+                    </div>
+                    <div class="dc-cell">
+                        <div class="dc-label">终端客户</div>
+                        <div class="dc-value">{{ complaint.terminal_customer|default:'-' }}</div>
+                    </div>
+                    <div class="dc-cell">
+                        <div class="dc-label">责任业务员</div>
+                        <div class="dc-value">{{ complaint.responsible_salesperson }}</div>
+                    </div>
+                    <div class="dc-cell">
+                        <div class="dc-label">产品型号</div>
+                        <div class="dc-value">{{ complaint.product_model|default:'-' }}</div>
+                    </div>
+                    <div class="dc-cell">
+                        <div class="dc-label">我司出货量</div>
+                        <div class="dc-value">{{ complaint.our_shipment|default:'-' }}</div>
+                    </div>
+                    <div class="dc-cell">
+                        <div class="dc-label">客户出货量</div>
+                        <div class="dc-value">{{ complaint.customer_shipment|default:'-' }}</div>
+                    </div>
+                    <div class="dc-cell">
+                        <div class="dc-label">客户诉求（赔偿金额）</div>
+                        <div class="dc-value dc-mono">{% if complaint.compensation_amount %}¥{{ complaint.compensation_amount|floatformat:2 }}{% else %}-{% endif %}</div>
+                    </div>
+                    <div class="dc-cell">
+                        <div class="dc-label">是否报保险</div>
+                        <div class="dc-value">{% if complaint.is_insured %}是{% else %}否{% endif %}</div>
+                    </div>
+                    <div class="dc-cell">
+                        <div class="dc-label">客诉状态</div>
+                        <div class="dc-value">{{ complaint.complaint_status }}</div>
+                    </div>
+                </div>
+
+                <div class="dc-quote">
+                    <div class="dc-label">客诉现象及客户诉求描述</div>
+                    <div class="dc-quote-body">{{ complaint.complaint_description|default:'-' }}</div>
+                </div>
+            </section>
+
+            <!-- 02 调查与处理 -->
+            <section class="dc-card">
+                <div class="dc-sec-head">
+                    <span class="dc-sec-idx">02</span>
+                    <h2>调查与处理</h2>
+                    <span class="dc-sec-line"></span>
+                </div>
+                <div class="dc-doc">
+                    <div class="dc-doc-row">
+                        <div class="dc-doc-label">工程报告</div>
+                        <div class="dc-doc-text">{{ complaint.engineering_report|default:'-' }}</div>
+                    </div>
+                    <div class="dc-doc-row">
+                        <div class="dc-doc-label">工程部分析原因报告</div>
+                        <div class="dc-doc-text">{{ complaint.engineering_analysis|default:'-' }}</div>
+                    </div>
+                    <div class="dc-doc-row">
+                        <div class="dc-doc-label">欠缺材料</div>
+                        <div class="dc-doc-text">{{ complaint.missing_materials|default:'-' }}</div>
+                    </div>
+                    <div class="dc-doc-row">
+                        <div class="dc-doc-label">跟进情况</div>
+                        <div class="dc-doc-text">{{ complaint.follow_up_status|default:'-' }}</div>
+                    </div>
+                    <div class="dc-doc-row">
+                        <div class="dc-doc-label">备注</div>
+                        <div class="dc-doc-text">{{ complaint.remarks|default:'-' }}</div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <aside class="dc-rail">
+            <!-- 闭环结论（已闭环时） -->
+            {% if complaint.is_closed %}
+            <section class="dc-card dc-rail-card">
+                <div class="dc-sec-head">
+                    <span class="dc-sec-idx">03</span>
+                    <h2>闭环结论</h2>
+                </div>
+                <div class="dc-facts">
+                    <div class="dc-cell">
+                        <div class="dc-label">闭环结论</div>
+                        <div class="dc-value">{{ complaint.closure_result_display|default:'-' }}</div>
+                    </div>
+                    <div class="dc-cell">
+                        <div class="dc-label">闭环时间</div>
+                        <div class="dc-value dc-mono">{{ complaint.closed_at|date:'Y-m-d H:i' }}</div>
+                    </div>
+                    <div class="dc-cell">
+                        <div class="dc-label">闭环人</div>
+                        <div class="dc-value">{{ complaint.closed_by|default:'-' }}</div>
+                    </div>
+                </div>
+                <div class="dc-mini">
+                    <div class="dc-label">闭环说明</div>
+                    <div class="dc-mini-body">{{ complaint.closure_note|default:'-' }}</div>
+                </div>
+            </section>
+            {% endif %}
+
+            <!-- 闭环操作 -->
             {% if not complaint.is_closed %}
             {% can "customer_complaint" "update" %}
-            <div class="detail-card" id="closurePanel">
-                <div class="detail-title u-fs-115">闭环操作区</div>
+            <section class="dc-card dc-rail-card dc-action" id="closurePanel">
+                <div class="dc-sec-head">
+                    <span class="dc-sec-idx">03</span>
+                    <h2>闭环操作</h2>
+                </div>
                 <form method="post" action="{% url 'customer_complaint_close' complaint.id %}">
                     {% csrf_token %}
-                    <div style="margin-bottom:10px;">
-                        <label style="display:block;font-size:13px;color:var(--c-text-secondary);margin-bottom:4px;">闭环结论</label>
-                        <select class="form-select" name="closure_result" required>
+                    <div class="dc-form-field">
+                        <label for="closureResult">闭环结论</label>
+                        <select class="form-select" id="closureResult" name="closure_result" required>
                             <option value="accepted">客户接受</option>
                             <option value="partial">部分接受（需二次跟进）</option>
                             <option value="rejected">不接受（转诉讼）</option>
                         </select>
                     </div>
-                    <div style="margin-bottom:10px;">
-                        <label style="display:block;font-size:13px;color:var(--c-text-secondary);margin-bottom:4px;">闭环说明</label>
-                        <textarea class="form-control" rows="3" name="closure_note" placeholder="记录最终处理结果与客户反馈……"></textarea>
+                    <div class="dc-form-field">
+                        <label for="closureNote">闭环说明</label>
+                        <textarea class="form-control" id="closureNote" rows="3" name="closure_note" placeholder="记录最终处理结果与客户反馈……"></textarea>
                     </div>
-                    <button type="submit" class="btn-primary" style="width:100%;">确认闭环</button>
-                    <p style="font-size:12px;color:var(--c-text-tertiary);margin:8px 0 0;">闭环后：状态置为「已完成」，时间线追加闭环记录，并通知操作人。</p>
+                    <button type="submit" class="btn-primary dc-form-submit">确认闭环</button>
+                    <p class="dc-form-hint">闭环后：状态置为「已完成」，时间线追加闭环记录，并通知操作人。</p>
                 </form>
-            </div>
+            </section>
             {% endcan %}
             {% endif %}
-        </div>
+
+            <!-- 附件资料：沿用卷宗卡片外观，紧接闭环卡 -->
+            {% include 'attachments/_panel.html' with att_obj=complaint %}
+        </aside>
     </div>
 
-    <!-- 附件资料（受理证据/处理过程/闭环资料） -->
-    {% include 'attachments/_panel.html' with att_obj=complaint %}
-
-    <!-- 其他客诉记录 -->
+    <!-- ═══ 同客户其他客诉 ═══ -->
     {% if other_complaints.exists %}
-    <div class="other-complaints">
-        <h3 class="other-complaints-title">其他客诉记录</h3>
-        {% for other in other_complaints %}
-        <div class="complaint-item">
-            <div class="detail-row">
-                <div class="detail-label">客诉日期：</div>
-                <div class="detail-value">{{ other.complaint_date|date:'Y-m-d' }}</div>
-            </div>
-            <div class="detail-row">
-                <div class="detail-label">产品型号：</div>
-                <div class="detail-value">{{ other.product_model|default:'-' }}</div>
-            </div>
-            <div class="detail-row">
-                <div class="detail-label">客诉状态：</div>
-                <div class="detail-value">
-                    {% if other.is_closed %}<span class="status-badge success">已闭环</span>
-                    {% else %}{{ other.complaint_status }}{% endif %}
-                </div>
-            </div>
-            <div class="detail-row">
-                <div class="detail-label">客诉描述：</div>
-                <div class="detail-value">{{ other.complaint_description|default:'-'|truncatechars:100 }}</div>
-            </div>
-            <div class="mt-2">
-                <a href="{% url 'customer_detail' other.id %}" class="btn-transparent btn-sm">查看详情</a>
-            </div>
+    <section class="dc-card dc-more">
+        <div class="dc-sec-head">
+            <span class="dc-sec-idx">05</span>
+            <h2>同客户其他客诉</h2>
+            <span class="dc-sec-line"></span>
         </div>
-        {% endfor %}
-    </div>
+        <div class="dc-more-list">
+            {% for other in other_complaints %}
+            <a class="dc-more-row" href="{% url 'customer_detail' other.id %}">
+                <span class="dc-more-date dc-mono">{{ other.complaint_date|date:'Y-m-d' }}</span>
+                <span class="dc-more-model">{{ other.product_model|default:'-' }}</span>
+                <span class="dc-more-desc">{{ other.complaint_description|default:'-'|truncatechars:64 }}</span>
+                <span class="dc-more-status">
+                    {% if other.is_closed %}<span class="status-badge success">已闭环</span>{% else %}<span class="status-badge warning">{{ other.complaint_status }}</span>{% endif %}
+                </span>
+                <span class="dc-more-arrow" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </span>
+            </a>
+            {% endfor %}
+        </div>
+    </section>
     {% endif %}
+
+</div>
 {% endblock %}
 
 {% block extra_css %}
 <style>
-    /* 其他客诉记录（Ant Design 风格） */
-    .other-complaints {
-        background: var(--c-surface);
-        border-radius: 8px;
-        box-shadow: var(--sh-card);
-        padding: 2rem;
-        margin-top: 2rem;
-    }
+    /* ==========================================================================
+       客诉详情 · 卷宗版式（页面作用域 .cc-page，全部使用设计令牌）
+       ========================================================================== */
+    .cc-page { display: flex; flex-direction: column; gap: var(--sp-5); }
 
-    .other-complaints-title {
-        font-size: 1.3rem;
+    /* —— 卷宗头部 —— */
+    .dc-hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: var(--sp-6);
+        align-items: center;
+        background: var(--c-surface);
+        border: 1px solid var(--c-border);
+        border-top: 3px solid var(--c-primary);
+        border-radius: var(--r-md);
+        box-shadow: var(--sh-card);
+        padding: var(--sp-6) var(--sp-7);
+    }
+    .dc-overline {
+        display: flex;
+        align-items: center;
+        gap: var(--sp-2);
+        font-family: var(--font-mono);
+        font-size: var(--fs-xs);
+        letter-spacing: var(--ls-wide);
+        text-transform: uppercase;
+        color: var(--c-text-tertiary);
+    }
+    .dc-case-no {
+        padding: 1px 6px;
+        border: 1px solid var(--c-border);
+        border-radius: var(--r-xs);
+        color: var(--c-text-secondary);
+        letter-spacing: 0.02em;
+    }
+    .dc-hero-title {
+        margin: var(--sp-2) 0 var(--sp-3);
+        font-family: var(--font-display);
+        font-size: var(--fs-2xl);
+        font-weight: 600;
+        letter-spacing: var(--ls-tight);
+        color: var(--c-text);
+        line-height: var(--lh-tight);
+    }
+    .dc-hero-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--sp-2) var(--sp-6);
+        font-size: var(--fs-sm);
+        color: var(--c-text);
+    }
+    .dc-hero-meta em {
+        font-style: normal;
+        color: var(--c-text-tertiary);
+        margin-right: var(--sp-2);
+        font-size: var(--fs-xs);
+    }
+    .dc-hero-side {
+        display: flex;
+        flex-direction: column;
+        gap: var(--sp-3);
+        min-width: 220px;
+        padding-left: var(--sp-6);
+        border-left: 1px solid var(--c-border);
+    }
+    .dc-hero-statusline {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        gap: var(--sp-2);
+    }
+    .dc-claim { font-size: var(--fs-sm); color: var(--c-text-secondary); }
+    .dc-claim b { color: var(--c-text); font-weight: 600; }
+    .dc-sla { text-align: right; }
+    .dc-sla-figure {
+        font-family: var(--font-display);
+        font-size: var(--fs-xl);
         font-weight: 600;
         color: var(--c-text);
-        margin-bottom: 1.5rem;
-        border-bottom: 1px solid var(--c-border);
-        padding-bottom: 0.5rem;
+        line-height: var(--lh-tight);
     }
-
-    .complaint-item {
+    .dc-sla.is-overdue .dc-sla-figure { color: var(--c-danger); }
+    .dc-sla-caption { font-size: var(--fs-xs); font-weight: 400; color: var(--c-text-tertiary); }
+    .dc-sla-meta { margin-top: var(--sp-1); font-size: var(--fs-xs); color: var(--c-text-secondary); }
+    .dc-sla-track {
+        height: 3px;
+        margin-top: var(--sp-2);
         background: var(--c-surface-sunken);
+        border-radius: var(--r-full);
+        overflow: hidden;
+    }
+    .dc-sla-track span { display: block; height: 100%; background: var(--c-primary); }
+    .dc-sla.is-overdue .dc-sla-track span { background: var(--c-danger); }
+    .dc-sla-track .is-half { width: 50%; }
+    .dc-sla-track .is-full { width: 100%; }
+    .dc-sla.is-empty { font-size: var(--fs-sm); color: var(--c-text-tertiary); }
+    .dc-mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+    /* —— 主体栅格：左卷宗 + 右跟随栏 —— */
+    .dc-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) clamp(330px, 31%, 400px);
+        gap: var(--sp-5);
+        align-items: start;
+    }
+    .dc-main, .dc-rail { display: flex; flex-direction: column; gap: var(--sp-5); min-width: 0; }
+    /* 右栏含附件卡后可能高于视口，取消吸顶，避免底部内容被裁 */
+    .dc-rail { position: static; }
+
+    /* —— 卡片 —— */
+    .dc-card {
+        background: var(--c-surface);
         border: 1px solid var(--c-border);
-        border-radius: 8px;
-        padding: 1rem;
-        margin-bottom: 1rem;
-        transition: all 0.3s ease;
+        border-radius: var(--r-md);
+        box-shadow: var(--sh-card);
+        padding: var(--sp-5) var(--sp-6);
     }
 
-    .complaint-item:hover {
+    /* —— 分节标题：编号 + 标题 + 细线 —— */
+    .dc-sec-head {
+        display: flex;
+        align-items: center;
+        gap: var(--sp-3);
+        margin-bottom: var(--sp-4);
+    }
+    .dc-sec-idx {
+        font-family: var(--font-mono);
+        font-size: var(--fs-xs);
+        font-weight: 600;
+        color: var(--c-primary);
         background: var(--c-primary-subtle);
-        border-color: var(--c-border-hover);
-        transform: translateY(-2px);
+        border-radius: var(--r-xs);
+        padding: 2px 6px;
+        letter-spacing: 0.02em;
+    }
+    .dc-sec-head h2 {
+        margin: 0;
+        font-size: var(--fs-lg);
+        font-weight: 600;
+        color: var(--c-text);
+        letter-spacing: var(--ls-tight);
+        white-space: nowrap;
+    }
+    .dc-sec-line {
+        flex: 1;
+        height: 1px;
+        background: var(--c-border);
     }
 
-    .complaint-item .detail-row {
-        margin-bottom: 0.75rem;
-        border-bottom: 1px solid var(--c-surface-sunken);
+    /* —— 关键事实：标签在上、值在下，3 / 2 / 1 列响应式 —— */
+    .dc-facts {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        column-gap: var(--sp-6);
+    }
+    @media (max-width: 1280px) {
+        .dc-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 700px) {
+        .dc-facts { grid-template-columns: 1fr; }
+    }
+    .dc-cell {
+        padding: var(--sp-3) 0;
+        border-bottom: 1px solid var(--c-divider);
+        min-width: 0;
+    }
+    .dc-label {
+        font-size: var(--fs-xs);
+        color: var(--c-text-tertiary);
+        letter-spacing: var(--ls-wide);
+    }
+    .dc-value {
+        margin-top: var(--sp-1);
+        font-size: var(--fs-base);
+        color: var(--c-text);
+        line-height: var(--lh-base);
+        word-break: break-word;
     }
 
-    .complaint-item .detail-row:last-of-type {
-        border-bottom: none;
+    /* —— 诉求描述：卷宗引文块（浅底 + 主色书脊线） —— */
+    .dc-quote {
+        margin-top: var(--sp-4);
+        padding: var(--sp-4) var(--sp-5);
+        background: var(--c-surface-sunken);
+        border-left: 3px solid var(--c-primary);
+        border-radius: 0 var(--r-sm) var(--r-sm) 0;
+    }
+    .dc-quote-body {
+        margin-top: var(--sp-2);
+        max-width: var(--w-prose);
+        font-size: var(--fs-md);
+        line-height: var(--lh-loose);
+        color: var(--c-text);
+        word-break: break-word;
+    }
+
+    /* —— 长文本：公文式左标签栏 + 正文（高度比上下堆叠更紧凑） —— */
+    .dc-doc { display: flex; flex-direction: column; }
+    .dc-doc-row {
+        display: grid;
+        grid-template-columns: 148px minmax(0, 1fr);
+        gap: var(--sp-4) var(--sp-6);
+        padding: var(--sp-3) 0;
+        border-bottom: 1px solid var(--c-divider);
+    }
+    .dc-doc-row:first-child { padding-top: var(--sp-1); }
+    .dc-doc-row:last-child { border-bottom: 0; padding-bottom: var(--sp-1); }
+    .dc-doc-label {
+        padding-top: 1px;
+        font-size: var(--fs-sm);
+        color: var(--c-text-secondary);
+        letter-spacing: var(--ls-base);
+    }
+    .dc-doc-text {
+        max-width: var(--w-prose);
+        font-size: var(--fs-base);
+        line-height: var(--lh-loose);
+        color: var(--c-text);
+        word-break: break-word;
+    }
+    @media (max-width: 640px) {
+        .dc-doc-row { grid-template-columns: 1fr; gap: var(--sp-1); }
+    }
+    /* 右栏为窄侧栏时，闭环字段改为单列堆叠 */
+    @media (min-width: 1101px) {
+        .dc-rail .dc-facts { grid-template-columns: 1fr; }
+        .dc-rail .dc-cell { padding: var(--sp-2) 0; }
+    }
+    .dc-mini {
+        margin-top: var(--sp-3);
+        padding-top: var(--sp-3);
+        border-top: 1px solid var(--c-divider);
+    }
+    .dc-mini-body {
+        margin-top: var(--sp-1);
+        font-size: var(--fs-sm);
+        line-height: var(--lh-base);
+        color: var(--c-text);
+        word-break: break-word;
+    }
+
+    /* —— 处理进程：通栏横向步骤条 —— */
+    .dc-flow {
+        grid-column: 1 / -1;
+        display: flex;
+        list-style: none;
+        margin: var(--sp-5) 0 0;
+        padding: var(--sp-5) 0 0;
+        border-top: 1px solid var(--c-border);
+    }
+    .dc-flow-step {
+        flex: 1 1 0;
+        min-width: 0;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 0 var(--sp-2);
+    }
+    /* 步骤之间的连接线：从本圆点右缘连到下个圆点左缘 */
+    .dc-flow-step::after {
+        content: '';
+        position: absolute;
+        top: 11px;
+        left: calc(50% + 20px);
+        right: calc(-50% + 20px);
+        height: 1px;
+        background: var(--c-border);
+    }
+    .dc-flow-step:last-child::after { display: none; }
+    /* 已完成步骤的连线跟随状态色，进度一眼可读 */
+    .dc-flow-step.dc-step--done::after { background: var(--c-success-line); }
+    .dc-step-dot {
+        flex-shrink: 0;
+        width: 24px;
+        height: 24px;
+        border-radius: var(--r-full);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--font-mono);
+        font-size: var(--fs-xs);
+        font-weight: 600;
+        border: 1px solid var(--c-border-strong);
+        color: var(--c-text-secondary);
+        background: var(--c-surface);
+        position: relative;
+        z-index: var(--z-base);
+    }
+    .dc-step-dot svg { width: 13px; height: 13px; }
+    .dc-step--done .dc-step-dot {
+        border-color: var(--c-success-line);
+        background: var(--c-success-bg);
+        color: var(--c-success);
+    }
+    .dc-step--current .dc-step-dot {
+        border-color: var(--c-primary);
+        background: var(--c-primary);
+        color: var(--c-text-inverse);
+        box-shadow: 0 0 0 3px var(--c-primary-ring);
+    }
+    .dc-flow-title {
+        margin-top: var(--sp-2);
+        font-size: var(--fs-sm);
+        font-weight: 600;
+        color: var(--c-text);
+        line-height: var(--lh-tight);
+    }
+    .dc-step--todo .dc-flow-title { font-weight: 500; color: var(--c-text-secondary); }
+    .dc-flow-meta {
+        margin-top: 2px;
+        font-size: var(--fs-xs);
+        color: var(--c-text-tertiary);
+        font-family: var(--font-mono);
+        white-space: nowrap;
+    }
+    @media (max-width: 700px) {
+        .dc-flow { flex-direction: column; gap: var(--sp-3); padding-top: var(--sp-4); }
+        .dc-flow-step { flex-direction: row; align-items: center; gap: var(--sp-3); text-align: left; padding: 0; }
+        .dc-flow-step::after { display: none; }
+        .dc-flow-title { margin-top: 0; }
+        .dc-flow-meta { margin-top: 0; margin-left: auto; }
+    }
+
+    /* —— 闭环操作：琥珀语义描边 + 实心编号，避免细竖条对比不足 —— */
+    .dc-action {
+        border-color: var(--c-accent-line);
+        box-shadow: var(--sh-card), inset 3px 0 0 var(--c-accent);
+    }
+    .dc-action .dc-sec-idx {
+        background: var(--c-accent);
+        color: var(--c-text-inverse);
+    }
+    .dc-form-field { margin-bottom: var(--sp-3); }
+    .dc-form-field label {
+        display: block;
+        font-size: var(--fs-xs);
+        color: var(--c-text-secondary);
+        margin-bottom: var(--sp-1);
+        letter-spacing: var(--ls-wide);
+    }
+    .dc-form-submit { width: 100%; }
+    .dc-form-hint {
+        margin: var(--sp-2) 0 0;
+        font-size: var(--fs-xs);
+        color: var(--c-text-tertiary);
+        line-height: var(--lh-base);
+    }
+
+    /* —— 右栏附件卡：与卷宗卡片同一外观，窄栏下控件改为纵向排布 —— */
+    .dc-rail .att-panel {
+        margin-bottom: 0;
+        border-radius: var(--r-md);
+        box-shadow: var(--sh-card);
+    }
+    @media (min-width: 1101px) {
+        .dc-rail .att-panel-head {
+            flex-direction: column;
+            align-items: stretch;
+            gap: var(--sp-3);
+            padding: var(--sp-5) var(--sp-6) var(--sp-3);
+        }
+        .dc-rail .att-panel-title { font-size: var(--fs-base); }
+        .dc-rail .att-upload-bar {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: var(--sp-2);
+        }
+        .dc-rail .att-category-select { grid-column: 1 / -1; width: 100%; }
+        .dc-rail .att-file-names { grid-column: 1 / -1; order: 3; max-width: 100%; }
+        .dc-rail .att-file-pick { text-align: center; }
+        .dc-rail .att-panel-body { padding: var(--sp-3) var(--sp-6) var(--sp-5); }
+        .dc-rail .att-row { flex-wrap: wrap; row-gap: var(--sp-2); }
+        .dc-rail .att-row-actions { width: 100%; justify-content: flex-end; }
+        .dc-rail .att-hint { font-size: var(--fs-xs); }
+    }
+
+    /* —— 同客户其他客诉：紧凑行列表 —— */
+    .dc-more-list { display: flex; flex-direction: column; }
+    .dc-more-row {
+        display: grid;
+        grid-template-columns: 96px 110px minmax(0, 1fr) auto 20px;
+        align-items: center;
+        gap: var(--sp-4);
+        padding: var(--sp-3) var(--sp-2);
+        border-bottom: 1px solid var(--c-divider);
+        text-decoration: none;
+        color: inherit;
+        border-radius: var(--r-sm);
+        transition: background var(--dur-fast) var(--ease-out);
+    }
+    .dc-more-row:last-child { border-bottom: 0; }
+    .dc-more-row:hover { background: var(--c-primary-subtle); }
+    .dc-more-date { font-size: var(--fs-sm); color: var(--c-text-secondary); }
+    .dc-more-model { font-size: var(--fs-sm); color: var(--c-text); font-weight: 500; }
+    .dc-more-desc { font-size: var(--fs-sm); color: var(--c-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .dc-more-arrow { color: var(--c-text-tertiary); display: inline-flex; }
+    .dc-more-arrow svg { width: 16px; height: 16px; }
+
+    /* —— 响应式：中窄屏右栏落到主列下方 —— */
+    @media (max-width: 1100px) {
+        .dc-layout { grid-template-columns: 1fr; }
+        .dc-rail { position: static; }
+    }
+    @media (max-width: 900px) {
+        .dc-hero { grid-template-columns: 1fr; }
+        .dc-hero-side { border-left: 0; padding-left: 0; border-top: 1px solid var(--c-border); padding-top: var(--sp-4); }
+        .dc-hero-statusline { justify-content: flex-start; }
+        .dc-sla { text-align: left; }
+        .dc-more-row { grid-template-columns: 90px minmax(0, 1fr) auto; }
+        .dc-more-model { display: none; }
+        .dc-more-desc { display: none; }
+    }
+
+    /* —— 入场：卡片依次轻抬 —— */
+    @keyframes dc-rise {
+        from { opacity: 0; transform: translateY(6px); }
+        to { opacity: 1; transform: none; }
+    }
+    .cc-page > * {
+        animation: dc-rise var(--dur-base) var(--ease-out) both;
+    }
+    .cc-page > *:nth-child(2) { animation-delay: 60ms; }
+    .cc-page > *:nth-child(3) { animation-delay: 120ms; }
+    .cc-page > *:nth-child(4) { animation-delay: 180ms; }
+    @media (prefers-reduced-motion: reduce) {
+        .cc-page > * { animation: none; }
     }
 </style>
 {% endblock %}

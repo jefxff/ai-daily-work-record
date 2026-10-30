@@ -28,7 +28,7 @@
     <div class="table-container">
         <!-- 表格 -->
         <div class="table-responsive">
-            <div class="hidden-cols-hint">窄屏已隐藏 3 个次要列；需要逐列比对时请横屏或改用桌面端。</div><table class="table--cards table table-sticky">
+            <div class="hidden-cols-hint">窄屏已隐藏 3 个次要列；需要逐列比对时请横屏或改用桌面端。</div><table class="table--cards table table-sticky table--fixed">
                 <thead>
                     <tr>
                         <th scope="col" class="col-optional">序号</th>
@@ -40,7 +40,7 @@
                         <th scope="col">供应商2报价</th>
                         <th scope="col" class="col-optional">供应商3报价</th>
                         <th scope="col" class="col-optional">内控审核供应商</th>
-                        <th scope="col">内控审核价</th>
+                        {% include 'records/_sort_th.html' with label="内控审核价" field="internal_control_price" %}
                         <th scope="col">核减金额</th>
                         <th scope="col" class="col-actions">操作</th>
                     </tr>
@@ -52,7 +52,7 @@
                         <td data-label="项目分类">{{ evaluation.project_category }}</td>
                         <td data-label="项目提出部门">{{ evaluation.proposing_department }}</td>
                         <td data-label="提出人">{{ evaluation.proposer }}</td>
-                        <td data-label="核价内容" title="{{ evaluation.evaluation_content|default:'' }}">{{ evaluation.evaluation_content|default:''|truncatechars:30 }}</td>
+                        <td data-label="核价内容" class="cell-clamp" title="{{ evaluation.evaluation_content|default:'' }}"><span>{{ evaluation.evaluation_content|default:'' }}</span></td>
                         <td data-label="供应商1报价">
                             <div class="supplier-cell">
                                 <span class="supplier-name" title="{{ evaluation.supplier1_name|default:'' }}">{{ evaluation.supplier1_name|default:'—' }}</span>
@@ -72,8 +72,8 @@
                             </div>
                         </td>
                         <td data-label="内控审核供应商" class="col-optional" title="{{ evaluation.internal_control_supplier|default:'' }}">{{ evaluation.internal_control_supplier|default:'—' }}</td>
-                        <td data-label="内控审核价">¥{{ evaluation.internal_control_price|floatformat:2|intcomma }}</td>
-                        <td data-label="核减金额">¥{{ evaluation.get_reduction_amount|floatformat:2|intcomma }}</td>
+                        <td data-label="内控审核价" class="cell-ellipsis" title="¥{{ evaluation.internal_control_price|floatformat:2|intcomma }}">¥{{ evaluation.internal_control_price|floatformat:2|intcomma }}</td>
+                        <td data-label="核减金额" class="cell-ellipsis" title="¥{{ evaluation.get_reduction_amount|floatformat:2|intcomma }}">¥{{ evaluation.get_reduction_amount|floatformat:2|intcomma }}</td>
                         <td data-label="操作" class="col-actions">
                     <div class="u-toolbar-inline">
                         <a href="{% url 'price_evaluation_detail' evaluation.id %}" class="btn-transparent btn-sm" data-modal-detail data-modal-title="核价详情">详细</a>
@@ -87,9 +87,7 @@
                 </td>
                         </tr>
                         {% empty %}
-                        <tr>
-                            <td colspan="12" class="empty-cell">📭 暂无数据</td>
-                        </tr>
+                        {% include 'records/_empty_row.html' with colspan=12 %}
                         {% endfor %}
                     </tbody>
                 </table>
@@ -102,36 +100,28 @@
 
 {% block extra_css %}
 <style>
-    /* 模板特定样式：核价列表表格宽度与单元格最大宽度 */
-    .table { min-width: 1180px; }
-    .table thead th, .table tbody td { padding: 10px 12px !important; font-size: 13px; }
-    .table tbody td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
-    .table tbody td:last-child { overflow: visible !important; }
-
-    /* 操作列固定在右侧，横向滚动时始终可见 */
-    .table-responsive { overflow-x: auto !important; }
-
-    .table thead th.col-actions,
-    .table tbody td.col-actions {
-        position: sticky !important;
-        right: 0;
-        background: var(--c-surface) !important;
-        z-index: var(--z-sticky);
-        box-shadow: -3px 0 5px rgba(0,0,0,0.08);
-        border-left: 1px solid var(--c-border);
-    }
-    .table tbody tr:hover td.col-actions {
-        background: var(--c-surface-sunken) !important;
-    }
-    .table thead th.col-actions {
-        z-index: var(--z-sticky-head);
-        background: var(--c-surface-sunken) !important;
-    }
+    /* 列预算（合计 100%）：固定布局。三个供应商报价列 + 内控审核价 + 核减金额
+       都必须 ≥10%，否则 1080px 最小宽度下内容区不足 78px，
+       「¥110,000.00」这类金额会被省略号截断、名称也会被挤成两三个字。 */
+    .table { min-width: 1080px; }
+    .table--fixed th:nth-child(1)  { width: 3%; }
+    .table--fixed th:nth-child(2)  { width: 6%; }
+    .table--fixed th:nth-child(3)  { width: 7%; }
+    .table--fixed th:nth-child(4)  { width: 6%; }
+    .table--fixed th:nth-child(5)  { width: 10%; }
+    .table--fixed th:nth-child(6)  { width: 10%; }
+    .table--fixed th:nth-child(7)  { width: 10%; }
+    .table--fixed th:nth-child(8)  { width: 10%; }
+    .table--fixed th:nth-child(9)  { width: 8%; white-space: normal; }   /* 表头 7 字，窄列里允许折成两行，避免压到下一列表头 */
+    .table--fixed th:nth-child(10) { width: 10%; }
+    .table--fixed th:nth-child(11) { width: 10%; }
+    .table--fixed th:nth-child(12) { width: 10%; }
     .table td { font-variant-numeric: tabular-nums; }
-    /* 供应商组：名称上、报价下（报价右对齐、等宽数字） */
-    .supplier-cell { display: flex; flex-direction: column; gap: 1px; min-width: 96px; }
-    .supplier-name { font-size: 12px; color: var(--c-text-secondary); max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .supplier-price { font-size: 13px; font-weight: 600; color: var(--c-text); font-variant-numeric: tabular-nums; align-self: flex-end; }
+    /* 供应商组：名称上、报价下，两行都从单元格左缘起排（表头同为左对齐）。 */
+    .supplier-cell { display: flex; flex-direction: column; gap: 1px; min-width: 0; text-align: left; }
+    .supplier-name { overflow: hidden; font-size: 12px; color: var(--c-text-secondary); text-overflow: ellipsis; white-space: nowrap; }
+    /* 金额超列宽时按…截断，不能溢出到旁边的供应商列（溢出会让整列看起来错位） */
+    .supplier-price { align-self: stretch; overflow: hidden; max-width: 100%; font-size: 13px; font-weight: 600; color: var(--c-text); font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
 </style>
 {% endblock %}
 

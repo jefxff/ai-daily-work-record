@@ -31,11 +31,11 @@
                 <thead>
                     <tr>
                         <th scope="col" class="col-optional">序号</th>
-                        <th scope="col">出文日期</th>
+                        {% include 'records/_sort_th.html' with label="出文日期" field="issue_date" %}
                         <th scope="col">标题</th>
                         <th scope="col">主要内容</th>
                         <th scope="col">文件编号</th>
-                        <th scope="col">操作</th>
+                        <th scope="col" class="col-actions">操作</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -46,8 +46,8 @@
                         <td data-label="标题" class="title-cell" title="{{ regulation.title }}">{{ regulation.title }}</td>
                         <td data-label="主要内容" class="content-td"><div class="clamp-2" title="{{ regulation.content }}">{{ regulation.content|truncatechars:120 }}</div></td>
                         <td data-label="文件编号">{{ regulation.doc_no }}</td>
-                        <td data-label="操作">
-                            <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                        <td data-label="操作" class="col-actions">
+                            <div style="display: flex; gap: 0.5rem; align-items: center; justify-content: center; flex-wrap: nowrap;">
                                 <a href="{% url 'regulation_detail' regulation.id %}" class="btn-transparent btn-sm" aria-label="查看制度详情" data-modal-detail data-modal-title="制度详情">详细</a>
                                 {% can "regulation" "update" %}
                                 <a href="{% url 'regulation_edit' regulation.id %}" class="btn-transparent btn-sm" aria-label="编辑制度" data-modal-edit data-modal-title="编辑制度">编辑</a>
@@ -59,9 +59,7 @@
                         </td>
                     </tr>
                     {% empty %}
-                    <tr>
-                        <td colspan="6" class="empty-cell">📭 暂无数据</td>
-                    </tr>
+                    {% include 'records/_empty_row.html' with colspan=6 %}
                     {% endfor %}
                 </tbody>
             </table>
@@ -76,6 +74,11 @@
 <style>
     /* 标题加粗截断、主要内容两行截断 */
     .title-cell { font-weight: 500; color: var(--c-text); max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* 不设宽度下限时窄屏会把「出文日期」挤成两行、操作列三个图标竖排（行高 125px）；
+       日期/编号不换行，列放不下就交给表格横向滚动。 */
+    .table { min-width: 940px; }
+    .table tbody td[data-label="出文日期"],
+    .table tbody td[data-label="文件编号"] { white-space: nowrap; }
     .content-td { max-width: 480px; }
     .clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     .table td { font-variant-numeric: tabular-nums; }

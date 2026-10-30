@@ -32,7 +32,6 @@ MODEL_MODULE_MAP = {
     ("records", "customercomplaint"): "customer_complaint",
     ("records", "complaint"): "complaint",
     ("records", "insurance"): "insurance",
-    ("records", "customerledger"): "customer_ledger",
 }
 
 # 各模块的业务分类（上传时可选，列表里显示为徽标）；空列表 = 不显示分类选择。
@@ -54,7 +53,6 @@ ATTACHMENT_CATEGORIES = {
         ("receipt", "缴费凭证"),
         ("claim", "理赔材料"),
     ],
-    "customer_ledger": [],
 }
 
 # 允许的扩展名与大小上限（与档案附件同一白名单；上限取 20MB，见 validators）

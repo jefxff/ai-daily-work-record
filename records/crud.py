@@ -9,7 +9,7 @@
 """
 
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import F, Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
@@ -270,11 +270,28 @@ def _apply_filters(qs, request, filters):
     return qs, ctx
 
 
+def _sortable_map(model, sortable):
+    """排序白名单：{GET 取值: ORM 字段}。
+
+    - 显式传入 sortable（dict 或字段名序列）时按传入内容，完全不看模型；
+    - 未传入且给了 model 时，用模型的具体字段（排除主键）自动建白名单，
+      不暴露关系遍历与 ``__`` 路径，杜绝把任意字符串塞进 order_by 的注入面；
+    - 两者都没有（纯 queryset 视图）时不提供排序，保持原有顺序。
+    """
+    if sortable is not None:
+        return dict(sortable) if isinstance(sortable, dict) else {f: f for f in sortable}
+    if model is None:
+        return {}
+    pk_name = model._meta.pk.name
+    return {f.name: f.name for f in model._meta.concrete_fields if f.name != pk_name}
+
+
 def make_list_view(*, perm_module, template_name, page_var, model=None,
                    queryset=None, search_fields=None, filters=None,
                    filter_options=None, option_queries=None, extra_context=None,
-                   search_param='search', per_page=None, row_hook=None):
-    """生成标准列表视图：全文搜索 + 多条件筛选 + 下拉选项 + 分页。
+                   search_param='search', per_page=None, row_hook=None,
+                   sortable=None, sort_param='sort'):
+    """生成标准列表视图：全文搜索 + 多条件筛选 + 下拉选项 + 排序 + 分页。
 
     - perm_module:    权限模块标识（perm_required 第一参数，动作为 read）；
     - template_name:  列表模板路径；
@@ -298,6 +315,9 @@ def make_list_view(*, perm_module, template_name, page_var, model=None,
                       渲染前调用，用于给本页对象批量注入派生属性
                       （如 attachments.services.inject_counts 注入每行附件数，
                       一次 GROUP BY 完成，无 N+1）。
+    - sortable:       排序白名单 {GET 取值: ORM 字段}（或字段名序列）。不传时
+                      自动取 model 的具体字段；纯 queryset 视图需显式传入。
+    - sort_param:     排序参数名（默认 sort，方向参数固定为 dir=asc|desc）。
     """
 
     @perm_required(perm_module, "read")
@@ -320,6 +340,19 @@ def make_list_view(*, perm_module, template_name, page_var, model=None,
         # 多条件筛选（GET 原值一并回传模板）
         base, filter_ctx = _apply_filters(base, request, filters)
 
+        # 排序（服务端，白名单校验）：与筛选/搜索叠加后再分页，跨页顺序一致。
+        # 未带 sort 参数时完全沿用原顺序（模型 Meta.ordering / 自定义 queryset），
+        # 因此默认列表顺序与改造前一致，不影响既有使用习惯。
+        sortable_map = _sortable_map(model, sortable)
+        sort_field = request.GET.get(sort_param, '')
+        sort_dir = 'desc' if request.GET.get('dir') == 'desc' else 'asc'
+        if sort_field and sort_field in sortable_map:
+            expr = F(sortable_map[sort_field])
+            base = base.order_by(
+                expr.desc(nulls_last=True) if sort_dir == 'desc' else expr.asc(nulls_last=True))
+        else:
+            sort_field = ''
+
         # 下拉选项
         options = {}
         for key, field in (filter_options or {}).items():
@@ -335,7 +368,8 @@ def make_list_view(*, perm_module, template_name, page_var, model=None,
         if row_hook is not None:
             row_hook(page.object_list, request)
 
-        context = {page_var: page, search_key: search_term, **filter_ctx, **options}
+        context = {page_var: page, search_key: search_term, **filter_ctx, **options,
+                   'sort_field': sort_field, 'sort_dir': sort_dir}
         context.update(extra_context or {})
         return render(request, template_name, context)
 

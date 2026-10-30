@@ -445,7 +445,18 @@ html.act-icons td[data-label="操作"] :is([data-act="delete"], .btn-delete, .bt
    钩子以 data-act（base.html 从按钮文字推导）为主，模板里已有的属性为辅。
    编辑这一条刻意不用 a[href*="edit"]：/customer_credit/... 之类 URL 里的
    "cr**edit**" 会被误命中，把「详细」也套上铅笔图标。 */
-html.act-icons td[data-label="操作"] :is([data-act="detail"], [data-modal-detail], a[href*="detail"])::before {
+html.act-icons td[data-label="操作"] [data-act="detail"]::before {
+  width: 15px;
+  margin-right: 5px;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1.8 12S5.4 5.6 12 5.6 22.2 12 22.2 12 18.6 18.4 12 18.4 1.8 12 1.8 12z'/%3E%3Ccircle cx='12' cy='12' r='3.1'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1.8 12S5.4 5.6 12 5.6 22.2 12 22.2 12 18.6 18.4 12 18.4 1.8 12 1.8 12z'/%3E%3Ccircle cx='12' cy='12' r='3.1'/%3E%3C/svg%3E");
+}
+/* 兜底：模板里已有 [data-modal-detail] / href 含 detail、但脚本没能从文字推导出
+   data-act 的按钮，同样给眼睛图标。
+   这里用 :where() 把特异度压到 0 —— 若写成 :is(...)，其中 a[href*="detail"]
+   会把整条规则抬到 (0,4,3)，压过上面按文字推导的 [data-act="timeline"] /
+   [data-act="policy"]，保险续保视图的两枚图标就会被强制回眼睛。 */
+html.act-icons td[data-label="操作"] :where([data-modal-detail], a[href*="detail"])::before {
   width: 15px;
   margin-right: 5px;
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1.8 12S5.4 5.6 12 5.6 22.2 12 22.2 12 18.6 18.4 12 18.4 1.8 12 1.8 12z'/%3E%3Ccircle cx='12' cy='12' r='3.1'/%3E%3C/svg%3E");
@@ -462,6 +473,34 @@ html.act-icons td[data-label="操作"] :is([data-act="delete"], .btn-delete, .bt
   margin-right: 5px;
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.8 6.6h16.4'/%3E%3Cpath d='M9.2 6.6V4.4h5.6v2.2'/%3E%3Cpath d='M6.4 6.6l.9 13.1h9.4l.9-13.1'/%3E%3Cpath d='M10.4 10.6v5.8M13.6 10.6v5.8'/%3E%3C/svg%3E");
   mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.8 6.6h16.4'/%3E%3Cpath d='M9.2 6.6V4.4h5.6v2.2'/%3E%3Cpath d='M6.4 6.6l.9 13.1h9.4l.9-13.1'/%3E%3Cpath d='M10.4 10.6v5.8M13.6 10.6v5.8'/%3E%3C/svg%3E");
+}
+/* 保险续保视图的三个动作各配语义图标：时间线=时钟、当前保单=保单文件、
+   续保=循环箭头。之前三个都走 detail 的眼睛图标，同一行里两枚一模一样的
+   眼睛无法区分，第三个又只有文字，整列既重复又不统一。 */
+html.act-icons td[data-label="操作"] [data-act="timeline"]::before {
+  width: 15px;
+  margin-right: 5px;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 6.9V12l3.4 2.1'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 6.9V12l3.4 2.1'/%3E%3C/svg%3E");
+}
+html.act-icons td[data-label="操作"] [data-act="policy"]::before {
+  width: 15px;
+  margin-right: 5px;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/%3E%3Cpath d='M14 2v6h6'/%3E%3Cpath d='M9 13h6M9 17h5'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/%3E%3Cpath d='M14 2v6h6'/%3E%3Cpath d='M9 13h6M9 17h5'/%3E%3C/svg%3E");
+}
+html.act-icons td[data-label="操作"] [data-act="renew"]::before {
+  width: 15px;
+  margin-right: 5px;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 5.4v5.2h5.2'/%3E%3Cpath d='M4.7 15.6a8.4 8.4 0 1 0 1.9-8.6L2 10.6'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 5.4v5.2h5.2'/%3E%3Cpath d='M4.7 15.6a8.4 8.4 0 1 0 1.9-8.6L2 10.6'/%3E%3C/svg%3E");
+}
+/* 待办工作台的「处理」是统一入口，不区分动作类型：有的来源跳详情页、有的跳编辑页，
+   a[href*="detail"] 这条图标兜底会让每日记录行多出一个「眼睛」而其他行没有，
+   同一列里图标 / 纯文字混排。这里统一收起图标，整列保持「纯文字」。 */
+html.act-icons .workspace-table.table--cards td[data-label="操作"] a[href*="detail"]::before {
+  width: 0;
+  margin-right: 0;
 }
 
 /* 操作列按钮组沿列轴心水平居中：全站表头与单元格均为水平居中，
@@ -986,5 +1025,183 @@ td[data-label="操作"] > div { justify-content: center; }
 .role-form-note { color: var(--c-text-secondary); font-size: 0.78rem; margin: 0.5rem 0 0; }
 .role-form-actions { display: flex; gap: 0.75rem; margin-top: 1.25rem; }
 .role-form-submit { padding: 0.5rem 1.5rem; }
+
+/* ============================================================================
+   §9 列表页交互增强（配合 static/js/table-tools.js）
+   ----------------------------------------------------------------------------
+   9.1 服务端排序表头（records/_sort_th.html）
+   9.2 列显隐（localStorage 记忆，脚本写在 th / td 上的 .col-hidden）
+   9.3 列设置面板（脚本动态挂载到 body）
+   9.4 操作列「更多」收纳（details/summary）
+   全部为渐进增强：脚本不执行时表格仍完整可读，以下样式也不会命中。
+   ========================================================================== */
+
+/* —— 9.1 排序表头 —— */
+.th-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: inherit;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.th-sort:hover,
+.th-sort:focus-visible {
+  color: var(--c-primary);
+  text-decoration: none;
+}
+.th-sort.is-active { color: var(--c-primary); font-weight: 600; }
+/* 默认两向箭头（未排序时淡显，提示"可点"）。
+   原来是单个 6×5px 三角 + opacity .55 + 接近文字灰的边框色，实际渲染出来几乎
+   看不见 —— 用户反馈「列表里根本没看到排序」。改为 9×13px 上下双箭头，
+   默认 opacity .55 可见，hover 与当前排序列用主色。 */
+.th-sort__ind {
+  position: relative;
+  flex: 0 0 auto;
+  width: 9px;
+  height: 13px;
+  color: var(--c-text-tertiary);
+  opacity: 0.75;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+.th-sort__ind::before,
+.th-sort__ind::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  width: 0;
+  height: 0;
+  margin-left: -4px;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+}
+.th-sort__ind::before { top: 0; border-bottom: 5px solid currentColor; }
+.th-sort__ind::after { bottom: 0; border-top: 5px solid currentColor; }
+.th-sort:hover .th-sort__ind,
+.th-sort:focus-visible .th-sort__ind { opacity: 1; color: var(--c-primary); }
+/* 已排序：只保留当前方向那支箭头，与 aria-sort 保持同一语义来源 */
+th[aria-sort="ascending"] .th-sort__ind,
+th[aria-sort="descending"] .th-sort__ind { opacity: 1; color: var(--c-primary); }
+th[aria-sort="ascending"] .th-sort__ind::after { display: none; }
+th[aria-sort="descending"] .th-sort__ind::before { display: none; }
+
+/* —— 9.2 列显隐 —— */
+.col-hidden { display: none !important; }
+
+/* —— 9.3 列设置面板 —— */
+.col-settings-panel {
+  position: fixed;
+  z-index: var(--z-dropdown);
+  max-height: min(60vh, 420px);
+  overflow-y: auto;
+  padding: var(--sp-3);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-strong);
+  border-radius: var(--r-md);
+  box-shadow: var(--sh-2);
+}
+.col-settings-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-2);
+  padding-bottom: var(--sp-2);
+  border-bottom: 1px solid var(--c-border);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--c-text);
+}
+.col-settings-reset {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--c-primary);
+  font-size: var(--fs-xs);
+  font-weight: 400;
+  cursor: pointer;
+}
+.col-settings-reset:hover { text-decoration: underline; }
+.col-settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.col-settings-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 4px 6px;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-sm);
+  color: var(--c-text);
+  cursor: pointer;
+}
+.col-settings-item:hover { background: var(--c-surface-sunken); }
+.col-settings-item input { flex: 0 0 auto; margin: 0; }
+
+/* —— 9.4 操作列「更多」收纳 —— */
+.act-more {
+  position: relative;
+  display: inline-block;
+}
+.act-more__toggle {
+  list-style: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.act-more__toggle::-webkit-details-marker { display: none; }
+.act-more__toggle::marker { content: ""; }
+.act-more__menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: var(--z-dropdown);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  min-width: 132px;
+  padding: 6px;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-strong);
+  border-radius: var(--r-md);
+  box-shadow: var(--sh-2);
+}
+.act-more__menu > form { margin: 0; }
+.act-more__menu > a,
+.act-more__menu > button,
+.act-more__menu > form > button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  background: none;
+  border-radius: var(--r-sm);
+  text-align: left;
+  white-space: nowrap;
+  font-size: var(--fs-sm);
+  color: var(--c-text);
+  cursor: pointer;
+}
+.act-more__menu > a:hover,
+.act-more__menu > button:hover,
+.act-more__menu > form > button:hover {
+  background: var(--c-surface-sunken);
+  text-decoration: none;
+}
+/* 表格最后一行/操作栏贴底时，向上展开以免被表格裁切（.table-container 有 overflow） */
+.act-more.is-up .act-more__menu {
+  top: auto;
+  bottom: calc(100% + 4px);
+}
+
+/* 列设置与「更多」在打印与卡片模式下不参与布局 */
+@media print {
+  .col-settings-panel,
+  .col-settings-toggle,
+  .act-more__menu { display: none; }
+}
 
 

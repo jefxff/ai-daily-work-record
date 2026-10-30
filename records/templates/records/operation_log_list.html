@@ -9,7 +9,7 @@
         <button class="btn-transparent" type="submit">搜索</button>
     </form>
     <div class="filter-container">
-        <button class="btn-transparent" id="filterBtn">筛选</button>
+        <button class="btn-transparent" type="button" id="filterBtn" aria-expanded="false" aria-controls="filterDropdown">筛选</button>
         <div class="filter-dropdown" id="filterDropdown">
             <h4>筛选条件</h4>
             <form id="filterForm" method="GET">
@@ -116,9 +116,7 @@
                     </td>
                 </tr>
                 {% empty %}
-                <tr>
-                    <td colspan="7" class="empty-cell">📭 暂无数据</td>
-                </tr>
+                {% include 'records/_empty_row.html' with colspan=7 %}
                 {% endfor %}
             </tbody>
         </table>
@@ -131,17 +129,6 @@
 <style>
     /* 模板特定样式：表格宽度/单元格内边距覆盖、筛选下拉、空状态、操作徽章、摘要单元格 */
     .table { min-width: 1120px; }
-    .table td { padding: 0.875rem 1rem; }
-    .filter-container { position: relative; display: inline-block; }
-    .filter-dropdown { position: absolute; top: calc(100% + 0.5rem); right: 0; background: var(--c-surface); backdrop-filter: blur(10px); border: 1px solid var(--c-border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15); padding: 1.25rem; min-width: 320px; max-width: 90vw; z-index: var(--z-dropdown); display: none; }
-    .filter-dropdown.show { display: block; }
-    .filter-dropdown h4 { color: var(--c-text); margin: 0 0 1rem 0; font-size: 1rem; font-weight: 600; }
-    .filter-group { margin-bottom: 1rem; }
-    .filter-group label { display: block; color: var(--c-text-secondary); font-size: 0.875rem; margin-bottom: 0.5rem; font-weight: 500; }
-    .filter-group select { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid var(--c-border-strong); border-radius: 6px; font-size: 0.875rem; background: var(--c-surface); color: var(--c-text); cursor: pointer; }
-    .filter-actions { display: flex; gap: 0.5rem; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--c-border); }
-    .filter-apply { flex: 1; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.875rem; font-weight: 500; cursor: pointer; border: none; background: var(--c-primary); color: var(--c-text-inverse); }
-    .filter-reset { flex: 1; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.875rem; font-weight: 500; cursor: pointer; border: none; background: var(--c-surface-sunken); color: var(--c-text-secondary); }
     .empty-state { text-align: center; padding: 3rem 1rem; color: var(--c-text-secondary); font-size: 1.1rem; }
     .badge-operation { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.8rem; font-weight: 600; }
     .badge-new { background: rgba(34, 197, 94, 0.3); color: rgba(255, 255, 255, 0.95); }
@@ -161,21 +148,3 @@
 </style>
 {% endblock %}
 
-{% block extra_js %}
-<script>
-    // 筛选下拉
-    var filterBtn = document.getElementById('filterBtn');
-    var filterDropdown = document.getElementById('filterDropdown');
-    if (filterBtn) {
-        filterBtn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            filterDropdown.classList.toggle('show');
-        });
-        document.addEventListener('click', function(e) {
-            if (!filterDropdown.contains(e.target) && !filterBtn.contains(e.target)) {
-                filterDropdown.classList.remove('show');
-            }
-        });
-    }
-</script>
-{% endblock %}

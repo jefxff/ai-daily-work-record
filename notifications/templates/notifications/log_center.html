@@ -179,9 +179,7 @@
                     </td>
                 </tr>
                 {% empty %}
-                <tr>
-                    <td colspan="5" class="empty-cell">📭 暂无日志，可点击「采集最新」拉取 logs/ 目录下的日志</td>
-                </tr>
+                {% include 'records/_empty_row.html' with colspan=5 empty_title="暂无日志" empty_desc="可点击「采集最新」拉取 logs/ 目录下的日志" %}
                 {% endfor %}
             </tbody>
         </table>

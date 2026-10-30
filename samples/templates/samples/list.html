@@ -24,6 +24,10 @@
     .samples-table td:first-child a { color: var(--c-text); text-decoration: none; font-weight: 600; font-variant-numeric: tabular-nums; }
     .samples-table td:first-child a:hover { color: var(--c-primary); }
     .mat-main, .mat-sub { max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+    /* 物料名称 / 型号是「主名 + 型号」两行，字数长短不一：居中时每行左缘参差，
+       看起来和表头对不上。表头与单元格统一左对齐，左缘落成一条竖线。 */
+    .samples-table thead th:nth-child(2),
+    .samples-table tbody td:nth-child(2) { text-align: left; }
     .mat-main { font-weight: 600; color: var(--c-text); }
     .mat-sub { font-size: 0.74rem; color: var(--c-text-secondary); margin-top: 2px; }
     .progress-cell { display: flex; align-items: center; justify-content: center; gap: 0.6rem; color: var(--c-primary); font-size: 0.82rem; }

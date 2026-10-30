@@ -11,7 +11,7 @@
         <button class="btn-transparent" type="submit">搜索</button>
     </form>
     <div class="filter-container">
-        <button class="btn-transparent" id="filterBtn">
+        <button class="btn-transparent" type="button" id="filterBtn" aria-expanded="false" aria-controls="filterDropdown">
             <span>筛选</span>
         </button>
         <div class="filter-dropdown" id="filterDropdown">
@@ -54,33 +54,33 @@
     </div>
     <div class="table-container">
         <div class="table-responsive">
-            <div class="hidden-cols-hint">窄屏已隐藏 1 个次要列；需要逐列比对时请横屏或改用桌面端。</div><table class="table--cards table table-sticky">
+            <div class="hidden-cols-hint">窄屏已隐藏 1 个次要列；需要逐列比对时请横屏或改用桌面端。</div><table class="table--cards table table-sticky table--fixed">
                 <thead>
                     <tr>
                         <th scope="col" class="col-optional">序号</th>
                         <th scope="col">项目名称</th>
                         <th scope="col">施工方</th>
                         <th scope="col">项目地址</th>
-                        <th scope="col">开工日期</th>
+                        {% include 'records/_sort_th.html' with label="开工日期" field="start_date" %}
                         <th scope="col">原价</th>
                         <th scope="col">核后价</th>
-                        <th scope="col">核减金额</th>
-                        <th scope="col">操作</th>
+                        {% include 'records/_sort_th.html' with label="核减金额" field="reduced_price" %}
+                        <th scope="col" class="col-actions">操作</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for decoration in decorations %}
                     <tr>
                         <td data-label="序号" class="col-optional">{{ forloop.counter }}</td>
-                        <td data-label="项目名称">{{ decoration.project_name }}</td>
-                        <td data-label="施工方">{{ decoration.constructor }}</td>
-                        <td data-label="项目地址" title="{{ decoration.project_address|default:'' }}">{{ decoration.project_address|default:'' }}</td>
-                        <td data-label="开工日期">{{ decoration.start_date|date:'Y-m-d' }}</td>
-                        <td data-label="原价">¥{{ decoration.original_price|default:0|floatformat:2|intcomma }}</td>
-                        <td data-label="核后价">¥{{ decoration.final_price|floatformat:2|intcomma }}</td>
-                        <td data-label="核减金额">¥{{ decoration.reduced_price|default:0|floatformat:2|intcomma }}</td>
+                        <td data-label="项目名称" class="cell-ellipsis">{{ decoration.project_name }}</td>
+                        <td data-label="施工方" class="cell-ellipsis">{{ decoration.constructor }}</td>
+                        <td data-label="项目地址" class="cell-clamp" title="{{ decoration.project_address|default:'' }}"><span>{{ decoration.project_address|default:'' }}</span></td>
+                        <td data-label="开工日期" class="cell-ellipsis">{{ decoration.start_date|date:'Y-m-d' }}</td>
+                        <td data-label="原价" class="cell-ellipsis">¥{{ decoration.original_price|default:0|floatformat:2|intcomma }}</td>
+                        <td data-label="核后价" class="cell-ellipsis">¥{{ decoration.final_price|floatformat:2|intcomma }}</td>
+                        <td data-label="核减金额" class="cell-ellipsis">¥{{ decoration.reduced_price|default:0|floatformat:2|intcomma }}</td>
                         <td data-label="操作">
-                            <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                            <div style="display: flex; gap: 0.5rem; align-items: center; justify-content: center; flex-wrap: nowrap;">
                                 <a href="{% url 'decoration_detail' decoration.id %}" class="btn-transparent btn-sm" data-modal-detail data-modal-title="装修详情">详细</a>
                                 {% can "decoration" "update" %}
                                 <a href="{% url 'decoration_edit' decoration.id %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑装修">编辑</a>
@@ -92,9 +92,7 @@
                         </td>
                     </tr>
                     {% empty %}
-                    <tr>
-                        <td colspan="9" class="empty-cell">📭 暂无数据</td>
-                    </tr>
+                    {% include 'records/_empty_row.html' with colspan=9 %}
                     {% endfor %}
                 </tbody>
             </table>
@@ -106,106 +104,18 @@
 
 {% block extra_css %}
 <style>
-    /* 表格紧凑行高 + 单行省略 + 金额等宽数字 */
-    .table thead th, .table tbody td { padding: 10px 12px !important; font-size: 13px; }
-    .table tbody td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
-    .table tbody td:last-child { overflow: visible; }
+    /* 列预算（合计 100%）：固定布局，地址两行截断（行高与内边距统一走 app.css 的表格基线） */
+    .table { min-width: 1080px; }
+    .table--fixed th:nth-child(1) { width: 5%; }
+    .table--fixed th:nth-child(2) { width: 16%; }
+    .table--fixed th:nth-child(3) { width: 11%; }
+    .table--fixed th:nth-child(4) { width: 18%; }
+    .table--fixed th:nth-child(5) { width: 9%; }
+    .table--fixed th:nth-child(6) { width: 10%; }
+    .table--fixed th:nth-child(7) { width: 10%; }
+    .table--fixed th:nth-child(8) { width: 10%; }
+    .table--fixed th:nth-child(9) { width: 11%; }
     .table td { font-variant-numeric: tabular-nums; }
-
-    /* 筛选下拉 */
-    .filter-container { position: relative; display: inline-block; }
-    .filter-dropdown {
-        position: absolute;
-        top: calc(100% + 0.5rem);
-        right: 0;
-        background: var(--c-surface) !important;
-        border: 1px solid var(--c-border) !important;
-        border-radius: 8px !important;
-        box-shadow: var(--sh-pop) !important;
-        padding: 1rem;
-        min-width: 280px;
-        z-index: var(--z-dropdown);
-        display: none;
-    }
-    .filter-dropdown.show { display: block; }
-    .filter-dropdown h4 {
-        color: var(--c-text) !important;
-        margin: 0 0 1rem 0;
-        font-size: 0.95rem;
-        font-weight: 600;
-        border-bottom: 1px solid var(--c-border);
-        padding-bottom: 0.5rem;
-    }
-    .filter-group { margin-bottom: 1rem; }
-    .filter-group label {
-        display: block;
-        color: var(--c-text-secondary) !important;
-        font-size: 0.8125rem;
-        font-weight: 500;
-        margin-bottom: 0.5rem;
-    }
-    .filter-group select {
-        width: 100%;
-        padding: 0.375rem 0.75rem;
-        border: 1px solid var(--c-border) !important;
-        border-radius: 4px !important;
-        background: var(--c-surface) !important;
-        color: var(--c-text) !important;
-        font-size: 0.85rem;
-        cursor: pointer;
-    }
-    .filter-group select:focus {
-        outline: none;
-        border-color: var(--c-primary) !important;
-    }
-    .filter-actions {
-        display: flex;
-        gap: 0.5rem;
-        margin-top: 1rem;
-        padding-top: 1rem;
-        border-top: 1px solid var(--c-border);
-    }
-    .filter-actions button {
-        flex: 1;
-        padding: 0.375rem;
-        border: none;
-        border-radius: 4px;
-        font-size: 0.85rem;
-        font-weight: 400;
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-    .filter-apply { background: var(--c-primary) !important; color: var(--c-surface) !important; }
-    .filter-apply:hover { background: var(--c-primary-hover) !important; }
-    .filter-reset { background: var(--c-surface-sunken) !important; color: var(--c-text-secondary) !important; }
-    .filter-reset:hover { background: var(--c-border-strong) !important; }
 </style>
 {% endblock %}
 
-{% block extra_js %}
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const filterBtn = document.getElementById('filterBtn');
-        const filterDropdown = document.getElementById('filterDropdown');
-        if (filterBtn && filterDropdown) {
-            filterBtn.addEventListener('click', function(event) {
-                event.stopPropagation();
-                filterDropdown.classList.toggle('show');
-            });
-        }
-        const resetFilter = document.getElementById('resetFilter');
-        const filterForm = document.getElementById('filterForm');
-        if (resetFilter && filterForm) {
-            resetFilter.addEventListener('click', function() {
-                document.getElementById('constructorSelect').value = '';
-                filterForm.submit();
-            });
-        }
-        document.addEventListener('click', function(event) {
-            if (!event.target.closest('#filterBtn') && !event.target.closest('#filterDropdown')) {
-                if (filterDropdown) filterDropdown.classList.remove('show');
-            }
-        });
-    });
-</script>
-{% endblock %}

@@ -15,16 +15,18 @@
         background: var(--c-surface);
         border: 1px solid var(--c-border);
         border-radius: var(--r-md);
-        padding: var(--sp-4) var(--sp-5);
         margin-bottom: var(--sp-4);
+        overflow: hidden;
     }
+    /* —— 面板头：与详情页 detail-card / detail-title 同一语言（主色短线标题） —— */
     .att-panel-head {
         display: flex;
         align-items: center;
         justify-content: space-between;
         flex-wrap: wrap;
         gap: var(--sp-3);
-        margin-bottom: var(--sp-3);
+        padding: var(--sp-4) var(--sp-5);
+        border-bottom: 1px solid var(--c-border);
     }
     .att-panel-title {
         margin: 0;
@@ -34,7 +36,20 @@
         display: flex;
         align-items: center;
         gap: var(--sp-2);
+        position: relative;
+        padding-bottom: var(--sp-2);
     }
+    .att-panel-title::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: 36px;
+        height: 3px;
+        border-radius: 2px;
+        background: var(--c-primary);
+    }
+    .att-panel-title svg { width: 17px; height: 17px; color: var(--c-primary); }
     .att-count-badge {
         font-size: 0.72rem;
         font-weight: 600;
@@ -43,76 +58,125 @@
         border-radius: 10px;
         padding: 2px 10px;
     }
-    .att-upload-bar { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+    /* —— 上传工具条：整条浅底 + 描边，避免控件零散挂在右侧 —— */
+    .att-upload-bar {
+        display: flex;
+        align-items: center;
+        gap: var(--sp-2);
+        flex-wrap: wrap;
+        padding: 6px var(--sp-3);
+        background: var(--c-surface-sunken);
+        border: 1px solid var(--c-border);
+        border-radius: var(--r-sm);
+    }
     .att-category-select { width: auto; min-width: 110px; }
-    .att-file-input { width: auto; max-width: 320px; }
+    .att-file-hidden { display: none; }
+    .att-file-pick { white-space: nowrap; }
+    .att-file-names {
+        min-width: 0;
+        max-width: 220px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 0.78rem;
+        color: var(--c-text-tertiary);
+    }
+    .att-file-names.has-files { color: var(--c-text); }
+    .att-panel-body { padding: var(--sp-3) var(--sp-5) var(--sp-4); }
     .att-hint {
         margin: 0 0 var(--sp-3);
         font-size: 0.78rem;
         color: var(--c-text-tertiary);
     }
+    /* —— 附件行 —— */
     .att-list { display: flex; flex-direction: column; gap: var(--sp-2); }
     .att-row {
         display: flex;
         align-items: center;
         gap: var(--sp-3);
-        padding: 0.55rem 0.6rem;
+        padding: 0.55rem 0.75rem;
         border: 1px solid var(--c-border);
         border-radius: var(--r-sm);
-        background: var(--c-surface-sunken);
+        background: var(--c-surface);
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
-    .att-row:hover { border-color: var(--c-border-hover); }
+    .att-row:hover {
+        border-color: var(--c-border-hover);
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    }
     .att-row-icon { flex-shrink: 0; }
     .att-thumb {
-        width: 44px;
-        height: 44px;
+        width: 40px;
+        height: 40px;
         object-fit: cover;
         border-radius: 6px;
         border: 1px solid var(--c-border);
         display: block;
     }
     .att-ext {
-        width: 44px;
-        height: 44px;
+        width: 40px;
+        height: 40px;
         display: flex;
         align-items: center;
         justify-content: center;
         border-radius: 6px;
         background: var(--c-primary-subtle);
         color: var(--c-primary-active);
-        font-size: 0.72rem;
+        font-size: 0.68rem;
         font-weight: 700;
+        letter-spacing: 0.02em;
     }
     .att-ext-pdf { background: #fde8e8; color: #c0392b; }
     .att-row-main { flex: 1; min-width: 0; }
     .att-name {
         font-weight: 600;
         color: var(--c-text);
-        font-size: 0.9rem;
+        font-size: 0.88rem;
         word-break: break-all;
+        line-height: 1.35;
     }
     .att-meta {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
         gap: var(--sp-2);
-        margin-top: 3px;
+        margin-top: 2px;
         font-size: 0.76rem;
         color: var(--c-text-secondary);
     }
     .att-row-actions { display: flex; align-items: center; gap: var(--sp-1); flex-shrink: 0; }
+    /* —— 空态：紧凑横条，避免整宽面板下方出现大片空白 —— */
     .att-empty {
         margin: 0;
-        padding: var(--sp-3) 0;
+        padding: var(--sp-3) var(--sp-4);
+        border: 1px dashed var(--c-border);
+        border-radius: var(--r-sm);
+        background: var(--c-surface-sunken);
         font-size: 0.85rem;
         color: var(--c-text-tertiary);
         text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--sp-2);
+    }
+    .att-empty svg { width: 18px; height: 18px; color: var(--c-text-tertiary); flex-shrink: 0; }
+
+    @media (max-width: 640px) {
+        .att-panel-head { flex-direction: column; align-items: stretch; }
+        .att-file-names { max-width: 100%; }
+        .att-row { flex-wrap: wrap; }
+        .att-row-actions { width: 100%; justify-content: flex-end; }
+        .att-panel-head, .att-panel-body { padding-left: var(--sp-4); padding-right: var(--sp-4); }
     }
 </style>
 
 <div class="att-panel" id="attPanel">
     <div class="att-panel-head">
-        <h3 class="att-panel-title">附件资料 <span class="att-count-badge" id="attCount">{{ attachments|length }}</span></h3>
+        <h3 class="att-panel-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+            附件资料 <span class="att-count-badge" id="attCount">{{ attachments|length }}</span>
+        </h3>
         {% if can_manage_attachments %}
         <div class="att-upload-bar">
             {% if attachment_categories %}
@@ -122,49 +186,56 @@
                 {% endfor %}
             </select>
             {% endif %}
-            <input type="file" id="attFileInput" class="form-control form-control-sm att-file-input" multiple
+            <input type="file" id="attFileInput" class="att-file-hidden" multiple
                    accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.7z,.txt,.csv">
+            <label for="attFileInput" class="btn-secondary btn-sm att-file-pick">选择文件</label>
+            <span class="att-file-names" id="attFileNames">未选择文件</span>
             <button type="button" id="attUploadBtn" class="btn btn-sm btn-primary">上传附件</button>
         </div>
         {% endif %}
     </div>
-    <p class="att-hint">支持图片 / PDF / Office / 压缩包 / 文本，单个不超过 {{ attachment_max_mb }}MB，可多选。</p>
-    <div class="att-list">
-        {% for att in attachments %}
-        <div class="att-row" id="att-row-{{ att.pk }}">
-            <div class="att-row-icon">
-                {% if att.is_image %}
-                <a href="{{ att.file.url }}" target="_blank" rel="noopener noreferrer" title="点击查看原图">
-                    <img src="{% url 'attachments:thumb' att.pk %}" alt="{{ att.original_name }}" class="att-thumb">
-                </a>
-                {% elif att.is_pdf %}
-                <a href="{{ att.file.url }}" target="_blank" rel="noopener noreferrer" title="在线预览"><span class="att-ext att-ext-pdf">PDF</span></a>
-                {% else %}
-                <span class="att-ext">{{ att.ext|default:"文件" }}</span>
-                {% endif %}
-            </div>
-            <div class="att-row-main">
-                <div class="att-name" title="{{ att.original_name }}">{{ att.original_name }}</div>
-                <div class="att-meta">
-                    {% if att.category_label %}<span class="status-badge info">{{ att.category_label }}</span>{% endif %}
-                    <span>{{ att.size|filesizeformat }}</span>
-                    <span>{{ att.uploaded_by|default:'—' }} · {{ att.created_at|date:"Y-m-d H:i" }}</span>
-                    {% if att.remark %}<span title="{{ att.remark }}">📝 {{ att.remark }}</span>{% endif %}
+    <div class="att-panel-body">
+        <p class="att-hint">支持图片 / PDF / Office / 压缩包 / 文本，单个不超过 {{ attachment_max_mb }}MB，可多选。</p>
+        <div class="att-list">
+            {% for att in attachments %}
+            <div class="att-row" id="att-row-{{ att.pk }}">
+                <div class="att-row-icon">
+                    {% if att.is_image %}
+                    <a href="{{ att.file.url }}" target="_blank" rel="noopener noreferrer" title="点击查看原图">
+                        <img src="{% url 'attachments:thumb' att.pk %}" alt="{{ att.original_name }}" class="att-thumb">
+                    </a>
+                    {% elif att.is_pdf %}
+                    <a href="{{ att.file.url }}" target="_blank" rel="noopener noreferrer" title="在线预览"><span class="att-ext att-ext-pdf">PDF</span></a>
+                    {% else %}
+                    <span class="att-ext">{{ att.ext|default:"文件" }}</span>
+                    {% endif %}
+                </div>
+                <div class="att-row-main">
+                    <div class="att-name" title="{{ att.original_name }}">{{ att.original_name }}</div>
+                    <div class="att-meta">
+                        {% if att.category_label %}<span class="status-badge info">{{ att.category_label }}</span>{% endif %}
+                        <span>{{ att.size|filesizeformat }}</span>
+                        <span>{{ att.uploaded_by|default:'—' }} · {{ att.created_at|date:"Y-m-d H:i" }}</span>
+                        {% if att.remark %}<span title="{{ att.remark }}">📝 {{ att.remark }}</span>{% endif %}
+                    </div>
+                </div>
+                <div class="att-row-actions">
+                    <a href="{{ att.file.url }}" target="_blank" rel="noopener noreferrer" class="btn-transparent btn-sm">预览</a>
+                    <a href="{{ att.file.url }}" download class="btn-transparent btn-sm">下载</a>
+                    {% if can_manage_attachments %}
+                    <button type="button" class="btn-transparent btn-sm btn-delete att-del-btn"
+                            data-pk="{{ att.pk }}" data-name="{{ att.original_name }}"
+                            data-del-url="{% url 'attachments:delete' att.pk %}">删除</button>
+                    {% endif %}
                 </div>
             </div>
-            <div class="att-row-actions">
-                <a href="{{ att.file.url }}" target="_blank" rel="noopener noreferrer" class="btn-transparent btn-sm">预览</a>
-                <a href="{{ att.file.url }}" download class="btn-transparent btn-sm">下载</a>
-                {% if can_manage_attachments %}
-                <button type="button" class="btn-transparent btn-sm btn-delete att-del-btn"
-                        data-pk="{{ att.pk }}" data-name="{{ att.original_name }}"
-                        data-del-url="{% url 'attachments:delete' att.pk %}">删除</button>
-                {% endif %}
-            </div>
+            {% empty %}
+            <p class="att-empty">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                暂无附件{% if can_manage_attachments %}，可点击「选择文件」后上传{% endif %}
+            </p>
+            {% endfor %}
         </div>
-        {% empty %}
-        <p class="att-empty">暂无附件。{% if can_manage_attachments %}点击右上角「上传附件」添加证据文件。{% endif %}</p>
-        {% endfor %}
     </div>
 </div>
 
@@ -174,7 +245,23 @@
     var btn = document.getElementById('attUploadBtn');
     var input = document.getElementById('attFileInput');
     var cat = document.getElementById('attCategory');
+    var names = document.getElementById('attFileNames');
     if (!btn || !input) return;
+
+    // 自定义选文件按钮：回显已选文件名
+    input.addEventListener('change', function () {
+        if (!names) return;
+        if (!input.files.length) {
+            names.textContent = '未选择文件';
+            names.classList.remove('has-files');
+        } else if (input.files.length === 1) {
+            names.textContent = input.files[0].name;
+            names.classList.add('has-files');
+        } else {
+            names.textContent = '已选 ' + input.files.length + ' 个文件';
+            names.classList.add('has-files');
+        }
+    });
 
     btn.addEventListener('click', function () {
         if (!input.files.length) {

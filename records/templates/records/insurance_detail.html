@@ -6,6 +6,20 @@
 
 {% block extra_css %}
 {% include 'records/_insurance_aggregation_css.html' %}
+<style>
+    /* 保险详情字段：整宽卡片内改为双列排布，避免单列右侧大片留白 */
+    @media (min-width: 768px) {
+        .ins-fields-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            column-gap: var(--sp-6);
+        }
+        .ins-fields-grid .detail-row { margin-bottom: 0.75rem; }
+        .ins-fields-grid .detail-label { width: 116px; font-size: 0.85rem; }
+    }
+    /* 长文本（备注）独占整行 */
+    .ins-fields-grid .ins-row-full { grid-column: 1 / -1; }
+</style>
 {% endblock %}
 
 {% block top_nav_actions %}
@@ -29,49 +43,51 @@
     <div class="detail-card">
         <h2 class="detail-title">保险详细信息</h2>
 
-        <div class="detail-row">
-            <div class="detail-label">公司名称：</div>
-            <div class="detail-value">{{ insurance.company_name }}</div>
-        </div>
+        <div class="ins-fields-grid">
+            <div class="detail-row">
+                <div class="detail-label">公司名称：</div>
+                <div class="detail-value">{{ insurance.company_name }}</div>
+            </div>
 
-        <div class="detail-row">
-            <div class="detail-label">标题：</div>
-            <div class="detail-value">{{ insurance.title }}</div>
-        </div>
+            <div class="detail-row">
+                <div class="detail-label">标题：</div>
+                <div class="detail-value">{{ insurance.title }}</div>
+            </div>
 
-        <div class="detail-row">
-            <div class="detail-label">单号：</div>
-            <div class="detail-value">{{ insurance.order_number|default:"无" }}</div>
-        </div>
+            <div class="detail-row">
+                <div class="detail-label">单号：</div>
+                <div class="detail-value">{{ insurance.order_number|default:"无" }}</div>
+            </div>
 
-        <div class="detail-row">
-            <div class="detail-label">保费：</div>
-            <div class="detail-value">¥{{ insurance.premium }}</div>
-        </div>
+            <div class="detail-row">
+                <div class="detail-label">保费：</div>
+                <div class="detail-value">¥{{ insurance.premium }}</div>
+            </div>
 
-        <div class="detail-row">
-            <div class="detail-label">签发日期：</div>
-            <div class="detail-value">{{ insurance.issue_date|date:'Y-m-d' }}</div>
-        </div>
+            <div class="detail-row">
+                <div class="detail-label">签发日期：</div>
+                <div class="detail-value">{{ insurance.issue_date|date:'Y-m-d' }}</div>
+            </div>
 
-        <div class="detail-row">
-            <div class="detail-label">截止日期：</div>
-            <div class="detail-value">{{ insurance.end_date|date:'Y-m-d' }}</div>
-        </div>
+            <div class="detail-row">
+                <div class="detail-label">截止日期：</div>
+                <div class="detail-value">{{ insurance.end_date|date:'Y-m-d' }}</div>
+            </div>
 
-        <div class="detail-row">
-            <div class="detail-label">是否已经到期：</div>
-            <div class="detail-value">{{ insurance.expired_days }}</div>
-        </div>
+            <div class="detail-row">
+                <div class="detail-label">是否已经到期：</div>
+                <div class="detail-value">{{ insurance.expired_days }}</div>
+            </div>
 
-        <div class="detail-row">
-            <div class="detail-label">部门：</div>
-            <div class="detail-value">{{ insurance.department }}</div>
-        </div>
+            <div class="detail-row">
+                <div class="detail-label">部门：</div>
+                <div class="detail-value">{{ insurance.department }}</div>
+            </div>
 
-        <div class="detail-row">
-            <div class="detail-label">备注：</div>
-            <div class="detail-value">{{ insurance.remarks|default:"无" }}</div>
+            <div class="detail-row ins-row-full">
+                <div class="detail-label">备注：</div>
+                <div class="detail-value">{{ insurance.remarks|default:"无" }}</div>
+            </div>
         </div>
     </div>
 

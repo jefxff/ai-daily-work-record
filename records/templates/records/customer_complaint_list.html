@@ -1,6 +1,7 @@
 {% extends 'records/base.html' %}
 {% load static %}
 {% load accounts_tags %}
+{% load humanize %}
 
 {% block page_title %}客户客诉列表 - 每日工作记录管理网站{% endblock %}
 
@@ -11,7 +12,7 @@
     </form>
     <!-- 筛选按钮 -->
     <div class="filter-container">
-        <button class="btn-transparent" id="filterBtn">
+        <button class="btn-transparent" type="button" id="filterBtn" aria-expanded="false" aria-controls="filterDropdown">
             <span>筛选</span>
         </button>
         <div class="filter-dropdown" id="filterDropdown">
@@ -103,72 +104,100 @@
     <div class="table-container">
         <!-- 表格 -->
         <div class="table-responsive">
-            <div class="hidden-cols-hint">窄屏已隐藏 4 个次要列；需要逐列比对时请横屏或改用桌面端。</div><table class="table--cards table table-sticky">
+            <table class="table--cards table table-sticky table--fixed">
                 <thead>
                     <tr>
-                        <th scope="col" class="col-optional">序号</th>
-                        <th scope="col">客户名称</th>
-                        <th scope="col">责任业务员</th>
-                        <th scope="col">客诉申请日期</th>
-                        <th scope="col">终端客户</th>
-                        <th scope="col">产品型号</th>
-                        <th scope="col" class="col-optional">我司出货量</th>
-                        <th scope="col" class="col-optional">客户出货量</th>
-                        <th scope="col">客诉现象及客户诉求描述</th>
-                        <th scope="col">客户诉求（赔偿金额）</th>
-                        <th scope="col">是否报保险</th>
-                        <th scope="col">工程报告</th>
-                        <th scope="col">工程部分析原因报告</th>
-                        <th scope="col">欠缺材料</th>
+                        <th scope="col" class="col-expand"><span class="visually-hidden">展开详情</span></th>
+                        <th scope="col">客户 / 终端客户</th>
+                        {% include 'records/_sort_th.html' with label="业务员 / 申请日期" field="complaint_date" %}
+                        <th scope="col">产品型号 / 出货量</th>
+                        <th scope="col">客诉现象及客户诉求</th>
+                        {% include 'records/_sort_th.html' with label="赔偿金额" field="compensation_amount" %}
                         <th scope="col">客诉状态</th>
-                        <th scope="col">跟进情况</th>
-                        <th scope="col" class="col-optional">备注</th>
-                        <th scope="col">附件</th>
+                        <th scope="col">跟进 / 附件</th>
                         <th scope="col" class="col-actions">操作</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for complaint in complaints %}
                     <tr>
-                        <td data-label="序号" class="col-optional">{{ forloop.counter }}</td>
-                        <td data-label="客户名称">{{ complaint.customer_name }}</td>
-                        <td data-label="责任业务员">{{ complaint.responsible_salesperson }}</td>
-                        <td data-label="客诉申请日期">{{ complaint.complaint_date|date:'Y-m-d' }}</td>
-                        <td data-label="终端客户">{{ complaint.terminal_customer|default:'' }}</td>
-                        <td data-label="产品型号">{{ complaint.product_model|default:'' }}</td>
-                        <td data-label="我司出货量" class="col-optional">{{ complaint.our_shipment|default:'' }}</td>
-                        <td data-label="客户出货量" class="col-optional">{{ complaint.customer_shipment|default:'' }}</td>
-                        <td data-label="客诉现象及客户诉求描述" title="{{ complaint.complaint_description|default:'' }}">{{ complaint.complaint_description|default:''|truncatechars:30 }}</td>
-                        <td data-label="客户诉求（赔偿金额）">{% if complaint.compensation_amount %}¥{{ complaint.compensation_amount|floatformat:2 }}{% else %}-{% endif %}</td>
-                        <td data-label="是否报保险">{% if complaint.is_insured %}<span class="status-badge warning">是</span>{% else %}<span class="status-badge default">否</span>{% endif %}</td>
-                        <td data-label="工程报告" title="{{ complaint.engineering_report|default:'' }}">{{ complaint.engineering_report|default:''|truncatechars:30 }}</td>
-                        <td data-label="工程部分析原因报告" title="{{ complaint.engineering_analysis|default:'' }}">{{ complaint.engineering_analysis|default:''|truncatechars:30 }}</td>
-                        <td data-label="欠缺材料" title="{{ complaint.missing_materials|default:'' }}">{{ complaint.missing_materials|default:''|truncatechars:20 }}</td>
-                        <td data-label="客诉状态">
-                            {% if complaint.is_closed %}
-                            <span class="status-badge success">已闭环</span>
-                            {% elif complaint.is_sla_overdue %}
-                            <span class="status-badge danger">{{ complaint.complaint_status }} · 超时</span>
-                            {% elif complaint.complaint_status == '已完成' %}
-                            <span class="status-badge success">{{ complaint.complaint_status }}</span>
-                            {% elif complaint.complaint_status == '处理中' %}
-                            <span class="status-badge warning">{{ complaint.complaint_status }}</span>
-                            {% else %}
-                            <span class="status-badge danger">{{ complaint.complaint_status }}</span>
-                            {% endif %}
+                        <td data-label="展开" class="col-expand">
+                            <button class="row-expand-btn" type="button" data-row-toggle aria-expanded="false"
+                                    aria-controls="cc-detail-{{ complaint.id }}" aria-label="展开详情" title="展开详情">
+                                <span class="row-expand-btn__chev" aria-hidden="true"></span>
+                            </button>
                         </td>
-                        <td data-label="跟进情况" title="{{ complaint.follow_up_status|default:'' }}">{{ complaint.follow_up_status|default:''|truncatechars:30 }}</td>
-                        <td data-label="备注" class="col-optional" title="{{ complaint.remarks|default:'' }}">{{ complaint.remarks|default:''|truncatechars:30 }}</td>
-                        <td data-label="附件">
-                            {% if complaint.attachment_count %}
-                            <span class="status-badge success" title="证据附件数">{{ complaint.attachment_count }} 个</span>
-                            {% else %}
-                            <span class="status-badge default">无</span>
-                            {% endif %}
+                        <td data-label="客户 / 终端客户">
+                            <div class="cell-stack">
+                                <span class="cell-stack__main">{{ complaint.customer_name|default:"—" }}</span>
+                                <span class="cell-stack__sub">
+                                    <span>终端：{{ complaint.terminal_customer|default:"—" }}</span>
+                                </span>
+                            </div>
+                        </td>
+                        <td data-label="业务员 / 申请日期">
+                            <div class="cell-stack">
+                                <span class="cell-stack__main">{{ complaint.responsible_salesperson|default:"—" }}</span>
+                                <span class="cell-stack__sub">
+                                    <span>{{ complaint.complaint_date|date:'Y-m-d' }}</span>
+                                </span>
+                            </div>
+                        </td>
+                        <td data-label="产品型号 / 出货量">
+                            <div class="cell-stack">
+                                <span class="cell-stack__main">{{ complaint.product_model|default:"—" }}</span>
+                                <span class="cell-stack__sub">
+                                    <span title="我司出货量">我司 {{ complaint.our_shipment|default:"—" }}</span>
+                                    <span aria-hidden="true">·</span>
+                                    <span title="客户出货量">客户 {{ complaint.customer_shipment|default:"—" }}</span>
+                                </span>
+                            </div>
+                        </td>
+                        <td data-label="客诉现象" class="cell-clamp" title="{{ complaint.complaint_description|default:'' }}">
+                            <span>{{ complaint.complaint_description|default:"未填写" }}</span>
+                        </td>
+                        <td data-label="赔偿金额" class="cell-ellipsis">
+                            {% if complaint.compensation_amount %}¥{{ complaint.compensation_amount|floatformat:2|intcomma }}{% else %}—{% endif %}
+                        </td>
+                        <td data-label="客诉状态">
+                            <div class="cell-stack">
+                                <span>
+                                    {% if complaint.is_closed %}
+                                    <span class="status-badge success">已闭环</span>
+                                    {% elif complaint.is_sla_overdue %}
+                                    <span class="status-badge danger">{{ complaint.complaint_status }} · 超时</span>
+                                    {% elif complaint.complaint_status == '已完成' %}
+                                    <span class="status-badge success">{{ complaint.complaint_status }}</span>
+                                    {% elif complaint.complaint_status == '处理中' %}
+                                    <span class="status-badge warning">{{ complaint.complaint_status }}</span>
+                                    {% else %}
+                                    <span class="status-badge danger">{{ complaint.complaint_status }}</span>
+                                    {% endif %}
+                                </span>
+                                <span class="cell-stack__sub">
+                                    {% if complaint.is_insured %}
+                                    <span class="status-badge warning">已报保险</span>
+                                    {% else %}
+                                    <span class="status-badge default">未报保险</span>
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </td>
+                        <td data-label="跟进 / 附件">
+                            <div class="cell-stack">
+                                <span class="cell-stack__main">{{ complaint.follow_up_status|default:"—" }}</span>
+                                <span class="cell-stack__sub">
+                                    {% if complaint.attachment_count %}
+                                    <span class="status-badge success" title="证据附件数">{{ complaint.attachment_count }} 个附件</span>
+                                    {% else %}
+                                    <span class="status-badge default">无附件</span>
+                                    {% endif %}
+                                </span>
+                            </div>
                         </td>
                         <td data-label="操作" class="col-actions">
                             <div class="u-toolbar-inline">
-                                <a href="{% url 'customer_detail' complaint.id %}" class="btn-transparent btn-sm">详细</a>
+                                <a href="{% url 'customer_detail' complaint.id %}" class="btn-transparent btn-sm" title="打开客户档案，查看该客户的全部客诉">客户档案</a>
                                 {% can "customer_complaint" "update" %}
                                 <a href="{% url 'customer_complaint_edit' complaint.id %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑客户客诉">编辑</a>
                                 {% endcan %}
@@ -178,10 +207,36 @@
                             </div>
                         </td>
                     </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="19" class="empty-cell">📭 暂无数据</td>
+                    <tr class="row-detail" id="cc-detail-{{ complaint.id }}" hidden>
+                        <td colspan="9">
+                            <div class="row-detail__inner">
+                                <div class="row-detail__grid">
+                                    <div class="row-detail__item row-detail__item--wide">
+                                        <p class="row-detail__label">客诉现象及客户诉求描述</p>
+                                        <p class="row-detail__value{% if not complaint.complaint_description %} is-empty{% endif %}">{{ complaint.complaint_description|default:"未填写" }}</p>
+                                    </div>
+                                    <div class="row-detail__item">
+                                        <p class="row-detail__label">工程报告</p>
+                                        <p class="row-detail__value{% if not complaint.engineering_report %} is-empty{% endif %}">{{ complaint.engineering_report|default:"未填写" }}</p>
+                                    </div>
+                                    <div class="row-detail__item">
+                                        <p class="row-detail__label">工程部分析原因报告</p>
+                                        <p class="row-detail__value{% if not complaint.engineering_analysis %} is-empty{% endif %}">{{ complaint.engineering_analysis|default:"未填写" }}</p>
+                                    </div>
+                                    <div class="row-detail__item">
+                                        <p class="row-detail__label">欠缺材料</p>
+                                        <p class="row-detail__value{% if not complaint.missing_materials %} is-empty{% endif %}">{{ complaint.missing_materials|default:"无" }}</p>
+                                    </div>
+                                    <div class="row-detail__item">
+                                        <p class="row-detail__label">备注</p>
+                                        <p class="row-detail__value{% if not complaint.remarks %} is-empty{% endif %}">{{ complaint.remarks|default:"无" }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
                     </tr>
+                    {% empty %}
+                    {% include 'records/_empty_row.html' with colspan=9 %}
                     {% endfor %}
                 </tbody>
             </table>
@@ -194,239 +249,21 @@
 
 {% block extra_css %}
 <style>
-    /* 宽表格优化：横向滚动 + 紧凑行高 + 单行省略 */
-    .table { min-width: 1560px; }
-    .table thead th, .table tbody td { padding: 10px 12px !important; font-size: 13px; }
-    .table tbody td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
-    .table tbody td:last-child { overflow: visible !important; }
-
-    /* 操作列固定在右侧，横向滚动时始终可见 */
-    .table-responsive { overflow-x: auto !important; }
-
-    .table thead th.col-actions,
-    .table tbody td.col-actions {
-        position: sticky !important;
-        right: 0;
-        background: var(--c-surface) !important;
-        z-index: var(--z-sticky);
-        box-shadow: -3px 0 5px rgba(0,0,0,0.08);
-        border-left: 1px solid var(--c-border);
-    }
-    .table tbody tr:hover td.col-actions {
-        background: var(--c-surface-sunken) !important;
-    }
-    .table thead th.col-actions {
-        z-index: var(--z-sticky-head);
-        background: var(--c-surface-sunken) !important;
-    }
-
-    /* 筛选按钮容器 */
-    .filter-container {
-        position: relative;
-        display: inline-block;
-    }
-
-    .filter-dropdown {
-        position: absolute;
-        top: calc(100% + 0.5rem);
-        right: 0;
-        background: var(--c-surface);
-        backdrop-filter: blur(10px);
-        border: 1px solid var(--c-border);
-        border-radius: 12px;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-        padding: 1.25rem;
-        min-width: 320px;
-        max-width: 90vw;
-        max-height: 70vh;
-        overflow-y: auto;
-        z-index: var(--z-dropdown);
-        display: none;
-    }
-
-    .filter-dropdown.show {
-        display: block;
-    }
-
-    .filter-dropdown h4 {
-        color: var(--c-text);
-        margin: 0 0 1rem 0;
-        font-size: 1rem;
-        font-weight: 600;
-    }
-
-    .filter-group {
-        margin-bottom: 1rem;
-    }
-
-    .filter-group label {
-        display: block;
-        color: var(--c-text-secondary);
-        font-size: 0.875rem;
-        margin-bottom: 0.5rem;
-        font-weight: 500;
-    }
-
-    .filter-group select,
-    .filter-group input {
-        width: 100%;
-        padding: 0.5rem 0.75rem;
-        border: 1px solid rgba(0, 0, 0, 0.1);
-        border-radius: 6px;
-        font-size: 0.875rem;
-        background: white;
-        color: var(--c-text);
-        cursor: pointer;
-    }
-
-    .filter-group select:focus,
-    .filter-group input:focus {
-        outline: none;
-        border-color: rgba(59, 130, 246, 0.5);
-    }
-
-    .filter-group input::placeholder {
-        color: var(--c-text-tertiary);
-    }
-
-    .radio-group {
-        display: flex;
-        gap: 1rem;
-    }
-
-    .radio-group label {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        cursor: pointer;
-        font-weight: normal;
-    }
-
-    .radio-group input[type="radio"] {
-        width: auto;
-        margin: 0;
-    }
-
-    .filter-actions {
-        display: flex;
-        gap: 0.5rem;
-        margin-top: 1.25rem;
-        padding-top: 1rem;
-        border-top: 1px solid rgba(0, 0, 0, 0.1);
-    }
-
-    .filter-apply,
-    .filter-reset {
-        flex: 1;
-        padding: 0.5rem 1rem;
-        border-radius: 6px;
-        font-size: 0.875rem;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        border: none;
-    }
-
-    .filter-apply {
-        background: rgba(59, 130, 246, 1);
-        color: white;
-    }
-
-    .filter-apply:hover {
-        background: rgba(59, 130, 246, 0.9);
-    }
-
-    .filter-reset {
-        background: rgba(0, 0, 0, 0.05);
-        color: var(--c-text-secondary);
-    }
-
-    .filter-reset:hover {
-        background: rgba(0, 0, 0, 0.1);
-    }
-
-    /* 加载状态 */
-    .loading-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 12px;
-        display: none;
-    }
-
-    .loading-overlay.show {
-        display: flex;
-    }
-
-    .loading-spinner {
-        width: 40px;
-        height: 40px;
-        border: 4px solid rgba(255, 255, 255, 0.3);
-        border-top-color: white;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-        to { transform: rotate(360deg); }
-    }
-
-    .table td a.customer-link {
-        color: var(--c-primary);
-        text-decoration: underline;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-
-    .table td a.customer-link:hover {
-        color: var(--c-primary-active);
-        text-decoration: none;
-    }
+    /* 列预算（合计 100%）：19 列合并为 9 列后的固定布局宽度。
+       最小宽度 1080px —— 低于此值（平板竖屏）仍允许横向滚动，不再把每一列压成几个字。 */
+    .table { min-width: 1080px; }
+    .table--fixed th:nth-child(1) { width: 4%; }
+    .table--fixed th:nth-child(2) { width: 14%; }
+    /* 第 3 列表头「业务员 / 申请日期 + 排序箭头」约 150px，
+       10% 时会被 nowrap 撑出单元格、箭头压到第 4 列表头上 */
+    .table--fixed th:nth-child(3) { width: 13%; }
+    .table--fixed th:nth-child(4) { width: 12%; }
+    .table--fixed th:nth-child(5) { width: 15%; }
+    .table--fixed th:nth-child(6) { width: 10%; }
+    .table--fixed th:nth-child(7) { width: 10%; }
+    .table--fixed th:nth-child(8) { width: 9%; }
+    .table--fixed th:nth-child(9) { width: 13%; }
+    .col-expand { text-align: center; }
 </style>
 {% endblock %}
 
-{% block extra_js %}
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // 筛选按钮交互
-        const filterBtn = document.getElementById('filterBtn');
-        if (filterBtn) {
-            filterBtn.addEventListener('click', function(event) {
-                event.stopPropagation();
-                document.getElementById('filterDropdown').classList.toggle('show');
-            });
-        }
-
-        // 重置筛选按钮
-        const resetFilter = document.getElementById('resetFilter');
-        if (resetFilter) {
-            resetFilter.addEventListener('click', function() {
-                // 清空所有筛选条件
-                document.getElementById('filterForm').reset();
-                document.getElementById('filterForm').submit();
-            });
-        }
-
-        // 点击其他地方关闭筛选下拉菜单
-        document.addEventListener('click', function(event) {
-            if (!event.target.closest('#filterBtn') && !event.target.closest('#filterDropdown')) {
-                document.getElementById('filterDropdown').classList.remove('show');
-            }
-        });
-
-        // 表单提交时显示加载状态
-        const filterForm = document.getElementById('filterForm');
-        if (filterForm) {
-            filterForm.addEventListener('submit', function() {
-                document.getElementById('filterDropdown').classList.remove('show');
-            });
-        }
-    });
-</script>
-{% endblock %}

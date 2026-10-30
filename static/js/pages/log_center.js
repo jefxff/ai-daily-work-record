@@ -1,35 +1,13 @@
 /**
  * 日志中心页面交互：
- * 1) 筛选下拉（含 Esc 关闭、点击外部关闭、aria-expanded 同步）；
- * 2) 「采集最新」按钮：POST 采集接口，成功后刷新页面并提示结果。
+ * 1) 「采集最新」按钮：POST 采集接口，成功后刷新页面并提示结果。
+ *    （筛选下拉的开合/Esc/点击外部关闭已收进 base.html 的公共脚本，此处不再重复绑定）
  */
 (function () {
     'use strict';
 
     function toast(message, type) {
         if (window.showToast) window.showToast(message, type || 'success');
-    }
-
-    function initFilter() {
-        var btn = document.getElementById('filterBtn');
-        var panel = document.getElementById('filterDropdown');
-        if (!btn || !panel) return;
-
-        function setOpen(open) {
-            panel.classList.toggle('show', open);
-            btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-        }
-
-        btn.addEventListener('click', function (event) {
-            event.stopPropagation();
-            setOpen(!panel.classList.contains('show'));
-        });
-        document.addEventListener('click', function (event) {
-            if (!panel.contains(event.target) && !btn.contains(event.target)) setOpen(false);
-        });
-        document.addEventListener('keydown', function (event) {
-            if (event.key === 'Escape') setOpen(false);
-        });
     }
 
     function initIngest() {
@@ -71,7 +49,6 @@
     }
 
     document.addEventListener('DOMContentLoaded', function () {
-        initFilter();
         initIngest();
     });
 })();
