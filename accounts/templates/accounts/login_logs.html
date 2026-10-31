@@ -16,7 +16,7 @@
             <option value="failed" {% if f_result == 'failed' %}selected{% endif %}>失败</option>
         </select>
         <button class="btn-transparent" type="submit">筛选</button>
-        <a class="btn-transparent" href="{% url 'accounts:login_logs' %}">重置</a>
+        <a class="btn-transparent" href="{% url 'accounts:login_logs' %}" data-col-settings-anchor data-col-settings-position="after">重置</a>
     </form>
 </div>
 <div class="table-container">

@@ -39,9 +39,11 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
 .sidebar-menu-item .dropdown-toggle > svg:last-child { transition: transform 0.28s ease; }
 .sidebar-menu-item .dropdown-toggle[aria-expanded="true"] > svg:last-child { transform: rotate(180deg); }
 /* 折叠子菜单：max-height 过渡实现统一展开/收起动画（display:none 无法过渡）。
-   三组共用同一规则，保证动画效果完全一致；max-height 上限远大于最长子菜单高度。 */
+   三组共用同一规则；上限必须盖住最长子菜单：超管的「系统」组现有 15 个链接
+   （约 36.8rem，每项 0.625rem×2 内边距 + 0.8rem 行高），早先 32rem 已被
+   超过——排在最后的「消息通知」被整体裁掉，看起来像"链接不见了"。 */
 .sidebar-dropdown { background: rgba(255, 255, 255, 0.05); margin: 0; border-radius: 0; max-height: 0; overflow: hidden; transition: max-height 0.28s ease; }
-.sidebar-dropdown.show { max-height: 32rem; }
+.sidebar-dropdown.show { max-height: 48rem; overflow-y: auto; }
 .sidebar-dropdown a { padding-left: 3rem; font-size: 0.8rem; margin: 0; border-radius: 0; }
 
 /* 分组标题（如"工作台"）可折叠：字号/字重与 dropdown-toggle 对齐，

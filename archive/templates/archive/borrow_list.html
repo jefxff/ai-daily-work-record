@@ -8,7 +8,7 @@
     <div class="page-header"><h2 class="page-title">借阅记录</h2></div>
     <div class="page-actions">
         <div class="d-flex gap-2">
-            <a href="{% url 'archive:borrow_list' %}" class="btn btn-sm {% if not status %}btn-primary{% else %}btn-outline-secondary{% endif %}">全部</a>
+            <a href="{% url 'archive:borrow_list' %}" class="btn btn-sm {% if not status %}btn-primary{% else %}btn-outline-secondary{% endif %}" data-col-settings-anchor data-col-settings-position="before">全部</a>
             <a href="?status=borrowed" class="btn btn-sm {% if status == 'borrowed' %}btn-primary{% else %}btn-outline-secondary{% endif %}">借出中</a>
             <a href="?status=overdue" class="btn btn-sm {% if status == 'overdue' %}btn-primary{% else %}btn-outline-secondary{% endif %}">已逾期</a>
             <a href="?status=returned" class="btn btn-sm {% if status == 'returned' %}btn-primary{% else %}btn-outline-secondary{% endif %}">已归还</a>

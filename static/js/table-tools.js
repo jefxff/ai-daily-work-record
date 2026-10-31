@@ -89,9 +89,6 @@
         var optional = cols.filter(function (c) { return !c.fixed; });
         if (!optional.length) return;
 
-        var actions = document.querySelector('.page-actions');
-        if (!actions) return;
-
         var hidden = readHidden();
         applyHidden(table, cols, hidden);
 
@@ -101,7 +98,30 @@
         btn.textContent = '列设置';
         btn.setAttribute('aria-expanded', 'false');
         btn.setAttribute('aria-controls', 'colSettingsPanel');
-        actions.appendChild(btn);
+
+        /* 插入位置：
+           1) 模板用 data-col-settings-anchor 声明锚点（重置/导出 Excel/状态按钮等），
+              按 data-col-settings-position="before|after" 插到它前/后——各页操作行
+              布局不同，精确落位只能由模板自己声明；
+           2) 没有锚点时，挂到页面自己的操作行：base.html 顶部有一个空的
+              .page-actions（page_actions/top_nav_actions 挂点），而档案柜/借阅记录/
+              证照管理等页在内容里另有自己的 .page-actions——早先用 querySelector
+              命中的总是前者，列设置因此孤零零悬在页首。挑最后一个非空容器兜底。 */
+        var anchor = document.querySelector('[data-col-settings-anchor]');
+        if (anchor) {
+            anchor.insertAdjacentElement(
+                anchor.getAttribute('data-col-settings-position') === 'before'
+                    ? 'beforebegin' : 'afterend', btn);
+        } else {
+            var candidates = Array.prototype.filter.call(
+                document.querySelectorAll('.page-actions'),
+                function (el) { return el.children.length > 0; });
+            var target = candidates.length
+                ? candidates[candidates.length - 1]
+                : document.querySelector('.page-actions');
+            if (!target) return;
+            target.appendChild(btn);
+        }
 
         var panel = document.createElement('div');
         panel.className = 'col-settings-panel';

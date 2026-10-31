@@ -24,7 +24,7 @@
                 <option value="inactive" {% if f_status == 'inactive' %}selected{% endif %}>停用/待审核</option>
             </select>
             <button class="btn-transparent" type="submit">筛选</button>
-            <a class="btn-transparent" href="{% url 'accounts:user_list' %}" style="text-decoration:none; display:inline-flex; align-items:center;">重置</a>
+            <a class="btn-transparent" href="{% url 'accounts:user_list' %}" style="text-decoration:none; display:inline-flex; align-items:center;" data-col-settings-anchor data-col-settings-position="after">重置</a>
         </form>
         {% can "system" "create" %}
         <a class="btn-primary" href="{% url 'accounts:user_create' %}" data-modal-add data-modal-title="新建用户">+ 新建用户</a>

@@ -27,7 +27,7 @@
         </select>
         {# 查询是筛选动作，降为次级：整页只留一个实心蓝主操作 #}
         <button type="submit" class="btn-secondary">查询</button>
-        <a class="btn-secondary" href="{% url 'samples:partner_list' %}">重置</a>
+        <a class="btn-secondary" href="{% url 'samples:partner_list' %}" data-col-settings-anchor data-col-settings-position="after">重置</a>
         {# 主操作固定在最右，与全站列表页一致 #}
         {% can "samples" "create" %}
         <a class="btn-primary" href="{% url 'samples:partner_create' %}" data-modal-add data-modal-title="新增供应商档案" style="margin-left:auto;">＋ 新增供应商</a>

@@ -8,7 +8,7 @@
     <div class="page-header"><h2 class="page-title">档案柜</h2></div>
     <div class="page-actions">
             {% can "archive" "read" %}
-            <a href="{% url 'archive:table_export' 'cabinets' %}" class="btn btn-outline-primary btn-sm">导出 Excel</a>
+            <a href="{% url 'archive:table_export' 'cabinets' %}" class="btn btn-outline-primary btn-sm" data-col-settings-anchor data-col-settings-position="before">导出 Excel</a>
             {% endcan %}
             {% can "archive" "update" %}
             <a href="{% url 'archive:table_import' 'cabinets' %}" class="btn btn-outline-secondary btn-sm">导入/更新</a>

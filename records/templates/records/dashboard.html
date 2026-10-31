@@ -3,12 +3,8 @@
 
 {% block page_title %}数据展示 - 汇总看板 - 每日工作记录管理网站{% endblock %}
 
-{% block top_nav_actions %}
-    <form class="d-flex gap-2" method="GET">
-        <input class="search-input" type="search" placeholder="搜索" name="search" value="{{ search_term }}" aria-label="搜索">
-        <button class="btn-transparent" type="submit">搜索</button>
-    </form>
-{% endblock %}
+{% comment %}{% block top_nav_actions %} 已删除：dashboard 视图从不消费 search 参数，
+这个搜索框是顶栏时代的遗留——top_nav_actions 下沉到内容区后，它孤零零挂在页面顶部。{% endcomment %}
 
 {% block content %}
     <div class="dashboard-container">

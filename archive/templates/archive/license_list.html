@@ -75,7 +75,7 @@
             <option value="expired" {% if status == 'expired' %}selected{% endif %}>已过期</option>
         </select>
         <button type="submit" class="btn btn-outline-secondary btn-sm">筛选</button>
-        <a href="{% url 'archive:license_list' %}" class="btn btn-outline-secondary btn-sm">重置</a>
+        <a href="{% url 'archive:license_list' %}" class="btn btn-outline-secondary btn-sm" data-col-settings-anchor data-col-settings-position="before">重置</a>
     </form>
         <div class="d-flex gap-2">
             {% can "archive" "create" %}

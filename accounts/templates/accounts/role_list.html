@@ -10,7 +10,7 @@
 {# 操作条：与下方列表拼成一张卡，标题独占一行 #}
 <div class="page-actions">
     {% can "system" "create" %}
-    <a class="btn-primary" href="{% url 'accounts:role_create' %}" data-modal-add data-modal-title="新建角色">+ 新建角色</a>
+    <a class="btn-primary" href="{% url 'accounts:role_create' %}" data-modal-add data-modal-title="新建角色" data-col-settings-anchor data-col-settings-position="before">+ 新建角色</a>
     {% endcan %}
 </div>
 <div class="table-container">

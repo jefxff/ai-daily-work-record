@@ -94,7 +94,9 @@
             <a class="q-chip {% if flt.status == key %}active{% endif %}" href="?{% for k, v in request.GET.items %}{% if k != 'status' and k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}status={{ key }}">{{ label }}</a>
             {% endfor %}
             {# 页面主操作与状态快捷筛选同排，右端对齐 #}
-            <div class="chip-actions">
+            {# data-col-settings-anchor：table-tools.js 的列设置按钮插到本容器之前—— #}
+            {# 即紧贴最后一个状态 chip（已终止）之后，而不是页面顶部的空操作条 #}
+            <div class="chip-actions" data-col-settings-anchor data-col-settings-position="before">
                 <a class="btn-secondary" href="{% url 'samples:export' %}{% if query_string %}?{{ query_string }}{% endif %}">导出 Excel</a>
                 {% can "samples" "create" %}
                 <a class="btn-primary" href="{% url 'samples:create' %}" data-modal-add data-modal-title="送样登记">＋ 送样登记</a>
