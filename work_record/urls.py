@@ -125,6 +125,8 @@ urlpatterns = [
     path('system/backup/', include('sysbackup.urls')),
     # 通用附件（客户客诉/诉讼/保险/客户台账等多模块复用）
     path('attachments/', include('attachments.urls')),
+    # AI 助手（站内 Copilot）：接口鉴权走 copilot.read
+    path('copilot/', include('copilot.urls')),
     # 系统健康面板（只读）：挂在 system/ 下，与「系统」侧栏组语义一致
     path('system/health/', views_health.system_health, name='system_health'),
     # 性能监控（请求量 / P95 / 慢查询，system.read 只读）
@@ -157,23 +159,40 @@ if not settings.DEBUG:
     import logging
 
     from django.contrib.staticfiles import finders
-    from django.contrib.staticfiles.views import serve as staticfiles_serve  # noqa: F401
     from django.views.static import serve as _serve_static_file
 
     _static_logger = logging.getLogger(__name__)
     _static_root = Path(settings.STATIC_ROOT)
 
+    def _warn_stale_static(path):
+        if getattr(_warn_stale_static, "_warned", False):
+            return
+        _static_logger.warning(
+            "静态资源 %s 的源文件比 STATIC_ROOT 里的产物新，已直接使用源文件；"
+            "建议执行 python manage.py collectstatic --noinput", path,
+        )
+        _warn_stale_static._warned = True
+
     def serve_static(request, path):
-        """静态资源：STATIC_ROOT 优先，缺失时回退 finders（仅回退时告警一次/进程）。"""
-        if (_static_root / path).is_file():
+        """静态资源：STATIC_ROOT 与源文件里取**较新**的一份。
+
+        只看 STATIC_ROOT 会踩一个很隐蔽的坑：改了 static/ 下的 JS/CSS 却忘了
+        ``collectstatic``，STATIC_ROOT 里还是旧产物，页面就永远跑旧逻辑——典型
+        症状是"后端明明改了，浏览器里行为没变"（AI 助手把 Markdown 当纯文本
+        显示就是这一类）。所以按 mtime 比较，用到源文件时告警提醒补收集。
+        """
+        root_file = _static_root / path
+        source = finders.find(path)
+        source_file = Path(source) if source else None
+        if (source_file is not None and source_file.is_file()
+                and (not root_file.is_file()
+                     or source_file.stat().st_mtime > root_file.stat().st_mtime)):
+            _warn_stale_static(path)
+            return _serve_static_file(
+                request, source_file.name, document_root=str(source_file.parent))
+        if root_file.is_file():
             return _serve_static_file(request, path, document_root=str(_static_root))
-        if not getattr(serve_static, "_warned", False):
-            _static_logger.warning(
-                "STATIC_ROOT 未命中 %s，已回退到 staticfiles finders；"
-                "建议执行 python manage.py collectstatic --noinput", path,
-            )
-            serve_static._warned = True
-        return staticfiles_serve(request, path, insecure=True)
+        raise Http404(f'静态资源不存在：{path}')
 
     urlpatterns += [
         re_path(r'^static/(?P<path>.*)$', serve_static),

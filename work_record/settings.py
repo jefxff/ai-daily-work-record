@@ -184,6 +184,7 @@ INSTALLED_APPS = [
     'notifications',
     'sysbackup',
     'attachments',
+    'copilot',
 ]
 
 MIDDLEWARE = [
@@ -631,3 +632,13 @@ KB_ADMIN_CAN_READ_PRIVATE = os.environ.get('KB_ADMIN_CAN_READ_PRIVATE', '0') == 
 KB_ADMIN_ROLE_CODES = ('admin',)
 # 管理员能否代改/代切换别人的文档（默认关闭，owner 专属）
 KB_ADMIN_CAN_EDIT_OTHERS = os.environ.get('KB_ADMIN_CAN_EDIT_OTHERS', '0') == '1'
+
+# === AI 助手（Copilot）===
+# 是否在请求内同步执行问答。默认 False：统一走线程池 + 前端轮询，
+# 避免多轮工具调用把同步 worker 占满（SQLite 并发写也会互相拖慢）。
+# 测试与本地调试可置 1，接口会直接返回答案（sync=true）。
+COPILOT_INLINE_EXECUTION = os.environ.get('DJANGO_COPILOT_INLINE', '0') == '1'
+# 单次问答硬超时（秒）：执行器每步检查，超时标 timeout，前端提示重试
+COPILOT_RUN_TIMEOUT = int(os.environ.get('DJANGO_COPILOT_RUN_TIMEOUT', '120'))
+# 后台执行线程数：SQLite 单写锁，够用即可；上多 worker 后改为队列消费
+COPILOT_MAX_WORKERS = int(os.environ.get('DJANGO_COPILOT_MAX_WORKERS', '2'))

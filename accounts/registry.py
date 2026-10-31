@@ -53,6 +53,9 @@ MODULES = [
     # 消息通知：read=通知中心/未读接口/偏好（人人可用）；
     # 公告推送走 system.create、撤回走 system.update（管理员专属，避免 staff 默认可推送公告）
     {"key": "notifications", "name": "消息通知", "actions": READ_ONLY},
+    # AI 助手：read = 使用站内问答。工具层会再按各业务模块的 read 权限过滤数据，
+    # 因此这里只授予"能提问"，不代表能看所有模块。
+    {"key": "copilot", "name": "AI 助手", "actions": READ_ONLY},
     # system.backup = 下载备份包（全库数据导出）；system.restore = 触发全量恢复。
     # 两者均为不可委托给「仅查看系统状态」用户的高危动作，见模块清单外的说明。
     {"key": "system", "name": "系统管理", "actions": CRUD + [BACKUP, RESTORE]},
