@@ -109,7 +109,9 @@ def apply_filters(qs, spec, keyword='', date_from='', date_to='', state=None,
         if date_to:
             qs = qs.filter(**{f'{spec.date_field}__lte': date_to})
     if state is not None:
-        qs = qs.filter(state.filter_q())
+        # 状态可能是 Q（行级条件），也可能是归组钩子（保险"按标的最新年度"），
+        # 一律交给 StateSpec 自己决定，工具层不需要知道差异。
+        qs = state.apply_to(qs)
     return qs
 
 

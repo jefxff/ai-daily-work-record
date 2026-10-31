@@ -409,6 +409,22 @@ _DATE_SCOPE_RE = re.compile(
     r'\d{4}年)'
 )
 
+# "快到期"不是日期表达，也不是每个模块都有的业务状态：它是一个**语义**，
+# 要翻译成"该模块的日期字段落在未来 N 天内"。以前没人翻译它，于是这五个字
+# 被整句丢掉——问"保险中快到期有几条"，答的是保险全表 20 条。
+_EXPIRY_CUE_RE = re.compile(
+    r'(快到期|即将到期|要到期|快到起期|快到期限|快过期|即将过期|临期|近期到期|'
+    r'马上到期|不日到期|将要到期)'
+)
+
+# 其它"条件词"：出现了就说明用户在下筛选条件。字典没覆盖时不能装作没看见
+# 去数全表，而要明说"这个条件我筛不了"。
+_CONDITION_CUE_RE = re.compile(
+    r'(应续未续|未续保|逾期|超期|未完成|已完成|已闭环|未闭环|待跟进|处理中|进行中|'
+    r'已终止|未通过|已通过|不同意|待定|未归档|已归档|已借出|已归还|已过期|过期了|'
+    r'断保|待处理|未处理|有赔偿|已赔付)'
+)
+
 # 量词：客户数说"家"、诉讼说"件"，一律叫"条"读起来不像人话
 _UNIT_MAP = {'customer_ledger': '家', 'customer_credit': '家',
              'sample_partner': '家', 'complaint': '件', 'insurance': '份',
@@ -425,10 +441,112 @@ def _state_of_text(spec, text):
 
     状态筛选是"截至今天"的快照；用户说了"今年/本月"就得按日期区间算，
     简化成截止今天会把"今年到期"答成"30 天内到期"。
+
+    字典里没有对应状态时，再用"到期语义"兜底：保险、合同、证照、借阅、日报
+    都有明确的 lead_days，用户说"快到期"就是"日期字段落在未来 N 天内"。
+    不做这一步，"快到期"三个字会被整句丢掉，只剩一个全表合计数。
     """
-    if spec is None or _DATE_SCOPE_RE.search(text or ''):
+    if spec is None:
         return None
-    return catalog.state_match(spec, text)
+    text = text or ''
+    if _DATE_SCOPE_RE.search(text):
+        return None
+    matched = catalog.state_match(spec, text)
+    if matched is not None:
+        return matched
+    return _expiry_state(spec, text)
+
+
+def _expiry_state(spec, text):
+    """"快到期"→ 按模块 lead_days 构造的日期窗口状态。
+
+    只在模块自己没声明对应状态时使用；声明过的以字典为准（口径可能更复杂，
+    比如保险要按标的取最新年度）。
+    """
+    if not spec.lead_days or not spec.date_field:
+        return None
+    if not _EXPIRY_CUE_RE.search(text or ''):
+        return None
+    days = spec.lead_days
+    return catalog.StateSpec(
+        'expiring', f'即将到期（{days}天内）',
+        ('即将到期', '快到期'),
+        catalog._date_between_q((spec.date_field,), days),
+        days=days,
+        note=f'{spec.date_field} 在未来 {days} 天内',
+    )
+
+
+def unsupported_condition(question, modules, user=None):
+    """问题里带了业务条件、但本模块没有对应口径时，给出明确说明。
+
+    这是"不装懂"的最后一道闸：前面所有分支都没能把这个条件变成筛选时，
+    与其数全表（数字全真、结论全错）或答"没有记录"，不如直说筛不了、
+    并把能用的条件列出来。返回空串表示不归这里管。
+    """
+    text = question or ''
+    spec = pick_module(text, modules, user)
+    if spec is None:
+        return ''
+    # 选项词会把模块抢走：「已完成的装修」里"已完成"是客诉的状态词，
+    # 可用户说的是装修。说明文案必须对着用户真正点名的模块讲，否则更让人困惑。
+    if _name_hit(spec, text)[2] == 0:
+        named = [m for m in modules if _name_hit(m, text)[2] > 0]
+        if len(named) == 1:
+            spec = named[0]
+    if catalog.state_match(spec, text) is not None:
+        return ''
+    if _expiry_state(spec, text) is not None:
+        return ''
+    # 说了"今年/本月/最近"的交给日期分支，不在这里拦
+    if _DATE_SCOPE_RE.search(text) or _TIME_SCOPE_RE.search(text):
+        return ''
+    cues = []
+    for cue in _CONDITION_CUE_RE.findall(text):
+        if cue not in cues:
+            cues.append(cue)
+    if not cues:
+        return ''
+    quoted = '、'.join(f'「{c}」' for c in cues[:3])
+    lines = [f'我看到了条件 {quoted}，但「{spec.label}」没有对应的筛选口径，'
+             '不能把这个条件丢掉、直接给你一个全表合计数。']
+    if spec.states:
+        lines.append(f'这个模块能筛的状态：{"、".join(catalog.state_options(spec))}。')
+    elif spec.no_state_reason:
+        lines.append(f'（{spec.no_state_reason}）')
+    if spec.date_field:
+        label = catalog.field_label(spec, spec.date_field)
+        extra = ''
+        if spec.lead_days:
+            extra = f'；说"快到期"就按未来 {spec.lead_days} 天内算'
+        lines.append(f'想按时间筛，给个区间就行（如"近30天""2026年10月"），'
+                     f'日期字段是「{label}」{extra}。')
+    return '\n\n'.join(lines)
+
+
+def unsupported_rank(question, modules, user=None):
+    """"最长/最多"问到了没有可比字段的模块时，明说算不出来。
+
+    「账期最长的是哪几家客户」曾经答"共 20 家"——把"没法比"答成了"都算上"。
+    客户账期的 result 是自由文本，没有任何数值字段，这个问题在数据层面就
+    无解；说清楚缺什么，比给一个看似合理的计数有用。
+    """
+    text = question or ''
+    if not _RANK_CUE_RE.search(text):
+        return ''
+    spec = pick_module(text, modules, user)
+    if spec is None:
+        return ''
+    if _rank_field(spec, text)[0]:
+        return ''
+    sortable = catalog.rankable_fields(spec)
+    if not sortable:
+        return ''
+    cue = _RANK_CUE_RE.search(text).group(0)
+    labels = '、'.join(label for _name, label, _alias in sortable)
+    return (f'「{spec.label}」里没有能按「{cue}」比较的数值字段，'
+            f'现在只有这些可以排序：{labels}。\n\n'
+            f'想要这类排名，得先把这个指标录成数字（例如账期写成"月结30天"里的 30）。')
 
 
 def matched_labels(spec, text):
@@ -647,8 +765,25 @@ def stat_query(question, modules, user=None):
                       if len(found) == 1]
             if single:
                 keyword_field, keyword = single[0]
+    state = _state_of_text(spec, text)
+    # 「立案的有哪些、结案的又有哪些」：同一字段的两个取值都出现了，是要分组，
+    # 不是要筛选。此时若状态词正好等于其中一个取值，会把另一半吃掉——只答"立案"。
+    if group_field and len(labels.get(group_field) or ()) >= 2 and state is not None:
+        if any(word in labels[group_field]
+               for word in (state.label,) + tuple(state.phrases)):
+            state = None
+    # 条件词没落到任何筛选上时，绝不能输出"全表 N 条"：
+    # 「保险中快到期有几条」曾经答"共 20 份"——数字全真、结论全错，
+    # 用户还以为筛过了。这里放弃本地计数，交给后面的"说不懂"兜底。
+    if not (keyword or group_field or state or date_scope) and _CONDITION_CUE_RE.search(text):
+        return None
+    # "账期最长的是哪几家"里的"几家"会把问题拉进计数分支，但"最长"需要数值字段。
+    # 模块没有可比较的字段时也不能数全表充数，交给 unsupported_rank 说明。
+    if (_RANK_CUE_RE.search(text) and not _rank_field(spec, text)[0]
+            and not (keyword or group_field or state)):
+        return None
     return {'spec': spec, 'keyword': keyword, 'keyword_field': keyword_field,
-            'group_field': group_field, 'state': _state_of_text(spec, text),
+            'group_field': group_field, 'state': state,
             'date': date_scope}
 
 
@@ -986,7 +1121,9 @@ def stat_answer(stat, user, policy=None):
         qs = apply_filters(qs, spec, keyword=keyword,
                            keyword_field=stat.get('keyword_field') or '')
     if state is not None:
-        qs = qs.filter(state.filter_q())
+        # 状态可能是行级 Q，也可能是归组钩子（保险按标的最新年度），统一交给
+        # StateSpec。直接 filter(filter_q()) 会让后者变成空条件，悄悄退化成"数全表"。
+        qs = state.apply_to(qs)
     if date:
         qs = qs.filter(**date[0])
     total = qs.count()
@@ -1145,7 +1282,9 @@ def rank_answer(rank, user, policy=None):
     if keyword:
         qs = apply_filters(qs, spec, keyword=keyword)
     if state is not None:
-        qs = qs.filter(state.filter_q())
+        # 状态可能是行级 Q，也可能是归组钩子（保险按标的最新年度），统一交给
+        # StateSpec。直接 filter(filter_q()) 会让后者变成空条件，悄悄退化成"数全表"。
+        qs = state.apply_to(qs)
     date_scope = rank.get('date')
     if date_scope:
         qs = qs.filter(**date_scope[0])

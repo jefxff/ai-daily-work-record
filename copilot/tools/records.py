@@ -37,16 +37,31 @@ def _empty_hint(spec, ctx, date_from='', date_to='', state_label=''):
 
 
 def _state_of(spec, state):
-    """参数 state → StateSpec；不支持时报错并列出可选状态。"""
+    """参数 state → StateSpec；不支持时给出**可执行的下一步**，不是一句"不支持"。
+
+    反例来自线上：模型把"即将到期"当 state 传给保险模块，工具回"该模块不支持"，
+    模型看不懂就原样重试两次，最后答"没有记录"。所以拒绝信息里必须写清
+    "这个模块能筛什么 / 想按时间筛该用哪个参数"，它才知道怎么改。
+    """
     if not state:
         return None, None
     spec_state = catalog.get_state(spec, state)
     if spec_state is None:
+        options = catalog.state_options(spec)
+        if options:
+            hint = f'该模块不支持 state={state}；可用状态：{"、".join(options)}。'
+        else:
+            reason = spec.no_state_reason or '该模块没有业务状态可选'
+            hint = f'该模块不支持 state={state}：{reason}。'
+            if spec.date_field:
+                lead = (f'（"即将到期"≈ {spec.date_field} 在未来 '
+                        f'{spec.lead_days} 天内）') if spec.lead_days else ''
+                hint += (f'如需按时间筛选，改用 date_from/date_to，'
+                         f'日期字段是 {spec.date_field}{lead}。')
+            else:
+                hint += '请改用 keyword 或直接列出记录。'
         return None, registry.ToolResult(
-            ok=False, error='BAD_ARGS',
-            message=f'该模块不支持 state={state}；可用状态：'
-                    f'{catalog.state_options(spec) or "（该模块没有状态筛选）"}',
-        )
+            ok=False, error='BAD_ARGS', message=hint)
     return spec_state, None
 
 

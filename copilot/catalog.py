@@ -20,6 +20,37 @@ from django.utils import timezone
 LEVEL_LABELS = {'L1': '公开', 'L2': '内部', 'L3': '敏感', 'L4': '机密'}
 
 
+def _expiry_meta():
+    """到期预警参数（records/expiry.py）。
+
+    字典里的窗口天数必须与工作台预警**同源**。以前这里写死 30 天，而预警里
+    合同/证照是 60 天，同一个"证照快到期了吗"，工作台说 60 天内都算、
+    AI 助手只认 30 天——两个入口两个答案，用户没法解释哪个对。
+    """
+    try:
+        from records.expiry import DEFAULT_LEAD_DAYS, LOOKBACK_DAYS
+        return DEFAULT_LEAD_DAYS, LOOKBACK_DAYS
+    except Exception:  # noqa: BLE001  应用未就绪时退回默认值
+        return {}, 90
+
+
+_LEAD_DAYS, LOOKBACK_DAYS = _expiry_meta()
+
+
+def lead_days_of(kind, default=30):
+    """某类到期事项的提前提醒天数（保险 30、合同/证照 60 …）。"""
+    return int(_LEAD_DAYS.get(kind, default))
+
+
+INSURANCE_LEAD_DAYS = lead_days_of('insurance', 30)
+CONTRACT_LEAD_DAYS = lead_days_of('archive_contract', 60)
+LICENSE_LEAD_DAYS = lead_days_of('license_expire', 60)
+REVIEW_LEAD_DAYS = lead_days_of('license_review', 30)
+BORROW_LEAD_DAYS = lead_days_of('borrow_due', 30)
+# 日报粒度是天，不是月：3 天没交才算"快到期"
+DAILY_LEAD_DAYS = 3
+
+
 @dataclass(frozen=True)
 class StateSpec:
     """业务状态筛选（"已过期""借出中""逾期"）。
@@ -28,16 +59,31 @@ class StateSpec:
     "已借出"= 存在未归还的借阅记录。以前只能靠模型自己拼条件，它拼不出来就
     答"没有找到已过期的记录"——把"不会拼条件"说成了"没有数据"。
     把状态定义成可执行的 Q，本地一次过滤就准。
+
+    ``apply`` 给 Q 表达不了的状态用（保险必须"按标的归组取最新年度"，
+    "一条标的下有多条保单流水"这种判定不是行级条件）。
     """
 
     key: str
     label: str
     phrases: tuple = ()          # 用户可能说的词（长的优先匹配）
     q: object = None             # callable(today) -> Q
+    apply: object = None         # callable(queryset, today) -> QuerySet
+    days: int = 0                # 窗口天数（提前/回溯），0 表示不涉及
+    note: str = ''               # 判定口径，进 schema 供模型与人核对
 
     def filter_q(self, today=None):
         today = today or timezone.localdate()
         return self.q(today) if self.q else Q()
+
+    def apply_to(self, qs, today=None):
+        """把状态作用到 queryset 上：优先归组钩子，其次 Q。"""
+        today = today or timezone.localdate()
+        if self.apply is not None:
+            return self.apply(qs, today)
+        if self.q is not None:
+            return qs.filter(self.q(today))
+        return qs
 
 
 def _open_borrow_q(model_label, fk_name):
@@ -89,6 +135,83 @@ def _date_before_q(fields):
     return build
 
 
+def _blank_q(field):
+    """文本字段为空（NULL 或空串）：库里"没填"两种写法都有。"""
+    return Q(**{f'{field}__isnull': True}) | Q(**{f'{field}': ''})
+
+
+def _filled_q(field):
+    return ~_blank_q(field)
+
+
+def _any_text_q(field, words):
+    """文本字段命中任一说法（"是/已抵押"这种人工录入的自由文本）。"""
+    cond = Q()
+    for word in words:
+        cond |= Q(**{f'{field}__icontains': word})
+    return cond
+
+
+def _insurance_subject_filter(kind):
+    """标的级状态：先按标的归组取最新年度，再挑出符合条件的保单记录。
+
+    保险的"到期"不是单条保单的属性——一个标的下挂着多个年度的流水，
+    必须看"最新年度"那一条；否则已续保的老年度会天天报到期（2026-10 修过的
+    bug）。这种判定是 QuerySet 级的，纯 Q 表达不了，所以走 ``apply`` 钩子。
+    """
+
+    def apply(qs, today):
+        from records.insurance_grouping import build_subjects
+
+        try:
+            from records.insurance_services import one_off_keys
+            one_off = one_off_keys()
+        except Exception:  # noqa: BLE001  一次性标的标记缺失时按无标记处理
+            one_off = set()
+
+        records = list(qs.select_related('subject', 'policy_year'))
+        ids = []
+        for subject in build_subjects(records, today=today):
+            if subject.key in one_off:
+                continue
+            latest = subject.latest
+            if kind == 'expiring':
+                hit = subject.status == 'expiring'
+            elif kind == 'expired':
+                hit = (subject.status == 'expired'
+                       and (subject.expired_days or 0) <= LOOKBACK_DAYS)
+            elif kind == 'renewed_this_year':
+                hit = latest.end >= today and latest.start.year == today.year
+            else:
+                hit = False
+            if hit:
+                ids.extend(r.pk for r in latest.records)
+        return qs.filter(pk__in=ids)
+
+    return apply
+
+
+def _sla_breach_filter(qs, today):
+    """超 SLA：未闭环 且 申请时间 + SLA 小时数 已经过了。
+
+    数据库端算不了"日期 + N 小时"（SQLite 的日期函数各版本不一），
+    而未闭环客诉是个很小的集合，取出来在 Python 里比更快也更准。
+    """
+    from datetime import datetime, time
+
+    now = timezone.localtime()
+    ids = []
+    for obj in qs.filter(closed_at__isnull=True, sla_hours__gt=0).only(
+            'pk', 'complaint_date', 'sla_hours'):
+        if not obj.complaint_date:
+            continue
+        deadline = datetime.combine(obj.complaint_date, time.min) + timedelta(
+            hours=obj.sla_hours)
+        if timezone.make_aware(deadline) < now:
+            ids.append(obj.pk)
+    return qs.filter(pk__in=ids)
+
+
 @dataclass(frozen=True)
 class ModuleSpec:
     key: str                      # 模块 key（工具参数用；全局唯一）
@@ -114,6 +237,14 @@ class ModuleSpec:
     parent_field: str = ''        # 明细挂主档时，详情页要带父对象 id（sample/partner）
     states: tuple = ()            # StateSpec 列表：业务状态筛选
     base_filter: object = None    # callable(user) -> Q：模块级的固定过滤（如"已发布"）
+    # 到期提前提醒天数（0 = 该模块没有"到期"概念）。
+    # 用户说"快到期"而模块又没声明对应状态时，planner 按这个天数自动构造
+    # "日期字段落在 [今天, 今天+N]" 的窗口——否则"快到期"这三个字会被整句丢掉，
+    # 只剩一个全表合计数。
+    lead_days: int = 0
+    # 确实没有业务状态的模块，显式写一句原因。模型据此不再硬造 state 参数，
+    # 也方便字典校验区分"本来就没有"与"漏了"。
+    no_state_reason: str = ''
     # 可排序字段的**口语别名**：((字段名, '阅读', '浏览量', …), …)。
     # 「知识库中阅读最多的一篇」里的"阅读"不是任何字段的值，而是 view_count
     # 这个可排序字段的口语说法。不声明这一步，问题会退化成全文检索 → 0 条，
@@ -134,15 +265,51 @@ MODULES = (
                        'terminal_customer', 'product_model', 'complaint_description',
                        'compensation_amount', 'complaint_status', 'legal_stage',
                        'follow_up_status', 'engineering_analysis', 'missing_materials',
-                       'closure_result', 'closed_at', 'remarks'),
+                       'closure_result', 'closed_at', 'is_insured', 'sla_hours',
+                       'closure_note', 'engineering_report', 'remarks'),
         group_fields=('complaint_status', 'legal_stage', 'responsible_salesperson',
-                      'customer_name'),
+                      'customer_name', 'closure_result', 'is_insured'),
         sum_fields=('compensation_amount', 'our_shipment', 'customer_shipment'),
-        order_fields=('complaint_date', 'compensation_amount', 'complaint_status'),
+        order_fields=('complaint_date', 'compensation_amount', 'complaint_status',
+                      'closed_at', 'sla_hours'),
         title_field='customer_name',
         detail_route='records:customer_detail',
         rank_fields=(('compensation_amount', '赔偿金额', '赔偿', '赔付金额', '索赔金额'),),
         list_route='records:customer_complaint_list',
+        states=(
+            StateSpec('open', '未完成',
+                      ('还没处理', '待处理', '没处理', '未闭环'),
+                      lambda today: Q(complaint_status='未完成')),
+            StateSpec('processing', '处理中',
+                      ('处理中', '跟进中', '正在处理', '在跟进'),
+                      lambda today: Q(complaint_status='处理中')),
+            # 「已完成/未完成」本身是字段选项词，matched_labels 已经能当筛选条件用；
+            # 写进 phrases 会让"已完成的装修"被判成客诉模块，这里只留口语说法。
+            StateSpec('closed', '已闭环',
+                      ('已闭环', '闭环', '结案了', '处理完了', '搞定了'),
+                      lambda today: Q(complaint_status='已完成')),
+            StateSpec('with_legal', '涉及法律程序',
+                      ('涉及法律', '走诉讼', '打官司', '法律程序', '起诉'),
+                      lambda today: Q(legal_stage__in=('准备诉讼', '诉讼中', '已判决'))),
+            StateSpec('with_insurance', '走保险理赔',
+                      ('报保险', '走理赔', '保险理赔', '理赔'),
+                      lambda today: Q(is_insured=True) | Q(legal_stage='保险理赔')),
+            StateSpec('sla_breach', '超 SLA',
+                      ('超时', '超 SLA', '超SLA', '超过时限', '逾期未处理'),
+                      apply=_sla_breach_filter,
+                      note='未闭环 且 申请时间+SLA小时数 已经过去'),            StateSpec('accepted', '客户接受',
+                      ('客户接受', '接受', '谈成了', '同意方案', 'accepted'),
+                      lambda today: Q(closure_result='accepted')),
+            StateSpec('partial', '部分接受',
+                      ('部分接受', '部分同意', 'partial'),
+                      lambda today: Q(closure_result='partial')),
+            StateSpec('rejected', '客户不接受',
+                      ('不接受', '不认可', '谈崩了', '拒绝', 'rejected'),
+                      lambda today: Q(closure_result='rejected')),
+            StateSpec('compensated', '有赔偿',
+                      ('有赔偿', '赔了钱', '已赔付', '赔付了'),
+                      lambda today: Q(compensation_amount__gt=0)),
+        ),
     ),
     ModuleSpec(
         key='complaint', label='诉讼', level='L3',
@@ -157,11 +324,39 @@ MODULES = (
                        'hearing_at', 'judgment_at', 'execution_at', 'closed_at', 'remarks'),
         group_fields=('progress', 'dispute_type', 'court', 'lawyer'),
         sum_fields=('amount',),
-        order_fields=('filed_at', 'amount', 'progress'),
+        order_fields=('filed_at', 'amount', 'progress', 'hearing_at', 'judgment_at',
+                      'execution_at', 'closed_at'),
         title_field='defendant',
         detail_route='records:complaint_detail',
         rank_fields=(('amount', '涉案金额', '标的额', '诉讼金额'),),
         list_route='records:complaint_list',
+        states=(
+            StateSpec('filed', '立案阶段',
+                      ('立案', '刚立案', '已立案'),
+                      lambda today: Q(progress='立案')),
+            StateSpec('hearing', '审理中',
+                      ('审理中', '在审', '正在打', '开庭审理'),
+                      lambda today: Q(progress='审理中')),
+            StateSpec('upcoming_hearing', '待开庭',
+                      ('待开庭', '要开庭', '下个月开庭', '快开庭', '即将开庭'),
+                      lambda today: (Q(hearing_at__gte=today)
+                                     & Q(progress__in=('立案', '审理中')))),
+            StateSpec('judged', '已判决',
+                      ('已判决', '判了', '判决书', '判决下来'),
+                      lambda today: Q(progress='判决') | Q(judgment_at__isnull=False)),
+            StateSpec('executing', '执行中',
+                      ('执行中', '强制执行', '在执行'),
+                      lambda today: Q(progress='执行')),
+            StateSpec('closed', '已结案',
+                      ('已结案', '结了', '完结', '结案了'),
+                      lambda today: Q(progress='结案') | Q(closed_at__isnull=False)),
+            StateSpec('overdue_stale', '长期未推进',
+                      ('拖着的', '很久没动', '长期未推进', '停滞', '压着'),
+                      lambda today: (Q(progress__in=('立案', '审理中'))
+                                     & Q(filed_at__lt=today - timedelta(days=180))),
+                      days=180,
+                      note='立案或审理中，且立案日期超过 180 天'),
+        ),
     ),
     ModuleSpec(
         key='insurance', label='保险', level='L3',
@@ -181,6 +376,31 @@ MODULES = (
         rank_fields=(('premium', '保费', '保险金额'),),
         list_route='records:insurance_list',
         sensitive_fields=('order_number',),
+        # 保险的空窗期判定与工作台同源：提前 30 天提醒
+        lead_days=INSURANCE_LEAD_DAYS,
+        states=(
+            # 「即将到期」不能按单条保单的 end_date 判：一个标的下有多条年度流水，
+            # 已续保的老年度 end_date 早就过了，逐条判会天天报到期（修过的 bug）。
+            # 必须按标的归组取最新年度——这是 QuerySet 级操作，用 apply 钩子。
+            StateSpec('expiring', '即将到期',
+                      ('即将到期', '快到期', '要到期', '临期', '近期到期',
+                       '快过期', '马上到期', '快到起期'),
+                      apply=_insurance_subject_filter('expiring'),
+                      days=INSURANCE_LEAD_DAYS,
+                      note='按标的最新保单年度判定，截止日期在未来 30 天内'),
+            StateSpec('expired', '已过期',
+                      ('已过期', '过期了', '断保', '已失效', '脱保', '应续未续', '未续保'),
+                      apply=_insurance_subject_filter('expired'),
+                      days=LOOKBACK_DAYS,
+                      note='按标的最新保单年度判定，且过期不超过 90 天（工作台称"应续未续"）'),
+            StateSpec('renewed_this_year', '本年已续保',
+                      ('今年续过', '本年续保', '已续保', '续保了', '刚续保'),
+                      apply=_insurance_subject_filter('renewed_this_year'),
+                      note='最新保单年度的起期在本年且尚未到期'),
+            StateSpec('no_subject', '未登记标的',
+                      ('没写标的', '未登记标的', '标的不全', '没有标的'),
+                      lambda today: Q(subject__isnull=True)),
+        ),
     ),
     ModuleSpec(
         key='customer_ledger', label='客户台账', level='L3',
@@ -193,17 +413,52 @@ MODULES = (
         detail_fields=('customer_name', 'customer_category', 'responsible_salesperson',
                        'legal_representative', 'address', 'credit_code', 'company_status',
                        'payment_terms', 'credit_limit', 'basic_contract', 'contract_sign_date',
-                       'legal_id_card', 'asset_guarantor', 'handling_suggestion', 'remarks'),
+                       'legal_id_card', 'asset_guarantor', 'handling_suggestion',
+                       'contract_issues', 'asset_guarantee', 'guaranteed_asset_detail',
+                       'asset_mortgaged', 'asset_guarantee_issues', 'contract_count',
+                       'archive_no', 'archive_date', 'change_date', 'business_license',
+                       'registered_capital_text', 'paid_in_capital_text',
+                       'credit_limit_text', 'guarantor_id_card', 'location',
+                       'system_info', 'remarks'),
         group_fields=('customer_category', 'company_status', 'responsible_salesperson',
                       'payment_terms'),
         sum_fields=('credit_limit', 'registered_capital', 'paid_in_capital'),
-        order_fields=('contract_sign_date', 'credit_limit', 'customer_name'),
+        order_fields=('contract_sign_date', 'credit_limit', 'customer_name',
+                      'archive_date', 'change_date'),
         title_field='customer_name',
         detail_route='records:customer_ledger_detail',
         rank_fields=(('credit_limit', '额度', '授信', '信用额度', '账期额度'),
                      ('registered_capital', '注册资金', '注册资本')),
         list_route='records:customer_ledger_list',
         sensitive_fields=('legal_id_card', 'guarantor_id_card'),
+        states=(
+            StateSpec('archived', '已归档',
+                      ('已归档', '归档了', '存过档'),
+                      lambda today: (Q(archive_date__isnull=False)
+                                     & _filled_q('archive_no'))),
+            StateSpec('not_archived', '未归档',
+                      ('未归档', '没归档', '还没归档'),
+                      lambda today: Q(archive_date__isnull=True)),
+            StateSpec('contract_issue', '合同有问题',
+                      ('合同有问题', '合同缺件', '合同不全', '合同瑕疵'),
+                      lambda today: _filled_q('contract_issues')),
+            StateSpec('guarantee_missing', '担保缺失',
+                      ('没有担保', '缺担保', '担保缺失', '无担保'),
+                      lambda today: _blank_q('asset_guarantee') | _blank_q('asset_guarantor')),
+            StateSpec('asset_mortgaged', '担保资产已抵押',
+                      ('已抵押', '抵押了', '资产抵押'),
+                      lambda today: _any_text_q('asset_mortgaged', ('是', '已抵押', '有抵押'))),
+            StateSpec('guarantee_issue', '担保有问题',
+                      ('担保有问题', '担保瑕疵', '担保不全'),
+                      lambda today: _filled_q('asset_guarantee_issues')),
+            StateSpec('credit_changed', '额度或账期变更过',
+                      ('调整过额度', '改过账期', '额度变更', '账期变更'),
+                      lambda today: Q(change_date__isnull=False)),
+            StateSpec('high_credit', '高额度',
+                      ('额度高', '大额客户', '高额度', '额度大于500'),
+                      lambda today: Q(credit_limit__gte=500),
+                      note='额度（万元）≥ 500'),
+        ),
     ),
     ModuleSpec(
         key='customer_credit', label='客户账期', level='L3',
@@ -215,13 +470,45 @@ MODULES = (
                      'work_content', 'result'),
         detail_fields=('customer_name', 'proposal_date', 'site_date', 'customer_type',
                        'salesperson', 'work_content', 'specific_content', 'work_method',
-                       'pre_survey', 'result', 'remarks'),
-        group_fields=('customer_type', 'work_content', 'work_method', 'salesperson'),
+                       'pre_survey', 'result', 'has_assessment_period',
+                       'assessment_start_date', 'assessment_end_date',
+                       'assessment_content', 'remarks'),
+        group_fields=('customer_type', 'work_content', 'work_method', 'salesperson',
+                      'result'),
         sum_fields=(),
-        order_fields=('proposal_date', 'customer_name'),
+        order_fields=('proposal_date', 'customer_name', 'site_date',
+                      'assessment_end_date'),
         title_field='customer_name',
         detail_route='records:customer_credit_detail',
         list_route='records:customer_credit_list',
+        states=(
+            # result 是自由文本（没有 choices），人工可能写"通过/批准"，
+            # 所以用 __in 容错，只认死一个词会漏掉一半数据。
+            StateSpec('agreed', '同意',
+                      ('同意', '批了', '通过了', '批准'),
+                      lambda today: Q(result__in=('同意', '通过', '批准'))),
+            StateSpec('rejected', '不同意',
+                      ('不同意', '拒了', '没批', '驳回', '拒绝'),
+                      lambda today: Q(result__in=('不同意', '拒绝', '驳回'))),
+            StateSpec('pending', '待定',
+                      ('待定', '还没结果', '悬着', '待确认'),
+                      lambda today: Q(result__in=('待定', '待确认', '未定'))),
+            StateSpec('in_assessment', '考核期内',
+                      ('考核期内', '还在考核', '考核中'),
+                      lambda today: (Q(has_assessment_period=True)
+                                     & Q(assessment_start_date__lte=today)
+                                     & Q(assessment_end_date__gte=today))),
+            StateSpec('assessment_due', '考核期将满',
+                      ('考核快到期', '考核要结束', '考核期将满', '快考核完'),
+                      lambda today: (Q(has_assessment_period=True)
+                                     & Q(assessment_end_date__gte=today)
+                                     & Q(assessment_end_date__lte=today
+                                         + timedelta(days=30))),
+                      days=30),
+            StateSpec('site_visit', '已现场审核',
+                      ('现场审核', '去过现场', '现场审过'),
+                      lambda today: Q(site_date__isnull=False)),
+        ),
     ),
     ModuleSpec(
         key='decoration', label='装修', level='L2',
@@ -237,6 +524,7 @@ MODULES = (
         title_field='project_name',
         detail_route='records:decoration_detail',
         list_route='records:decoration_list',
+        no_state_reason='装修记录没有业务状态字段，只能按日期/金额/施工方筛选',
     ),
     ModuleSpec(
         key='daily_record', label='每日记录', level='L2',
@@ -248,11 +536,31 @@ MODULES = (
                        'status', 'progress'),
         group_fields=('department', 'status'),
         sum_fields=('progress',),
-        order_fields=('record_date', 'progress'),
+        order_fields=('record_date', 'progress', 'due_date'),
         scope='own',
         title_field='work_content',
         detail_route='records:daily_record_detail',
         list_route='records:daily_record_list',
+        # 日报按天算，3 天没交就算"快到期"，套 30 天窗口等于没有预警
+        lead_days=DAILY_LEAD_DAYS,
+        states=(
+            StateSpec('done', '已完成',
+                      ('已完成', '完成了', '写完了', '做完了'),
+                      lambda today: Q(status='完成')),
+            StateSpec('open', '未完成',
+                      ('未完成', '没完成', '还没写', '没做完'),
+                      lambda today: Q(status='未完成')),
+            StateSpec('overdue', '已逾期',
+                      ('逾期', '超期', '过期没做', '拖期'),
+                      lambda today: Q(status='未完成', due_date__lt=today)),
+            StateSpec('due_soon', '即将到期',
+                      ('即将到期', '快到期', '这两天要交', '马上要交'),
+                      lambda today: (Q(status='未完成')
+                                     & Q(due_date__gte=today)
+                                     & Q(due_date__lte=today
+                                         + timedelta(days=DAILY_LEAD_DAYS))),
+                      days=DAILY_LEAD_DAYS),
+        ),
     ),
     ModuleSpec(
         key='regulation', label='制度及处罚', level='L1',
@@ -267,6 +575,7 @@ MODULES = (
         title_field='title',
         detail_route='records:regulation_detail',
         list_route='records:regulation_list',
+        no_state_reason='制度是静态文档，没有流转状态',
     ),
     ModuleSpec(
         key='price_evaluation', label='核价', level='L1',
@@ -288,6 +597,7 @@ MODULES = (
         title_field='project_category',
         detail_route='records:price_evaluation_detail',
         list_route='records:price_evaluation_list',
+        no_state_reason='核价单没有状态字段，只有报价与内控价，按项目/部门/供应商查',
     ),
     ModuleSpec(
         key='metal_price', label='金属价格', level='L1',
@@ -295,14 +605,16 @@ MODULES = (
         date_field='crawl_date',
         keyword_fields=('metal_name', 'unit'),
         list_fields=('metal_name', 'price', 'unit', 'price_change', 'crawl_date'),
-        detail_fields=('metal_name', 'price', 'unit', 'price_change', 'crawl_date'),
+        detail_fields=('metal_name', 'price', 'unit', 'price_change', 'crawl_date',
+                       'crawl_time'),
         group_fields=('metal_name', 'unit'),
         sum_fields=('price', 'price_change'),
-        order_fields=('crawl_date', 'price'),
+        order_fields=('crawl_date', 'price', 'crawl_time'),
         title_field='metal_name',
         detail_route='records:metal_price_detail',
         rank_fields=(('price', '价格', '报价', '单价'),),
         list_route='',
+        no_state_reason='金属价格是按日抓取的行情，没有业务状态',
     ),
     # ---------------------------------------------------------------- 试样管理
     # 一个 RBAC 模块（samples）下挂 5 个实体。以前整块没接入，用户问「试样管理
@@ -317,14 +629,40 @@ MODULES = (
                      'supplier_type'),
         detail_fields=('sample_no', 'material_name', 'model', 'spec', 'sample_date',
                        'status', 'incoming_qty', 'supplier_type', 'registrar',
-                       'registered_at', 'terminate_reason'),
+                       'registered_at', 'terminate_reason', 'terminated_by',
+                       'terminated_at', 'imported_by', 'imported_at'),
         group_fields=('status', 'supplier_type'),
         sum_fields=(),
-        order_fields=('sample_date', 'sample_no', 'status'),
+        order_fields=('sample_date', 'sample_no', 'status', 'registered_at'),
         title_field='material_name',
         detail_route='samples:detail',
         list_route='samples:list',
         soft_delete_field='is_deleted',
+        states=(
+            # status 是英文码（pending/testing/…），显示是中文。
+            # phrases 两套都写：用户说"试样中"，库里的值是 testing。
+            StateSpec('pending', '待送样',
+                      ('待送样', '还没送', '待测试', 'pending'),
+                      lambda today: Q(status='pending')),
+            StateSpec('testing', '试样中',
+                      ('试样中', '在测', '测试中', '试产中', 'testing'),
+                      lambda today: Q(status='testing')),
+            StateSpec('small_batch', '小批量中',
+                      ('小批量中', '小批量', 'small_batch'),
+                      lambda today: Q(status='small_batch')),
+            StateSpec('imported', '已正式导入',
+                      ('已导入', '正式导入', 'imported'),
+                      lambda today: Q(status='imported')),
+            StateSpec('terminated', '已终止',
+                      ('已终止', '终止了', '停了', '不做了', 'terminated'),
+                      lambda today: Q(status='terminated')),
+            StateSpec('long_stuck', '长期停滞',
+                      ('卡住的', '很久没动', '长期停滞', '停滞'),
+                      lambda today: (Q(status__in=('testing', 'small_batch'))
+                                     & Q(sample_date__lt=today - timedelta(days=60))),
+                      days=60,
+                      note='试样中或小批量中，且送样时间超过 60 天'),
+        ),
     ),
     ModuleSpec(
         key='sample_test', label='试样试产', level='L2', perm_key='samples',
@@ -336,14 +674,35 @@ MODULES = (
                      'report_code', 'operator'),
         detail_fields=('test_no', 'round_no', 'test_date', 'test_result',
                        'review_conclusion', 'report_code', 'package_type',
-                       'incoming_date', 'operator', 'remark'),
-        group_fields=('review_conclusion', 'operator'),
+                       'incoming_date', 'operator', 'notified', 'operated_at', 'remark'),
+        group_fields=('review_conclusion', 'operator', 'notified'),
         sum_fields=(),
         order_fields=('test_date', 'round_no', 'test_no'),
         title_field='test_no',
         detail_route='samples:detail',
         list_route='samples:list',
         parent_field='sample',
+        states=(
+            StateSpec('passed', '通过',
+                      ('通过', '合格', 'pass'),
+                      lambda today: Q(review_conclusion='pass')),
+            StateSpec('failed', '不通过',
+                      ('不通过', '不合格', '没过', 'fail'),
+                      lambda today: Q(review_conclusion='fail')),
+            # "待改进"≠"不通过"，合并会让返工率算错
+            StateSpec('improve', '待改进',
+                      ('待改进', '要改进', '需改进', 'improve'),
+                      lambda today: Q(review_conclusion='improve')),
+            StateSpec('untested', '未出结论',
+                      ('未出结论', '还没测完', '没有结论', '待评审'),
+                      lambda today: _blank_q('review_conclusion')),
+            StateSpec('retest', '需重试',
+                      ('返工', '重试', '第2轮', '二次试产', '多轮'),
+                      lambda today: Q(round_no__gte=2)),
+            StateSpec('not_notified', '未通知责任人',
+                      ('没通知', '未通知', '漏通知'),
+                      lambda today: Q(notified=False)),
+        ),
     ),
     ModuleSpec(
         key='sample_batch', label='小批量', level='L2', perm_key='samples',
@@ -363,6 +722,24 @@ MODULES = (
         detail_route='samples:detail',
         list_route='samples:list',
         parent_field='sample',
+        rank_fields=(('unit_price', '单价', '试样单价', '价格'),),
+        states=(
+            StateSpec('ongoing', '进行中',
+                      ('进行中', '小批在跑', 'ongoing'),
+                      lambda today: Q(batch_result='ongoing')),
+            StateSpec('passed', '通过',
+                      ('小批过了', '合格', 'pass'),
+                      lambda today: Q(batch_result='pass')),
+            StateSpec('failed', '不通过',
+                      ('小批没过', '不合格', 'fail'),
+                      lambda today: Q(batch_result='fail')),
+            StateSpec('not_ordered', '未下单',
+                      ('未下单', '还没下单', '没下单'),
+                      lambda today: Q(ordered=False)),
+            StateSpec('not_in_kingdee', '未录金蝶',
+                      ('未录金蝶', '金蝶没录', '财务没同步', '没进金蝶'),
+                      lambda today: Q(kingdee_entered=False)),
+        ),
     ),
     ModuleSpec(
         key='sample_audit', label='审厂', level='L2', perm_key='samples',
@@ -379,6 +756,18 @@ MODULES = (
         detail_route='samples:partner_detail',
         list_route='samples:partner_list',
         parent_field='partner',
+        states=(
+            StateSpec('passed', '通过',
+                      ('审厂过了', '审厂通过', 'pass'),
+                      lambda today: Q(audit_result='pass')),
+            # "有条件通过"必须单独存在：并进"通过"会掩盖供应商的整改要求
+            StateSpec('conditional', '有条件通过',
+                      ('有条件通过', '条件通过', 'conditional'),
+                      lambda today: Q(audit_result='conditional')),
+            StateSpec('failed', '不通过',
+                      ('审厂没过', '审厂不通过', 'fail'),
+                      lambda today: Q(audit_result='fail')),
+        ),
     ),
     ModuleSpec(
         key='sample_partner', label='供应商档案', level='L2', perm_key='samples',
@@ -394,6 +783,14 @@ MODULES = (
         title_field='name',
         detail_route='samples:partner_detail',
         list_route='samples:partner_list',
+        states=(
+            StateSpec('active', '合作中',
+                      ('合作中', '在合作', 'active'),
+                      lambda today: Q(status='active')),
+            StateSpec('inactive', '已停用',
+                      ('已停用', '停用了', '不合作了', 'inactive'),
+                      lambda today: Q(status='inactive')),
+        ),
     ),
     # ---------------------------------------------------------------- 档案管理
     # 截图（2026-10-31）：问「已借出的档案有哪些」答「目前没有查询到已借出的
@@ -408,30 +805,42 @@ MODULES = (
         keyword_fields=('code', 'name', 'counterpart', 'contract_no', 'tags',
                         'description', 'handler', 'archive_label', 'location_code'),
         list_fields=('code', 'name', 'counterpart', 'sign_date', 'expire_date',
-                     'renewal_state', 'department'),
+                     'renewal_state', 'department', 'copies'),
         detail_fields=('code', 'name', 'cabinet', 'ledger', 'category', 'tags',
                        'description', 'counterpart', 'contract_no', 'amount',
                        'sign_date', 'expire_date', 'department', 'renewal_state',
                        'security_level', 'handler', 'copies', 'attachment_desc',
-                       'location_code'),
-        group_fields=('renewal_state', 'department', 'security_level'),
+                       'location_code', 'layer', 'cell'),
+        group_fields=('renewal_state', 'department', 'security_level', 'archive_label'),
         sum_fields=(),
         order_fields=('sign_date', 'expire_date', 'created_at', 'code', 'name'),
         title_field='name',
         detail_route='archive:archive_detail',
         list_route='archive:overview',
+        lead_days=CONTRACT_LEAD_DAYS,
         states=(
             StateSpec('borrowed', '借出中',
                       ('已借出', '借出中', '借出的', '外借', '未归还', '还没还'),
                       _open_borrow_q('archive.BorrowRecord', 'archive')),
+            # 窗口与工作台预警同源（合同 60 天）。这里曾写死 30 天，导致
+            # "证照/合同快到期了吗"在工作台和助手给出两个答案。
             StateSpec('expiring', '即将到期',
                       ('即将到期', '快到期', '要到期', '临期', '近期到期',
                        '30天内到期', '一个月内到期'),
-                      lambda today: _date_between_q(('expire_date',))(today)
-                      & Q(renewal_state='pending')),
+                      lambda today: _date_between_q(
+                          ('expire_date',), CONTRACT_LEAD_DAYS)(today)
+                      & Q(renewal_state='pending'),
+                      days=CONTRACT_LEAD_DAYS,
+                      note=f'截止日期在未来 {CONTRACT_LEAD_DAYS} 天内且续签状态为待续'),
             StateSpec('expired', '已过期',
                       ('已过期', '过期', '已到期', '到期了', '已失效', '超期'),
                       lambda today: Q(expire_date__lt=today)),
+            StateSpec('renewed', '已续签',
+                      ('已续签', '续签了', '续过了'),
+                      lambda today: Q(renewal_state='renewed')),
+            StateSpec('ended', '已结束',
+                      ('已结束', '不续签', '不再续签', '终止合同'),
+                      lambda today: Q(renewal_state='ended')),
         ),
     ),
     ModuleSpec(
@@ -449,6 +858,7 @@ MODULES = (
         detail_route='archive:archive_detail',
         list_route='archive:borrow_list',
         parent_field='archive',
+        lead_days=BORROW_LEAD_DAYS,
         states=(
             StateSpec('open', '借出中',
                       ('借出中', '未归还', '没归还', '还没还', '在外'),
@@ -477,6 +887,7 @@ MODULES = (
         detail_route='archive:license_detail',
         list_route='archive:license_list',
         # 证照的"状态"是 property（有效期或年审日已过），不是字段，只能靠 states
+        lead_days=LICENSE_LEAD_DAYS,
         states=(
             StateSpec('expired', '已过期',
                       ('已过期', '过期', '已失效', '失效', '到期了', '已到期'),
@@ -484,10 +895,18 @@ MODULES = (
             StateSpec('expiring', '即将到期',
                       ('即将到期', '快到期', '要到期', '临期', '近期到期',
                        '30天内到期', '一个月内到期'),
-                      _date_between_q(('expire_date', 'next_review_date'))),
+                      _date_between_q(('expire_date', 'next_review_date'),
+                                      LICENSE_LEAD_DAYS),
+                      days=LICENSE_LEAD_DAYS,
+                      note=f'有效期或下次年审日在未来 {LICENSE_LEAD_DAYS} 天内'),
             StateSpec('borrowed', '已借出',
                       ('已借出', '借出中', '外借', '未归还'),
                       _open_borrow_q('archive.LicenseBorrowRecord', 'license')),
+            StateSpec('pending_review', '年审临近',
+                      ('年审临近', '要年审了', '快年审'),
+                      _date_between_q(('next_review_date',), REVIEW_LEAD_DAYS),
+                      days=REVIEW_LEAD_DAYS,
+                      note=f'下次年审日在未来 {REVIEW_LEAD_DAYS} 天内'),
         ),
     ),
     ModuleSpec(
@@ -504,6 +923,23 @@ MODULES = (
         detail_route='archive:license_detail',
         list_route='archive:license_list',
         parent_field='license',
+        lead_days=REVIEW_LEAD_DAYS,
+        states=(
+            StateSpec('pending', '待年审',
+                      ('待年审', '还没审', '未年审', '待处理'),
+                      lambda today: Q(result='pending')),
+            StateSpec('failed', '年审未通过',
+                      ('年审没通过', '年审未通过', '年审挂了', '未通过'),
+                      lambda today: Q(result='failed')),
+            StateSpec('passed', '年审通过',
+                      ('年审通过', '年审过了', '已通过'),
+                      lambda today: Q(result='passed')),
+            # 数据完整性：过了年审却没填新有效期，证照页会继续报"即将到期"
+            StateSpec('no_new_expire', '年审后未更新有效期',
+                      ('没更新有效期', '未更新有效期', '年审后没改'),
+                      lambda today: (Q(result='passed')
+                                     & Q(new_expire_date__isnull=True))),
+        ),
     ),
     ModuleSpec(
         key='license_borrow', label='证照借阅', level='L2', perm_key='archive',
@@ -520,6 +956,7 @@ MODULES = (
         detail_route='archive:license_detail',
         list_route='archive:license_borrow_list',
         parent_field='license',
+        lead_days=BORROW_LEAD_DAYS,
         states=(
             StateSpec('open', '借出中',
                       ('借出中', '未归还', '没归还', '还没还', '在外'),
@@ -542,7 +979,8 @@ MODULES = (
         keyword_fields=('title', 'summary', 'tags', 'content'),
         list_fields=('title', 'category', 'status', 'updated_at', 'view_count'),
         detail_fields=('title', 'category', 'summary', 'tags', 'status',
-                       'visibility', 'updated_at', 'view_count'),
+                       'visibility', 'updated_at', 'view_count', 'source',
+                       'editor_mode'),
         group_fields=('status', 'visibility'),
         sum_fields=('view_count',),
         order_fields=('updated_at', 'view_count', 'title'),
@@ -555,6 +993,17 @@ MODULES = (
         # 与列表页口径一致（views.document_list 同样只取已发布）：别人的草稿
         # 不该被 AI 搜出来，本人的草稿可以。
         base_filter=lambda user: Q(status='published') | Q(owner=user),
+        states=(
+            StateSpec('published', '已发布',
+                      ('已发布', '发布了的', '正式发布'),
+                      lambda today: Q(status='published')),
+            StateSpec('draft', '草稿',
+                      ('草稿', '还没发布', '未发布'),
+                      lambda today: Q(status='draft')),
+            StateSpec('private', '私有',
+                      ('私有', '仅自己可见', '不公开'),
+                      lambda today: Q(visibility='private')),
+        ),
     ),
 )
 
@@ -749,7 +1198,7 @@ def state_options(spec):
 def schema(spec):
     """给模型看的模块说明（中文标签 + 可用操作）。"""
 
-    return {
+    out = {
         'module': spec.key,
         'label': spec.label,
         'list_fields': {f: field_label(spec, f) for f in spec.list_fields},
@@ -759,6 +1208,16 @@ def schema(spec):
         'sum': {f: field_label(spec, f) for f in spec.sum_fields},
         'states': state_options(spec),
     }
+    if spec.lead_days:
+        out['lead_days'] = spec.lead_days
+        out['expiring_hint'] = (
+            f'"即将到期/快到期"= {spec.date_field} 在未来 {spec.lead_days} 天内')
+    if not spec.states:
+        out['no_states'] = spec.no_state_reason or '该模块没有业务状态'
+    notes = {s.label: s.note for s in spec.states if s.note}
+    if notes:
+        out['state_notes'] = notes
+    return out
 
 
 def safe_reverse(route, args=None):
@@ -809,3 +1268,47 @@ def build_ref(spec, obj):
         'label': title[:60] or f'{spec.label}#{obj.pk}',
         'url': _detail_url(spec, obj),
     }
+
+
+# --------------------------------------------------------------- 字典完整性
+# 技术字段与文件/外键字段：**故意**不暴露给模型。列在这里是为了让字典校验
+# 能区分"故意不给"与"漏了"——否则每次审计都会被 created_at 这类噪音淹没。
+TECHNICAL_FIELDS = frozenset({
+    'id', 'created_at', 'updated_at', 'is_deleted', 'deleted_by', 'deleted_at',
+    'creator', 'owner', 'user', 'attachment', 'scan_file', 'file', 'tree_version',
+    'kb_enabled', 'kb_visibility', 'kb_doc', 'kb_synced_at', 'source_sheet',
+})
+
+_NOT_EXPOSABLE_TYPES = {'FileField', 'ImageField', 'ForeignKey', 'OneToOneField',
+                        'ManyToManyField'}
+
+
+def declared_fields(spec):
+    """字典里显式声明过的字段名。"""
+    names = set()
+    for attr in ('keyword_fields', 'list_fields', 'detail_fields',
+                 'group_fields', 'sum_fields', 'order_fields'):
+        names |= set(getattr(spec, attr))
+    for attr in ('date_field', 'title_field'):
+        name = getattr(spec, attr)
+        if name:
+            names.add(name)
+    return names
+
+
+def field_audit(spec):
+    """字段字典与真实模型的一致性：``(声明了但不存在, 存在但没声明)``。
+
+    第二种只报"业务字段"：外键、文件、技术字段本来就不该进字典。
+    """
+    concrete = {f.name: f for f in model_of(spec)._meta.concrete_fields}
+    declared = declared_fields(spec)
+    missing = sorted(name for name in declared if name not in concrete)
+    uncovered = sorted(
+        name for name, field in concrete.items()
+        if name not in declared
+        and not field.primary_key
+        and name not in TECHNICAL_FIELDS
+        and field.get_internal_type() not in _NOT_EXPOSABLE_TYPES
+    )
+    return missing, uncovered

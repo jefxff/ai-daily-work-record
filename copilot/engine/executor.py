@@ -195,6 +195,12 @@ def _execute(run):
             return _finish(run, rank_text, rank_refs, [step], 0, started, config,
                            error_code='')
 
+    # "最长/最多"落到没有可比字段的模块：说明算不出来，别用全表计数充数。
+    rank_stub = planner.unsupported_rank(question, modules, run.user)
+    if rank_stub:
+        step = {'tool': 'guard', 'ok': True, 'rows': 0, 'note': '无可比字段'}
+        return _finish(run, rank_stub, [], [step], 0, started, config, error_code='')
+
     # 「XX 模块里有哪些记录」：模块名就是全部线索，本地直接查最准。
     # 交给模型，它会拿模块名当关键词跨表搜（"试样"不是任何字段的值），
     # 搜不到就答"没有相关记录"——把"查法不对"说成了"没有数据"。
@@ -237,6 +243,13 @@ def _execute(run):
                 'rows': len(entity_refs)}
         return _finish(run, entity_answer, entity_refs, [step], 0, started, config,
                        error_code='')
+
+    # 条件筛不了时，明说筛不了——而不是把它丢掉去数全表。
+    # 「保险中快到期有几条」曾经答"共 20 份"：数字全真、结论全错。
+    stub = planner.unsupported_condition(question, modules, run.user)
+    if stub:
+        step = {'tool': 'guard', 'ok': True, 'rows': 0, 'note': '条件未覆盖'}
+        return _finish(run, stub, [], [step], 0, started, config, error_code='')
 
     messages = [{'role': 'system',
                  'content': prompt.build_system_prompt(
