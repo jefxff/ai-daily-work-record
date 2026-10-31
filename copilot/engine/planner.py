@@ -306,6 +306,46 @@ def _own_core(text, spec):
     return _PUNCT_RE.sub('', _INTENT_STOP_RE.sub('', rest))
 
 
+def _retarget_state(spec, text, modules):
+    """点名模块接不住的状态词，恰好是另一个模块的状态时，把主语纠过去。
+
+    「试样管理中已终止的有哪些」："试样"命中了试样试产，可"已终止"是
+    样品送样的状态——用户想问的显然是样品送样。以前直接答
+    "试样试产没有这个口径"，把一次别称/口误当成了无解。
+
+    两道门槛，缺一不可：
+    1. **全库恰好一个模块**认识这个词：两个以上说明词太泛（"通过"多个
+       模块都有），猜错不如不猜；
+    2. **词要够具体**：两字泛词（"通过""合格"）出现在太多正常句子里，
+       「装修中通过的有哪些」会被劫持到试样试产——只认三字以上、或
+       本身就在条件词清单（_CONDITION_CUE_RE）里的词。
+    改判后回答会带上模块名，用户一眼能看出按谁查的，说错了也好纠正。
+    """
+    if spec is None or catalog.state_match(spec, text) is not None:
+        return None, None
+    # 状态词与点名模块"同源"时绝不改判：「试样管理中 试样中的记录」的
+    # "试样中"包含"试样"（试样试产的别名），用户点名的就是试样试产；
+    # 「样品台账中小批量的有哪些」的"小批量"本身就是模块名。这类词只是
+    # 撞了别的模块的状态短语，改判只会把问题抢走。
+    own_words = [w for w in (spec.label,)
+                 + tuple(MODULE_ALIASES.get(spec.key, ())) if w]
+    hits = {}
+    for other in modules:
+        if other.key == spec.key:
+            continue
+        state, word = catalog.state_match_with_word(other, text)
+        if state is None:
+            continue
+        if any(word in w or w in word for w in own_words):
+            continue
+        specific = word in _CONDITION_CUE_RE.findall(text) or len(word) >= 3
+        if specific and other.key not in hits:
+            hits[other.key] = (other, state)
+    if len(hits) != 1:
+        return None, None
+    return next(iter(hits.values()))
+
+
 def module_query(question, modules, user=None):
     """「就是想看某个模块的记录」时返回 ``(spec, keyword, state)``，否则 ``(None, '', None)``。
 
@@ -339,6 +379,13 @@ def module_query(question, modules, user=None):
         return matched, value, _state_of_text(matched, text)
 
     state = _state_of_text(spec, text)
+    if state is None:
+        # 状态词在点名模块里没有口径、但全库恰好另一个模块认识：改判过去。
+        # 「试样管理中已终止」的"已终止"是样品送样的状态，以前在这里
+        # 硬答"试样试产没有这个口径"，用户只能自己重新组织语言。
+        fixed_spec, fixed_state = _retarget_state(spec, text, modules)
+        if fixed_spec is not None:
+            spec, state = fixed_spec, fixed_state
 
     # 同一字段出现两个选项词（"立案…结案"）= 要按该字段分组，交给 stat_query
     if any(len(found) >= 2 for found in matched_labels(spec, text).values()):
@@ -359,6 +406,17 @@ def module_query(question, modules, user=None):
     if spec.key == 'knowledge':
         own = _own_core(text, spec)
         return spec, (own[:30] if len(own) >= 2 else ''), state
+    # 状态词优先于选项词翻译："已终止"既是样品的状态词、又恰好是选项标签时，
+    # 走选项词会变成 keyword（icontains 搜正文）+ state 双重过滤——keyword 的
+    # icontains 分支会把"备注里提了一句已终止"的记录也捞进来，比状态口径更宽。
+    # rest 里剥完状态词不剩实词时，状态本身就表达了整个条件，keyword 必须置空。
+    if state is not None:
+        rest_wo_state = rest
+        for phrase in (state.label,) + tuple(state.phrases):
+            rest_wo_state = rest_wo_state.replace(phrase, '')
+        rest_wo_state = _PUNCT_RE.sub('', rest_wo_state)
+        if len(rest_wo_state) < 2:
+            return spec, '', state
     # 剩下的若是选项词（"没通过"→fail），可以确定性地当筛选条件用
     from ..tools.common import _choice_conditions   # 延迟导入，避免循环
     if _choice_conditions(spec, rest):
@@ -367,9 +425,9 @@ def module_query(question, modules, user=None):
     _field, value = db_value_match(spec, text, user)
     if value:
         return spec, value, state
-    # 剩下的只是状态词（"已过期""已借出"）：状态本身就是筛选条件
+    # 剩下的只是状态词（"已过期""已借出"）：状态本身就是筛选条件。
     if state is not None:
-        return spec, '', state
+        return spec, rest, state
     return None, '', None
 
 
@@ -521,6 +579,16 @@ def unsupported_condition(question, modules, user=None):
             extra = f'；说"快到期"就按未来 {spec.lead_days} 天内算'
         lines.append(f'想按时间筛，给个区间就行（如"近30天""2026年10月"），'
                      f'日期字段是「{label}」{extra}。')
+    # 条件词恰好全库只有一个模块认识时，主动指路——用户常常用别称提问，
+    # 「试样管理中已终止」的"已终止"其实是样品送样的状态。
+    owners = []
+    for other in modules:
+        if other.key != spec.key and catalog.state_match(other, text) is not None:
+            if all(o.key != other.key for o in owners):
+                owners.append(other)
+    if len(owners) == 1 and cues:
+        lines.append(f'另外：「{cues[0]}」是「{owners[0].label}」的状态——'
+                     f'如果你其实想问那边，直接说「{owners[0].label}中{cues[0]}的有哪些」。')
     return '\n\n'.join(lines)
 
 
@@ -547,6 +615,166 @@ def unsupported_rank(question, modules, user=None):
     return (f'「{spec.label}」里没有能按「{cue}」比较的数值字段，'
             f'现在只有这些可以排序：{labels}。\n\n'
             f'想要这类排名，得先把这个指标录成数字（例如账期写成"月结30天"里的 30）。')
+
+
+# --------------------------------------------------------------- 计数排名
+# 「哪家客户客诉最多」的度量是**条数**：模块里根本没有"客诉数量"这个字段，
+# rank_query 的数值排名接不住，以前一路落到 guard，答"没有数值字段可比较"——
+# 可用户要的只是"按客户数一数，谁最多"。这类问题本地完全能算。
+_COUNT_RANK_METRIC_RE = re.compile(r'(最多|最少)')
+# 实体词：分组字段的中文名常带"名称/名字"后缀，问句里只说主体（"客户"）
+_ENTITY_WORDS = ('客户', '供应商', '业务员', '责任人', '负责人', '员工',
+                 '经办人', '厂商')
+
+
+def _count_group_field(spec, text):
+    """计数排名的分组维度 -> ``(字段, 中文标签)``；认不出返回 ``('', '')``。
+
+    两条路，都要求问句里的词与字段中文名有交集：
+    1. 分组字段的中文名（或剥掉"名称/名字"后的主体）出现在问句里；
+    2. 问句里的实体词（客户/业务员…）正好是某个分组字段中文名的一部分。
+    多个字段都命中且长度打平时不猜——猜错维度比答不出来更气人。
+    """
+    best = ('', '', '')
+    for name in spec.group_fields:
+        label = catalog.field_label(spec, name)
+        if not label:
+            continue
+        stem = label
+        for suffix in ('名称', '名字'):
+            if stem.endswith(suffix) and len(stem) > len(suffix):
+                stem = stem[:-len(suffix)]
+        hit = ''
+        if len(stem) >= 2 and stem in text:
+            hit = stem
+        for word in _ENTITY_WORDS:
+            if word in text and word in label and len(word) > len(hit):
+                hit = word
+        if hit and len(hit) > len(best[2]):
+            best = (name, label, hit)
+    if not best[0]:
+        return '', ''
+    return best[0], best[1]
+
+
+def top_count_query(question, modules, user=None):
+    """「哪家客户客诉最多」这类**按计数排最多**的问题，命中返回 dict。
+
+    与 rank_query 的分工：问句里点到了可排序的数值字段（"赔偿金额最多"）
+    就让给 rank_query；没点字段、只问"谁最多"时按分组计数，这里接。
+    时间口径：显式区间（"2026年9月"）直接用；相对口径（"上个月"）日历上
+    无歧义，本地换算；换算不出就交回模型——宁可少答一次，不能把全量排行
+    冒充成"上个月"。
+    """
+    text = question or ''
+    if not _COUNT_RANK_METRIC_RE.search(text):
+        return None
+    spec = pick_module(text, modules, user)
+    if spec is None or _rank_field(spec, text)[0]:
+        return None
+    group_field, group_label = _count_group_field(spec, text)
+    if not group_field:
+        return None
+    date_scope = _date_scope(spec, text)
+    if date_scope is None and (_TIME_SCOPE_RE.search(text)
+                               or _DATE_SCOPE_RE.search(text)):
+        if not getattr(spec, 'date_field', ''):
+            return None
+        from ..tools.daterange import extract_relative_range
+        rel = extract_relative_range(text)
+        if rel is None:
+            return None
+        date_scope = ({f'{spec.date_field}__range': (rel.start, rel.end)},
+                      rel.label)
+    return {
+        'spec': spec,
+        'group_field': group_field,
+        'group_label': group_label,
+        'desc': not _RANK_ASC_RE.search(text),
+        'limit': rank_limit(text),
+        'keyword': _rank_keyword(spec, text, user),
+        'state': _state_of_text(spec, text),
+        'date': date_scope,
+    }
+
+
+def top_count_answer(top, user, policy=None):
+    """计数排名 → 榜首给条数与参考基数，榜单给前 N 行。"""
+    spec = top['spec']
+    group_field = top['group_field']
+    group_label = top.get('group_label') or catalog.field_label(spec, group_field)
+    desc = bool(top['desc'])
+    limit = max(1, min(int(top.get('limit') or 1), _RANK_MAX_LIMIT))
+    state = top.get('state')
+    keyword = top.get('keyword') or ''
+    date_scope = top.get('date')
+    date_label = date_scope[1] if date_scope else ''
+    unit = unit_of(spec)
+
+    qs = base_queryset(spec, user)
+    if keyword:
+        qs = apply_filters(qs, spec, keyword=keyword)
+    if state is not None:
+        # 同 rank_answer：状态可能带归组钩子，统一交给 StateSpec
+        qs = state.apply_to(qs)
+    if date_scope:
+        qs = qs.filter(**date_scope[0])
+    total = qs.count()
+    scope = _scope_note(keyword, state.label if state is not None else '',
+                        date_label)
+    group_total = (qs.exclude(**{f'{group_field}__isnull': True})
+                   .exclude(**{group_field: ''})
+                   .values(group_field).distinct().count())
+    if not total:
+        return (f'「{spec.label}」没有符合条件的记录{scope}，'
+                f'所以也算不出哪个「{group_label}」最多。'), []
+
+    rows = [row for row in qs.values(group_field).annotate(n=Count('id'))
+            .order_by('-n' if desc else 'n')[:limit + 1]
+            if row[group_field] not in (None, '')][:limit]
+    if not rows:
+        return (f'「{spec.label}」{scope}有 {total} {unit}记录，'
+                f'但「{group_label}」都是空的，没法比较谁多谁少。'), []
+
+    def name_of(row):
+        return _display_value(spec, group_field, row[group_field]) or '（空）'
+
+    # 人话用词：分组词去掉"名称/名字"后缀（"客户"而不是"客户名称"），
+    # 模块名用口语别名（"客诉"而不是"客户客诉"），否则读起来像在念字典
+    stem = group_label
+    for suffix in ('名称', '名字'):
+        if stem.endswith(suffix) and len(stem) > len(suffix):
+            stem = stem[:-len(suffix)]
+    topic = (MODULE_ALIASES.get(spec.key, ()) or (spec.label,))[0]
+
+    if limit == 1:
+        row = rows[0]
+        name = name_of(row)
+        notes = [f'参与统计共 {total} {unit}，来自 {group_total} 个不同{stem}']
+        if len(rows) > 1:
+            gap = row['n'] - rows[1]['n']
+            notes.append(f'第 2 名「{name_of(rows[1])}」{rows[1]["n"]} {unit}'
+                         + ('' if gap <= 0 else f'（少 {gap} {unit}）'))
+        refs = [catalog.build_ref(spec, obj)
+                for obj in qs.filter(**{group_field: row[group_field]})
+                .order_by(resolve_order(spec, ''))[:5]]
+        lines = [f'「{spec.label}」{scope}中，{stem}「{name}」的'
+                 f'{topic}最多：**{row["n"]} {unit}**。',
+                 '',
+                 f'> {"；".join(notes)}。',
+                 '',
+                 f'要看「{name}」的明细，接着问「{name}的{topic}有哪些」即可。']
+        return '\n'.join(lines), refs
+
+    lines = [f'「{spec.label}」{scope}中，按{stem}计数'
+             f'{"最多" if desc else "最少"}的前 {len(rows)}：',
+             '',
+             f'| # | {stem} | 条数 |', '| --- | --- | --- |']
+    for index, row in enumerate(rows, 1):
+        lines.append(f'| {index} | {_md_cell(name_of(row))} | {row["n"]} |')
+    lines += ['', f'> 参与统计共 {total} {unit}、{group_total} 个不同{stem}；'
+              f'要某家的明细，问「{name_of(rows[0])}的{topic}有哪些」即可。']
+    return '\n'.join(lines), []
 
 
 def matched_labels(spec, text):

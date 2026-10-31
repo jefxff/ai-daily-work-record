@@ -687,7 +687,7 @@ MODULES = (
                       ('通过', '合格', 'pass'),
                       lambda today: Q(review_conclusion='pass')),
             StateSpec('failed', '不通过',
-                      ('不通过', '不合格', '没过', 'fail'),
+                      ('不通过', '不合格', '没过', '没通过', '未通过', 'fail'),
                       lambda today: Q(review_conclusion='fail')),
             # "待改进"≠"不通过"，合并会让返工率算错
             StateSpec('improve', '待改进',
@@ -731,7 +731,7 @@ MODULES = (
                       ('小批过了', '合格', 'pass'),
                       lambda today: Q(batch_result='pass')),
             StateSpec('failed', '不通过',
-                      ('小批没过', '不合格', 'fail'),
+                      ('小批没过', '不合格', '没通过', '未通过', 'fail'),
                       lambda today: Q(batch_result='fail')),
             StateSpec('not_ordered', '未下单',
                       ('未下单', '还没下单', '没下单'),
@@ -1178,16 +1178,46 @@ def get_state(spec, key):
     return None
 
 
-def state_match(spec, text):
-    """问题里点了某个业务状态就返回它（长词优先，避免"即将到期"被"已到期"抢走）。"""
+# 短语前紧贴这些字时，命中是反着说的（"没通过"里也含"通过"）
+_NEGATION_CHARS = frozenset('没无不非未别莫勿')
+
+
+def _best_state_phrase(spec, text):
+    """最长且未被否定的状态短语 -> ``(state, phrase)``；没命中返回 ``(None, '')``。"""
     if spec is None or not text:
-        return None
-    best, best_len = None, 0
+        return None, ''
+    best_state, best_word, best_len = None, '', 0
     for state in spec.states:
         for phrase in state.phrases:
-            if phrase and phrase in text and len(phrase) > best_len:
-                best, best_len = state, len(phrase)
-    return best
+            if not phrase:
+                continue
+            start = 0
+            while True:
+                idx = text.find(phrase, start)
+                if idx < 0:
+                    break
+                prev = text[idx - 1] if idx > 0 else ''
+                negated = prev in _NEGATION_CHARS and phrase[0] not in _NEGATION_CHARS
+                if not negated and len(phrase) > best_len:
+                    best_state, best_word, best_len = state, phrase, len(phrase)
+                start = idx + 1
+    return best_state, best_word
+
+
+def state_match(spec, text):
+    """问题里点了某个业务状态就返回它（长词优先，避免"即将到期"被"已到期"抢走）。
+
+    否定词敏感：直接子串匹配会把反话说成正话——
+    「试样试产中没通过的有哪些」里也含"通过"，以前会答成"通过的有几条"，
+    正好反了。短语前面紧贴否定词时不算命中，除非短语本身就以否定词开头
+    （"不通过""未通过"这类整体是否定的短语不受影响）。
+    """
+    return _best_state_phrase(spec, text)[0]
+
+
+def state_match_with_word(spec, text):
+    """同 :func:`state_match`，但同时返回命中的短语（供纠偏判断词的具体度）。"""
+    return _best_state_phrase(spec, text)
 
 
 def state_options(spec):

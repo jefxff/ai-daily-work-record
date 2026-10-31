@@ -26,7 +26,7 @@ import re
 
 from django.utils import timezone
 
-__all__ = ['extract_date_range', 'DateRange']
+__all__ = ['extract_date_range', 'extract_relative_range', 'DateRange']
 
 MIN_YEAR = 1970
 _RANGE_SEP = r'(?:~|～|-|—|–|到|至|至到|until|to|through)'
@@ -138,6 +138,56 @@ def _window_to_range(number, unit, today):
         # 「近 2 年」同理：从两年前的同月 1 号起算（含当月）
         start = _dt.date(today.year - number, today.month, 1)
     return start, today
+
+
+# 相对口径：本月/上个月/今年/上周……**日历上无歧义**，能直接换算成区间。
+# extract_date_range 依旧不碰它们（计划书 §PLANNER_DATE 的规矩不变：模糊时间词
+# 是否本地统计由调用方决定），需要时显式调这里——字段语义仍由调用方按模块的
+# date_field 决定，本函数只负责"上个月是哪天到哪天"。
+_RELATIVE_MONTH_RE = re.compile(r'(上个月|上月|本月|这个月|当月)')
+_RELATIVE_YEAR_RE = re.compile(r'(今年|本年|去年)')
+_RELATIVE_WEEK_RE = re.compile(r'(本周|这周|上周)')
+
+
+def extract_relative_range(text, today=None):
+    """「上个月/本月/今年/上周」→ ``DateRange``；问句里没有相对口径返回 ``None``。
+
+    为什么不和 extract_date_range 合并：那边是"问句里写了具体日期，解析出来
+    一定是对的"；这边是"调用方明确说自己能消化相对口径"才来要。合并会让
+    所有统计分支在不知不觉里吃进相对口径，把全表数字冒充成"本月"。
+    """
+    today = today or timezone.localdate()
+    match = (_RELATIVE_MONTH_RE.search(text) or _RELATIVE_YEAR_RE.search(text)
+             or _RELATIVE_WEEK_RE.search(text))
+    if not match:
+        return None
+    word = match.group(1)
+    if word in ('上个月', '上月'):
+        year, month = (today.year, today.month - 1) if today.month > 1 \
+            else (today.year - 1, 12)
+        start, end = _dt.date(year, month, 1), _month_end(year, month)
+        label = f'{year}年{month}月（{word}）'
+    elif word in ('本月', '这个月', '当月'):
+        start = _dt.date(today.year, today.month, 1)
+        end = _month_end(today.year, today.month)
+        label = f'{today.year}年{today.month}月（{word}）'
+    elif word == '去年':
+        start = _dt.date(today.year - 1, 1, 1)
+        end = _dt.date(today.year - 1, 12, 31)
+        label = f'{today.year - 1}年（{word}）'
+    elif word in ('今年', '本年'):
+        start = _dt.date(today.year, 1, 1)
+        end = _dt.date(today.year, 12, 31)
+        label = f'{today.year}年（{word}）'
+    elif word == '上周':
+        start = today - _dt.timedelta(days=today.weekday() + 7)
+        end = start + _dt.timedelta(days=6)
+        label = f'{word}（{start.month}月{start.day}日~{end.month}月{end.day}日）'
+    else:  # 本周 / 这周
+        start = today - _dt.timedelta(days=today.weekday())
+        end = start + _dt.timedelta(days=6)
+        label = f'{word}（{start.month}月{start.day}日~{end.month}月{end.day}日）'
+    return DateRange(start, end, label, 'relative')
 
 
 def extract_date_range(text, today=None):

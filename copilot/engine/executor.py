@@ -195,6 +195,22 @@ def _execute(run):
             return _finish(run, rank_text, rank_refs, [step], 0, started, config,
                            error_code='')
 
+    # 计数排名（「哪家客户客诉最多」）：度量是条数，rank_query 的数值排名接不住，
+    # 以前落到 guard 上答"没有数值字段可比较"——可用户要的只是"按客户数一数"。
+    top = planner.top_count_query(question, modules, run.user)
+    if top is not None:
+        top_text, top_refs = planner.top_count_answer(top, run.user, policy)
+        if top_text:
+            step = {'tool': 'aggregate_records', 'module': top['spec'].key,
+                    'ok': True, 'rows': len(top_refs),
+                    'group_by': top['group_field'], 'metric': 'count_top'}
+            if top.get('state') is not None:
+                step['state'] = top['state'].label
+            if top.get('date'):
+                step['date'] = top['date'][1]
+            return _finish(run, top_text, top_refs, [step], 0, started, config,
+                           error_code='')
+
     # "最长/最多"落到没有可比字段的模块：说明算不出来，别用全表计数充数。
     rank_stub = planner.unsupported_rank(question, modules, run.user)
     if rank_stub:
