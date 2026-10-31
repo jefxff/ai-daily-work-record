@@ -13,6 +13,8 @@ import logging
 from collections import Counter
 from datetime import datetime, timedelta
 
+import bleach
+import markdown
 from django.core.cache import caches
 from django.shortcuts import render
 from django.utils import timezone
@@ -29,9 +31,18 @@ logger = logging.getLogger(__name__)
 MAX_SNIPPET = 200
 
 WEEKLY_POLISH_INSTRUCTION = (
-    "你是一名严谨的职场助理。请在完全保留事实、数字与项目条目的前提下，"
-    "把下面的周报 Markdown 润色得更通顺、更专业；保持原有 Markdown 结构与标题层级，"
-    "不得新增或删减任何事实信息。只输出润色后的 Markdown 正文。"
+    "你是一名资深的中文公文写作助手。下面是一份由系统模板生成的周报 Markdown，"
+    "请在不改变任何事实的前提下，把它润色成简洁、书面化、可直接汇报的版本。要求：\n"
+    "1. 严格保留原有 Markdown 结构：一级标题、二级标题「已完成/进行中/未完成」"
+    "及其顺序、每条编号都不得改变；\n"
+    "2. 每条统一写成「来源｜事项概述（进度 N%）」，来源名称与进度数字必须原样保留；\n"
+    "3. 只做文字层面的优化：去掉口语化语气、重复表述和与事项无关的铺垫，"
+    "把冗长句子改成动宾结构的短句；但不得删除时间、人名、公司名、产品/设备型号、"
+    "数量、结论等事实要素；\n"
+    "4. 不得合并、拆分、新增或删除条目，不得改变条目所属分组，不得编造任何信息；\n"
+    "5. 专有名词、缩写、型号保持原样，不要翻译或改写；原文已经足够简洁的条目可基本保持不变；\n"
+    "6. 只输出润色后的 Markdown 正文，不要输出解释、前后缀、代码块标记，"
+    "也不要出现「以下是润色结果」之类的套话。"
 )
 ANNUAL_POLISH_INSTRUCTION = (
     "你是一名严谨的职场助理。请把下面的个人年度总结要点润色得更凝练、更有感染力；"
@@ -87,6 +98,27 @@ def maybe_ai_polish(text, instruction):
     cache.set(key, polished or "",
               _POLISH_CACHE_TTL if polished else _POLISH_FAIL_TTL)
     return polished or text
+
+
+# 周报预览：Markdown → HTML，再经 bleach 白名单过滤后才交给模板 |safe 渲染。
+# 复制按钮仍使用原始 Markdown（report_md），避免复制到带标签的预览内容。
+_REPORT_ALLOWED_TAGS = [
+    "p", "br", "strong", "em", "u", "s", "del", "ins", "h1", "h2", "h3", "h4",
+    "h5", "h6", "ul", "ol", "li", "blockquote", "code", "pre", "hr",
+    "table", "thead", "tbody", "tr", "th", "td",
+]
+_REPORT_ALLOWED_ATTRS = {
+    "th": ["align"], "td": ["align"], "code": ["class"], "pre": ["class"],
+}
+
+
+def _render_report_markdown(text):
+    """周报 Markdown 渲染为安全 HTML（仅用于页面预览）。"""
+    html = markdown.markdown(text, extensions=["markdown.extensions.extra"])
+    return bleach.clean(
+        html, tags=_REPORT_ALLOWED_TAGS, attributes=_REPORT_ALLOWED_ATTRS,
+        strip=True,
+    )
 
 
 def _clamp_year(raw):
@@ -164,6 +196,7 @@ def _weekly_payload(user, start_raw=None):
                   "completed": len(completed), "ongoing": len(ongoing),
                   "not_started": len(not_started)},
         "report_md": report_md,
+        "report_html": _render_report_markdown(report_md),
         "ai_enabled": ai_enabled(),
     }
 
