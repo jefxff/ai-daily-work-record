@@ -252,6 +252,33 @@ class ModuleSpec:
     rank_fields: tuple = ()
 
 
+# 模块的口语别名。放在字典层而不是 planner：工具层剥"残余关键词"时也要知道
+# "审厂""客诉"是模块名而不是筛选条件——带着它去 icontains，只会把条件查成 0 条。
+MODULE_ALIASES = {
+    'customer_complaint': ('客诉', '投诉', '客户投诉', '客诉记录'),
+    'complaint': ('诉讼', '起诉', '案件', '官司', '诉讼案件', '被告'),
+    'insurance': ('保险', '保单', '保费', '续保', '保险单', '投保'),
+    'customer_ledger': ('台账', '客户档案', '客户信息', '客户资料', '客户清单'),
+    'customer_credit': ('账期', '信用额度', '授信', '账期申请', '额度申请'),
+    'decoration': ('装修', '装修项目', '工程装修'),
+    'daily_record': ('工作记录', '日报', '日志', '每日', '工作日报', '日记'),
+    'regulation': ('制度', '规定', '管理办法', '处罚', '规章制度', '条例'),
+    'price_evaluation': ('核价', '比价', '询价', '核价单', '核价结果'),
+    'metal_price': ('金属', '铜价', '铝价', '钢价', '金属价格', '有色金属'),
+    'sample': ('样品', '送样', '打样', '样品送样', '来样'),
+    'sample_test': ('试样', '试产', '测试记录', '试样试产', '打样测试'),
+    'sample_batch': ('小批量', '批次', '小批量试产', '批量验证'),
+    'sample_audit': ('审厂', '验厂', '审厂记录', '工厂审核'),
+    'sample_partner': ('供应商', '厂商', '合作伙伴', '供应商档案'),
+    'archive': ('档案', '合同档案', '档案资料', '归档', '合同'),
+    'archive_borrow': ('档案借阅', '借阅记录', '借阅', '借出记录', '归还记录'),
+    'license': ('证照', '资质', '证书', '营业执照', '许可证', '资质证书'),
+    'license_review': ('年审', '证照年审', '年审记录', '年检'),
+    'license_borrow': ('证照借阅', '证照借出', '证照归还', '证照借用'),
+    'knowledge': ('知识库', '知识', '文档', '知识文档', '资料库', 'sop'),
+}
+
+
 MODULES = (
     ModuleSpec(
         key='customer_complaint', label='客户客诉', level='L3',
@@ -907,6 +934,14 @@ MODULES = (
                       _date_between_q(('next_review_date',), REVIEW_LEAD_DAYS),
                       days=REVIEW_LEAD_DAYS,
                       note=f'下次年审日在未来 {REVIEW_LEAD_DAYS} 天内'),
+            # "有哪些需要年审"问的不是"30 天内要年审"，而是**年审日已经到点、
+            # 还没办**的那批。没有这个口径时，"需要年审"四个字被整句丢掉，
+            # 答成"证照共 20 份"——数字全真，问题没答。
+            StateSpec('review_due', '待年审',
+                      ('需要年审', '需年审', '要年审', '该年审', '年审到期',
+                       '年审过期', '未年审', '没年审'),
+                      lambda today: Q(next_review_date__lte=today),
+                      note='下次年审日已到（含已过期未办）'),
         ),
     ),
     ModuleSpec(
@@ -1180,6 +1215,40 @@ def get_state(spec, key):
 
 # 短语前紧贴这些字时，命中是反着说的（"没通过"里也含"通过"）
 _NEGATION_CHARS = frozenset('没无不非未别莫勿')
+# 多字否定词：只往前看一个字会漏掉口语里最常见的"没有""并非""从未"——
+# 「审厂没有通过的供应商」里"通过"前面是"有"，照着单字规则会判成正说。
+_NEGATION_WORDS = ('没有', '并非', '从未', '不曾', '未曾', '尚未')
+
+
+def phrase_negated(text, index, phrase):
+    """``phrase`` 在 ``text[index:]`` 处是否被前面的否定词反说。
+
+    全库只此一份判定：状态词（catalog）与选项标签（tools.common）都调它，
+    以前两处各维护一份否定字表、且工具层只看一个字，"没有通过"就被判成了
+    "通过"，问"没通过的供应商"答出三条全部通过。
+
+    短语本身以否定字开头时不算反说——"不通过""未通过"就是用户要找的那一类。
+    """
+    if not phrase or index <= 0:
+        return False
+    if phrase[0] in _NEGATION_CHARS:
+        return False
+    head = text[:index]
+    return head.endswith(_NEGATION_WORDS) or head[-1] in _NEGATION_CHARS
+
+
+def phrase_hit(text, phrase):
+    """``phrase`` 是否在 ``text`` 里出现过且**至少有一处不是反说**。"""
+    if not text or not phrase:
+        return False
+    start = 0
+    while True:
+        index = text.find(phrase, start)
+        if index < 0:
+            return False
+        if not phrase_negated(text, index, phrase):
+            return True
+        start = index + 1
 
 
 def _best_state_phrase(spec, text):
@@ -1196,9 +1265,7 @@ def _best_state_phrase(spec, text):
                 idx = text.find(phrase, start)
                 if idx < 0:
                     break
-                prev = text[idx - 1] if idx > 0 else ''
-                negated = prev in _NEGATION_CHARS and phrase[0] not in _NEGATION_CHARS
-                if not negated and len(phrase) > best_len:
+                if not phrase_negated(text, idx, phrase) and len(phrase) > best_len:
                     best_state, best_word, best_len = state, phrase, len(phrase)
                 start = idx + 1
     return best_state, best_word

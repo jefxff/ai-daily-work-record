@@ -29,34 +29,9 @@ _SPLIT_RE = re.compile(
 _RECENT_RE = re.compile(r'最近|最新|近期|这几天|本周|本月|上周|昨天|今天|新发布')
 
 # 模块别名：问句里不一定会出现完整 label（"制度" vs "制度及处罚"），
-# 这里补上 label 覆盖不到的口语说法。新增模块时同步补一条即可。
-#
-# 2026-10-31：档案/证照/借阅/知识库整块没接入，用户怎么问都识别不出来。
-# 接入时顺手把所有模块的口语说法补齐——"资质""营业执照""年检""归档"
-# 这些词用户天天说，但都不是任何模块的 label。
-MODULE_ALIASES = {
-    'customer_complaint': ('客诉', '投诉', '客户投诉', '客诉记录'),
-    'complaint': ('诉讼', '起诉', '案件', '官司', '诉讼案件', '被告'),
-    'insurance': ('保险', '保单', '保费', '续保', '保险单', '投保'),
-    'customer_ledger': ('台账', '客户档案', '客户信息', '客户资料', '客户清单'),
-    'customer_credit': ('账期', '信用额度', '授信', '账期申请', '额度申请'),
-    'decoration': ('装修', '装修项目', '工程装修'),
-    'daily_record': ('工作记录', '日报', '日志', '每日', '工作日报', '日记'),
-    'regulation': ('制度', '规定', '管理办法', '处罚', '规章制度', '条例'),
-    'price_evaluation': ('核价', '比价', '询价', '核价单', '核价结果'),
-    'metal_price': ('金属', '铜价', '铝价', '钢价', '金属价格', '有色金属'),
-    'sample': ('样品', '送样', '打样', '样品送样', '来样'),
-    'sample_test': ('试样', '试产', '测试记录', '试样试产', '打样测试'),
-    'sample_batch': ('小批量', '批次', '小批量试产', '批量验证'),
-    'sample_audit': ('审厂', '验厂', '审厂记录', '工厂审核'),
-    'sample_partner': ('供应商', '厂商', '合作伙伴', '供应商档案'),
-    'archive': ('档案', '合同档案', '档案资料', '归档', '合同'),
-    'archive_borrow': ('档案借阅', '借阅记录', '借阅', '借出记录', '归还记录'),
-    'license': ('证照', '资质', '证书', '营业执照', '许可证', '资质证书'),
-    'license_review': ('年审', '证照年审', '年审记录', '年检'),
-    'license_borrow': ('证照借阅', '证照借出', '证照归还', '证照借用'),
-    'knowledge': ('知识库', '知识', '文档', '知识文档', '资料库', 'sop'),
-}
+# 这里补上 label 覆盖不到的口语说法。数据放在字典层（catalog），因为工具层
+# 剥"残余关键词"时同样需要知道哪些词是模块名、不是筛选条件。
+MODULE_ALIASES = catalog.MODULE_ALIASES
 
 
 # 闲聊/问候：这类问题不需要任何数据，交给模型只会让它去"查点什么"。
@@ -291,6 +266,12 @@ _LIST_CUE_RE = re.compile(
     r'(有哪些|有那些|有些什么|记录|列表|清单|明细|全部|所有|一共|总共|多少条|多少个|'
     r'几条|统计|列出|看看)'
 )
+# 时间/语气修饰语：它们不是筛选条件。带着去 icontains 检索，只会把
+# 「最近过期的证照」查成 0 条——"最近过期"不是任何字段里存着的值。
+_KEYWORD_NOISE_RE = re.compile(
+    r'(最近|最新|近期|目前|现在|当前|这几天|这两天|这段时间|平时|大概|大约|具体|'
+    r'所有|全部|都有|分别)'
+)
 
 
 def _own_core(text, spec):
@@ -322,6 +303,12 @@ def _retarget_state(spec, text, modules):
     改判后回答会带上模块名，用户一眼能看出按谁查的，说错了也好纠正。
     """
     if spec is None or catalog.state_match(spec, text) is not None:
+        return None, None
+    # 该模块的**选项值**命中时也算"接得住"：「华建建材未完成的客诉」里"未完成"
+    # 不是客诉的状态短语（它是字段选项，刻意没写进 phrases），但库里就有这个值。
+    # 只看状态短语时，这里会把"未完成"当成本模块不认识的外来词，把整句话改判
+    # 到每日记录——答出"每日记录 共 11 条"，模块全错。
+    if any(matched_labels(spec, text).values()):
         return None, None
     # 状态词与点名模块"同源"时绝不改判：「试样管理中 试样中的记录」的
     # "试样中"包含"试样"（试样试产的别名），用户点名的就是试样试产；
@@ -409,26 +396,50 @@ def module_query(question, modules, user=None):
     # 状态词优先于选项词翻译："已终止"既是样品的状态词、又恰好是选项标签时，
     # 走选项词会变成 keyword（icontains 搜正文）+ state 双重过滤——keyword 的
     # icontains 分支会把"备注里提了一句已终止"的记录也捞进来，比状态口径更宽。
-    # rest 里剥完状态词不剩实词时，状态本身就表达了整个条件，keyword 必须置空。
+    # 残余要先剥掉状态短语与时间修饰语，剩下的才是"真条件"：
+    # 「最近过期的证照有哪些」剥完是"最近"，当 keyword 去 icontains 搜必然
+    # 0 条——库里实有 5 条已过期证照，却被答成"没有记录"。修饰语不是条件。
+    residue = rest
     if state is not None:
-        rest_wo_state = rest
-        for phrase in (state.label,) + tuple(state.phrases):
-            rest_wo_state = rest_wo_state.replace(phrase, '')
-        rest_wo_state = _PUNCT_RE.sub('', rest_wo_state)
-        if len(rest_wo_state) < 2:
+        for phrase in sorted((state.label,) + tuple(state.phrases),
+                             key=len, reverse=True):
+            residue = residue.replace(phrase, '')
+        residue = _PUNCT_RE.sub('', _KEYWORD_NOISE_RE.sub('', residue))
+        if len(residue) < 2:
             return spec, '', state
     # 剩下的若是选项词（"没通过"→fail），可以确定性地当筛选条件用
     from ..tools.common import _choice_conditions   # 延迟导入，避免循环
-    if _choice_conditions(spec, rest):
-        return spec, rest, state
-    # 或是库中真实存在的值（"月结60天""华建建材"）——同样是可验证的条件
-    _field, value = db_value_match(spec, text, user)
+    if _choice_conditions(spec, residue):
+        return spec, residue, state
+    # 或是库中真实存在的值（"月结60天""华建建材"）——同样是可验证的条件。
+    # 状态已剥离时只用残余去比对：整句里的状态词也会被当成"库中的值"，
+    # 拿它做关键词等于把状态降级成文本检索。
+    _field, value = db_value_match(spec, residue if state is not None else text,
+                                   user)
     if value:
         return spec, value, state
-    # 剩下的只是状态词（"已过期""已借出"）：状态本身就是筛选条件。
-    if state is not None:
-        return spec, rest, state
-    return None, '', None
+    # 残余既不是选项词、也不是库中的值：先拿去库里试一次，筛得出东西才留。
+    probed = _probe_keyword(spec, residue, user) if state is not None else ''
+    if probed:
+        return spec, probed, state
+    # 只是修饰语（"最近""目前"）：别带进检索，让它把结果筛成 0 条
+    return (spec, '', state) if state is not None else (None, '', None)
+
+
+def _probe_keyword(spec, text, user=None):
+    """残余实词拿去库里试一次：真能筛出东西才当条件。
+
+    「最近」不是任何字段的值，探测为空就丢掉；「华建建材」库里真有，
+    就该保留。用一次 exists 区分，比"猜它是不是实词"可靠。
+    """
+    text = _PUNCT_RE.sub('', text or '')
+    if not 2 <= len(text) <= 20:
+        return ''
+    try:
+        probe = apply_filters(base_queryset(spec, user), spec, keyword=text)
+        return text if probe.exists() else ''
+    except Exception:  # noqa: BLE001 - 探测失败就当没有条件
+        return ''
 
 
 def module_intent(question, modules, user=None):
@@ -565,6 +576,17 @@ def unsupported_condition(question, modules, user=None):
             cues.append(cue)
     if not cues:
         return ''
+    # 条件词恰好是**本模块的字段选项**（"未完成"是客诉 complaint_status 的值）：
+    # 这不是"没有口径"，说成没口径会自相矛盾——下一句还列着"能筛的状态：未完成"。
+    # 这种词能直接按选项筛，指路比否认有用。
+    choice_labels = sorted({label for found in matched_labels(spec, text).values()
+                            for label in found
+                            if any(cue in label for cue in cues)})
+    if choice_labels:
+        first = choice_labels[0]
+        return (f'「{spec.label}」可以按选项直接筛：{"、".join(choice_labels)}。'
+                f'\n\n例如问「{spec.label}中{first}的有哪些」，'
+                '我会把带这个选项的记录列出来并给出条数。')
     quoted = '、'.join(f'「{c}」' for c in cues[:3])
     lines = [f'我看到了条件 {quoted}，但「{spec.label}」没有对应的筛选口径，'
              '不能把这个条件丢掉、直接给你一个全表合计数。']
@@ -675,17 +697,10 @@ def top_count_query(question, modules, user=None):
     group_field, group_label = _count_group_field(spec, text)
     if not group_field:
         return None
-    date_scope = _date_scope(spec, text)
+    date_scope = _time_gate(spec, text)
     if date_scope is None and (_TIME_SCOPE_RE.search(text)
                                or _DATE_SCOPE_RE.search(text)):
-        if not getattr(spec, 'date_field', ''):
-            return None
-        from ..tools.daterange import extract_relative_range
-        rel = extract_relative_range(text)
-        if rel is None:
-            return None
-        date_scope = ({f'{spec.date_field}__range': (rel.start, rel.end)},
-                      rel.label)
+        return None
     return {
         'spec': spec,
         'group_field': group_field,
@@ -944,10 +959,32 @@ def _date_scope(spec, text):
 
 
 def _time_gate(spec, text):
-    """带时间词的问句闸门：能解析出具体区间就放行本地统计，否则交模型。"""
+    """带时间词的问句闸门：能解析出具体区间就放行本地统计，否则交模型。
+
+    两个来源，顺序不能反：
+    1. 问句里写了具体日期（"2024年3月""近30天""2024 Q3"）；
+    2. 日历上无歧义的相对口径（"上个月""本月""今年""上周"）。
+
+    第 2 条以前根本没接——«上个月客诉有多少»明明能算，却因为解析不出区间
+    被推给模型；模型没配就降级成"没有记录"（库里实有 12 条）。相对口径能
+    换算成确定的起止日，各模块的日期字段语义由模块自己的 date_field 决定，
+    猜错的风险和"近30天"是同一档，没有理由一个算一个不算。
+    """
     if not (_TIME_SCOPE_RE.search(text) or _DATE_SCOPE_RE.search(text)):
         return None
-    return _date_scope(spec, text)
+    scope = _date_scope(spec, text)
+    if scope is not None:
+        return scope
+    if not getattr(spec, 'date_field', ''):
+        return None
+    from ..tools.daterange import extract_relative_range
+    try:
+        found = extract_relative_range(text)
+    except Exception:  # noqa: BLE001 - 解析失败按"没有时间条件"处理
+        return None
+    if found is None:
+        return None
+    return ({f'{spec.date_field}__range': (found.start, found.end)}, found.label)
 
 
 def stat_query(question, modules, user=None):

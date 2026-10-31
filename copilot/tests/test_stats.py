@@ -150,11 +150,14 @@ class StatQueryTests(StatsBase):
         self.assertIsNotNone(stat)
         self.assertEqual(stat['spec'].key, 'customer_ledger')
 
-    def test_time_scoped_question_is_left_to_model(self):
-        """本月/上个月这类口径各模块字段语义不同，不本地猜。"""
+    def test_relative_scope_is_computed_locally(self):
+        """「本月/上个月」日历上无歧义：换算成区间本地算，不再推给模型。"""
         self.ledger('甲公司', '月结60天')
-        for question in ('上个月客诉有多少条', '本月新增客户有几家'):
-            self.assertIsNone(planner.stat_query(question, self.modules, self.admin))
+        for question in ('上个月客诉有多少条', '本月客诉有多少条'):
+            stat = planner.stat_query(question, self.modules, self.admin)
+            self.assertIsNotNone(stat, question)
+            self.assertIsNotNone(stat['date'], question)
+            self.assertIn('月', stat['date'][1])
 
     def test_price_question_is_not_a_count(self):
         """「今日铜价是多少」问取值，不能被当成计数。"""

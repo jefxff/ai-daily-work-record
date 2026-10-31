@@ -1,16 +1,17 @@
-"""显式时间口径的确定性统计。
+"""时间口径的确定性统计。
 
 背景：``stat_query``/``sum_query``/``rank_query`` 此前对带时间词的问句一刀切
 交回模型——因为"今年/本月"各模块日期字段语义不同，猜错就会把全表数字冒充
 口径结果。但这把"2026年3月的客诉有多少"这类**能算出具体起止日**的问法也
 挡在了本地链路外面。
 
-本轮把 ``tools.daterange`` 接进三个统计意图：解析得出具体区间就本地算，解析
-不出（相对口径）仍交模型。测试盯三件事：
+现在分两档，都以"能不能换算成确定的起止日"为准：
 
-1. 数字必须与直接按日期过滤的 SQL 统计一致；
-2. 口径说明（时间范围）必须出现在答案里，读者能核对；
-3. "今年/上月"这类模糊口径**必须**仍然交模型——这是本能力的边界，不是缺陷。
+1. 问句里写了日期（2026年3月 / 最近30天 / 2026 Q3）→ 本地算；
+2. 日历上无歧义的相对口径（上个月 / 本月 / 今年 / 上周）→ 本地算。
+
+算不出来的（"最近""近期"这种没有刻度的）仍交模型——这是能力边界，不是缺陷。
+测试盯三件事：数字必须与 SQL 一致、口径说明必须出现在答案里、边界的仍交模型。
 """
 
 from datetime import date, timedelta
@@ -48,6 +49,17 @@ class TimeScopeBase(TestCase):
         return CustomerComplaint.objects.create(
             customer_name=name, complaint_date=day,
             complaint_status='处理中', compensation_amount=Decimal(amount))
+
+    @staticmethod
+    def last_month_day(day=15):
+        """上个月里一个稳定的日期（不随今天靠近月初而落到本月）。"""
+        first = timezone.localdate().replace(day=1)
+        prev_end = first - timedelta(days=1)
+        return prev_end.replace(day=min(day, prev_end.day))
+
+    @staticmethod
+    def this_month_day():
+        return timezone.localdate().replace(day=1)
 
 
 class CountTests(TimeScopeBase):
@@ -88,12 +100,68 @@ class CountTests(TimeScopeBase):
         self.assertIn('2 条', answer.replace('**', ''))
         self.assertIn('2025', answer)
 
-    def test_vague_scope_still_goes_to_model(self):
-        """相对口径解析不出区间：必须交模型，这是边界不是缺陷。"""
-        for question in ('今年的客诉有多少条', '上个月的客诉有多少条',
-                         '本月客诉有多少条'):
+    def test_unparsable_scope_still_goes_to_model(self):
+        """没有刻度的"最近/近期"换算不出区间：仍交模型，这是边界不是缺陷。"""
+        for question in ('最近的客诉有多少条', '近期客诉有多少条',
+                         '最近这批客诉有多少条'):
             self.assertIsNone(planner.stat_query(question, self.modules,
                                                  self.admin), question)
+
+
+class RelativeScopeTests(TimeScopeBase):
+    """相对口径日历上无歧义，本地换算。
+
+    以前一律交模型：模型没配就降级成"没有记录"（«上个月客诉有多少»真值 12 条），
+    模型配了也只是把口径交给它猜。既然"上个月是哪天到哪天"是确定的，就该算。
+    """
+
+    def test_last_month_counted(self):
+        last = self.last_month_day()
+        self.complaint('甲', last)
+        self.complaint('乙', last)
+        self.complaint('丙', self.this_month_day())    # 本月，不计入
+        intent = planner.stat_query('上个月客诉有多少条', self.modules, self.admin)
+        self.assertIsNotNone(intent, '相对口径应走本地统计')
+        answer, _refs = planner.stat_answer(intent, self.admin)
+        self.assertIn('2 条', answer.replace('**', ''))
+        self.assertIn('上个月', answer)
+        # 口径写的是具体年月，读者能核对
+        self.assertIn(str(last.year), answer)
+
+    def test_this_year_counted(self):
+        today = timezone.localdate()
+        self.complaint('甲', date(today.year, 1, 5))
+        self.complaint('乙', date(today.year - 1, 6, 1))   # 去年，不计入
+        intent = planner.stat_query('今年的客诉有多少条', self.modules, self.admin)
+        self.assertIsNotNone(intent)
+        answer, _refs = planner.stat_answer(intent, self.admin)
+        self.assertIn('1 条', answer.replace('**', ''))
+        self.assertIn(f'{today.year}年', answer)
+
+    def test_last_month_sum(self):
+        last = self.last_month_day(5)
+        self.complaint('甲', last, '100.50')
+        self.complaint('乙', last, '200.50')
+        self.complaint('丙', self.this_month_day(), '999.00')   # 区间外
+        intent = planner.sum_query('上个月赔偿金额合计多少', self.modules, self.admin)
+        self.assertIsNotNone(intent, '相对口径的求和应走本地')
+        answer, _refs = planner.sum_answer(intent, self.admin)
+        plain = answer.replace(',', '').replace('**', '')
+        self.assertIn('301', plain)
+        self.assertIn('上个月', answer)
+
+    def test_last_month_rank(self):
+        last = self.last_month_day(6)
+        self.complaint('甲', last, '300.00')
+        self.complaint('乙', last, '500.00')
+        self.complaint('丙', self.this_month_day(), '900.00')   # 金额更大但区间外
+        intent = planner.rank_query('上个月客诉中赔偿金额最大的是哪个',
+                                    self.modules, self.admin)
+        self.assertIsNotNone(intent, '相对口径的极值应走本地排序')
+        _answer, refs = planner.rank_answer(intent, self.admin)
+        self.assertTrue(refs)
+        top = CustomerComplaint.objects.get(pk=refs[0]['id'])
+        self.assertEqual(top.customer_name, '乙')
 
 
 class SumTests(TimeScopeBase):
@@ -112,7 +180,8 @@ class SumTests(TimeScopeBase):
         self.assertIn('2026年3月', answer)
 
     def test_vague_sum_still_goes_to_model(self):
-        self.assertIsNone(planner.sum_query('今年客诉赔偿金额一共多少钱',
+        """没有刻度的"最近"换算不出区间，仍交模型。"""
+        self.assertIsNone(planner.sum_query('最近客诉赔偿金额一共多少钱',
                                             self.modules, self.admin))
 
 
@@ -132,7 +201,8 @@ class RankTests(TimeScopeBase):
         self.assertIn('2026年3月', answer)
 
     def test_vague_rank_still_goes_to_model(self):
-        self.assertIsNone(planner.rank_query('本月客诉中赔偿金额最大的是哪个',
+        """没有刻度的"最近"换算不出区间，仍交模型。"""
+        self.assertIsNone(planner.rank_query('最近客诉中赔偿金额最大的是哪个',
                                              self.modules, self.admin))
 
 

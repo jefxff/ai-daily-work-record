@@ -1,5 +1,6 @@
 """工具共用的行投影与查询构造。"""
 
+import re
 from datetime import date, datetime
 from decimal import Decimal
 
@@ -29,7 +30,7 @@ def base_queryset(spec, user):
     return qs
 
 
-_NEG_WORDS = '没未不非'
+_NEG_WORDS = '没未不非无'
 
 
 def _choice_conditions(spec, keyword):
@@ -44,15 +45,15 @@ def _choice_conditions(spec, keyword):
        而不是"通过"(pass)，否则答案正好反了；
     2. 只保留最长的匹配标签：问"不合格"时同时命中"合格"和"不合格"，
        取长的才对。
+
+    否定判定统一走 :func:`catalog.phrase_negated`：本层曾经只看前一个字，
+    「审厂没有通过的供应商」里"通过"前是"有"，于是被当成正说——答出来
+    三条全是"通过"。多字否定词（没有/并非/从未）必须一起认。
     """
     try:
         model = catalog.model_of(spec)
     except Exception:  # noqa: BLE001
         return Q()
-
-    def negated_at(text, label):
-        idx = text.find(label)
-        return idx > 0 and text[idx - 1] in _NEG_WORDS
 
     matched = []
     for field in model._meta.concrete_fields:
@@ -61,15 +62,15 @@ def _choice_conditions(spec, keyword):
         for value, label in choices:
             if label not in keyword:
                 continue
-            if negated_at(keyword, label):
-                # "没通过" → 同字段里带否定词的同义选项（"不通过"）
-                alt = [c for c in choices
-                       if c[1] != label and label in c[1]
-                       and any(word in c[1] for word in _NEG_WORDS)]
-                if alt:
-                    matched.append((field.name, alt[0][0], alt[0][1]))
-                    continue
-            matched.append((field.name, value, label))
+            if catalog.phrase_hit(keyword, label):
+                matched.append((field.name, value, label))
+                continue
+            # 每一处出现都被否定（"没通过"）：落到同字段里带否定词的同义选项
+            alt = [c for c in choices
+                   if c[1] != label and label in c[1]
+                   and any(word in c[1] for word in _NEG_WORDS)]
+            if alt:
+                matched.append((field.name, alt[0][0], alt[0][1]))
 
     keep = [m for m in matched
             if not any(m[2] != o[2] and m[2] in o[2] for o in matched)]
@@ -78,6 +79,38 @@ def _choice_conditions(spec, keyword):
         cond |= Q(**{name: value})
     return cond
 
+
+# 剥选项标签时连否定词一起剥："没有通过"要整词消失——只删"通过"会留下
+# "没有"，再拿去 icontains 就是 0 条。长词在前，先吃"没有"再吃单字。
+_NEG_PREFIX = r'(?:没有|并非|从未|尚未|未曾|不曾|[没未不非无])?'
+_PUNCT_ONLY_RE = re.compile(r'[\s，,。.！!？?、:：;；()（）]+')
+
+
+def _strip_choice_labels(spec, text):
+    """剥掉 ``text`` 里出现过的选项标签与模块名，剩下真正要模糊匹配的部分。
+
+    「华建建材未完成的客诉」→ ``华建建材``：选项词交给 ``choice_cond`` 精确筛，
+    剩下的客户名才是需要模糊匹配的部分。
+
+    模块名/别名也要剥（"审厂没通过"→ 空）：它们不是任何字段里存的值，带着
+    去 icontains 只会把条件查成 0 条。以前这两者混在一起 OR，掩盖了这个问题。
+    """
+    try:
+        model = catalog.model_of(spec)
+    except Exception:  # noqa: BLE001
+        model = None
+    labels = set(catalog.MODULE_ALIASES.get(spec.key, ()))
+    labels.add(spec.label)
+    if model is not None:
+        for field in model._meta.concrete_fields:
+            for _value, label in (getattr(field, 'choices', None) or ()):
+                label = str(label or '')
+                if len(label) >= 2 and label in text:
+                    labels.add(label)
+    rest = text
+    for label in sorted((w for w in labels if w), key=len, reverse=True):
+        rest = re.sub(_NEG_PREFIX + re.escape(label), '', rest)
+    return _PUNCT_ONLY_RE.sub('', rest)
 
 
 def apply_filters(qs, spec, keyword='', date_from='', date_to='', state=None,
@@ -95,14 +128,28 @@ def apply_filters(qs, spec, keyword='', date_from='', date_to='', state=None,
     fields = catalog.search_fields(spec)
     target = keyword_field if keyword_field in fields else ''
     if keyword and fields:
-        cond = Q()
+        choice_cond = _choice_conditions(spec, keyword)
         if target:
-            cond |= Q(**{f'{target}__iexact': keyword})
-        cond |= _choice_conditions(spec, keyword)
-        if not target:
+            # 字段归属已确认：精确匹配，仍把选项条件并进来（"不通过"这类标签
+            # 本身可能就存在这个字段里）
+            qs = qs.filter(Q(**{f'{target}__iexact': keyword}) | choice_cond)
+        elif choice_cond:
+            # 选项词与残余实词是**与**的关系：「华建建材未完成的客诉」既要
+            # complaint_status='未完成'，又要是这家客户。以前把两者 OR 进
+            # 同一个条件里（走全文 icontains），等于把客户条件扔掉，答出
+            # 全部"未完成"客诉、还说这就是那一家。
+            qs = qs.filter(choice_cond)
+            residual = _strip_choice_labels(spec, keyword)
+            if residual:
+                text_cond = Q()
+                for field in fields:
+                    text_cond |= Q(**{f'{field}__icontains': residual})
+                qs = qs.filter(text_cond)
+        else:
+            cond = Q()
             for field in fields:
                 cond |= Q(**{f'{field}__icontains': keyword})
-        qs = qs.filter(cond)
+            qs = qs.filter(cond)
     if spec.date_field:
         if date_from:
             qs = qs.filter(**{f'{spec.date_field}__gte': date_from})

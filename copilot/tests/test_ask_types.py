@@ -13,11 +13,12 @@
   "没有找到"，现在本地一遍 SQL，连"搜过哪些模块"都说得清。
 """
 
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
+from django.utils import timezone
 
 from archive.models import Archive
 from copilot import catalog, registry
@@ -135,10 +136,22 @@ class SumQueryTests(AskTypeBase):
         self.assertIn('601.5', answer)
         self.assertIn('合计', answer)
 
-    def test_sum_ignores_time_scope(self):
-        """带"本月/今年"的求和口径各模块不同，仍交给模型按日期区间算。"""
-        self.assertIsNone(
-            planner.sum_query('本月金属价格合计多少钱', self.modules, self.admin))
+    def test_sum_uses_relative_month(self):
+        """「本月」能换算成区间，本地按该区间求和——不再推给模型猜口径。"""
+        today = timezone.localdate()
+        first = today.replace(day=1)
+        MetalPrice.objects.all().delete()
+        MetalPrice.objects.create(metal_name='本月', price=Decimal('50'),
+                                  unit='元/吨', crawl_date=first)
+        MetalPrice.objects.create(metal_name='上月', price=Decimal('999'),
+                                  unit='元/吨',
+                                  crawl_date=first - timedelta(days=1))
+        intent = planner.sum_query('本月金属价格合计多少钱', self.modules, self.admin)
+        self.assertIsNotNone(intent)
+        self.assertIn('本月', intent['date'][1])
+        answer, _refs = planner.sum_answer(intent, self.admin, self.policy)
+        self.assertIn('50', answer.replace(',', ''))
+        self.assertNotIn('999', answer)
 
     def test_ambiguous_amount_field_is_not_guessed(self):
         """模块有多个金额字段而问题没指明时，不乱挑一个求和。"""

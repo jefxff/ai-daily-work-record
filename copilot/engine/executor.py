@@ -540,11 +540,18 @@ def _too_many_failures(failures, name, result):
     return failures[key] >= FAILURE_ABORT_AFTER
 
 
+# 模型照抄提示词里的占位符（"工具名""tool"）时，别把它记成一步查询：
+# 面板上会多出一条 ``{'tool': '工具名'}`` 的脏记录——用户看不懂，也点不开。
+_PLACEHOLDER_TOOL_NAMES = frozenset({
+    '工具名', '工具', '工具名称', '函数名', '方法名', 'tool', 'tool_name', 'name',
+})
+
+
 def _unknown_tool(steps, unknown_calls, name):
     """记一次"调了不存在的工具"，返回该名字出现过几次。"""
     key = (name or '')[:40]
     unknown_calls[key] = unknown_calls.get(key, 0) + 1
-    if unknown_calls[key] == 1:
+    if unknown_calls[key] == 1 and key.lower() not in _PLACEHOLDER_TOOL_NAMES:
         steps.append({'tool': key, 'ok': False, 'rows': 0,
                       'error': 'UNSUPPORTED_TOOL'})
     return unknown_calls[key]
