@@ -48,6 +48,13 @@ class PanelAssetTests(SimpleTestCase):
         self.assertIn('copilot:panel-pos', body)
         self.assertIn('is-floating', body)
 
+    def test_panel_js_remembers_size(self):
+        """拖过右下角就该记住：400×560 装不下一张三列表，用户会一直拖着调。"""
+        body = _body(self.client.get('/static/copilot/panel.js'))
+        self.assertIn('--copilot-w', body)
+        self.assertIn('--copilot-h', body)
+        self.assertIn('setupResize', body)
+
     def test_panel_css_has_markdown_styles(self):
         """回答区靠 .copilot-md 撑排版；样式缺了会变成一坨没间距的文本。"""
         resp = self.client.get('/static/copilot/panel.css')
@@ -64,6 +71,8 @@ class PanelAssetTests(SimpleTestCase):
         text = tpl.read_text(encoding='utf-8')
         self.assertIn('id="copilotPin"', text)
         self.assertIn('copilot-header', text)
+        # 缩放把手：JS 按 id 取，模板删了就静默不能缩放
+        self.assertIn('id="copilotResize"', text)
 
     def test_newer_source_wins_over_stale_static_root(self):
         """STATIC_ROOT 里是旧产物时，按 mtime 取新的源文件。"""

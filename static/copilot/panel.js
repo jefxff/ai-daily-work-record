@@ -16,8 +16,9 @@
     var badge = document.getElementById('copilotBadge');
     var examplesBox = document.getElementById('copilotExamples');
     var newBtn = document.getElementById('copilotNew');
+    var resizeHandle = document.getElementById('copilotResize');
 
-    var state = { conversationId: null, busy: false, pos: null, pinned: false };
+    var state = { conversationId: null, busy: false, pos: null, pinned: false, size: null };
     var pinBtn = document.getElementById('copilotPin');
     var examplesCache = [];
     var moduleLabels = {};      // 步骤行里显示"查询列表 · 试样试产"，用户才知道查的是哪块
@@ -139,6 +140,7 @@
         if (html) {
             var body = document.createElement('div');
             body.className = 'copilot-md';
+            bubble.classList.add('has-md');   // 有 HTML 就别再按纯文本保留空白
             body.innerHTML = html;
             // markdown 里的站内链接：别把用户带出面板到新标签页
             body.querySelectorAll('a[href^="/"]').forEach(function (a) {
@@ -155,6 +157,7 @@
             bubble.appendChild(body);
             return;
         }
+        bubble.classList.remove('has-md');
         bubble.textContent = plain || '（没有拿到回答）';
     }
 
@@ -293,8 +296,10 @@
        都还在；「钉住」把位置锁死，避免聊天时手一抖把面板拖飞。 */
     var POS_KEY = 'copilot:panel-pos:v1';
     var EDGE = 12;              // 贴边留白，也是拖动结束时的吸附阈值
-    var FALLBACK_W = 400;
-    var FALLBACK_H = 560;
+    var FALLBACK_W = 560;
+    var FALLBACK_H = 760;
+    var MIN_W = 320;
+    var MIN_H = 360;
 
     function panelSize() {
         // hidden 时 offsetWidth 是 0，给个兜底尺寸，否则 clamp 会把面板挤到左上角
@@ -330,16 +335,92 @@
 
     function savePos() {
         try {
-            if (!state.pos) {
+            if (!state.pos && !state.size) {
                 window.localStorage.removeItem(POS_KEY);
                 return;
             }
-            window.localStorage.setItem(POS_KEY, JSON.stringify({
-                left: Math.round(state.pos.left),
-                top: Math.round(state.pos.top),
-                pinned: state.pinned
-            }));
+            var data = { pinned: state.pinned };
+            if (state.pos) {
+                data.left = Math.round(state.pos.left);
+                data.top = Math.round(state.pos.top);
+            }
+            if (state.size) {
+                data.w = Math.round(state.size.w);
+                data.h = Math.round(state.size.h);
+            }
+            window.localStorage.setItem(POS_KEY, JSON.stringify(data));
         } catch (err) { /* 隐私模式 / 禁用存储：位置不记忆，功能照用 */ }
+    }
+
+    /* ---------- 面板尺寸 ----------
+       默认 560×760 是按"回答里会出表格"定的：400×560 时三列表格必横向滚。
+       右下角把手可拖，尺寸同样记 localStorage；双击把手恢复默认。 */
+    function applySize(w, h) {
+        if (!w || !h) {
+            panel.style.removeProperty('--copilot-w');
+            panel.style.removeProperty('--copilot-h');
+            state.size = null;
+            return;
+        }
+        var maxW = Math.max(MIN_W, window.innerWidth - 32);
+        var maxH = Math.max(MIN_H, window.innerHeight - 80);
+        var width = Math.min(Math.max(MIN_W, Math.round(w)), maxW);
+        var height = Math.min(Math.max(MIN_H, Math.round(h)), maxH);
+        state.size = { w: width, h: height };
+        panel.style.setProperty('--copilot-w', width + 'px');
+        panel.style.setProperty('--copilot-h', height + 'px');
+    }
+
+    function setupResize() {
+        if (!resizeHandle) return;
+        var drag = null;
+
+        resizeHandle.addEventListener('pointerdown', function (event) {
+            if (event.pointerType === 'mouse' && event.button !== 0) return;
+            var rect = panel.getBoundingClientRect();
+            drag = {
+                id: event.pointerId,
+                x: event.clientX, y: event.clientY,
+                w: rect.width, h: rect.height
+            };
+            panel.classList.add('is-resizing');
+            document.body.classList.add('copilot-resizing');
+            if (resizeHandle.setPointerCapture) resizeHandle.setPointerCapture(event.pointerId);
+            event.preventDefault();
+            event.stopPropagation();     // 别让标题栏的拖动逻辑抢到
+        });
+
+        resizeHandle.addEventListener('pointermove', function (event) {
+            if (!drag || event.pointerId !== drag.id) return;
+            applySize(drag.w + (event.clientX - drag.x), drag.h + (event.clientY - drag.y));
+            // 变宽后可能顶出视口右侧：位置同步夹一次
+            if (state.pos) {
+                var p = clampPos(state.pos.left, state.pos.top);
+                applyPos(p.left, p.top);
+            }
+            event.preventDefault();
+        });
+
+        function endResize(event) {
+            if (!drag) return;
+            drag = null;
+            panel.classList.remove('is-resizing');
+            document.body.classList.remove('copilot-resizing');
+            savePos();
+            if (event && event.pointerId !== undefined && resizeHandle.releasePointerCapture) {
+                try { resizeHandle.releasePointerCapture(event.pointerId); } catch (err) { /* 已释放 */ }
+            }
+        }
+
+        resizeHandle.addEventListener('pointerup', endResize);
+        resizeHandle.addEventListener('pointercancel', endResize);
+
+        // 双击把手 = 尺寸回默认（位置保持不变，免得"复位"把面板甩回右下角）
+        resizeHandle.addEventListener('dblclick', function (event) {
+            event.stopPropagation();
+            applySize(null, null);
+            savePos();
+        });
     }
 
     function loadPos() {
@@ -349,6 +430,10 @@
         var saved = null;
         try { saved = JSON.parse(raw); } catch (err) { return; }
         if (!saved || typeof saved !== 'object') return;
+        // 先恢复尺寸再夹位置：尺寸决定了"最多能放在哪"
+        if (typeof saved.w === 'number' && typeof saved.h === 'number') {
+            applySize(saved.w, saved.h);
+        }
         if (typeof saved.left === 'number' && typeof saved.top === 'number') {
             var p = clampPos(saved.left, saved.top);   // 换过屏幕/缩放过窗口，夹回可视区
             applyPos(p.left, p.top);
@@ -472,7 +557,9 @@
     }
 
     window.addEventListener('resize', function () {
-        if (panel.hidden || !state.pos) return;
+        if (panel.hidden) return;
+        if (state.size) applySize(state.size.w, state.size.h);   // 窗口变小 → 面板收回视口
+        if (!state.pos) return;
         var p = clampPos(state.pos.left, state.pos.top);
         applyPos(p.left, p.top);
     });
@@ -524,6 +611,7 @@
 
     function boot() {
         setupDrag();
+        setupResize();
         loadPos();
         request('/copilot/bootstrap/').then(function (data) {
             fab.hidden = false;
