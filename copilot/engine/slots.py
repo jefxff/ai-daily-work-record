@@ -26,9 +26,16 @@ PRONOUN_RE = re.compile(
 # 省略主语的追问："那上个月的记录呢""还有呢""换成已完成的呢"
 FOLLOWUP_START_RE = re.compile(r'^(那|还有|再|然后|换成|按|如果|要是)')
 FOLLOWUP_MAX_CHARS = 24
+# 很短、又没点任何模块的问句（"赔了多少钱""有多少条"）：几乎一定是接着上一轮。
+# 上一轮在聊客诉，这一句问的就是客诉的赔偿；当成新问题只会让模型重新猜模块。
+FOLLOWUP_SHORT_CHARS = 12
 
 
-def is_followup(question, slots):
+def _names_module(question, modules):
+    return any(_mentions(question, spec) for spec in modules)
+
+
+def is_followup(question, slots, modules=()):
     if not slots:
         return False
     text = (question or '').strip()
@@ -36,7 +43,12 @@ def is_followup(question, slots):
         return False
     if PRONOUN_RE.search(text):
         return True
-    return bool(FOLLOWUP_START_RE.match(text)) and len(text) <= FOLLOWUP_MAX_CHARS
+    if FOLLOWUP_START_RE.match(text) and len(text) <= FOLLOWUP_MAX_CHARS:
+        return True
+    if (slots.get('module') and modules and len(text) <= FOLLOWUP_SHORT_CHARS
+            and not _names_module(text, modules)):
+        return True
+    return False
 
 
 def _module_words(spec):
@@ -60,7 +72,7 @@ def expand(question, slots, modules=()):
     展示给用户的仍是原问题。
     """
     question = question or ''
-    if not is_followup(question, slots):
+    if not is_followup(question, slots, modules):
         return question, False
 
     keyword = str(slots.get('keyword') or '').strip()

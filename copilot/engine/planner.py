@@ -106,9 +106,12 @@ _WEEKDAYS = '一二三四五六日'
 
 # "能查哪些模块 / 支持查询什么"：也本地答，别让模型去调 list_modules 绕圈
 _CAPABILITY_RE = re.compile(
-    r'(能|可以|支持|会)[^，,。？?！!\n]{0,4}(查|检索|看|问)[^，,。？?！!\n]{0,4}(什么|哪些|啥)'
-    r'|(有|支持)(哪些|那些|什么)[^，,。？?！!\n]{0,3}模块'
+    r'(能|可以|支持|会)[^，,。？?！!\n]{0,4}(查|检索|看|问|做|干|帮)[^，,。？?！!\n]{0,4}'
+    r'(什么|哪些|啥|什么忙|什么功能)'
+    r'|(有|支持)(哪些|那些|什么)[^，,。？?！!\n]{0,3}(模块|功能|能力|用途)'
 )
+# 明确在说"你"：用来给上面那条正则收口（"供应商能做哪些品类"不是问能力）
+_SELF_REF_RE = re.compile(r'(你|您|助手|这个系统|系统|这里|本系统)')
 
 
 def date_reply(question):
@@ -198,7 +201,12 @@ def instant_reply(question, modules, blocked=()):
     if replied:
         return replied
     if _CAPABILITY_RE.search(question or ''):
-        return capability_reply(modules, blocked)
+        # 点了模块名的多半是在问业务（"供应商能做哪些品类"），不是问能力；
+        # 只有明确对"你/系统"说、或短到只剩一句"能做什么"时才算。
+        named = bool(hinted_modules(question or '', modules))
+        if not named and (_SELF_REF_RE.search(question or '')
+                          or len(question or '') <= 8):
+            return capability_reply(modules, blocked)
     return ''
 
 
@@ -465,6 +473,11 @@ _COUNT_RE = re.compile(
 # 光靠"同一字段出现两个选项标签"识别不到这种问法——用户只说了一个分类词，
 # 却明确要求"按它拆开看"，这就是要 group_by。
 _GROUP_CUE_RE = re.compile(r'(分别|各组|各有多少|各有几|分组|分类统计|按[^，,。？?]{0,8}(分组|统计|汇总|看))')
+# 「各客户的客诉数量分布」：用户说的是字段名的主体（客户），字段真名带"名称"
+# 后缀（客户名称）。只认整词的话，这句话会被当成"数总数 + 默认分布"，
+# 于是把"按客户"答成了"按状态"——数字全真，维度全错。
+_GROUP_WORD_RE = re.compile(r'(分布|构成|占比|比例|各\s*[^，,。？?]{0,6}|按\s*[^，,。？?]{0,8})')
+_FIELD_SUFFIX_RE = re.compile(r'(名称|名字|编号|单号|标题|号码)$')
 # 带时间范围的问题不本地统计：本月/上月/今年究竟对应哪个日期字段，各模块语义
 # 不同，猜错就会把"全表"的数字说成"本月"的——宁可交给模型，也不能答错。
 _TIME_SCOPE_RE = re.compile(
@@ -987,6 +1000,29 @@ def _time_gate(spec, text):
     return ({f'{spec.date_field}__range': (found.start, found.end)}, found.label)
 
 
+def _group_field_from_words(spec, text):
+    """按"字段名的主体"认分组维度：客户名称 → 客户、物料名称 → 物料。
+
+    用户不会说全称，所以字段名的"名称/编号"后缀先剥掉。但只认**贴着分组信号
+    出现**的那个词：「各客户…」里的"客户"是维度；「各供应商分别有多少条审厂
+    记录」里的"审厂"只是模块名，按它分组会得到"每个审厂编号 1 条"这种废话。
+    """
+    candidates = list(spec.group_fields)
+    if getattr(spec, 'title_field', ''):
+        candidates.append(spec.title_field)
+    best, best_len = '', 0
+    for name in candidates:
+        label = catalog.field_label(spec, name) or ''
+        core = _FIELD_SUFFIX_RE.sub('', label)
+        if len(core) < 2 or len(core) <= best_len:
+            continue
+        cue = re.compile(r'(各|按|每个|每一|分)\s*' + re.escape(core)
+                         + r'|' + re.escape(core) + r'\s*(分布|构成|占比|比例|分别)')
+        if cue.search(text):
+            best, best_len = name, len(core)
+    return best
+
+
 def stat_query(question, modules, user=None):
     """计数/分组类问题的确定性意图，命中返回 dict，否则 ``None``。
 
@@ -1017,6 +1053,8 @@ def stat_query(question, modules, user=None):
             (name for name in spec.group_fields
              if catalog.field_label(spec, name)
              and catalog.field_label(spec, name) in text), '')
+    if not group_field and _GROUP_WORD_RE.search(text):
+        group_field = _group_field_from_words(spec, text)
     if not group_field and not _COUNT_RE.search(text):
         return None
 
@@ -1129,14 +1167,18 @@ def _rank_field(spec, text):
     # 否则会答成"价格最低的那条"，看起来合理、实则答非所问。
     if spec.date_field and re.search(r'(最早|最旧|最老|最新)', text):
         return spec.date_field, catalog.field_label(spec, spec.date_field)
-    best = ('', '', 0)
+    best = ('', '', 0, '', ())
     for name, label, aliases in catalog.rankable_fields(spec):
         for word in aliases:
             if word and word in text and len(word) > best[2]:
-                best = (name, word, len(word))
+                best = (name, word, len(word), label, aliases)
     if best[0]:
-        # 用用户自己的说法当标签：「赔偿金额」比字段名「客户诉求」更好懂
-        return best[0], best[1]
+        # 用用户自己的说法当标签：「赔偿金额」比字段名「客户诉求」更好懂。
+        # 但单字说法（"赔了多少钱"里的"赔"）不能直接当列名——退回该字段最
+        # 完整的那个别名，而不是字段本名（本名常常看不出是金额）。
+        if len(best[1]) >= 2:
+            return best[0], best[1]
+        return best[0], (max(best[4], key=len) if best[4] else best[3])
     for name, label, _aliases in catalog.rankable_fields(spec):
         if label and len(label) >= 2 and label in text:
             return name, label
@@ -1408,6 +1450,100 @@ def stat_answer(stat, user, policy=None):
     return text, refs
 
 
+# 「客诉和诉讼分别有多少」「供应商与客户各多少」：一句里问了**两个**模块。
+# 本地快路径只认第一个，第二个被原地丢掉——用户看到"客诉 8 条"，会以为诉讼
+# 没有（实际有 1 件）。所以先按点名模块逐个算，再拼成一段。
+_MULTI_CUE_RE = re.compile(r'(分别|各自|各多少|都多少|各是|分别是)')
+_MULTI_MAX_MODULES = 4
+
+
+def multi_stat_query(question, modules, user=None):
+    """一次问了多个模块的统计问句 → 每个模块一份意图（列表）。
+
+    只在"点名 ≥2 个模块 + 有「分别」类信号"时接管；单个模块仍走原路径，
+    否则「各客户分类分别有多少」这类分组问句会被拆坏。
+    """
+    text = question or ''
+    if not _MULTI_CUE_RE.search(text):
+        return None
+    hinted = hinted_modules(text, modules)
+    if len(hinted) < 2:
+        return None
+    intents = []
+    for spec in hinted[:_MULTI_MAX_MODULES]:
+        one = stat_query(text, [spec], user) or sum_query(text, [spec], user)
+        if one is not None:
+            intents.append(one)
+    return intents if len(intents) >= 2 else None
+
+
+def multi_answer(intents, user, policy=None, question=''):
+    """把每个模块的答案拼成一段；覆盖不到的候选模块另起一行说明。"""
+    blocks, refs, labels, seen = [], [], [], set()
+    for intent in intents:
+        if 'field' in intent:
+            text, part_refs = sum_answer(intent, user, policy)
+        else:
+            text, part_refs = stat_answer(intent, user, policy)
+        if not text:
+            continue
+        blocks.append(text)
+        labels.append(intent['spec'].label)
+        for ref in part_refs:
+            key = (ref.get('module'), ref.get('id'))
+            if key not in seen:
+                seen.add(key)
+                refs.append(ref)
+    note = ambiguous_note(question, [i['spec'] for i in intents], labels)
+    if note:
+        blocks.append(note)
+    return '\n\n'.join(blocks), refs, labels
+
+
+def ambiguous_terms(question, modules):
+    """问句里"像模块名、但同时对得上好几个模块"的词。
+
+    「供应商和客户分别有多少家」里的"客户"既可能是客户台账，也可能是客户账期、
+    客户客诉。猜一个就等于悄悄扔掉另外两个，所以只把候选报出来。
+    """
+    text = question or ''
+    table = {}
+    for spec in modules:
+        for word in (spec.label,) + tuple(MODULE_ALIASES.get(spec.key, ())):
+            if not word or len(word) < 3:
+                continue
+            # 只收"更短、因而更泛"的前缀：客户台账 → 客户台、客户
+            for size in range(2, len(word)):
+                table.setdefault(word[:size], set()).add(spec.label)
+    hits = []
+    for term, labels in table.items():
+        if len(labels) < 2 or term not in text:
+            continue
+        # 问句里已经有更长的说法（"客户客诉"整词出现），就不算歧义
+        if any(other != term and other.startswith(term) and other in text
+               for other in table):
+            continue
+        hits.append((term, sorted(labels)))
+    return sorted(hits, key=lambda item: -len(item[0]))
+
+
+def ambiguous_note(question, modules, covered=()):
+    """答案只覆盖了歧义词的一部分时，把候选说清楚，别装作问全了。
+
+    只在"分别/各自"这类多对象问句里提示：「各客户的客诉」里的"客户"是
+    分组维度，不是另一个模块，提示出来反而是噪音。
+    """
+    if not _MULTI_CUE_RE.search(question or ''):
+        return ''
+    covered = {c for c in covered if c}
+    for term, labels in ambiguous_terms(question, modules):
+        missing = [label for label in labels if label not in covered]
+        if missing:
+            return (f'（你提到的「{term}」可以对应 {"、".join(missing)}；'
+                    f'这句我只算了已确定的那部分，说清是哪个我立刻再查。）')
+    return ''
+
+
 def _samples(spec, qs, limit=3):
     objs = list(qs.order_by(resolve_order(spec, ''))[:limit])
     titles = [str(getattr(obj, spec.title_field, '') or f'#{obj.pk}')[:24] for obj in objs]
@@ -1435,20 +1571,34 @@ def _group_answer(spec, qs, total, group_field):
     label = catalog.field_label(spec, group_field)
     unit = unit_of(spec)
     rows = list(qs.values(group_field).annotate(n=Count('id')).order_by('-n')[:10])
-    lines = [f'「{spec.label}」按「{label}」分组，共 **{total} {unit}**：', '',
-             f'| {label} | 数量 | 举例 |', '| --- | --- | --- |']
+    # 分组维度本身就是记录名（「各客户的客诉」按客户名称分组）时，"举例"列
+    # 只会把同一个名字再写两遍，白占一列宽度。
+    by_title = group_field == getattr(spec, 'title_field', '')
+    lines = [f'「{spec.label}」按「{label}」分组，共 **{total} {unit}**：', '']
+    if by_title:
+        lines += [f'| {label} | 数量 |', '| --- | --- |']
+    else:
+        lines += [f'| {label} | 数量 | 举例 |', '| --- | --- | --- |']
     refs = []
     for row in rows:
         value = row[group_field]
         name = catalog.label_for_value(spec, group_field, value)
+        group_qs = qs.filter(**{group_field: value})
+        if by_title:
+            lines.append(f'| {_md_cell(name)} | {row["n"]} {unit} |')
+            for obj in group_qs.order_by(resolve_order(spec, ''))[:2]:
+                if len(refs) < 10:
+                    refs.append(catalog.build_ref(spec, obj))
+            continue
         # 只举 2 条：面板 360px，三家公司的名字会把单元格挤成四五行的竖条
-        titles, group_refs = _samples(spec, qs.filter(**{group_field: value}), limit=2)
+        titles, group_refs = _samples(spec, group_qs, limit=2)
         example = '、'.join(titles) if titles else '—'
         lines.append(f'| {_md_cell(name)} | {row["n"]} {unit} | {_md_cell(example)} |')
         for ref in group_refs:
             if len(refs) < 10:
                 refs.append(ref)
-    lines += ['', '> 每组只举例前几条，完整列表见下方引用卡片。']
+    if not by_title:
+        lines += ['', '> 每组只举例前几条，完整列表见下方引用卡片。']
     return '\n'.join(lines), refs
 
 

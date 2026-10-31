@@ -301,7 +301,9 @@ MODULES = (
                       'closed_at', 'sla_hours'),
         title_field='customer_name',
         detail_route='records:customer_detail',
-        rank_fields=(('compensation_amount', '赔偿金额', '赔偿', '赔付金额', '索赔金额'),),
+        # 「赔了多少钱」是最自然的口语说法：只认"赔偿金额"，这句就选不出字段，
+        # 本地求和接不住，落到模型手里就成了编数字（实测答 40000，真值 80000）。
+        rank_fields=(('compensation_amount', '赔偿金额', '赔偿', '赔付', '索赔', '赔'),),
         list_route='records:customer_complaint_list',
         states=(
             StateSpec('open', '未完成',

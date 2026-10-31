@@ -134,6 +134,79 @@ def has_protocol_keys(obj):
     return bool(PROTOCOL_KEYS & {str(k).lower() for k in (obj or {})})
 
 
+# 模型偶尔把整段回答塞进一对大括号里（2026-11-01 实测：本地 7B 对
+# 「月结60天的客户有哪些」输出 ``{ "总共有 0 家…" }``，面板上就带着花括号
+# 显示）。大括号在中文回答里没有语义，只有 JSON 才需要——不是 JSON 就剥掉。
+_BRACE_ONLY_RE = re.compile(r'[{}]')
+_BRACED_QUOTE_RE = re.compile(r'(?m)^\s*"\s*(.+?)\s*"\s*$')
+
+# 退化检测：同一句反复出现说明模型在原地打转（实测出现过 40 多次
+# "无其他记录。无其他信息。无其他数据。"）。这不是"回答很长"，是坏掉了。
+_REPEAT_MIN_PARTS = 10
+_REPEAT_MAX_RATIO = 0.5
+
+
+def _strip_stray_braces(text):
+    """剥掉没有语义的花括号；带 JSON 键值痕迹的不动，交给 as_json_object。"""
+    if '{' not in text and '}' not in text:
+        return text
+    if re.search(r'"\s*:', text):
+        return text
+    cleaned = _BRACE_ONLY_RE.sub('', text)
+    # 剥完常留下包住整行的裸引号（"{ "总共有…" }"），一并去掉
+    cleaned = _BRACED_QUOTE_RE.sub(r'\1', cleaned)
+    return cleaned.strip()
+
+
+def _split_sentences(text):
+    return [p for p in re.split(r'(?<=[。！？!?\n])', text) if p.strip()]
+
+
+def is_degenerate(text):
+    """这段回答是不是"原地打转"：重复句占了多数。
+
+    7B 在拿到"0 条"之后会一路写下去（实测 40+ 句"无其他记录。无其他信息。"）。
+    这种内容既不是结论也不可读，上层应改用本地兜底文案，而不是把它截一半给用户。
+    """
+    parts = _split_sentences(text or '')
+    if len(parts) < _REPEAT_MIN_PARTS:
+        return False
+    return len({p.strip() for p in parts}) / len(parts) <= _REPEAT_MAX_RATIO
+
+
+def _collapse_repeats(text):
+    """掐掉原地打转的重复句子，只保留每个不同句子的首次出现。"""
+    parts = _split_sentences(text)
+    if len(parts) < _REPEAT_MIN_PARTS:
+        return text
+    unique = {p.strip() for p in parts}
+    if len(unique) / len(parts) > _REPEAT_MAX_RATIO:
+        return text
+    kept, seen = [], set()
+    for part in parts:
+        key = part.strip()
+        if key in seen:
+            continue
+        seen.add(key)
+        kept.append(part)
+    return ''.join(kept).rstrip() + '\n\n（这段说明在重复，已截断。）'
+
+
+def _strip_lone_quotes(text):
+    """只有左半边引号的回答：那对引号本来是用来"包裹 JSON"的，剥掉不影响语义。"""
+    for quote in ('"', '“', '”'):
+        if text.startswith(quote) and text.count(quote) == 1:
+            return text[1:].lstrip()
+    return text
+
+
+def tidy_answer(text):
+    """模型输出的两道整容：剥掉没有语义的花括号、掐掉打转的重复。"""
+    if not text:
+        return text
+    return _strip_lone_quotes(_collapse_repeats(_strip_stray_braces(text)))
+
+
 def as_record_object(text):
     """判断模型输出是不是"直接把一条记录当答案"（返回该 dict，否则 None）。
 

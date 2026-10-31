@@ -157,6 +157,18 @@ def _execute(run):
     # 答"50 家，普通32+代加工18"——50 是全表，条件全是它自己加的）。
     # 求和类问题（「保费一共多少钱」「涉案金额合计多少」）：金额是加出来的，
     # 交给模型它会去数条数，或把几个金额字段混在一起加。
+    # 一次问了多个模块（「客诉和诉讼分别有多少」）：逐个算，别只答第一个。
+    # 以前第二个模块被原地丢掉，用户看到"客诉 8 条"就以为诉讼也是 0。
+    multi = planner.multi_stat_query(question, modules, run.user)
+    if multi:
+        multi_text, multi_refs, _labels = planner.multi_answer(
+            multi, run.user, policy, question=question)
+        if multi_text:
+            multi_steps = [{'tool': 'aggregate_records', 'module': i['spec'].key,
+                            'ok': True, 'rows': 0} for i in multi]
+            return _finish(run, multi_text, multi_refs, multi_steps, 0, started,
+                           config, error_code='')
+
     total_intent = planner.sum_query(question, modules, run.user)
     if total_intent is not None:
         total_text, total_refs = planner.sum_answer(total_intent, run.user, policy)
@@ -171,6 +183,12 @@ def _execute(run):
     if stat is not None:
         stat_text, stat_refs = planner.stat_answer(stat, run.user, policy)
         if stat_text:
+            # 「供应商和客户分别有多少家」里的"客户"对得上三个模块：只答了
+            # 供应商就必须说清楚，不然用户以为客户真的没有。
+            note = planner.ambiguous_note(question, modules,
+                                          covered=[stat['spec'].label])
+            if note:
+                stat_text = f'{stat_text}\n\n{note}'
             step = {'tool': 'aggregate_records', 'module': stat['spec'].key,
                     'ok': True, 'rows': len(stat_refs)}
             if stat.get('group_field'):
@@ -472,6 +490,11 @@ def _execute(run):
         return _degrade(run, error_code or 'EMPTY_ANSWER', '模型未返回内容',
                         policy, started)
 
+    # 模型原地打转（同一句说几十遍）不算回答：查过但没数据就直说没数据，
+    # 别把半句"无其他记录。无其他信息。"当结论端给用户。
+    if parser.is_degenerate(answer):
+        answer = _empty_result_reply(steps, modules)
+
     answer = _readable_answer(answer, all_refs, modules)
     return _finish(run, answer, all_refs, steps, total_tokens, started, config,
                    error_code, prompt_tokens, completion_tokens)
@@ -589,6 +612,23 @@ def _refs_digest(all_refs, lead=None):
     return '\n'.join(lines)
 
 
+def _empty_result_reply(steps, modules):
+    """模型打转时的收尾：查到 0 条就直说 0 条，别留一串废话。"""
+    calls = [s for s in (steps or [])
+             if s.get('tool') in ('query_records', 'aggregate_records', 'global_search')]
+    if calls and all(s.get('ok') and s.get('rows') == 0 for s in calls):
+        labels = []
+        for step in calls:
+            key = step.get('module') or ''
+            spec = catalog.MODULE_MAP.get(key) if key else None
+            if spec is not None and spec.label not in labels:
+                labels.append(spec.label)
+        scope = f'（{"、".join(labels)}）' if labels else ''
+        return (f'没有查到符合条件的记录{scope}。\n'
+                '可以换个说法，或补充客户名、单号、日期区间后再问一次。')
+    return _no_data_reply(modules)
+
+
 def _no_data_reply(modules):
     """"什么也没查到"时该说什么：讲清能查哪些模块，而不是「没能整理成回答」。
 
@@ -611,6 +651,9 @@ def _readable_answer(answer, all_refs, modules=()):
     - 还有把没执行的调用当答案：``{"工具":"get_record","args":{…}}``
     数据其实查到了，只是没"说出来"，前端就原样显示成一坨 JSON。
     """
+    # 先做两道整容：模型爱把整段回答包进 { }，退化时还会把同一句说几十遍。
+    # 这两件事都不是"JSON 当答案"，交给 as_json_object 兜不住。
+    answer = parser.tidy_answer(answer)
     obj = parser.as_json_object(answer)
     if obj is None:
         return answer
@@ -626,6 +669,16 @@ def _readable_answer(answer, all_refs, modules=()):
     fields = [(k, v) for k, v in obj.items() if str(k).lower() != 'id']
     if not fields:
         return answer
+    # 抄的是一条**空记录**（{"客户名称":"","责任业务":""…}）：一行字段名加冒号
+    # 什么也没说，不如按"没查到"回答。
+    if not any(str(value).strip() for _key, value in fields):
+        if all_refs:
+            return _refs_digest(all_refs, lead='已按你的问题查到以下记录：')
+        return _no_data_reply(modules)
+    # 只有一个键、值是整段话（{"客户客诉":"共 3 条…\n- …"}）：这就是答案本身，
+    # 再拆成"键：值"的列表只会多一层缩进。
+    if len(fields) == 1 and len(str(fields[0][1])) > 40:
+        return str(fields[0][1])
     # 字段值是数组/对象，说明它自己在"组装"数据（截图：{"立案的案件":[…],
     # "立案的被告":[…]}），这不是一条记录，原样展开只会输出一坨 Python 列表。
     if any(isinstance(value, (list, tuple, dict)) for _key, value in fields):
@@ -668,16 +721,41 @@ def _payload_text(result):
     return text
 
 
+def _name_in_question(name, question):
+    """这条记录的名字（或它的前半截）是否真的出现在用户的问题里。
+
+    「恒信汽车零部件的客诉」→ 记录名是「【演示】恒信汽车零部件公司」，用户
+    只说了前半截，也算；「有哪些未完成的客诉」→ 记录名是第一条的客户，用户
+    从没提过——那就不是用户给的筛选条件。
+    """
+    name = (name or '').strip()
+    question = question or ''
+    if not name or not question:
+        return False
+    if name in question:
+        return True
+    core = re.sub(r'[【\[（(][^】\]）)]*[】\]）)]', '', name).strip()
+    if not core:
+        return False
+    if core in question:
+        return True
+    return any(core[:size] in question for size in range(len(core) - 1, 2, -1))
+
+
 def _remember_slots(run, steps, refs):
     """把这一轮的结构化条件写进会话槽位，供下一句追问继承。"""
     real = [s for s in (steps or []) if s.get('tool') not in ('slots',)]
     module = next((str(s.get('module')) for s in real if s.get('module')), '')
+    # 关键词只记"用户自己说出来的值"。以前直接取第一条引用的标题当关键词：
+    # 问「有哪些未完成的客诉」，第一条是长通精密五金厂，下一句「那上个月的呢」
+    # 就被改写成"长通精密五金厂 上个月"，答成了另一件事。
     keyword = ''
     for ref in refs or []:
         label = str(ref.get('label') or '').strip()
-        if label:
-            # 「华建建材 · 2026-09-10」这类引用标题只取主体部分
-            keyword = label.split('·')[0].strip()[:40]
+        # 「华建建材 · 2026-09-10」这类引用标题只取主体部分
+        name = label.split('·')[0].strip()[:40]
+        if name and _name_in_question(name, run.question):
+            keyword = name
             break
     if not module and not keyword:
         return
