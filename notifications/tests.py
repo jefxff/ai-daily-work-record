@@ -542,7 +542,7 @@ class ScheduledTaskTests(TestCase):
         self.staff = User.objects.create_user("staff", password="x12345678")
 
     def test_seed_tasks_exist(self):
-        """迁移种子：9 个内置任务存在且默认触发配置正确。"""
+        """迁移种子：内置任务存在且默认触发配置正确。"""
         from notifications.models import ScheduledTask
 
         codes = set(ScheduledTask.objects.values_list("code", flat=True))
@@ -551,6 +551,9 @@ class ScheduledTaskTests(TestCase):
             "check_daily_incomplete", "notify_expire", "notify_stats",
             "notify_knowledge_todo", "daily_backup",
             "cleanup_operation_log", "db_maintenance",
+            # Copilot 的四个内置任务（0006 起随迁移落库）
+            "copilot_prune", "copilot_alerts", "copilot_daily_digest",
+            "copilot_feedback_report",
         })
         backup = ScheduledTask.objects.get(code="daily_backup")
         self.assertTrue(backup.enabled)

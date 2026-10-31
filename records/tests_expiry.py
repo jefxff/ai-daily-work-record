@@ -274,8 +274,14 @@ class MonthCalendarTests(TestCase):
         from archive.models import Archive
 
         self.today = timezone.localdate()
+        # 目标日期必须落在**本月**网格里：月历只统计当月条目，月末前 5 天
+        # "+5 天"会跨到下个月，成为灰色补位格（count 恒为 0），测试就会随
+        # 日期漂移而红——这不是功能坏了，是夹具选错了日子。
+        self.target = self.today + timedelta(days=5)
+        if self.target.month != self.today.month:
+            self.target = self.today - timedelta(days=5)
         Archive.objects.create(
-            code="A-CAL-1", name="本月到期合同", expire_date=self.today + timedelta(days=5),
+            code="A-CAL-1", name="本月到期合同", expire_date=self.target,
         )
 
     def test_month_weeks_cover_today_and_count(self):
@@ -286,14 +292,14 @@ class MonthCalendarTests(TestCase):
         cells = [c for week in weeks for c in week]
         today_cell = next(c for c in cells if c["is_today"])
         self.assertTrue(today_cell["in_month"])
-        target = self.today + timedelta(days=5)
+        target = self.target
         target_cell = next(c for c in cells if c["date"] == target)
         self.assertEqual(target_cell["count"], 1)
         self.assertIn("archive_contract", target_cell["kinds"])
 
     def test_day_filter_narrows_by_day(self):
         self.client.force_login(self.user)
-        target = self.today + timedelta(days=5)
+        target = self.target
         resp = self.client.get(reverse("expiry_calendar"), {"day": target.strftime("%Y-%m-%d")})
         by_day = resp.context["by_day"]
         self.assertEqual(len(by_day), 1)

@@ -24,6 +24,8 @@ import calendar
 import datetime as _dt
 import re
 
+from django.utils import timezone
+
 __all__ = ['extract_date_range', 'DateRange']
 
 MIN_YEAR = 1970
@@ -146,7 +148,7 @@ def extract_date_range(text, today=None):
     """
     if not text or not str(text).strip():
         return None
-    today = today or _dt.date.today()
+    today = today or timezone.localdate()
     src = str(text)
 
     # ⑨ 英文月份区间（放前面：它也含 ~ 到 之类的分隔符，先被别的规则吃掉会出错）
