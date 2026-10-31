@@ -92,6 +92,11 @@ COMMAND_PARAMS = {
     # SQLite 维护（wal_checkpoint + VACUUM + ANALYZE），命令内部按 28 天节流
     "db_maintenance": set(),
     "cleanup_operation_log": {"days"},
+    # AI 助手：默认干跑，任务参数里带 {"confirm": true} 才真的推送/写会话
+    "copilot_prune": {"confirm"},
+    "copilot_feedback_report": {"days"},
+    "copilot_daily_digest": {"confirm"},
+    "copilot_alerts": {"confirm"},
 }
 
 
@@ -166,7 +171,7 @@ def _command_kwargs(task):
         if key not in params:
             continue
         value = params[key]
-        if key in ("skip_history", "check"):
+        if key in ("skip_history", "check", "confirm"):
             kwargs[key] = bool(value)
         elif key in ("days", "purge_days", "interval_minutes", "overdue_days"):
             try:

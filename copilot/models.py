@@ -31,6 +31,9 @@ class CopilotPolicy(models.Model):
     rate_limit_per_10min = models.PositiveIntegerField('每 10 分钟请求上限', default=20)
     rate_limit_per_day = models.PositiveIntegerField('每日请求上限', default=200)
     retention_days = models.PositiveIntegerField('会话保留天数', default=90)
+    # 外发日志是合规证据，不能随会话一起删：会话清了，"谁把什么发给了哪家
+    # 模型"仍要能回答，所以单独一个更长的保留期。
+    egress_retention_days = models.PositiveIntegerField('外发日志保留天数', default=180)
     max_tool_rounds = models.PositiveIntegerField('单次问答最多工具轮次', default=3)
     max_total_tokens = models.PositiveIntegerField('单次问答 token 预算', default=6000)
     updated_at = models.DateTimeField('更新时间', auto_now=True)
@@ -66,9 +69,16 @@ class CopilotConversation(models.Model):
     title = models.CharField('标题', max_length=120, blank=True)
     status = models.CharField('状态', max_length=16, choices=Status.choices,
                               default=Status.ACTIVE)
+    # 会话级"槽位记忆"：上一轮解析出的模块/关键词/状态/时间口径。
+    # 追问（"那这个客户呢""上个月的记录呢"）先看槽位再看正文，避免
+    # MAX_HISTORY 之外就断片。换话题时必须清空，否则张冠李戴。
+    slots = models.JSONField('槽位记忆', default=dict, blank=True)
     token_total = models.PositiveIntegerField('累计 token', default=0)
     created_at = models.DateTimeField('创建时间', auto_now_add=True)
     last_active_at = models.DateTimeField('最后活跃', default=timezone.now)
+    # 软删时间：用户点删除只是归档，30 天内可从数据库层面物理清理，
+    # 期间误删还能由管理员恢复。
+    archived_at = models.DateTimeField('归档时间', null=True, blank=True)
 
     class Meta:
         verbose_name = 'AI 会话'
@@ -254,12 +264,28 @@ class CopilotEgressLog(models.Model):
 class CopilotEvalCase(models.Model):
     """评估集用例：换模型 / 改提示词后的回归基线。"""
 
+    class Mode(models.TextChoices):
+        LOCAL = 'local', '本地链路'
+        MODEL = 'model', '模型链路'
+
     question = models.TextField('问题')
     expected_tools = models.JSONField('期望工具', default=list, blank=True)
     expected_keywords = models.JSONField('答案要点', default=list, blank=True)
     must_not_contain = models.JSONField('禁止出现', default=list, blank=True)
     module_scope = models.CharField('模块范围', max_length=64, blank=True)
+    # 多轮用例的前置问题：先问这一句建立上下文，再问 question。
+    # 空表示单轮用例。
+    prelude = models.CharField('前置问题', max_length=200, blank=True)
+    # 本地链路用例与模型链路用例分开跑：前者不进 --with-model（那批只该
+    # 验证"模型兜不住的长尾"），否则每次评估都白烧 token。
+    mode = models.CharField('链路', max_length=8, choices=Mode.choices,
+                            default=Mode.MODEL)
     active = models.BooleanField('启用', default=True)
+    # 用例来源：人工挑的长尾问法、或由点踩反馈一键转成的草稿
+    source_feedback = models.ForeignKey(
+        'copilot.CopilotFeedback', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='eval_cases', verbose_name='来源反馈',
+    )
     created_at = models.DateTimeField('创建时间', auto_now_add=True)
 
     class Meta:
@@ -274,6 +300,13 @@ class CopilotEvalCase(models.Model):
 class CopilotFeedback(models.Model):
     """用户对回答的反馈（踩 → 可一键加入评估集）。"""
 
+    class Reason(models.TextChoices):
+        WRONG_MODULE = 'wrong_module', '答错模块'
+        WRONG_NUMBER = 'wrong_number', '数字不对'
+        MISSING = 'missing', '没有这条'
+        SLOW = 'slow', '太慢'
+        OTHER = 'other', '其它'
+
     message = models.ForeignKey(
         CopilotMessage, on_delete=models.CASCADE,
         related_name='feedbacks', verbose_name='消息',
@@ -283,6 +316,7 @@ class CopilotFeedback(models.Model):
         verbose_name='用户',
     )
     vote = models.SmallIntegerField('评价', default=0, choices=[(-1, '踩'), (1, '赞')])
+    reason = models.CharField('原因', max_length=20, choices=Reason.choices, blank=True)
     comment = models.CharField('备注', max_length=500, blank=True)
     created_at = models.DateTimeField('创建时间', auto_now_add=True)
 
