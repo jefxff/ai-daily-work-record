@@ -6,6 +6,10 @@
 
 {% block top_nav_actions %}
     <a href="{% url 'complaint_list' %}" class="btn-transparent">返回列表</a>
+    {% can "copilot" "read" %}
+    <button type="button" class="btn-transparent copilot-ask"
+            data-copilot-ask="案号 {{ complaint.case_number }} 的诉讼进展和涉案金额">问 AI</button>
+    {% endcan %}
     {% can "complaint" "update" %}
     <a href="{% url 'complaint_edit' complaint.id %}" class="btn-transparent" data-modal-edit data-modal-title="编辑诉讼">编辑记录</a>
     {% endcan %}

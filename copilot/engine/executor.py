@@ -18,12 +18,13 @@ from django.conf import settings
 from django.db.models import F
 from django.utils import timezone
 
-from .. import catalog, registry, security
+from .. import catalog, registry, security, streaming
 from ..models import (CopilotConversation, CopilotEgressLog, CopilotMessage,
                       CopilotPolicy, CopilotRun)
 from ..providers import router
 from ..providers.base import ProviderError
 from . import parser, planner, prompt
+from . import slots as slots_mod
 from . import refs as refs_mod
 from .parser import parse_decision
 
@@ -82,6 +83,8 @@ def execute_run(run_id):
 def _execute(run):
     started = time.time()
     policy = CopilotPolicy.current()
+    # 先广播"已开始"：前端建 SSE 时可能晚于执行线程，事件留在队列里不会丢
+    streaming.publish(run.pk, 'state', {'status': run.status})
 
     # 纯问候/道谢/问能力先在本地答掉：这类问题不需要任何数据，交给模型只会
     # 引来"为了查点什么而反复调 list_modules"，最后以触顶收场。
@@ -97,6 +100,11 @@ def _execute(run):
     quick = planner.instant_reply(run.question, quick_modules, blocked=quick_blocked)
     if quick:
         return _finish(run, quick, [], [], 0, started, None, error_code='')
+
+    # 追问（"那这个客户呢""上个月的记录呢"）先把上一轮的模块/关键词补进问句，
+    # 再走原有识别。不做这一步，本地链路会把追问当成全新问题，模块全丢。
+    question, used_slots = slots_mod.expand(
+        run.question, run.conversation.slots or {}, quick_modules)
 
     try:
         config, _provider = router.select('chat')
@@ -117,7 +125,7 @@ def _execute(run):
     # 问的就全是被挡住的模块：直接给出确定答案，不让模型把"不能外发"说成"没有记录"。
     # 只部分命中时交给模型（它还能查其它模块），提示词里已说明限制。
     if blocked:
-        hinted = planner.hinted_modules(run.question, all_visible)
+        hinted = planner.hinted_modules(question, all_visible)
         blocked_keys = {m.key for m in blocked}
         if hinted and all(m.key in blocked_keys for m in hinted):
             labels = '、'.join(m.label for m in hinted)
@@ -149,7 +157,7 @@ def _execute(run):
     # 答"50 家，普通32+代加工18"——50 是全表，条件全是它自己加的）。
     # 求和类问题（「保费一共多少钱」「涉案金额合计多少」）：金额是加出来的，
     # 交给模型它会去数条数，或把几个金额字段混在一起加。
-    total_intent = planner.sum_query(run.question, modules, run.user)
+    total_intent = planner.sum_query(question, modules, run.user)
     if total_intent is not None:
         total_text, total_refs = planner.sum_answer(total_intent, run.user, policy)
         if total_text:
@@ -159,7 +167,7 @@ def _execute(run):
             return _finish(run, total_text, total_refs, [step], 0, started, config,
                            error_code='')
 
-    stat = planner.stat_query(run.question, modules, run.user)
+    stat = planner.stat_query(question, modules, run.user)
     if stat is not None:
         stat_text, stat_refs = planner.stat_answer(stat, run.user, policy)
         if stat_text:
@@ -175,7 +183,7 @@ def _execute(run):
     # 排序/极值类问题（「阅读最多的一篇」「保费最高的保单」）：答案是排出来的
     # 那一条，不是搜出来的几条。交给模型，它会把"阅读最多"当关键词去检索正文，
     # 必然 0 条，然后答成"没有符合条件的记录"。
-    rank = planner.rank_query(run.question, modules, run.user)
+    rank = planner.rank_query(question, modules, run.user)
     if rank is not None:
         rank_text, rank_refs = planner.rank_answer(rank, run.user, policy)
         if rank_text:
@@ -191,7 +199,7 @@ def _execute(run):
     # 交给模型，它会拿模块名当关键词跨表搜（"试样"不是任何字段的值），
     # 搜不到就答"没有相关记录"——把"查法不对"说成了"没有数据"。
     intent, intent_keyword, intent_state = planner.module_query(
-        run.question, modules, run.user)
+        question, modules, run.user)
     if intent is not None:
         local_ctx = registry.ToolContext(
             user=run.user, conversation=run.conversation, run=run,
@@ -222,7 +230,7 @@ def _execute(run):
     # 纯实体查询（「王国军」「DA-0050」）：没有模块名，但本地一遍检索就有结果。
     # 命中直接答，0 token；连人名/编号都对不上时也本地答清楚"搜过哪些模块"，
     # 不再让模型花两轮 list_modules 换一句"没有找到"。
-    entity = planner.entity_query(run.question, modules, run.user, policy)
+    entity = planner.entity_query(question, modules, run.user, policy)
     if entity is not None:
         entity_answer, entity_refs = entity
         step = {'tool': 'global_search', 'ok': bool(entity_refs),
@@ -235,7 +243,7 @@ def _execute(run):
                      modules, specs, blocked=blocked,
                      today=timezone.localdate().isoformat())}]
     messages.extend(planner.history_messages(run.conversation))
-    messages.append({'role': 'user', 'content': run.question})
+    messages.append({'role': 'user', 'content': question})
 
     ctx = registry.ToolContext(
         user=run.user, conversation=run.conversation, run=run,
@@ -245,6 +253,9 @@ def _execute(run):
     native_tools = prompt.native_tools(specs) if config.supports_tools else None
 
     steps, all_refs = [], []
+    if used_slots:
+        steps.append({'tool': 'slots', 'ok': True, 'rows': 0,
+                      'error': '', 'slots': dict(run.conversation.slots or {})})
     signatures, failures, unknown_calls = {}, {}, {}
     total_tokens = prompt_tokens = completion_tokens = 0
     answer, error_code = '', ''
@@ -262,6 +273,9 @@ def _execute(run):
                 max_tokens=config.max_tokens,
                 tools=native_tools,
                 json_mode=not config.supports_tools,
+                # 逐字下发只在原生工具调用模式做：JSON 协议下模型先吐的是
+                # {"tool":...}，把决策过程直接显示给用户等于给界面添乱。
+                on_delta=_publisher(run) if native_tools else None,
             )
             total_tokens += result.total_tokens
             prompt_tokens += result.prompt_tokens
@@ -413,7 +427,7 @@ def _execute(run):
             # 模型既没总结出来、也没查到任何数据（截图里那句"没能把结果整理成
             # 回答"）：本地再按关键词/点名模块兜底一次，至少给出模块清单与入口。
             fallback, more_refs = planner.local_lookup(
-                run.user, run.question, policy,
+                run.user, question, policy,
                 lead='模型没能给出结论，我按关键词在权限范围内查了一下：',
                 empty_lead=_no_data_reply(modules),
             )
@@ -432,6 +446,14 @@ def _execute(run):
     answer = _readable_answer(answer, all_refs, modules)
     return _finish(run, answer, all_refs, steps, total_tokens, started, config,
                    error_code, prompt_tokens, completion_tokens)
+
+
+def _publisher(run):
+    """把模型的文本增量转成 SSE 的 token 事件。"""
+    def push(piece):
+        if piece:
+            streaming.publish(run.pk, 'token', {'text': piece})
+    return push
 
 
 def _guard(run):
@@ -591,6 +613,8 @@ def _invoke(spec, ctx, args, steps, all_refs):
     if not result.ok:
         step['error'] = result.error
     steps.append(step)
+    if ctx is not None and ctx.run is not None:
+        streaming.publish(ctx.run.pk, 'step', step)
     if result.ok:
         merged = refs_mod.merge(all_refs, result.refs)
         all_refs.clear()
@@ -606,6 +630,27 @@ def _payload_text(result):
     if len(text) > PAYLOAD_CHAR_LIMIT:
         text = text[:PAYLOAD_CHAR_LIMIT] + '…（已截断）'
     return text
+
+
+def _remember_slots(run, steps, refs):
+    """把这一轮的结构化条件写进会话槽位，供下一句追问继承。"""
+    real = [s for s in (steps or []) if s.get('tool') not in ('slots',)]
+    module = next((str(s.get('module')) for s in real if s.get('module')), '')
+    keyword = ''
+    for ref in refs or []:
+        label = str(ref.get('label') or '').strip()
+        if label:
+            # 「华建建材 · 2026-09-10」这类引用标题只取主体部分
+            keyword = label.split('·')[0].strip()[:40]
+            break
+    if not module and not keyword:
+        return
+    try:
+        slots_mod.remember(
+            run.conversation, module=module, keyword=keyword,
+            intent=(real[0].get('tool') if real else ''))
+    except Exception:  # noqa: BLE001 - 槽位写失败不能影响已完成的回答
+        logger.exception('Copilot 槽位写入失败')
 
 
 def _finish(run, answer, all_refs, steps, total_tokens, started, config,
@@ -635,6 +680,9 @@ def _finish(run, answer, all_refs, steps, total_tokens, started, config,
     )
 
     run.status = CopilotRun.Status.SUCCEEDED
+    _remember_slots(run, steps, all_refs)
+    streaming.publish(run.pk, 'done', {
+        'run_id': str(run.pk), 'status': run.status, 'error_code': error_code})
     _audit_question(run, steps, total_tokens)
     _log_egress(run, config, steps)
     return run
@@ -651,6 +699,8 @@ def _terminate(run, status, message, error_code=''):
         finished_at=now, heartbeat_at=now,
     )
     run.status = status
+    streaming.publish(run.pk, 'done', {
+        'run_id': str(run.pk), 'status': status, 'error_code': error_code or status})
     return run
 
 

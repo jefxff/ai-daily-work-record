@@ -1,0 +1,80 @@
+{% extends "records/base.html" %}
+
+{% block page_title %}AI 数据外发审计 - 每日工作记录管理网站{% endblock %}
+
+{% block top_nav_actions %}
+    <a href="{% url 'copilot:quality' %}" class="btn-transparent">返回 AI 看板</a>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>AI 数据外发审计</h2>
+    <span class="text-secondary" style="font-size:13px;">共 {{ total }} 条记录</span>
+</div>
+
+<div class="aiq-note" style="margin-bottom:12px;">
+    本页回答一个问题：**谁在什么时候，把哪些模块的数据交给了哪家模型**。
+    本地模型（<code>is_local=1</code>）的数据没有离开本机；发往云端的记录会带上"
+    哪些字段已脱敏"清单，用于合规追溯。
+</div>
+
+<form method="get" class="filter-form" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+    <input type="text" name="user" value="{{ filters.user }}" placeholder="用户名" class="form-control">
+    <input type="text" name="module" value="{{ filters.module }}" placeholder="模块（如 insurance）" class="form-control">
+    <input type="text" name="provider" value="{{ filters.provider }}" placeholder="服务商" class="form-control">
+    <label style="display:flex;align-items:center;gap:4px;font-size:13px;">
+        <input type="checkbox" name="local" value="1" {% if filters.local %}checked{% endif %}> 只看本地
+    </label>
+    <button type="submit" class="btn-primary">筛选</button>
+    <a href="{% url 'copilot:egress_audit' %}" class="btn-transparent">重置</a>
+</form>
+
+<div class="table-container">
+    <table class="table--cards">
+        <thead>
+            <tr>
+                <th scope="col">时间</th>
+                <th scope="col">发起人</th>
+                <th scope="col">服务商 / 模型</th>
+                <th scope="col">是否本地</th>
+                <th scope="col">涉及模块</th>
+                <th scope="col">行数</th>
+                <th scope="col">已脱敏字段</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in page %}
+            <tr>
+                <td data-label="时间">{{ row.created_at|date:"Y-m-d H:i" }}</td>
+                <td data-label="发起人">{{ row.user.get_username|default:"（已注销）" }}</td>
+                <td data-label="服务商 / 模型">{{ row.provider }} / {{ row.model|default:"—" }}</td>
+                <td data-label="是否本地">
+                    {% if row.is_local %}
+                    <span class="status-badge success">本地</span>
+                    {% else %}
+                    <span class="status-badge warning">云端</span>
+                    {% endif %}
+                </td>
+                <td data-label="涉及模块">{{ row.module_keys|join:"、"|default:"—" }}</td>
+                <td data-label="行数">{{ row.row_count }}</td>
+                <td data-label="已脱敏字段">{{ row.fields_masked|join:"、"|default:"—" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td data-label="结果" colspan="7" style="text-align:center;">没有符合条件的记录。</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if page.has_other_pages %}
+<nav class="pagination" aria-label="分页">
+    {% if page.has_previous %}
+    <a href="?page={{ page.previous_page_number }}{% if filters.user %}&user={{ filters.user }}{% endif %}{% if filters.module %}&module={{ filters.module }}{% endif %}{% if filters.provider %}&provider={{ filters.provider }}{% endif %}{% if filters.local %}&local=1{% endif %}">上一页</a>
+    {% endif %}
+    <span>第 {{ page.number }} / {{ page.paginator.num_pages }} 页</span>
+    {% if page.has_next %}
+    <a href="?page={{ page.next_page_number }}{% if filters.user %}&user={{ filters.user }}{% endif %}{% if filters.module %}&module={{ filters.module }}{% endif %}{% if filters.provider %}&provider={{ filters.provider }}{% endif %}{% if filters.local %}&local=1{% endif %}">下一页</a>
+    {% endif %}
+</nav>
+{% endif %}
+{% endblock %}

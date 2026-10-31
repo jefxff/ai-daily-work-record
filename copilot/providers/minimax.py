@@ -13,7 +13,9 @@ class MiniMaxProvider(BaseProvider):
     supports_stream = True
 
     def chat(self, messages, temperature=0.2, max_tokens=None, timeout=60,
-             tools=None, json_mode=False):
+             tools=None, json_mode=False, on_delta=None):
+        # 该协议暂未实现增量下发（on_delta 被忽略）：SSE 仍会推
+        # 步骤与最终答案，只是没有逐字效果。
         payload = {
             'model': self.config.model,
             'messages': messages,

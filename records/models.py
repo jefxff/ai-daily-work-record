@@ -276,8 +276,13 @@ class MetalPrice(models.Model):
         verbose_name = '金属价格'
         verbose_name_plural = '金属价格'
         ordering = ['-crawl_time']
-        # 首页/看板每条请求都按 crawl_date 取当日或最近一批（审计 #20）
-        indexes = [models.Index(fields=['crawl_date'], name='idx_metalprice_crawl_date')]
+        # 首页/看板每条请求都按 crawl_date 取当日或最近一批（审计 #20）；
+        # AI 查走势按品名+日期区间取数，走复合索引（records.0023）
+        indexes = [
+            models.Index(fields=['crawl_date'], name='idx_metalprice_crawl_date'),
+            models.Index(fields=['metal_name', 'crawl_date'],
+                         name='idx_metalprice_name_date'),
+        ]
         
     def __str__(self):
         return f"{self.metal_name} - {self.price} {self.unit} ({self.crawl_date})"

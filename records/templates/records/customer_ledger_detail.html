@@ -6,6 +6,10 @@
 
 {% block page_actions %}
     <a href="{% url 'customer_ledger_list' %}" class="btn-transparent">返回列表</a>
+    {% can "copilot" "read" %}
+    <button type="button" class="btn-transparent copilot-ask"
+            data-copilot-ask="{{ ledger.customer_name }} 的台账明细、账期和授信情况">问 AI</button>
+    {% endcan %}
     {% if ledger.has_attachment %}
     <a href="{% url 'customer_ledger_attachment' ledger.id %}" class="btn-transparent" target="_blank" rel="noopener noreferrer">查看附件</a>
     {% endif %}

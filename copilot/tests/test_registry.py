@@ -30,7 +30,7 @@ class RegistryTests(TestCase):
     def test_tools_registered(self):
         expected = {'list_modules', 'schema_of_module', 'global_search',
                     'query_records', 'get_record', 'aggregate_records',
-                    'list_attachments', 'search_knowledge'}
+                    'list_attachments', 'search_knowledge', 'search_kline'}
         self.assertEqual(set(registry.TOOLS), expected)
 
     def test_admin_sees_all_modules(self):

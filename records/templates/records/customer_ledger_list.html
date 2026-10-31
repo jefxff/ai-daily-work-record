@@ -134,6 +134,10 @@
                         <td data-label="操作" class="col-actions">
                             <div class="u-toolbar-inline">
                                 <a href="{% url 'customer_ledger_detail' ledger.id %}" class="btn-transparent btn-sm" data-modal-detail data-modal-title="客户台账详情">详情</a>
+                                {% can "copilot" "read" %}
+                                <button type="button" class="btn-transparent btn-sm copilot-ask"
+                                        data-copilot-ask="{{ ledger.customer_name }} 的台账明细和账期情况">问 AI</button>
+                                {% endcan %}
                                 {% can "customer_ledger" "update" %}
                                 <a href="{% url 'customer_ledger_edit' ledger.id %}" class="btn-transparent btn-sm">编辑</a>
                                 {% endcan %}

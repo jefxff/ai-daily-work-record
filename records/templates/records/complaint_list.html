@@ -159,6 +159,10 @@
                         <td data-label="操作" class="col-actions">
                             <div class="u-toolbar-inline">
                                 <a href="{% url 'complaint_detail' complaint.pk %}" class="btn-transparent btn-sm">详细</a>
+                                {% can "copilot" "read" %}
+                                <button type="button" class="btn-transparent btn-sm copilot-ask"
+                                        data-copilot-ask="案号 {{ complaint.case_number }} 的诉讼进展和涉案金额">问 AI</button>
+                                {% endcan %}
                                 {% can "complaint" "update" %}
                                 <a href="{% url 'complaint_edit' complaint.pk %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑诉讼">编辑</a>
                                 {% endcan %}

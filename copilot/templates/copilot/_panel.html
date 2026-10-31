@@ -32,6 +32,16 @@
                     <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1z"/>
                 </svg>
             </button>
+            <button type="button" class="copilot-iconbtn" id="copilotHistoryBtn"
+                    title="历史会话" aria-label="历史会话">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                     stroke-linejoin="round" aria-hidden="true">
+                    <path d="M3 3v5h5"/>
+                    <path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/>
+                    <path d="M12 7v5l3 2"/>
+                </svg>
+            </button>
             <button type="button" class="copilot-iconbtn" id="copilotNew"
                     title="新对话" aria-label="新对话">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
@@ -44,6 +54,16 @@
                     title="关闭" aria-label="关闭">&times;</button>
         </div>
     </header>
+
+    <div class="copilot-history" id="copilotHistory" hidden>
+        <div class="copilot-history-head">
+            <strong>历史会话</strong>
+            <button type="button" class="copilot-iconbtn" id="copilotHistoryClose"
+                    title="关闭" aria-label="关闭历史">&times;</button>
+        </div>
+        <div class="copilot-history-list" id="copilotHistoryList"></div>
+        <div class="copilot-history-foot">只显示最近 20 个会话；删除后 30 天内可找管理员恢复。</div>
+    </div>
 
     <div class="copilot-log" id="copilotLog" aria-live="polite"></div>
 
@@ -69,4 +89,4 @@
     </div>
 </section>
 
-<script src="{% static 'copilot/panel.js' %}?v=20261031p" defer></script>
+<script src="{% static 'copilot/panel.js' %}?v=20261031q" defer></script>

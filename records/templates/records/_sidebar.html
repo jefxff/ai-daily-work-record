@@ -150,10 +150,12 @@
                 <a href="{% url 'perf_dashboard' %}" class="{% if '/system/perf' in request.path %}active{% endif %}">性能监控</a>
                 <a href="{% url 'system_logs' %}" class="{% if '/system/logs' in request.path %}active{% endif %}">日志中心</a>
                 <a href="{% url 'task_run_history' %}" class="{% if '/system/tasks' in request.path %}active{% endif %}">任务历史</a>
+                <a href="{% url 'copilot:quality' %}" class="{% if '/copilot/quality' in request.path %}active{% endif %}">AI 用量质量</a>
                 {% endcan_view %}
                 {% can "system" "update" %}
                 <a href="{% url 'accounts:api_token' %}" class="{% if '/accounts/api-token' in request.path %}active{% endif %}">长期Token</a>
                 <a href="{% url 'ai_config' %}" class="{% if '/ai-config' in request.path %}active{% endif %}">AI 配置</a>
+                <a href="{% url 'copilot:egress_audit' %}" class="{% if '/copilot/egress' in request.path %}active{% endif %}">AI 外发审计</a>
                 {% endcan %}
                 {% can_view "notifications" %}
                 <a href="{% url 'notifications:list' %}" class="{% if '/notifications' in request.path %}active{% endif %}">消息通知</a>

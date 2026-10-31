@@ -109,11 +109,13 @@ def chat(purpose, messages, temperature=0.2, max_tokens=None, tools=None,
 
 
 def chat_with(config, messages, temperature=0.2, max_tokens=None, tools=None,
-              json_mode=False):
+              json_mode=False, on_delta=None):
     """用指定配置调用一次（Caller 已选好模型，中途不换）。
 
     执行器用这个而不是 ``chat()``：一次问答内固定模型，工具集才不会
     因为"本地换成云端"而中途变化（敏感模块在两种模型下可用性不同）。
+
+    ``on_delta`` 只在"要边生成边显示"时传（SSE）；不传就是原来的整段返回。
     """
     provider = build(config)
     try:
@@ -124,6 +126,7 @@ def chat_with(config, messages, temperature=0.2, max_tokens=None, tools=None,
             timeout=config.effective_timeout(),
             tools=tools,
             json_mode=json_mode,
+            on_delta=on_delta,
         )
     except ProviderError:
         record_failure(config)

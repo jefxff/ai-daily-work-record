@@ -69,7 +69,13 @@ class BaseProvider:
         return headers
 
     def chat(self, messages, temperature=0.2, max_tokens=None, timeout=60,
-             tools=None, json_mode=False):
+             tools=None, json_mode=False, on_delta=None):
+        """发起一次对话。
+
+        ``on_delta``：增量回调，收到一个文本片段就调一次。仅部分 provider
+        实现（OpenAI 兼容网关）；不支持的实现忽略它，调用方必须容忍
+        "只拿到完整结果、没有增量"的情况——前端 SSE 会退化成一次性下发。
+        """
         raise NotImplementedError
 
     def _post(self, payload, timeout):

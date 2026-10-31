@@ -1,0 +1,36 @@
+{% extends "records/base.html" %}
+
+{% comment %}
+会话直达页：只做一件事——把 URL 里的会话 id 交给面板脚本，让面板打开后
+直接切到这条会话，而不是按老规矩恢复"最近一次"。
+
+为什么需要一个页面：通知里的链接必须是能打开的地址，而面板本身没有路由，
+它在每个页面里都只是个浮层。这一页就是给通知一个落点。
+{% endcomment %}
+
+{% block page_title %}{{ conversation.title|default:"AI 会话" }} - 每日工作记录管理网站{% endblock %}
+
+{% block top_nav_actions %}
+    <a href="{% url 'notifications:list' %}" class="btn-transparent">返回通知</a>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // panel.js 在 window load 时初始化，这里提前挂上目标会话 id
+    window.COPILOT_CONVERSATION_ID = {{ conversation.pk }};
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>{{ conversation.title|default:"AI 会话" }}</h2>
+    <span class="text-secondary" style="font-size:13px;">
+        {{ conversation.last_active_at|date:"Y-m-d H:i" }}
+    </span>
+</div>
+
+<div class="aiq-note">
+    右侧 AI 助手面板已切到这条会话（没弹出的话点右下角圆钮打开）。
+    可以直接接着追问，例如「第 2 条详细说说」。
+</div>
+{% endblock %}

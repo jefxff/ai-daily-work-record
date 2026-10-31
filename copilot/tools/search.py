@@ -10,6 +10,7 @@ from .common import base_queryset, labels, project, resolve_order
 MAX_PER_MODULE = 8
 MAX_TOTAL = 30
 MAX_TERMS = 4
+MAX_KB_CANDIDATES = 120     # 参与 BM25 排序的候选上限（再往上就是全表扫描了）
 
 _SPLIT_RE = re.compile(r'[\s,，、/;；|]+')
 
@@ -176,30 +177,54 @@ def search_knowledge(ctx, keyword, limit=5):
     from knowledge_base import access as kb_access
     from knowledge_base.models import KnowledgeDocument
 
-    qs = kb_access.visible_docs(
+    from ..ranking import MIN_SCORE, rank_documents, title_boost
+
+    visible = kb_access.visible_docs(
         ctx.user, KnowledgeDocument.objects.select_related('category')
-    ).filter(status='published').filter(
+    ).filter(status='published')
+
+    # 先用 icontains 把候选圈出来（走索引的列过滤），再用 BM25 排顺序。
+    # 两段式是有意的：不分青红皂白全表取出来排序，文档一多就变成全表扫描。
+    qs = visible.filter(
         Q(title__icontains=keyword) | Q(content__icontains=keyword)
         | Q(summary__icontains=keyword) | Q(tags__icontains=keyword)
-    )[:limit]
+    )[:MAX_KB_CANDIDATES]
+    candidates = list(qs)
 
     rows, refs = [], []
-    for doc in qs:
-        summary = (doc.summary or doc.content or '')[:200]
-        rows.append({
-            'id': doc.pk,
-            'title': doc.title,
-            'summary': security.mask_text(summary),
-            'category': getattr(doc.category, 'name', '') if doc.category_id else '',
-        })
-        try:
-            url = reverse('knowledge_base:document_detail', args=[doc.pk])
-        except Exception:  # noqa: BLE001
-            url = catalog.safe_reverse('document_detail', [doc.pk])
-        refs.append({
-            'module': 'knowledge', 'module_label': '知识库', 'id': doc.pk,
-            'label': doc.title[:60], 'url': url,
-        })
+    if candidates:
+        docs = [(doc.pk, [(3, doc.title or ''), (2, doc.summary or ''),
+                          (2, doc.tags or ''), (1, (doc.content or '')[:3000])])
+                for doc in candidates]
+        order = dict(rank_documents(
+            keyword, docs, top=limit, boost=title_boost(candidates, keyword)))
+        # BM25 说"没有一篇相关"（比如关键词是全英文缩写而文档是纯中文），
+        # 退回原顺序而不是重排噪声——至少用户还能看到"确实命中了几篇"。
+        ranked = [doc for doc in candidates if doc.pk in order] or candidates[:limit]
+        for doc in ranked[:limit]:
+            summary = (doc.summary or doc.content or '')[:200]
+            rows.append({
+                'id': doc.pk,
+                'title': doc.title,
+                'summary': security.mask_text(summary),
+                'score': order.get(doc.pk, MIN_SCORE),
+                'category': getattr(doc.category, 'name', '') if doc.category_id else '',
+            })
+            try:
+                url = reverse('knowledge_base:document_detail', args=[doc.pk])
+            except Exception:  # noqa: BLE001
+                url = catalog.safe_reverse('document_detail', [doc.pk])
+            refs.append({
+                'module': 'knowledge', 'module_label': '知识库', 'id': doc.pk,
+                'label': doc.title[:60], 'url': url,
+            })
+
+    if not rows:
+        hint = ('没有匹配的知识库文档。可换用更具体的词（产品名、工序、客户名），'
+                '或先问 list_modules 确认它支持哪些模块。')
+        return registry.ToolResult(
+            ok=True, data={'keyword': keyword, 'rows': []}, row_count=0, message=hint,
+        )
     return registry.ToolResult(
         ok=True, data={'keyword': keyword, 'rows': rows}, row_count=len(rows),
         refs=refs,

@@ -17,9 +17,25 @@
     var examplesBox = document.getElementById('copilotExamples');
     var newBtn = document.getElementById('copilotNew');
     var resizeHandle = document.getElementById('copilotResize');
+    var historyBtn = document.getElementById('copilotHistoryBtn');
+    var historyBox = document.getElementById('copilotHistory');
+    var historyList = document.getElementById('copilotHistoryList');
+    var historyClose = document.getElementById('copilotHistoryClose');
 
-    var state = { conversationId: null, busy: false, pos: null, pinned: false, size: null };
+    var state = {
+        conversationId: null, busy: false, pos: null, pinned: false, size: null,
+        examples: [],          // 首屏示例，历史/新对话之间来回切时复用
+        lastRun: null          // 当前 run 的 id，流式/轮询共用
+    };
+    // 点踩原因：和服务端 CopilotFeedback.Reason 的取值一一对应（前端只发 code）
+    var FEEDBACK_REASONS = [
+        { code: 'wrong_module', label: '答错模块' },
+        { code: 'wrong_number', label: '数字不对' },
+        { code: 'missing', label: '没有这条' },
+        { code: 'slow', label: '太慢' }
+    ];
     var pinBtn = document.getElementById('copilotPin');
+    var draftAllowed = false;   // bootstrap 回传：无知识库新建权限时不显示「存草稿」
     var examplesCache = [];
     var moduleLabels = {};      // 步骤行里显示"查询列表 · 试样试产"，用户才知道查的是哪块
     var TOOL_LABELS = {
@@ -111,6 +127,7 @@
     }
 
     function renderRefs(bubble, refs) {
+        bubble.dataset.hasRefs = refs && refs.length ? '1' : '';
         if (!refs || !refs.length) return;
         var box = document.createElement('div');
         box.className = 'copilot-refs';
@@ -137,6 +154,8 @@
        注意先清空再插入，否则"正在处理…"的占位会和正文叠在一起。 */
     function setAnswer(bubble, html, plain) {
         bubble.textContent = '';
+        // 复制/导出都用这份 Markdown 原文，别从渲染后的 DOM 反推（表格会丢）
+        bubble.dataset.plain = plain || '';
         if (html) {
             var body = document.createElement('div');
             body.className = 'copilot-md';
@@ -161,6 +180,211 @@
         bubble.textContent = plain || '（没有拿到回答）';
     }
 
+    /* ---------- 每条回答的操作：复制 / 有用 / 没用 ----------
+       反馈只有做到"一次点击"才会有人用：内网工具没人愿意为一句"答错了"
+       多点三次。所以点赞踩直接提交，点踩才额外给一行原因（也可不选）。 */
+    function copyText(text) {
+        // http 页面（内网常见）没有 navigator.clipboard，必须留 execCommand 兜底
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            return navigator.clipboard.writeText(text);
+        }
+        return new Promise(function (resolve, reject) {
+            var area = document.createElement('textarea');
+            area.value = text;
+            area.setAttribute('readonly', '');
+            area.style.position = 'fixed';
+            area.style.top = '-1000px';
+            document.body.appendChild(area);
+            area.select();
+            try {
+                document.execCommand('copy') ? resolve() : reject(new Error('copy failed'));
+            } catch (err) {
+                reject(err);
+            } finally {
+                document.body.removeChild(area);
+            }
+        });
+    }
+
+    function markVote(bubble, vote) {
+        bubble.querySelectorAll('.copilot-act[data-vote]').forEach(function (btn) {
+            btn.classList.toggle('is-on', Number(btn.dataset.vote) === vote);
+        });
+    }
+
+    function submitFeedback(bubble, messageId, vote, reason) {
+        request('/copilot/feedback/', {
+            method: 'POST',
+            body: { message_id: messageId, vote: vote, reason: reason || '' }
+        }).then(function () {
+            markVote(bubble, vote);
+            var reasons = bubble.querySelector('.copilot-reasons');
+            if (reasons) reasons.hidden = true;
+            hint.textContent = vote === 1 ? '已记录：这条回答有用。' : '已记录，我们会把它纳入错例复盘。';
+        }).catch(function (err) {
+            hint.textContent = '反馈没提交上：' + err.message;
+        });
+    }
+
+    /* 导出要走的是"文件下载"而不是 JSON 接口，所以这里不能用上面的 request()：
+       它把响应当 JSON 解析。文件名从 Content-Disposition 里取，取不到给兜底。 */
+    function fileNameFrom(disposition) {
+        var text = disposition || '';
+        var hit = /filename\*=UTF-8''([^;]+)/.exec(text) || /filename="?([^";]+)"?/.exec(text);
+        if (!hit) return '';
+        try { return decodeURIComponent(hit[1]); } catch (err) { return hit[1]; }
+    }
+
+    function downloadAnswer(bubble, button) {
+        var label = button.textContent;
+        button.disabled = true;
+        button.textContent = '生成中…';
+        fetch('/copilot/message/export/', {
+            method: 'POST', credentials: 'same-origin',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrf()
+            },
+            body: JSON.stringify({ message_id: Number(bubble.dataset.messageId) })
+        }).then(function (resp) {
+            if (!resp.ok) {
+                // 失败时服务端回的是 JSON（{"ok":false,"message":...}），要照常读出来
+                return resp.json().catch(function () { return {}; }).then(function (data) {
+                    throw new Error(data.message || ('导出失败（' + resp.status + '）'));
+                });
+            }
+            var name = fileNameFrom(resp.headers.get('Content-Disposition')) || 'AI回答.xlsx';
+            return resp.blob().then(function (blob) {
+                var url = URL.createObjectURL(blob);
+                var link = document.createElement('a');
+                link.href = url;
+                link.download = name;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            });
+        }).then(function () {
+            button.textContent = '已导出';
+            window.setTimeout(function () {
+                button.textContent = label; button.disabled = false;
+            }, 1600);
+        }).catch(function (err) {
+            hint.textContent = '导出失败：' + err.message;
+            button.textContent = label;
+            button.disabled = false;
+        });
+    }
+
+    function saveDraft(bubble, button) {
+        request('/copilot/message/draft/', {
+            method: 'POST',
+            body: { message_id: Number(bubble.dataset.messageId) }
+        }).then(function (data) {
+            button.textContent = '已存草稿';
+            button.disabled = true;
+            hint.textContent = '已生成知识库草稿《' + data.title + '》，'
+                + '默认是草稿状态，需人工编辑后再发布。';
+        }).catch(function (err) {
+            hint.textContent = '存草稿失败：' + err.message;
+        });
+    }
+
+    function renderActions(bubble, messageId, vote) {
+        if (!messageId) return;
+        bubble.dataset.messageId = messageId;
+        bubble.querySelectorAll('.copilot-actions, .copilot-reasons').forEach(function (n) {
+            n.remove();
+        });
+
+        var box = document.createElement('div');
+        box.className = 'copilot-actions';
+
+        var copy = document.createElement('button');
+        copy.type = 'button';
+        copy.className = 'copilot-act';
+        copy.textContent = '复制';
+        copy.title = '复制 Markdown 原文';
+        copy.addEventListener('click', function () {
+            var text = bubble.dataset.plain || '';
+            if (!text) return;
+            copyText(text).then(function () {
+                copy.textContent = '已复制';
+                window.setTimeout(function () { copy.textContent = '复制'; }, 1600);
+            }, function () { copy.textContent = '复制失败'; });
+        });
+        box.appendChild(copy);
+
+        /* 导出只在"这条回答确实引用了记录"时出现：没有引用就肯定导出不出东西，
+           按钮放出来只会让人困惑。存草稿还要看知识库新建权限（bootstrap 回传）。 */
+        if (bubble.dataset.hasRefs === '1' && !bubble.classList.contains('is-restricted')) {
+            var exp = document.createElement('button');
+            exp.type = 'button';
+            exp.className = 'copilot-act';
+            exp.textContent = '导出 Excel';
+            exp.title = '把这条回答引用的记录导成表格';
+            exp.addEventListener('click', function () { downloadAnswer(bubble, exp); });
+            box.appendChild(exp);
+
+            if (draftAllowed) {
+                var draft = document.createElement('button');
+                draft.type = 'button';
+                draft.className = 'copilot-act';
+                draft.textContent = '存草稿';
+                draft.title = '生成知识库草稿（需人工编辑后发布）';
+                draft.addEventListener('click', function () { saveDraft(bubble, draft); });
+                box.appendChild(draft);
+            }
+        }
+
+        var up = document.createElement('button');
+        up.type = 'button';
+        up.className = 'copilot-act';
+        up.dataset.vote = '1';
+        up.textContent = '有用';
+        up.classList.toggle('is-on', vote === 1);
+        box.appendChild(up);
+
+        var down = document.createElement('button');
+        down.type = 'button';
+        down.className = 'copilot-act';
+        down.dataset.vote = '-1';
+        down.textContent = '没用';
+        down.classList.toggle('is-on', vote === -1);
+        box.appendChild(down);
+
+        bubble.appendChild(box);
+
+        var reasons = document.createElement('div');
+        reasons.className = 'copilot-reasons';
+        reasons.hidden = true;
+        FEEDBACK_REASONS.forEach(function (item) {
+            var chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'copilot-chip';
+            chip.textContent = item.label;
+            chip.addEventListener('click', function () {
+                submitFeedback(bubble, messageId, -1, item.code);
+            });
+            reasons.appendChild(chip);
+        });
+        var close = document.createElement('button');
+        close.type = 'button';
+        close.className = 'copilot-chip is-ghost';
+        close.textContent = '取消';
+        close.addEventListener('click', function () { reasons.hidden = true; });
+        reasons.appendChild(close);
+        bubble.appendChild(reasons);
+
+        up.addEventListener('click', function () {
+            submitFeedback(bubble, messageId, 1, '');
+        });
+        down.addEventListener('click', function () {
+            reasons.hidden = !reasons.hidden;
+        });
+    }
+
     function finalize(bubble, data) {
         setAnswer(bubble, data.answer_html, data.answer);
         bubble.classList.toggle('is-degraded', data.error_code === 'DEGRADED');
@@ -171,8 +395,80 @@
         }
         renderSteps(bubble, data.steps);
         renderRefs(bubble, data.refs);
+        renderActions(bubble, data.message_id, data.vote || 0);
         setBusy(false);
         log.scrollTop = log.scrollHeight;
+    }
+
+    /* ---------- 流式（SSE）与轮询降级 ----------
+       模型链路中位 4 秒、P95 5.8 秒，原先这段时间界面只有"正在处理…"。
+       现在先建 SSE 收增量；拿不到（旧浏览器 / 多进程部署 / 代理不支持）就
+       退回原来的 800ms 轮询，功能不降级，只是没那么"跟手"。 */
+    function streamingBubble(bubble, text) {
+        var body = bubble.querySelector('.copilot-md.is-streaming');
+        if (!body) {
+            bubble.textContent = '';
+            body = document.createElement('div');
+            body.className = 'copilot-md is-streaming';
+            bubble.classList.add('has-md');
+            bubble.appendChild(body);
+        }
+        body.textContent = text;
+        log.scrollTop = log.scrollHeight;
+    }
+
+    function appendStep(bubble, step) {
+        var steps = [];
+        try { steps = JSON.parse(bubble.dataset.steps || '[]'); } catch (err) { steps = []; }
+        steps.push(step);
+        bubble.dataset.steps = JSON.stringify(steps);
+        renderSteps(bubble, steps);
+        log.scrollTop = log.scrollHeight;
+    }
+
+    function stream(runId, bubble) {
+        var finished = false;
+        var buffer = '';
+        var timeout = window.setTimeout(function () {
+            if (!finished) { finished = true; source.close(); poll(runId, bubble); }
+        }, 180000);
+        var source = new EventSource('/copilot/run/' + runId + '/stream/');
+
+        function finish() {
+            if (finished) return;
+            finished = true;
+            window.clearTimeout(timeout);
+            source.close();
+            request('/copilot/run/' + runId + '/').then(function (data) {
+                finalize(bubble, data);
+            }).catch(function (err) {
+                bubble.classList.add('is-error');
+                bubble.textContent = '出错了：' + err.message;
+                setBusy(false);
+            });
+        }
+
+        source.addEventListener('token', function (event) {
+            var data = {};
+            try { data = JSON.parse(event.data || '{}'); } catch (err) { return; }
+            buffer += data.text || '';
+            streamingBubble(bubble, buffer);
+        });
+        source.addEventListener('step', function (event) {
+            var step = {};
+            try { step = JSON.parse(event.data || '{}'); } catch (err) { return; }
+            appendStep(bubble, step);
+        });
+        source.addEventListener('done', finish);
+        source.onerror = function () {
+            // EventSource 正常关闭也会触发 onerror：只有"还没收到 done"才降级，
+            // 否则每次成功都会多打一轮轮询。
+            if (finished) return;
+            finished = true;
+            window.clearTimeout(timeout);
+            source.close();
+            poll(runId, bubble);
+        };
     }
 
     function poll(runId, bubble) {
@@ -225,7 +521,11 @@
                 finalize(bubble, data);
                 return;
             }
-            poll(data.run_id, bubble);
+            if (window.EventSource) {
+                stream(data.run_id, bubble);
+            } else {
+                poll(data.run_id, bubble);
+            }
         }).catch(function (err) {
             bubble.classList.add('is-error');
             bubble.textContent = err.code === 'RATE_LIMITED'
@@ -265,10 +565,120 @@
             var bubble = addMessage('assistant', '');
             setAnswer(bubble, m.content_html, m.content);
             bubble.classList.toggle('is-degraded', m.error_code === 'DEGRADED');
+            if (m.restricted) bubble.classList.add('is-restricted');
             renderSteps(bubble, m.steps);
             renderRefs(bubble, m.refs);
+            renderActions(bubble, m.id, m.vote || 0);
         });
         log.scrollTop = log.scrollHeight;
+    }
+
+    /* ---------- 历史会话 ----------
+       以前只能看"最近一次"，昨天的分析翻不回来。抽屉里的每一项都能切过去，
+       也能改名/删除；删除是软删（后端把 status 置 archived），30 天后才物理清。 */
+    function openHistory() {
+        if (!historyBox) return;
+        historyBox.hidden = false;
+        loadConversations();
+    }
+
+    function closeHistory() {
+        if (historyBox) historyBox.hidden = true;
+    }
+
+    function loadConversations() {
+        historyList.textContent = '正在加载…';
+        request('/copilot/conversations/').then(function (data) {
+            renderConversationList(data.items || []);
+        }).catch(function (err) {
+            historyList.textContent = '加载失败：' + err.message;
+        });
+    }
+
+    function renderConversationList(items) {
+        historyList.textContent = '';
+        if (!items.length) {
+            historyList.textContent = '还没有历史会话。';
+            return;
+        }
+        items.forEach(function (item) {
+            var row = document.createElement('div');
+            row.className = 'copilot-history-item';
+            if (item.id === state.conversationId) row.classList.add('is-current');
+
+            var main = document.createElement('button');
+            main.type = 'button';
+            main.className = 'copilot-history-main';
+            var title = document.createElement('span');
+            title.className = 'copilot-history-title';
+            title.textContent = item.title;
+            var meta = document.createElement('span');
+            meta.className = 'copilot-history-meta';
+            meta.textContent = item.last_active_at + ' · ' + item.message_count + ' 条';
+            main.appendChild(title);
+            main.appendChild(meta);
+            main.addEventListener('click', function () {
+                loadConversation(item.id);
+            });
+            row.appendChild(main);
+
+            var rename = document.createElement('button');
+            rename.type = 'button';
+            rename.className = 'copilot-history-op';
+            rename.textContent = '改名';
+            rename.addEventListener('click', function () {
+                renameConversation(item);
+            });
+            row.appendChild(rename);
+
+            var del = document.createElement('button');
+            del.type = 'button';
+            del.className = 'copilot-history-op is-danger';
+            del.textContent = '删除';
+            del.addEventListener('click', function () {
+                deleteConversation(item);
+            });
+            row.appendChild(del);
+
+            historyList.appendChild(row);
+        });
+    }
+
+    function loadConversation(id) {
+        request('/copilot/conversation/' + id + '/').then(function (data) {
+            state.conversationId = data.conversation_id;
+            renderHistory((data.messages || []));
+            examplesBox.textContent = '';
+            hint.textContent = '已切换到「' + (data.title || '历史会话') + '」，可继续追问。';
+            closeHistory();
+        }).catch(function (err) {
+            hint.textContent = '切换失败：' + err.message;
+        });
+    }
+
+    function renameConversation(item) {
+        var title = window.prompt('会话名称', item.title);
+        if (title === null) return;
+        title = title.trim();
+        if (!title) return;
+        request('/copilot/conversation/' + item.id + '/rename/', {
+            method: 'POST', body: { title: title }
+        }).then(function () {
+            loadConversations();
+        }).catch(function (err) {
+            hint.textContent = '改名失败：' + err.message;
+        });
+    }
+
+    function deleteConversation(item) {
+        if (!window.confirm('删除会话「' + item.title + '」？删除后当前对话内容也会清空。')) return;
+        request('/copilot/conversation/' + item.id + '/delete/', { method: 'POST' })
+            .then(function () {
+                if (item.id === state.conversationId) startNewChat();
+                loadConversations();
+            }).catch(function (err) {
+                hint.textContent = '删除失败：' + err.message;
+            });
     }
 
     function restoreHistory() {
@@ -544,6 +954,8 @@
     });
     document.getElementById('copilotClose').addEventListener('click', closePanel);
     if (newBtn) newBtn.addEventListener('click', startNewChat);
+    if (historyBtn) historyBtn.addEventListener('click', openHistory);
+    if (historyClose) historyClose.addEventListener('click', closeHistory);
 
     if (pinBtn) {
         pinBtn.addEventListener('click', function () {
@@ -569,7 +981,42 @@
             event.preventDefault();
             openPanel();
         }
-        if (event.key === 'Escape' && !panel.hidden) closePanel();
+        if (event.key === 'Escape' && !panel.hidden) {
+            if (historyBox && !historyBox.hidden) closeHistory();
+            else closePanel();
+        }
+    });
+
+    /* ---------- 场景入口（列表页 / 详情页的「问 AI」） ----------
+       真实用法是"我看到这一行，想立刻追问"，而不是打开面板重新描述。
+       页面上任何带 data-copilot-ask 的元素点击 → 打开面板并预填；
+       同时把 window.copilotAsk 暴露出去给既有脚本调用。
+
+       刻意只**预填不自动发送**：AI 替用户决定"查什么"比少敲几个字危险得多，
+       用户至少要能看一眼问题再决定要不要发。 */
+    function askWith(text) {
+        text = (text || '').trim();
+        if (!text) return;
+        if (panel.hidden) openPanel();
+        input.value = text;
+        input.focus();
+        if (input.setSelectionRange) {
+            try { input.setSelectionRange(text.length, text.length); } catch (err) { /* 不支持就算了 */ }
+        }
+        // 别让上一次的提示语还挂着，用户会以为是这次操作的报错
+        hint.textContent = '已带入问题，可修改后回车发送。';
+    }
+
+    window.copilotAsk = askWith;
+
+    document.addEventListener('click', function (event) {
+        var trigger = event.target && event.target.closest
+            && event.target.closest('[data-copilot-ask]');
+        if (!trigger) return;
+        // 行内按钮通常也在整行跳转的点击范围内，必须拦住冒泡
+        event.preventDefault();
+        event.stopPropagation();
+        askWith(trigger.getAttribute('data-copilot-ask'));
     });
 
     form.addEventListener('submit', function (event) {
@@ -637,10 +1084,19 @@
                 hint.textContent = '当前账号没有可查询的业务模块权限。';
             }
             examplesCache = data.examples || [];
+            draftAllowed = !!data.can_save_draft;
             moduleLabels = {};
             (data.modules || []).forEach(function (m) { moduleLabels[m.key] = m.label; });
             renderExamples(examplesCache);
-            restoreHistory();
+            // 会话直达页（通知链接落地到这里）：直接切到指定会话，
+            // 而不是按默认逻辑恢复"最近一次"——否则点通知会飞到别的话题。
+            var target = window.COPILOT_CONVERSATION_ID;
+            if (target) {
+                openPanel();
+                loadConversation(target);
+            } else {
+                restoreHistory();
+            }
         }).catch(function () {
             fab.hidden = true;   // 无 copilot 权限：不显示入口
         });
