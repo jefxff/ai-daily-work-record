@@ -399,3 +399,28 @@ print('工具被拒', T.objects.filter(permitted=False).count(), '/', T.objects.
 - `copilot/eval_matrix.py`：评估矩阵实现
 - `notifications/scheduler.py`：调度器（B3 复用）
 - `records/expiry.py`：到期口径（B3 简报复用）
+
+## 10. 落地记录（2026-10-31 执行）
+
+按本计划书完成第一批落地，状态如下：
+
+| 项 | 计划编号 | 状态 | 说明 |
+| --- | --- | --- | --- |
+| 反馈闭环（赞/踩 → 评估集 → 周报） | B1-1 | ✅ | `CopilotFeedback` 模型 + `POST /copilot/feedback/`；`copilot_promote` 把 7 天内的踩转为 `CopilotEvalCase` 草稿（`active=False`）；`copilot_feedback_report` 输出不满意率 Top10 并写 `TaskRunLog` |
+| 会话管理 + 保留策略 | B1-2 | ✅ | `copilot:conversations/rename/delete`（软删 `archived`）；`copilot_prune` 按 `retention_days` 清会话与孤儿 run，外发日志单独 `egress_retention_days`（默认 180），`--dry-run` + `--confirm` 双闸 |
+| 模型链路金样集 | B1-3 | ✅ | `copilot/model_cases.py`（约 55 例）+ `copilot_eval --with-model --model-out docs/eval/xxx.json`，三重判定（工具调用/数字与引用/关键词与禁词），每题 2 次取稳 |
+| 历史回答按当前权限复核 | B1-4 | ✅ | `_conversation_data` 逐条按当前权限复核，无权模块引用隐去正文并标注 `is_restricted` |
+| 流式输出（SSE） | B2-1 | ✅ | `copilot/streaming.py` 进程内事件总线 + `GET /copilot/run/<id>/stream/`；前端 EventSource 优先、轮询兜底；非原生工具协议仍走整段返回 |
+| 多轮跟问（槽位） | B2-2 | ✅ | `copilot/engine/slots.py`：每轮把模块/关键词写进 `conversation.slots`，下一句"那这个客户呢"自动展开；步骤区会显示 `slots` 一项便于排查串话 |
+| 沉淀导出 | B2-3 | ✅ | 回答操作行加「导出 Excel」（`copilot/export.py`，按引用逐模块导出）与「存知识库草稿」（`status=draft`，visibility=private，写审计） |
+| 场景入口「问 AI」 | B2-4 | ✅ | 客户台账/诉讼列表行与详情页入口，点开面板并预填问题（不自动发送） |
+| 窄屏适配 | B2-5 | ✅ | ≤560px 全屏抽屉、隐藏缩放把手；历史抽屉（最近 20 会话，切换/重命名/删除） |
+| 每日简报 | B3-1 | ✅ | `copilot/digest.py` 复用 `records/expiry.py` 到期口径 + 系统会话 + `emit('copilot_daily_digest')`（同日去重），`copilot_daily_digest --dry-run/--username/--confirm` |
+| 确定性规则提醒 | B3-2 | ✅ | `copilot/rules.py` 三条规则（客诉超期未闭环 / 保险临期 30 天 / 台账额度占用≥90%），`copilot_alerts` 干跑默认、`--confirm` 发通知 |
+| 质量成本看板 | B3-3 | ✅ | `copilot/metrics.py` + `/copilot/quality/` 页面（本地应答率、时延分位、token、失败码、外发拦截、反馈不满意率），侧边栏「AI 助手」组下新增入口 |
+| 检索排序与外发审计 | B3-4 | ✅ | `copilot/ranking.py` BM25（标题加权）接入知识库工具；`/copilot/egress/` 外发审计查询页 |
+| 附带加固 | — | ✅ | `copilot/tools/daterange.py`（日期区间抽取，含倒序交换修复）+ `text_utils.py`（slug/重音折叠）+ `alias_map.py`（跨写法别名登记）；`MetalPrice` 增 (品名, 日期) 复合索引 |
+
+**验证**：`manage.py test copilot` 287 例全过（本轮从 253 → 287）；`makemigrations --check` 无漂移；`collectstatic` 已执行（静态版本 `20261031q`）。
+
+**仍留在下一批**：模型链路评估需接真实模型跑一轮拿基线数字（`--with-model` 已就绪）；B3 看板的历史趋势曲线；`copilot_prune` 接入调度器的排期确认。
