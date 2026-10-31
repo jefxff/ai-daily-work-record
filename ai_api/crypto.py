@@ -59,3 +59,32 @@ def mask_key(token: str, *, keep_last: int = 4) -> str:
     if len(plain) <= keep_last:
         return "*" * len(plain)
     return plain[:2] + "..." + plain[-keep_last:]
+
+
+# 掩码形态的判定上限：真实密钥远长于此，低于该长度且含省略号的只能是掩码
+_MASK_MAX_LEN = 12
+
+
+def looks_like_mask(value: str) -> bool:
+    """判断一个字符串是不是「显示用的掩码」而非真实密钥。
+
+    存在意义：配置页会把掩码回填到表单里，若浏览器连同掩码一起提交、或用户
+    手工粘贴掩码，落库的就是掩码本身——之后解密得到的还是掩码，调模型必然
+    鉴权失败，而且从页面上完全看不出问题（掩码显示「正常」）。所以在保存链路上
+    必须能识别出这种情况。
+
+    覆盖三种形态：
+    1. ``mask_key`` 的产物：前 2 位 + ``...`` + 后 4 位，如 ``sk...0236``；
+    2. 全星号占位：``********``；
+    3. 手工/前端拼接的脱敏串，如 ``sk-****0236``。
+    """
+    text = (value or "").strip()
+    if not text:
+        return False
+    if set(text) == {"*"}:
+        return True
+    if "****" in text:
+        return True
+    if "..." in text and len(text) <= _MASK_MAX_LEN:
+        return True
+    return False

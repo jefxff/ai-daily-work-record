@@ -5,13 +5,47 @@
 
 {% block content %}
     <div class="page-header">
-        <h2>AI 配置<span class="total-hint">周报 / 年度总结的 AI 润色接入</span></h2>
+        <h2>AI 配置<span class="total-hint">{{ purpose_subtitle }}</span></h2>
     </div>
+
+    <nav class="ai-tabs" aria-label="AI 配置用途">
+        {% for tab in tabs %}
+        <a class="ai-tab{% if tab.value == purpose %} is-active{% endif %}"
+           href="?purpose={{ tab.value }}">
+            <span class="ai-tab-label">{{ tab.label }}</span>
+            {% if tab.enabled %}
+            <span class="ai-tab-state is-on">{{ tab.model|default:"已启用" }}</span>
+            {% elif tab.configured %}
+            <span class="ai-tab-state">未启用</span>
+            {% else %}
+            <span class="ai-tab-state is-empty">未配置</span>
+            {% endif %}
+        </a>
+        {% endfor %}
+    </nav>
+
+    {% if purpose == 'chat' and chat_effective %}
+    <div class="ai-notice{% if chat_effective.borrowed %} ai-notice-warn{% endif %}">
+        {% if chat_effective.borrowed %}
+        <strong>AI 助手当前借用了「{{ chat_effective.purpose_label }}」的配置</strong>
+        <span>「对话问答」还没有独立配置，所以 AI 助手现在实际用的是
+            {{ chat_effective.provider }} / {{ chat_effective.model }}
+            （{% if chat_effective.is_local %}本地{% else %}云端{% endif %}）——
+            这也是助手徽章显示「云端模型」、敏感模块查不到的原因。在下面填好并保存，
+            即可让问答走独立的模型。</span>
+        {% else %}
+        <strong>AI 助手当前使用：{{ chat_effective.provider }} / {{ chat_effective.model }}
+            （{% if chat_effective.is_local %}本地模型，数据不出内网{% else %}云端模型，敏感模块将禁止外发{% endif %}）</strong>
+        <span>修改下面的参数并保存后立即生效。</span>
+        {% endif %}
+    </div>
+    {% endif %}
 
     <form class="table-container ai-form" method="post" action="{% url 'ai_config_save' %}" id="aiConfigForm">
         {% csrf_token %}
+        <input type="hidden" name="purpose" value="{{ purpose }}">
         <div class="ai-form-head">
-            <span>接入参数</span>
+            <span>{{ purpose_label }}接入参数</span>
             {% if config.is_enabled %}
             <span class="ai-badge ai-badge-on">已启用</span>
             {% else %}
@@ -44,11 +78,21 @@
             <div class="ai-field ai-field-wide">
                 <label for="apiKeyInput">API 密钥</label>
                 <div class="ai-key-wrap">
-                    <input id="apiKeyInput" type="password" name="api_key" value="{{ api_key_masked }}"
-                           autocomplete="new-password">
+                    <input id="apiKeyInput" type="password" name="api_key" value=""
+                           autocomplete="new-password"
+                           placeholder="{% if api_key_is_masked %}请重新输入完整的 API 密钥{% elif api_key_masked %}已保存：{{ api_key_masked }}（留空表示不修改）{% else %}粘贴完整的 API 密钥{% endif %}">
                     <button type="button" class="btn-transparent btn-sm" id="toggleKey">显示</button>
                 </div>
-                <p class="ai-hint">仅系统管理员可见；本地 Ollama 通常无需填写。</p>
+                <p class="ai-hint">仅系统管理员可见；本地 Ollama 通常无需填写。密钥不会回填到输入框，留空即保持已保存的密钥不变。</p>
+                {% if api_key_is_masked %}
+                <p class="ai-warn">当前保存的密钥是一个掩码（形如 <code>{{ api_key_masked }}</code>），调用模型必然鉴权失败。请重新输入完整密钥后保存。</p>
+                {% endif %}
+                {% if config.pk and config.api_key %}
+                <label class="ai-check ai-check-sub">
+                    <input type="checkbox" name="clear_api_key">
+                    <span>清除已保存的密钥</span>
+                </label>
+                {% endif %}
             </div>
 
             <div class="ai-field">
@@ -66,10 +110,18 @@
                 <input id="timeoutInput" type="number" min="1"
                        name="timeout" value="{{ config.timeout }}">
             </div>
-            <div class="ai-field ai-field-check">
+            <div class="ai-field ai-field-wide ai-field-check">
+                <label class="ai-check">
+                    <input type="checkbox" name="is_local" {% if config.is_local %}checked{% endif %}>
+                    <span><strong>本地模型（数据不出内网）</strong> —— 勾选后视为数据不外发，客诉 / 诉讼 / 保险 / 台账等敏感模块才允许向它发送数据；<b>模型部署在公网时必须不勾</b>。</span>
+                </label>
+                <label class="ai-check">
+                    <input type="checkbox" name="supports_tools" {% if config.supports_tools %}checked{% endif %}>
+                    <span><strong>支持原生函数调用</strong> —— 勾选则用 OpenAI tools 协议；本地小模型多数不支持，保持不勾即可（走受控 JSON 文本协议，更稳）。</span>
+                </label>
                 <label class="ai-check">
                     <input type="checkbox" name="is_enabled" {% if config.is_enabled %}checked{% endif %}>
-                    <span>启用 AI 润色（勾选后生成周报 / 年度总结时自动调用）</span>
+                    <span>{{ purpose_enable_label }}</span>
                 </label>
             </div>
         </div>
@@ -81,11 +133,12 @@
     </form>
 
     <form class="table-container ai-reset" method="post" action="{% url 'ai_config_reset' %}"
-          data-confirm="确定重置 AI 配置吗？将清空已保存的参数并回到未启用状态。">
+          data-confirm="确定重置「{{ purpose_label }}」配置吗？将清空该用途接入参数并回到未启用状态（另一种用途的配置不受影响）。">
         {% csrf_token %}
+        <input type="hidden" name="purpose" value="{{ purpose }}">
         <div class="ai-reset-text">
             <strong>重置配置</strong>
-            <span>清空已保存的接入参数，回到「未启用」状态。</span>
+            <span>清空「{{ purpose_label }}」的接入参数，回到「未启用」状态。</span>
         </div>
         <button type="submit" class="btn-transparent btn-sm btn-delete">重置</button>
     </form>
@@ -93,13 +146,58 @@
     {% if config.pk %}
     <p class="ai-meta">最后修改：{{ config.updated_at|date:'Y-m-d H:i:s' }}{% if config.updated_by %} · {{ config.updated_by }}{% endif %}</p>
     {% endif %}
-    <p class="ai-meta">该配置仅影响「周报生成」与「年度总结」的润色；AI 不可用时会自动回退到模板文本，不影响功能可用性。</p>
+    <p class="ai-meta">{{ purpose_footer }}</p>
 
     {{ default_base_urls|json_script:"aiDefaults" }}
 {% endblock %}
 
 {% block extra_css %}
 <style>
+    .ai-tabs {
+        display: flex; gap: var(--sp-2); flex-wrap: wrap;
+        margin-bottom: var(--sp-4);
+    }
+    .ai-tab {
+        display: inline-flex; align-items: center; gap: var(--sp-2);
+        padding: 0.4rem 0.9rem;
+        border: 1px solid var(--c-border-strong);
+        border-radius: var(--r-full);
+        background: var(--c-surface);
+        color: var(--c-text-secondary);
+        font-size: var(--fs-sm);
+        text-decoration: none;
+        line-height: 1.4;
+    }
+    .ai-tab:hover { color: var(--c-text); border-color: var(--c-text-muted); }
+    .ai-tab.is-active {
+        background: var(--c-primary-subtle, var(--c-surface-sunken));
+        border-color: var(--c-primary, var(--c-border-strong));
+        color: var(--c-text);
+        font-weight: 600;
+    }
+    .ai-tab-state {
+        padding: 1px 8px; border-radius: var(--r-full);
+        background: var(--c-surface-sunken);
+        color: var(--c-text-muted);
+        font-size: var(--fs-xs); font-weight: 400;
+        max-width: 12rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .ai-tab-state.is-on { background: var(--c-success-bg); color: var(--c-success); }
+    .ai-tab-state.is-empty { background: var(--c-danger-bg); color: var(--c-danger); }
+
+    .ai-notice {
+        display: flex; flex-direction: column; gap: var(--sp-1);
+        padding: var(--sp-3) var(--sp-4);
+        margin-bottom: var(--sp-4);
+        border-left: 3px solid var(--c-success);
+        background: var(--c-success-bg);
+        border-radius: var(--r-sm);
+        font-size: var(--fs-sm);
+        color: var(--c-text);
+    }
+    .ai-notice span { color: var(--c-text-secondary); font-size: var(--fs-xs); line-height: 1.6; }
+    .ai-notice-warn { border-left-color: var(--c-warning, #b45309); background: var(--c-warning-bg, #fffbeb); }
+
     .ai-form { padding: var(--sp-5); margin-bottom: var(--sp-4); }
     .ai-form-head {
         display: flex; align-items: center; justify-content: space-between;
@@ -138,10 +236,20 @@
     .ai-key-wrap { display: flex; gap: var(--sp-2); align-items: center; }
     .ai-key-wrap input { flex: 1; }
     .ai-hint { margin: 0; font-size: var(--fs-xs); color: var(--c-text-muted); }
+    .ai-warn {
+        margin: 0; padding: var(--sp-2) var(--sp-3);
+        border-left: 3px solid var(--c-danger);
+        background: var(--c-danger-bg);
+        color: var(--c-danger);
+        font-size: var(--fs-xs);
+        border-radius: var(--r-sm);
+    }
+    .ai-warn code { font-family: var(--font-mono, monospace); }
+    .ai-check-sub { margin-top: var(--sp-1); font-size: var(--fs-xs); color: var(--c-text-secondary); }
 
-    .ai-field-check { grid-column: 1 / -1; }
-    .ai-check { display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-sm); color: var(--c-text); }
-    .ai-check input { width: auto; }
+    .ai-field-check { grid-column: 1 / -1; display: flex; flex-direction: column; gap: var(--sp-2); }
+    .ai-check { display: flex; align-items: flex-start; gap: var(--sp-2); font-size: var(--fs-sm); color: var(--c-text); line-height: 1.55; }
+    .ai-check input { width: auto; margin-top: 0.2rem; flex: 0 0 auto; }
 
     .ai-actions {
         display: flex; gap: var(--sp-3); flex-wrap: wrap;
