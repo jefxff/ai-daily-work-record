@@ -147,6 +147,18 @@ def _execute(run):
     # 计数/分组类问题（"月结60天有多少家""立案和结案各多少"）：答案是算出来的，
     # 本地直接算。交给模型它会把全表数字当成筛选后的结果（截图里问月结60天多少家，
     # 答"50 家，普通32+代加工18"——50 是全表，条件全是它自己加的）。
+    # 求和类问题（「保费一共多少钱」「涉案金额合计多少」）：金额是加出来的，
+    # 交给模型它会去数条数，或把几个金额字段混在一起加。
+    total_intent = planner.sum_query(run.question, modules, run.user)
+    if total_intent is not None:
+        total_text, total_refs = planner.sum_answer(total_intent, run.user, policy)
+        if total_text:
+            step = {'tool': 'aggregate_records', 'module': total_intent['spec'].key,
+                    'ok': True, 'rows': len(total_refs), 'metric': 'sum',
+                    'field': total_intent['field']}
+            return _finish(run, total_text, total_refs, [step], 0, started, config,
+                           error_code='')
+
     stat = planner.stat_query(run.question, modules, run.user)
     if stat is not None:
         stat_text, stat_refs = planner.stat_answer(stat, run.user, policy)
@@ -158,6 +170,21 @@ def _execute(run):
             if stat.get('state') is not None:
                 step['state'] = stat['state'].label
             return _finish(run, stat_text, stat_refs, [step], 0, started, config,
+                           error_code='')
+
+    # 排序/极值类问题（「阅读最多的一篇」「保费最高的保单」）：答案是排出来的
+    # 那一条，不是搜出来的几条。交给模型，它会把"阅读最多"当关键词去检索正文，
+    # 必然 0 条，然后答成"没有符合条件的记录"。
+    rank = planner.rank_query(run.question, modules, run.user)
+    if rank is not None:
+        rank_text, rank_refs = planner.rank_answer(rank, run.user, policy)
+        if rank_text:
+            step = {'tool': 'query_records', 'module': rank['spec'].key,
+                    'ok': True, 'rows': len(rank_refs),
+                    'order_by': ('-' if rank['desc'] else '') + rank['field']}
+            if rank.get('state') is not None:
+                step['state'] = rank['state'].label
+            return _finish(run, rank_text, rank_refs, [step], 0, started, config,
                            error_code='')
 
     # 「XX 模块里有哪些记录」：模块名就是全部线索，本地直接查最准。
@@ -191,6 +218,17 @@ def _execute(run):
                 step['state'] = intent_state.label
             return _finish(run, answer, found.refs, [step], 0, started, config,
                            error_code='')
+
+    # 纯实体查询（「王国军」「DA-0050」）：没有模块名，但本地一遍检索就有结果。
+    # 命中直接答，0 token；连人名/编号都对不上时也本地答清楚"搜过哪些模块"，
+    # 不再让模型花两轮 list_modules 换一句"没有找到"。
+    entity = planner.entity_query(run.question, modules, run.user, policy)
+    if entity is not None:
+        entity_answer, entity_refs = entity
+        step = {'tool': 'global_search', 'ok': bool(entity_refs),
+                'rows': len(entity_refs)}
+        return _finish(run, entity_answer, entity_refs, [step], 0, started, config,
+                       error_code='')
 
     messages = [{'role': 'system',
                  'content': prompt.build_system_prompt(

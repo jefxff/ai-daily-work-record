@@ -4,7 +4,7 @@ import ast
 import re
 from datetime import date, timedelta
 
-from django.db.models import Count
+from django.db.models import Avg, Count, Max, Min, Sum
 from django.utils import timezone
 
 from .. import catalog, registry, security
@@ -618,6 +618,309 @@ def stat_query(question, modules, user=None):
             'group_field': group_field, 'state': _state_of_text(spec, text)}
 
 
+# --------------------------------------------------------------- 排序 / 极值
+# 「知识库中阅读最多的一篇文章是哪篇」这类问题的答案是**排出来的那一条**，
+# 不是"搜出来的几条"。以前它被当成关键词去全文检索——"阅读最多"不是任何
+# 字段里存的值，必然 0 条，于是把"我不会排序"答成了"没有这条记录"。
+#
+# 「最近/近期」不算极值：那只是"按时间倒序取几条"，module_digest 本来就按
+# 日期倒序，交给它更省事。
+_RANK_CUE_RE = re.compile(
+    r'(最多|最少|最大|最小|最高|最低|最贵|最便宜|最长|最短|最旧|最老|'
+    r'最新|最早|最热|最热门|最受欢迎|最常用|最活跃|金额最大|数量最多|'
+    r'排名|排行|排序|'
+    r'前\s*\d+|前[一二三四五六七八九十]+|top\s*\d+|'
+    r'第\s*[一二三四五六七八九十\d]+\s*名?)', re.I)
+# 升序：问的是"最少/最早/最低"这一头
+_RANK_ASC_RE = re.compile(r'(最少|最小|最低|最便宜|最短|最早|最旧|最老)')
+_RANK_TOP_RE = re.compile(r'(?:前\s*|top\s*)(\d+)', re.I)
+_RANK_CN_TOP_RE = re.compile(r'前([一二三四五六七八九十])')
+_RANK_ORDINAL_RE = re.compile(r'第\s*([一二三四五六七八九十\d]+)\s*名?')
+_RANK_CN_DIGITS = {'一': 1, '二': 2, '三': 3, '四': 4, '五': 5,
+                   '六': 6, '七': 7, '八': 8, '九': 9, '十': 10}
+# "哪一篇/哪条/谁" —— 极值本身只有一条，别硬凑成列表
+_RANK_ONE_RE = re.compile(r'(哪一?[篇条个家份本起次项套台]|哪个|哪家|谁)')
+# 复数信号：问了"哪些/分别是"说明用户想看排行榜而不是冠军
+_RANK_PLURAL_RE = re.compile(r'(哪些|哪几|分别|各是|都是什么|排行|排名|榜)')
+# 问句里与排序无关的残留词：剥掉它们才知道有没有真实筛选条件
+_RANK_ONE_MEASURE_RE = re.compile(r'[一二两三四五六七八九十]\s*[篇条个家份本起次项套台]')
+_RANK_NOISE_RE = re.compile(
+    r'(哪一?[篇条个家份本起次项套台]|文章|文档|记录|数据|条目|东西|排名|排行|'
+    r'第一|一名|一位|一个|关于|有关|涉及|包含|含有|带有|里面|里边)')
+_RANK_MAX_LIMIT = 20
+
+
+def _rank_number(raw):
+    raw = (raw or '').strip()
+    if not raw:
+        return 0
+    if raw.isdigit():
+        return int(raw)
+    if raw in _RANK_CN_DIGITS:
+        return _RANK_CN_DIGITS[raw]
+    return 0
+
+
+def rank_limit(text):
+    """排行榜要几条：``前5`` / ``top3`` / ``第三名`` 解析，默认极值取 1。
+
+    问了"哪些/分别"但没给数字时取 5：说"最多的有哪些"的人想看的是榜，
+    不是只知道冠军。
+    """
+    for regex in (_RANK_TOP_RE, _RANK_CN_TOP_RE, _RANK_ORDINAL_RE):
+        found = regex.search(text or '')
+        if found:
+            n = _rank_number(found.group(1))
+            if n:
+                # "第三名"问的是第 3 名本身，但在看不到前两名的情况下没有意义，
+                # 直接给前 3 名更有用
+                return max(1, min(n, _RANK_MAX_LIMIT))
+    if _RANK_PLURAL_RE.search(text or ''):
+        return 5
+    if _RANK_ONE_RE.search(text or ''):
+        return 1
+    return 1
+
+
+def _rank_field(spec, text):
+    """问题里的排序字段 -> ``(字段名, 中文标签)``；认不出来返回 ``('', '')``。
+
+    三种来源，按可靠性排序：
+    1. catalog 里显式声明的口语别名（"阅读"→ ``view_count``）；
+    2. 字段中文名本身出现在问句里（"浏览次数最多"）；
+    3. 只有"最多/最高"没有指明字段时，模块只有一个数值字段就用它——
+       多选一时猜错不如不猜，交回模型。
+    """
+    # 「最早的金属价格」里也有"价格"二字，但问的是时间。时间词优先判日期字段，
+    # 否则会答成"价格最低的那条"，看起来合理、实则答非所问。
+    if spec.date_field and re.search(r'(最早|最旧|最老|最新)', text):
+        return spec.date_field, catalog.field_label(spec, spec.date_field)
+    best = ('', '', 0)
+    for name, label, aliases in catalog.rankable_fields(spec):
+        for word in aliases:
+            if word and word in text and len(word) > best[2]:
+                best = (name, word, len(word))
+    if best[0]:
+        # 用用户自己的说法当标签：「赔偿金额」比字段名「客户诉求」更好懂
+        return best[0], best[1]
+    for name, label, _aliases in catalog.rankable_fields(spec):
+        if label and len(label) >= 2 and label in text:
+            return name, label
+    numeric = [(n, lb) for n, lb, _a in catalog.rankable_fields(spec)
+               if catalog.is_numeric(spec, n)]
+    if len(numeric) == 1:
+        return numeric[0]
+    # 「最早的制度是哪个」：没点字段名，但"最早/最旧/最新"指向的就是日期字段
+    if spec.date_field and re.search(r'(最早|最旧|最老|最新)', text):
+        return spec.date_field, catalog.field_label(spec, spec.date_field)
+    return '', ''
+
+
+def _module_by_rank_alias(text, modules):
+    """没点模块名时，用排序字段的别名反推模块。
+
+    「额度最高的客户」里没有"客户台账"四个字，但"额度"只可能是
+    ``CustomerCredit.credit_limit``——模块是可以反推出来的，不必交给模型猜。
+    两个模块的别名一样贴切时返回 None：猜错不如不猜。
+    """
+    hits = []
+    for spec in modules:
+        for entry in spec.rank_fields:
+            for alias in entry[1:]:
+                if alias and alias in text:
+                    hits.append((len(alias), spec.key, spec))
+    if not hits:
+        return None
+    hits.sort(key=lambda item: item[0], reverse=True)
+    if len(hits) > 1 and hits[0][0] == hits[1][0] and hits[0][1] != hits[1][1]:
+        return None
+    return hits[0][2]
+
+
+def _pick_metric_spec(text, modules, user=None):
+    """选出"既有该排序/求和字段、又被问句点名"的模块，返回 ``(spec, field, label)``。
+
+    不能只信 ``pick_module``：它在"字段值命中"和"名字更长"上做了取舍，
+    「诉讼中涉案金额最多的是哪个」会被识别成客户客诉（客诉类型里有"诉讼"这个值），
+    「核价中供应商1报价最多」会选到供应商档案（"供应商"比"核价"长）。
+    两者的共同点是——认出来的模块根本没有这个字段。所以用"能不能提供该字段"
+    反向校验一遍，把主语纠回来。
+    """
+    spec = pick_module(text, modules, user)
+    field, label = _rank_field(spec, text) if spec is not None else ('', '')
+    if spec is not None and field:
+        return spec, field, label
+    for cand in hinted_modules(text, modules):
+        if cand is spec:
+            continue
+        found_field, found_label = _rank_field(cand, text)
+        if found_field:
+            return cand, found_field, found_label
+    if spec is not None and field:
+        return spec, field, label
+    alias_spec = _module_by_rank_alias(text, modules)
+    if alias_spec is not None:
+        found_field, found_label = _rank_field(alias_spec, text)
+        if found_field:
+            return alias_spec, found_field, found_label
+    return None, '', ''
+
+
+def rank_query(question, modules, user=None):
+    """排序/极值类问题的确定性意图，命中返回 dict，否则 ``None``。
+
+    返回 ``{'spec', 'field', 'label', 'desc', 'limit', 'keyword', 'state'}``。
+    """
+    text = question or ''
+    if not _RANK_CUE_RE.search(text):
+        return None
+    spec, field, label = _pick_metric_spec(text, modules, user)
+    if spec is None or not field:
+        return None
+    # 时间是"排序维度"而不是"筛选条件"：说了本月/今年就不是全量排行榜
+    if _TIME_SCOPE_RE.search(text):
+        return None
+    return {
+        'spec': spec,
+        'field': field,
+        'label': label,
+        'desc': not _RANK_ASC_RE.search(text),
+        'limit': rank_limit(text),
+        'keyword': _rank_keyword(spec, text, user),
+        'state': _state_of_text(spec, text),
+    }
+
+
+def _rank_keyword(spec, text, user=None):
+    """排序问题里额外的筛选条件：只认"库里真实存在的值"。
+
+    「额度最高的客户」剥完剩"客户"——它不是任何字段的值，也不是有效条件，
+    当关键词去搜只会 0 条。反过来「关于试样的文档里阅读最多的一篇」剩下的
+    "试样"能在标签/正文里查到，才是真条件。
+    """
+    rest = text or ''
+    for word in (spec.label,) + tuple(MODULE_ALIASES.get(spec.key, ())):
+        if word:
+            rest = rest.replace(word, '')
+    for entry in spec.rank_fields:
+        for alias in entry[1:]:
+            if alias:
+                rest = rest.replace(alias, '')
+    rest = _RANK_CUE_RE.sub('', rest)
+    rest = _RANK_ONE_MEASURE_RE.sub('', rest)
+    rest = _RANK_NOISE_RE.sub('', rest)
+    rest = _PUNCT_RE.sub('', _INTENT_STOP_RE.sub('', rest))
+    if len(rest) < 2:
+        return ''
+    # "客户"之于"客户台账"只是模块名的片段，不是筛选条件：拿它去 icontains，
+    # 会把 50 家筛成标题里恰好带"客户"的 4 家，然后说"额度最高的只有 4 家"。
+    if any(rest in word for word in (spec.label,) + tuple(MODULE_ALIASES.get(spec.key, ()))):
+        return ''
+    _field, value = db_value_match(spec, rest, user)
+    if value:
+        return value
+    for found in matched_labels(spec, rest).values():
+        if found:
+            return found[0]
+    # 自由文本条件（"关于试样的文档"里的"试样"）：先试一次，真搜得到才用。
+    # 不试就带上，会把"客户""公司"这类空话变成筛条件，结果 0 条还说"没有"。
+    if 2 <= len(rest) <= 12:
+        try:
+            probe = apply_filters(base_queryset(spec, user), spec, keyword=rest)
+            if probe.exists():
+                return rest
+        except Exception:  # noqa: BLE001 - 探测失败就当没有条件
+            return ''
+    return ''
+
+
+# ------------------------------------------------------------------ 求和
+# 「今年保费一共多少钱」「涉案金额合计多少」：答案是算出来的和，不是条数。
+# 这类问题以前落到模型手上，它要么答成分组计数，要么把两三个字段加起来。
+_SUM_CUE_RE = re.compile(
+    r'(一共|总共|合计|总计|加起来|总和|总额|总金额|总价|累计|之和|共计|'
+    r'多少钱|金额是多|费用是多|合计多少|总共多少)')
+
+
+def sum_query(question, modules, user=None):
+    """求和类问题的确定性意图，命中返回 dict，否则 ``None``。
+
+    只在"能确定是哪个字段"时接管：一个模块有多个金额字段（客诉的赔偿额 /
+    我方运费 / 客户运费）而问题没说清是哪个，猜错就是把三个数混成一个。
+    """
+    text = question or ''
+    if not _SUM_CUE_RE.search(text):
+        return None
+    if _TIME_SCOPE_RE.search(text):
+        return None          # 带时间的口径（今年/本月）留给模型按区间算
+    spec, field, label = _pick_metric_spec(text, modules, user)
+    if spec is None or not field or not spec.sum_fields:
+        return None
+    if not catalog.is_numeric(spec, field):
+        return None
+    return {
+        'spec': spec,
+        'field': field,
+        'label': label,
+        'keyword': _rank_keyword(spec, text, user),
+        'state': _state_of_text(spec, text),
+    }
+
+
+def _fmt_amount(value):
+    """金额千分位：48231.5 → 48,231.50；整数不带小数尾巴。"""
+    try:
+        num = float(value)
+    except (TypeError, ValueError):
+        return '—'
+    if abs(num - round(num)) < 1e-9:
+        return f'{int(round(num)):,}'
+    return f'{num:,.2f}'
+
+
+def sum_answer(intent, user, policy=None):
+    """求和 + 平均 + 最高最低：一个数字说明不了"钱花得对不对"。"""
+    spec = intent['spec']
+    field = intent['field']
+    short = _field_name(spec, field, intent.get('label') or '')
+    unit = unit_of(spec)
+    scope = _scope_note(intent.get('keyword') or '',
+                        intent['state'].label if intent.get('state') is not None else '')
+    money = _field_unit(spec, field)
+
+    qs = base_queryset(spec, user)
+    if intent.get('keyword'):
+        qs = apply_filters(qs, spec, keyword=intent['keyword'])
+    if intent.get('state') is not None:
+        qs = qs.filter(intent['state'].filter_q())
+    qs = qs.exclude(**{f'{field}__isnull': True})
+    rows = qs.count()
+    if not rows:
+        return (f'「{spec.label}」里没有可求和的「{short}」记录{scope}。'), []
+
+    agg = qs.aggregate(total=Sum(field), avg=Avg(field), hi=Max(field), lo=Min(field))
+
+    def suffix(value):
+        return f' {money}' if money else ''
+
+    lines = [f'「{spec.label}」中**{short}**合计 **{_fmt_amount(agg["total"])}'
+             f'{suffix(agg["total"])}**（{rows} {unit}{scope}）：', '',
+             f'- **合计**：{_fmt_amount(agg["total"])}{suffix(agg["total"])}',
+             f'- **平均**：{_fmt_amount(agg["avg"])}{suffix(agg["avg"])}']
+    refs = []
+    for mark, value in (('最高', agg['hi']), ('最低', agg['lo'])):
+        if value is None:
+            continue
+        obj = qs.order_by(('-' if mark == '最高' else '') + field).first()
+        title = str(getattr(obj, spec.title_field, '') or f'#{obj.pk}')[:40] if obj else ''
+        lines.append(f'- **{mark}**：{_fmt_amount(value)}{suffix(value)}'
+                     + (f' —「{title}」' if title else ''))
+        if obj is not None:
+            refs.append(catalog.build_ref(spec, obj))
+    lines += ['', f'> 求和字段「{short}」；分母 {rows} {unit}，空值不计入。']
+    return '\n'.join(lines), refs
+
+
 def stat_answer(stat, user, policy=None):
     """把统计意图算成人话：分组给每组条数 + 例子，计数给总数 + 主要分布。"""
     spec = stat['spec']
@@ -718,6 +1021,132 @@ def _count_answer(spec, qs, total, keyword, keyword_field='', state_label=''):
                     f'| {row["n"]} {unit} |')
             break
     _titles, refs = _samples(spec, qs, limit=10)
+    return '\n'.join(lines), refs
+
+
+_RANK_UNIT_RE = re.compile(r'[（(]([^）)]{1,8})[）)]')
+# 括号里只有这些才算单位：「客户诉求（赔偿金额）」里的是字段说明，不是单位，
+# 当成单位会答出"13,565.61 赔偿金额"
+_UNIT_WORDS = frozenset({
+    '元', '万元', '亿元', '千元', '次', '份', '条', '家', '件', '个', '项',
+    '天', '小时', '分钟', '年', '月', '吨', '公斤', 'kg', '米', '%', '人',
+})
+
+
+def _field_unit(spec, field):
+    """字段单位从 verbose_name 的括号里取：「额度(万元)」→「万元」。"""
+    found = _RANK_UNIT_RE.search(catalog.field_label(spec, field) or '')
+    if not found:
+        return ''
+    unit = found.group(1).strip()
+    return unit if unit in _UNIT_WORDS else ''
+
+
+def _field_name(spec, field, label=''):
+    """给人看的字段名：优先用问题里的说法，再去掉括号单位。
+
+    「额度(万元)」→「额度」（避免和值后面的"10 万元"重复）；
+    别名命中的「赔偿金额」原样保留（比字段名「客户诉求」更贴近用户）。
+    """
+    text = label or catalog.field_label(spec, field) or field
+    return _RANK_UNIT_RE.sub('', text).strip() or text
+
+
+def _num_text(value):
+    if value is None:
+        return '—'
+    try:
+        num = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+    if num == int(num) and abs(num) < 1e15:
+        return str(int(num))
+    return f'{num:.2f}'.rstrip('0').rstrip('.')
+
+
+def _rank_value_text(spec, field, value):
+    unit = _field_unit(spec, field)
+    text = _num_text(value)
+    return f'{text} {unit}' if unit else text
+
+
+def rank_answer(rank, user, policy=None):
+    """把排序意图说成人话：榜首给全貌 + 与第二名的差距，排行榜给前 N 行。"""
+    spec = rank['spec']
+    field = rank['field']
+    short = _field_name(spec, field, rank.get('label') or '')
+    desc = bool(rank['desc'])
+    limit = max(1, min(int(rank.get('limit') or 1), _RANK_MAX_LIMIT))
+    state = rank.get('state')
+    keyword = rank.get('keyword') or ''
+    unit = unit_of(spec)
+    scope = _scope_note(keyword, state.label if state is not None else '')
+
+    qs = base_queryset(spec, user)
+    if keyword:
+        qs = apply_filters(qs, spec, keyword=keyword)
+    if state is not None:
+        qs = qs.filter(state.filter_q())
+    # 空值不能参与比较：SQL 里 NULL 排在最前（升序）或最后，都会被读成
+    # "阅读 0 次的那篇最多"
+    qs = qs.exclude(**{f'{field}__isnull': True})
+    total = qs.count()
+
+    is_date = catalog.field_type(spec, field) in ('DateField', 'DateTimeField')
+    direction = ('最近' if desc else '最早') if is_date else ('最多' if desc else '最少')
+    if not total:
+        return (f'「{spec.label}」里没有可用于比较「{short}」的记录{scope}——'
+                f'这个字段目前都是空的。\n\n'
+                f'> 可以先问「{spec.label}有哪些」看列表，或到列表页确认该字段是否已填写。'), []
+
+    rows = list(qs.order_by(('-' if desc else '') + field)[:limit + 1])
+    refs = [catalog.build_ref(spec, obj) for obj in rows[:limit]]
+
+    def title_of(obj):
+        return str(getattr(obj, spec.title_field, '') or f'#{obj.pk}')[:60]
+
+    if limit == 1:
+        obj = rows[0]
+        lines = [f'「{spec.label}」中**{short}**{direction}的一{unit}：', '',
+                 f'### {title_of(obj)}', '',
+                 f'- **{short}**：{_rank_value_text(spec, field, getattr(obj, field))}']
+        for name in spec.list_fields:
+            if name in (field, spec.title_field):
+                continue
+            value = getattr(obj, name, None)
+            if value in (None, ''):
+                continue
+            lines.append(f'- **{catalog.field_label(spec, name)}**：'
+                         f'{_display_value(spec, name, value)}')
+            if len(lines) >= 7:
+                break
+        # 极值本身没有参照：说清"领先第二名多少"才知道这个数字算不算大
+        notes = [f'共 {total} {unit}参与排序{scope}']
+        if len(rows) > 1:
+            runner, runner_value = rows[1], getattr(rows[1], field)
+            runner_text = _rank_value_text(spec, field, runner_value)
+            gap = ''
+            if not is_date:
+                try:
+                    diff = float(getattr(obj, field)) - float(runner_value)
+                    if abs(diff) < 1e-9:
+                        gap = '（并列）'
+                    else:
+                        gap = (f'（{"低" if desc else "高"} '
+                               f'{_rank_value_text(spec, field, abs(diff))}）')
+                except (TypeError, ValueError):
+                    gap = ''
+            notes.append(f'第 2 名「{title_of(runner)}」{runner_text}{gap}')
+        lines += ['', f'> {"；".join(notes)}。']
+        return '\n'.join(lines), refs
+
+    head_label = catalog.field_label(spec, spec.title_field) if spec.title_field else '名称'
+    lines = [f'「{spec.label}」中**{short}**{direction}的前 {len(rows[:limit])} {unit}：', '',
+             f'| # | {head_label} | {short} |', '| --- | --- | --- |']
+    for index, obj in enumerate(rows[:limit], 1):
+        lines.append(f'| {index} | {_md_cell(title_of(obj))} | '
+                     f'{_md_cell(_rank_value_text(spec, field, getattr(obj, field)))} |')
+    lines += ['', f'> 共 {total} {unit}参与排序{scope}；点下方引用卡片可查看详情。']
     return '\n'.join(lines), refs
 
 
@@ -842,7 +1271,8 @@ def local_lookup(user, question, policy=None, lead='', empty_lead=''):
     if not hits:
         if empty_lead:
             return empty_lead, []
-        module_labels = '、'.join(s.label for s in modules[:8])
+        # 模块全列：只给前 8 个会让用户以为"助手就能查这些"，而实际有 21 个
+        module_labels = '、'.join(s.label for s in modules)
         return (
             'AI 暂时不可用，也没能用关键词在权限范围内匹配到记录。\n'
             f'你可以查询的模块有：{module_labels}。\n'
@@ -869,3 +1299,82 @@ def keyword_fallback(user, question, policy=None):
     """
     return local_lookup(user, question, policy)
 
+
+
+# ------------------------------------------------------- 纯实体检索（人名/编号）
+_ENTITY_PREFIX_RE = re.compile(
+    r'^(?:请|麻烦)?(?:帮我)?(?:查一下|查查|查询|查找|查|搜索|搜一下|搜|找一下|找|'
+    r'看一下|看看|有没有|有)')
+_ENTITY_TRIM_RE = re.compile(r'[的了吗呢呀啊？?，,。.！!、\s]+$')
+_ENTITY_PUNCT_RE = re.compile(r'[，,。.！!？?、\s]+')
+# 编号形态：BX-20240807-0009 / DA-0050 / KH0012
+_ENTITY_CODE_RE = re.compile(r'^[A-Za-z]{1,8}[-_]?\d{2,}[A-Za-z0-9_-]*$')
+# 常见姓氏：用来判断"这串字像不像人名"，避免把"报销流程"也当成人名去解释
+_ENTITY_SURNAMES = frozenset(
+    '王李张刘陈杨黄赵吴周徐孙马朱胡郭何高林罗郑梁谢宋唐许韩冯邓曹彭曾肖田董袁潘'
+    '于蒋蔡余杜叶程苏魏吕丁任沈姚卢姜崔钟谭陆汪范金石廖贾夏韦傅方白邹孟熊秦邱江'
+    '尹薛闫段雷侯龙史陶黎贺顾毛郝龚邵万钱严覃武戴莫孔向汤')
+# 概念/做法类问题不是"找个东西"：这些词出现就交回模型
+_ENTITY_CONCEPT_RE = re.compile(
+    r'(怎么|怎样|如何|为什么|为何|是什么|什么是|啥|介绍|说明|讲讲|解释|区别|'
+    r'流程|规范|制度|规定|办法|原因|建议|能不能|可不可以)')
+
+
+def _entity_core(question):
+    """把"查一下王国军"剥成"王国军"；不像单个实体时返回空串。"""
+    text = _ENTITY_PREFIX_RE.sub('', (question or '').strip())
+    text = _ENTITY_TRIM_RE.sub('', text)
+    text = _ENTITY_PUNCT_RE.sub('', text)
+    if not (2 <= len(text) <= 16):
+        return ''
+    if _ENTITY_CONCEPT_RE.search(text):
+        return ''
+    if _INTENT_STOP_RE.search(text) or _COUNT_RE.search(text) or _RANK_CUE_RE.search(text):
+        return ''
+    return text
+
+
+def _looks_like_entity(text):
+    if _ENTITY_CODE_RE.match(text):
+        return True
+    return 2 <= len(text) <= 4 and text[0] in _ENTITY_SURNAMES
+
+
+def _entity_miss_answer(core, modules):
+    labels = '、'.join(spec.label for spec in modules) or '（无）'
+    # 模块清单有 21 项，平铺在正文里会把"没找到"这句话埋掉；放进引用块当附注
+    return (
+        f'在你可以访问的 {len(modules)} 个模块里，按「{core}」匹配了标题、名称、'
+        '编号、正文等字段，没有找到记录。\n\n'
+        f'> 已覆盖：{labels}\n\n'
+        '- 如果这是客户 / 供应商 / 同事的名字，可能是还没录入系统；\n'
+        '- 如果是单号或档案号，请给完整编号（例如 DA-0050、BX-20240807-0009）；\n'
+        '- 想先看有什么数据，可以直接问「客户台账有哪些」，把模块名换成你关心的那个。'
+    )
+
+
+def entity_query(question, modules, user, policy=None):
+    """没有人名模块名的"找个东西"：本地检索，够用就不交给模型。
+
+    问「王国军」时，旧版调了两轮 ``list_modules`` 又花一次模型调用，最后只回
+    "没有找到符合条件的记录"——用户既不知道它搜过哪里，也不知道下一步做什么。
+    这类查询本质就是一次全表文字匹配，本地一遍 SQL 的事。
+
+    三种结局：命中 → 直接给结果（0 次模型调用、0 外发）；没命中但形态像人名 /
+    编号 → 说明搜过哪些模块、建议怎么问，同样不调模型；其余（"报销流程是什么"
+    这类概念问题）→ 返回 ``None``，仍交给模型。
+    """
+    core = _entity_core(question)
+    if not core:
+        return None
+    # 句子里点了模块名，主语已经明确，走模块链路更准（"客户台账里的王国军"）
+    if hinted_modules(question, modules):
+        return None
+    answer, refs = local_lookup(
+        user, core, policy,
+        lead=f'按「{core}」在权限范围内检索到以下记录：')
+    if refs:
+        return answer, refs
+    if _looks_like_entity(core):
+        return _entity_miss_answer(core, modules), []
+    return None

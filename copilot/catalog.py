@@ -114,6 +114,11 @@ class ModuleSpec:
     parent_field: str = ''        # 明细挂主档时，详情页要带父对象 id（sample/partner）
     states: tuple = ()            # StateSpec 列表：业务状态筛选
     base_filter: object = None    # callable(user) -> Q：模块级的固定过滤（如"已发布"）
+    # 可排序字段的**口语别名**：((字段名, '阅读', '浏览量', …), …)。
+    # 「知识库中阅读最多的一篇」里的"阅读"不是任何字段的值，而是 view_count
+    # 这个可排序字段的口语说法。不声明这一步，问题会退化成全文检索 → 0 条，
+    # 于是把"我不会排序"答成了"没有这条记录"。
+    rank_fields: tuple = ()
 
 
 MODULES = (
@@ -136,6 +141,7 @@ MODULES = (
         order_fields=('complaint_date', 'compensation_amount', 'complaint_status'),
         title_field='customer_name',
         detail_route='records:customer_detail',
+        rank_fields=(('compensation_amount', '赔偿金额', '赔偿', '赔付金额', '索赔金额'),),
         list_route='records:customer_complaint_list',
     ),
     ModuleSpec(
@@ -154,6 +160,7 @@ MODULES = (
         order_fields=('filed_at', 'amount', 'progress'),
         title_field='defendant',
         detail_route='records:complaint_detail',
+        rank_fields=(('amount', '涉案金额', '标的额', '诉讼金额'),),
         list_route='records:complaint_list',
     ),
     ModuleSpec(
@@ -171,6 +178,7 @@ MODULES = (
         order_fields=('end_date', 'issue_date', 'premium'),
         title_field='title',
         detail_route='records:insurance_detail',
+        rank_fields=(('premium', '保费', '保险金额'),),
         list_route='records:insurance_list',
         sensitive_fields=('order_number',),
     ),
@@ -192,6 +200,8 @@ MODULES = (
         order_fields=('contract_sign_date', 'credit_limit', 'customer_name'),
         title_field='customer_name',
         detail_route='records:customer_ledger_detail',
+        rank_fields=(('credit_limit', '额度', '授信', '信用额度', '账期额度'),
+                     ('registered_capital', '注册资金', '注册资本')),
         list_route='records:customer_ledger_list',
         sensitive_fields=('legal_id_card', 'guarantor_id_card'),
     ),
@@ -291,6 +301,7 @@ MODULES = (
         order_fields=('crawl_date', 'price'),
         title_field='metal_name',
         detail_route='records:metal_price_detail',
+        rank_fields=(('price', '价格', '报价', '单价'),),
         list_route='',
     ),
     # ---------------------------------------------------------------- 试样管理
@@ -538,6 +549,8 @@ MODULES = (
         scope='visible',          # 仅"全员可见 + 本人私有"，别人的私有稿不可见
         title_field='title',
         detail_route='knowledge_base:document_detail',
+        rank_fields=(('view_count', '阅读', '浏览量', '浏览', '访问量', '访问',
+                      '看过', '热度', '热门', '阅读次数'),),
         list_route='knowledge_base:document_list',
         # 与列表页口径一致（views.document_list 同样只取已发布）：别人的草稿
         # 不该被 AI 搜出来，本人的草稿可以。
@@ -599,6 +612,7 @@ def is_numeric(spec, name):
 
 
 _TEXT_TYPES = {'CharField', 'TextField', 'SlugField', 'EmailField', 'URLField'}
+_DATE_TYPES = {'DateField', 'DateTimeField'}
 
 
 def choice_fields(spec):
@@ -635,6 +649,28 @@ def label_for_value(spec, field_name, value):
                 if candidate == value:
                     return label
     return '' if value in (None, '') else str(value)
+
+
+def rankable_fields(spec):
+    """可排序字段清单：``[(字段名, 中文标签, 口语别名), …]``。
+
+    只放"有大小概念"的字段——数值能给"最多/最大/最高"，日期能给"最新/最早"。
+    文本字段（标题、名称）排序对用户没有意义，排除掉可以避免"名称最多的是哪条"
+    这种答非所问。
+    """
+    out = []
+    for name in list(spec.sum_fields) + list(spec.order_fields) + [spec.date_field]:
+        if not name or any(name == seen for seen, _lb, _al in out):
+            continue
+        if not (is_numeric(spec, name) or field_type(spec, name) in _DATE_TYPES):
+            continue
+        aliases = ()
+        for entry in spec.rank_fields:
+            if entry and entry[0] == name:
+                aliases = tuple(a for a in entry[1:] if a)
+                break
+        out.append((name, field_label(spec, name), aliases))
+    return tuple(out)
 
 
 def search_fields(spec):

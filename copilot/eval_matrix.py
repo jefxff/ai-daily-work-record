@@ -25,7 +25,7 @@ from .tools.common import apply_filters, base_queryset
 class Case:
     module: str
     module_label: str
-    kind: str                 # list / state / count / group / value
+    kind: str                 # list / state / count / group / value / rank / sum
     question: str
     expect: str
     actual: str = ''
@@ -283,6 +283,36 @@ def _value_cases(spec, qs, total, modules, user, report):
         made += 1
 
 
+def _rank_cases(spec, qs, total, modules, user, report):
+    """排序类：答案是"排第一的那条"，验证识别对、取的也是第一。
+
+    用引用卡片的 id 比对，不比对数字字符串——``Decimal('301.50')`` 和答案里的
+    ``301.5`` 是同一条记录，比字符串会把对的判成错的。
+    """
+    numeric = [(name, label, aliases) for name, label, aliases
+               in catalog.rankable_fields(spec) if catalog.is_numeric(spec, name)]
+    if not numeric:
+        return
+    name, label, aliases = numeric[0]
+    word = aliases[0] if aliases else label
+    question = f'{spec.label}中{word}最多的是哪个'
+    case = Case(spec.key, spec.label, 'rank', question,
+                f'按「{label}」降序取第一条')
+    rank = planner.rank_query(question, modules, user)
+    if rank is None or rank['spec'].key != spec.key or rank['field'] != name:
+        case.actual = f'识别为「{rank["spec"].label if rank else "（交模型）"}」'
+        report.cases.append(case)
+        return
+    answer, refs = planner.rank_answer(rank, user)
+    expected = (qs.exclude(**{f'{name}__isnull': True})
+                .order_by(f'-{name}').first())
+    case.actual = (answer or '').splitlines()[0][:60]
+    case.ok = (expected is not None and bool(refs)
+               and refs[0].get('id') == expected.pk
+               and _has_markdown(answer))
+    report.cases.append(case)
+
+
 def _bank_cases(user, modules, report):
     """手写问句库（``question_bank``）逐条过一遍。
 
@@ -338,6 +368,7 @@ def run_all(user, policy=None, modules=None):
         _count_cases(spec, qs, total, modules, user, report)
         _group_cases(spec, qs, total, modules, user, report)
         _value_cases(spec, qs, total, modules, user, report)
+        _rank_cases(spec, qs, total, modules, user, report)
     _bank_cases(user, modules, report)
     return report
 
