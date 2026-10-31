@@ -27,13 +27,20 @@ param(
     [Parameter(Position = 0)]
     [string]$Action = '',
     [int]$Port = 8080,
-    [switch]$SkipStatic
+    [switch]$SkipStatic,
+    [switch]$Https
 )
 
 $ErrorActionPreference = 'Stop'
 
 $Root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $Manage = Join-Path $Root 'manage.py'
+# HTTPS 入口：scripts/serve_https.py（runserver 不支持 --cert-file，见该脚本头部说明）
+$ServeHttps = Join-Path $Root 'scripts\serve_https.py'
+$CertFile = Join-Path $Root 'certs\server.crt.pem'
+$KeyFile = Join-Path $Root 'certs\server.key.pem'
+$script:UseHttps = [bool]$Https
+$script:Scheme = $(if ($Https) { 'https' } else { 'http' })
 $LogDir = Join-Path $Root 'logs'
 $StateFile = Join-Path $LogDir '.project-state.json'
 $WebOut = Join-Path $LogDir 'web.out'
@@ -50,24 +57,14 @@ function Write-Ok([string]$Text) { Write-Host "    $Text" -ForegroundColor Green
 function Write-Warn([string]$Text) { Write-Host "    $Text" -ForegroundColor Yellow }
 function Write-Err([string]$Text) { Write-Host "    $Text" -ForegroundColor Red }
 
-function Get-PythonPath {
-    if ($env:WR_PYTHON) {
-        if (-not (Test-Path $env:WR_PYTHON)) {
-            throw "环境变量 WR_PYTHON 指向的文件不存在：$env:WR_PYTHON"
-        }
-        return (Resolve-Path $env:WR_PYTHON).Path
-    }
-    $candidates = @(
-        (Join-Path $Root '.venv\Scripts\python.exe'),
-        (Join-Path $Root 'venv\Scripts\python.exe'),
-        'C:\Python311\python.exe'
-    )
-    foreach ($c in $candidates) {
-        if (Test-Path $c) { return $c }
-    }
-    $cmd = Get-Command python.exe -ErrorAction SilentlyContinue
-    if ($cmd) { return $cmd.Source }
-    throw '未找到 python.exe：请把 Python 加入 PATH，或设置环境变量 WR_PYTHON 指向 python.exe。'
+# 解释器解析统一走 detect_python.ps1（唯一实现，start_windows*.bat 也调它）：
+# 按「装了 requirements.txt 所要求版本 Django」来挑，挑不到就报错并给出修复命令。
+# 早前这里只看 项目内 .venv / venv / C:\Python311 / PATH，虚拟环境放在
+# %USERPROFILE%\.venvs\ 时会一路退化成 PATH 里那个没装 Django 的 python.exe。
+. (Join-Path $PSScriptRoot 'detect_python.ps1')
+
+function Get-PythonInfo {
+    return (Resolve-ProjectPython -Root $Root)
 }
 
 function Read-State {
@@ -85,12 +82,27 @@ function Test-CommandLineContains([string]$CommandLine, [string]$Needle) {
     return $CommandLine.IndexOf($Needle, [StringComparison]::OrdinalIgnoreCase) -ge 0
 }
 
+function Test-IsProjectProcess([string]$CommandLine) {
+    <#
+      判断命令行是否属于本项目。manage.py / serve_https.py 都可能以绝对路径或相对路径
+      出现：本脚本用绝对路径拉起，手工运行与 start_windows_https.bat 是 cd 到根目录后
+      用相对路径（python manage.py …）。早前只认绝对路径，后果是：
+        - stop 打印「停止完成」，实际相对路径起的进程全都活着；
+        - 于是再 start 一次就多一个调度器，重复发通知、重复跑备份。
+    #>
+    if (-not $CommandLine) { return $false }
+    if (Test-CommandLineContains $CommandLine $Root) { return $true }
+    if ($CommandLine -match '(?i)(^|[\s"])manage\.py(\s|$|")') { return $true }
+    if ($CommandLine -match '(?i)(^|[\s"])scripts[\\/]serve_https\.py(\s|$|")') { return $true }
+    return $false
+}
+
 function Test-PidAlive([int]$ProcessId) {
     if (-not $ProcessId) { return $false }
     $p = Get-CimInstance Win32_Process -Filter "ProcessId=$ProcessId" -ErrorAction SilentlyContinue
     if (-not $p) { return $false }
-    # 防 PID 复用：命令行必须仍指向本项目的 manage.py
-    return (Test-CommandLineContains $p.CommandLine $Manage)
+    # 防 PID 复用：命令行必须仍指向本项目的 manage.py / serve_https.py
+    return (Test-IsProjectProcess $p.CommandLine)
 }
 
 function Get-ProjectProcesses {
@@ -99,16 +111,60 @@ function Get-ProjectProcesses {
         Where-Object {
             $cl = $_.CommandLine
             if (-not $cl) { return $false }
-            if (-not (Test-CommandLineContains $cl $Manage)) { return $false }
+            if (-not (Test-IsProjectProcess $cl)) { return $false }
             foreach ($p in $Patterns) { if ($cl -match $p) { return $true } }
             return $false
         }
 }
 
+function Get-ProjectInstances {
+    <#
+      一个实例常常表现为「启动器 + 真实解释器」两级同名进程：本机 venv 的 python.exe
+      会再拉起一个子进程（命令行一模一样）。直接枚举会把一个实例数成两个，
+      于是 status 看起来像起了两份、stop 还会多打印一行「已不在运行」。
+      这里只保留「父进程不在本集合里」的那些行，一个实例只剩一行。
+      注意：stop 时必须对保留下来的顶层进程用 taskkill /T，才能连带杀掉子进程。
+    #>
+    param([string[]]$Patterns)
+    $all = @(Get-ProjectProcesses -Patterns $Patterns)
+    if ($all.Count -eq 0) { return @() }
+    $ids = @($all | ForEach-Object { [int]$_.ProcessId })
+    return @($all | Where-Object { $ids -notcontains [int]$_.ParentProcessId })
+}
+
+function Test-PortOpen([int]$PortNumber) {
+    <# 真实 TCP 探测（不依赖 TCP 表）：本机 Get-NetTCPConnection 会把在监听的端口报成
+       OwningProcess=0，只看表会误判成「端口空闲」。默认 1.2 秒超时。 #>
+    $client = New-Object System.Net.Sockets.TcpClient
+    try {
+        $ok = $client.ConnectAsync('127.0.0.1', $PortNumber).Wait(1200)
+        return ($ok -and $client.Connected)
+    } catch {
+        return $false
+    } finally {
+        $client.Close()
+    }
+}
+
 function Get-PortOwner([int]$PortNumber) {
+    # 刚 kill 掉监听进程后，Windows 会留一条 State=Listen、OwningProcess=0（Idle）的
+    # 幽灵记录，实际 connect 已经连不上。不过滤掉它就会误判「端口被占用」而拒绝启动。
     $conn = Get-NetTCPConnection -LocalPort $PortNumber -State Listen -ErrorAction SilentlyContinue |
+        Where-Object { [int]$_.OwningProcess -gt 0 } |
         Select-Object -First 1
-    if (-not $conn) { return $null }
+    if (-not $conn) {
+        # 本机实测：8443 明明在监听，Get-NetTCPConnection -LocalPort 却返回空。
+        # 端口过滤不可靠时退回全量枚举再筛，否则会误判「端口空闲」而拉起第二个 web。
+        $conn = Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue |
+            Where-Object { [int]$_.LocalPort -eq $PortNumber -and [int]$_.OwningProcess -gt 0 } |
+            Select-Object -First 1
+    }
+    if (-not $conn) {
+        # TCP 表里拿不到所有者（实测本机会给出 OwningProcess=0，受限环境里则干脆看不到 PID）。
+        # 改用真实 connect 探测：能连上就是被占用，只是监听者身份未知（Pid=0）。
+        if (-not (Test-PortOpen $PortNumber)) { return $null }
+        return [pscustomobject]@{ Pid = 0; Name = '未知进程' }
+    }
     $proc = Get-Process -Id $conn.OwningProcess -ErrorAction SilentlyContinue
     return [pscustomobject]@{
         Pid  = $conn.OwningProcess
@@ -170,8 +226,8 @@ function Stop-All {
         if ($state.schedulerPid) { Stop-One ([int]$state.schedulerPid) 'scheduler' }
     }
 
-    # 兜底：清理没有记录在 state 里、但命令行指向本项目 manage.py 的残留进程
-    $leftover = Get-ProjectProcesses -Patterns @('runserver', 'run_scheduler')
+    # 兜底：清理没有记录在 state 里、但命令行指向本项目 manage.py / serve_https.py 的残留进程
+    $leftover = Get-ProjectInstances -Patterns @('runserver', 'run_scheduler', 'serve_https')
     foreach ($p in $leftover) {
         Stop-One ([int]$p.ProcessId) "残留进程($($p.Name))"
     }
@@ -234,6 +290,11 @@ function Start-Detached {
 }
 
 function Start-Web([string]$PythonPath) {
+    if ($script:UseHttps) {
+        return Start-Detached -PythonPath $PythonPath `
+            -Arguments @($ServeHttps, '--port', "$Port") `
+            -StdOutPath $WebOut -StdErrPath $WebErr
+    }
     return Start-Detached -PythonPath $PythonPath `
         -Arguments @($Manage, 'runserver', "0.0.0.0:$Port", '--noreload') `
         -StdOutPath $WebOut -StdErrPath $WebErr
@@ -246,8 +307,20 @@ function Start-Scheduler([string]$PythonPath) {
 }
 
 function Start-All {
-    $script:Python = Get-PythonPath
-    Write-Step "启动项目（python: $script:Python）"
+    $py = Get-PythonInfo
+    $script:Python = $py.Path
+    $modeText = $(if ($script:UseHttps) { 'HTTPS' } else { 'HTTP' })
+    Write-Step "启动项目（$modeText，python: $($py.Path)）"
+    Write-Ok "django $($py.DjangoVersion)（来源：$($py.Why)）"
+    if (-not $py.Exact) {
+        Write-Warn "Django 版本与 requirements.txt 不一致，建议 pip install -r requirements.txt。"
+    }
+
+    if ($script:UseHttps) {
+        if (-not ((Test-Path $CertFile) -and (Test-Path $KeyFile))) {
+            throw "HTTPS 模式需要证书，但未找到 $CertFile / $KeyFile。先运行：python scripts\gen_dev_cert.py"
+        }
+    }
 
     if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Path $LogDir | Out-Null }
 
@@ -256,7 +329,7 @@ function Start-All {
     $schedPid = $(if ($state) { [int]$state.schedulerPid } else { 0 })
     $webAlive = Test-PidAlive $webPid
     $schedAge = Get-HeartbeatAge 'scheduler'
-    $schedProcesses = @(Get-ProjectProcesses -Patterns @('run_scheduler'))
+    $schedProcesses = @(Get-ProjectInstances -Patterns @('run_scheduler'))
     $schedAlive = (Test-PidAlive $schedPid) -or ($schedProcesses.Count -gt 0) -or
         (($null -ne $schedAge) -and ($schedAge -lt $script:HeartbeatAliveSeconds))
 
@@ -266,10 +339,19 @@ function Start-All {
         return
     }
 
-    # 端口被别的进程占着就没有必要再做静态归集，直接报错
+    # 端口被占时先分情况：本项目自己的实例（例如之前用 -Https 起的）当「已在运行」，
+    # 别人的进程才报错——否则改个模式启动就会卡在「端口被占用」上无法自愈。
     $owner = Get-PortOwner $Port
     if ($owner -and -not $webAlive) {
-        throw "端口 $Port 已被 PID $($owner.Pid)（$($owner.Name)）占用（可能是手工启动的旧进程），请先关闭它。"
+        $inst = @(Get-ProjectInstances -Patterns @('runserver', 'serve_https'))
+        if ($inst.Count -gt 0) {
+            Write-Warn "端口 $Port 已有本项目实例在监听（PID $($inst[0].ProcessId)）：按「已在运行」处理，不重复拉起。"
+            $webAlive = $true
+            $webPid = [int]$inst[0].ProcessId
+        } else {
+            $who = $(if ($owner.Pid -gt 0) { "PID $($owner.Pid)（$($owner.Name)）" } else { '一个身份不可读的进程' })
+            throw "端口 $Port 已被 $who 占用（可能是手工启动的旧进程），请先关闭它。"
+        }
     }
 
     # ---- 代码/数据库/静态资源准备 ----
@@ -336,11 +418,12 @@ function Start-All {
         webPid       = $webPid
         schedulerPid = $schedPid
         port         = $Port
+        mode         = $(if ($script:UseHttps) { 'https' } else { 'http' })
         startedAt    = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
     })
 
     Write-Step '启动完成'
-    Write-Ok "访问地址：http://127.0.0.1:$Port/   健康页：http://127.0.0.1:$Port/system/health/"
+    Write-Ok "访问地址：$($script:Scheme)://127.0.0.1:$Port/   健康页：$($script:Scheme)://127.0.0.1:$Port/system/health/"
 }
 
 function Show-Status {
@@ -348,16 +431,33 @@ function Show-Status {
     Write-Step '项目状态'
 
     if ($state) {
-        Write-Host "    端口: $($state.port)    启动时间: $($state.startedAt)"
+        $stateMode = $(if ($state.mode) { "$($state.mode)" } else { 'http' })
+        $currentMode = $(if ($script:UseHttps) { 'https' } else { 'http' })
+        if ($stateMode -eq $currentMode) {
+            Write-Host "    端口: $([int]$state.port)    启动时间: $($state.startedAt)"
+        } else {
+            Write-Host "    上次是按 $stateMode 端口 $([int]$state.port) 启动（$($state.startedAt)）；当前按 $currentMode 端口 $Port 查看" -ForegroundColor DarkGray
+        }
     }
 
     $webPid = $(if ($state) { [int]$state.webPid } else { 0 })
     $owner = Get-PortOwner $Port
     if ($owner) {
         $ours = Test-PidAlive $webPid
-        Write-Ok "web: 运行中（监听 PID $($owner.Pid)）$(if (-not $ours) { '（非本脚本记录，可能是手工启动）' })"
+        $ownerPid = [int]$owner.Pid
+        if ($ownerPid -le 0) {
+            # TCP 表里拿不到所有者（本机会报成 PID 0）：用本项目 web 实例的 PID 兜底显示
+            $inst = @(Get-ProjectInstances -Patterns @('runserver', 'serve_https'))
+            if ($inst.Count -gt 0) { $ownerPid = [int]$inst[0].ProcessId; $ours = $true }
+        }
+        Write-Ok "web: 运行中（$($script:Scheme) 端口 $Port，PID $ownerPid）$(if (-not $ours) { '（非本脚本记录，可能是手工启动）' })"
     } else {
-        Write-Err 'web: 未运行（端口未监听）'
+        Write-Err "web: 未运行（$($script:Scheme) 端口 $Port 未监听）"
+        # 另一种模式在跑时，别只报「未运行」让人误以为服务挂了
+        foreach ($p in @(Get-ProjectInstances -Patterns @('runserver', 'serve_https'))) {
+            $label = $(if ($p.CommandLine -match 'serve_https') { 'HTTPS' } else { 'HTTP' })
+            Write-Warn "  └ 但检测到本项目有一个 $label 实例在跑（PID $($p.ProcessId)）；查看/停止它请带上对应 -Https 参数。"
+        }
     }
 
     $schedPid = $(if ($state) { [int]$state.schedulerPid } else { 0 })
@@ -379,7 +479,7 @@ function Show-Status {
         Write-Warn "通知发送 worker: 未见有效心跳"
     }
 
-    $leftover = Get-ProjectProcesses -Patterns @('runserver', 'run_scheduler')
+    $leftover = Get-ProjectInstances -Patterns @('runserver', 'run_scheduler', 'serve_https')
     if ($leftover) {
         Write-Host "    相关进程：" -ForegroundColor DarkGray
         foreach ($p in $leftover) {
@@ -397,6 +497,8 @@ function Show-Menu {
         Write-Host '  3) 停止          (stop)'
         Write-Host '  4) 查看状态      (status)'
         Write-Host '  5) 退出'
+        Write-Host '  6) 重启 HTTPS    (restart -Https，内网自签 8443)'
+        Write-Host '  7) 状态 HTTPS    (status -Https)'
         Write-Host '================================================' -ForegroundColor Cyan
         $choice = Read-Host '请输入序号'
         switch (("$choice").Trim()) {
@@ -405,16 +507,29 @@ function Show-Menu {
             '3' { Stop-All }
             '4' { Show-Status }
             '5' { return }
+            '6' {
+                $script:UseHttps = $true; $script:Scheme = 'https'; $script:Port = 8443
+                Stop-All; Start-All
+            }
+            '7' {
+                $script:UseHttps = $true; $script:Scheme = 'https'; $script:Port = 8443
+                Show-Status
+            }
             default { Write-Warn '无效的序号，请重新输入。' }
         }
     }
 }
 
-# 未显式传 -Port 时，沿用状态文件记录的端口：
+# 未显式传 -Port 时，沿用状态文件记录的端口（且仅当模式一致）：
 # 否则 start -Port 8090 之后直接跑 status / stop，会去查默认的 8080 而误报。
 if (-not $PSBoundParameters.ContainsKey('Port')) {
     $persistedState = Read-State
-    if ($persistedState -and $persistedState.port) { $Port = [int]$persistedState.port }
+    $persistedMode = $(if ($persistedState -and $persistedState.mode) { "$($persistedState.mode)" } else { 'http' })
+    if ($persistedState -and $persistedState.port -and $persistedMode -eq $(if ($Https) { 'https' } else { 'http' })) {
+        $Port = [int]$persistedState.port
+    } elseif ($Https) {
+        $Port = 8443   # HTTPS 默认端口，与 scripts/serve_https.py 保持一致
+    }
 }
 
 switch (("$Action").Trim().ToLower()) {

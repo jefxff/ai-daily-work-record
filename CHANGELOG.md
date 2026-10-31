@@ -2,6 +2,45 @@
 
 本文件记录对外可见的功能、部署形态与依赖变更。格式参考 Keep a Changelog。
 
+## [2.1.8] - 2026-10-31
+
+修 Windows 启动脚本选错解释器导致**根本起不来**的问题，并顺手修掉两处让
+`stop`/`status` 说谎的进程判定缺陷。**无数据库迁移、无接口变更**，
+不涉及 Python 代码，重跑一次启动脚本即可。
+
+### 修复
+
+- **`project.bat` 报 `ModuleNotFoundError: No module named 'django'`**：
+  脚本原先只在「项目内 `.venv`/`venv` → `C:\Python311` → PATH」里找 python，
+  虚拟环境建在 `%USERPROFILE%\.venvs\` 时必然落到 PATH 里那个没装 Django 的解释器上。
+  新增 `scripts/windows/detect_python.ps1` 作为唯一实现：读 `requirements.txt` 的
+  `django==x.y.z`，逐个探测候选，**只返回装了正确版本 Django 的那个**；
+  一个都没有就打排查清单与修复命令后中止，不再静默挑一个不能用的。
+  `project.ps1`、`start_windows.bat`、`start_windows_https.bat` 全部改走它。
+- **`stop` 打印"停止完成"但进程还在**：残留清理只认绝对路径的 `manage.py`，
+  而手工运行与 `start_windows_https.bat` 用的是 `cd` 后的相对路径 `python manage.py …`，
+  于是杀不掉，再启一次就多一个实例。改为绝对/相对两种形态都认。
+- **`status` 把在跑的 web 报成"未运行"**：本机 `Get-NetTCPConnection -LocalPort`
+  会把正在监听的端口报成 `OwningProcess=0`，过滤后当成空闲。现在过滤 PID 0 的幽灵
+  记录后，再用真实 TCP 连接探测兜底——能连上就算被占用，只是身份不可读。
+- **端口占用时无法自愈**：端口上若已是本项目实例（例如之前用 `-Https` 起的），
+  现在按"已在运行"处理，不再直接抛"端口被占用"。
+
+### 新增
+
+- **`project.bat` 支持 `-Https`**：与 `start_windows_https.bat` 同一套 HTTPS 实现
+  （`scripts/serve_https.py`），`restart -Https` 默认端口 8443，交互菜单也加了
+  对应两项；`status`/`stop` 按模式区分端口，不再分不清 8080 与 8443。
+- **`WR_PYTHON` 环境变量统一生效**：显式指定解释器，跳过自动探测。
+
+### 其它
+
+- 状态文件 `logs/.project-state.json` 增加 `mode` 字段，端口默认值按上次模式取，
+  避免 `start -Https` 之后直接 `status` 跑去查 8080。
+- 同一实例常表现为「启动器 + 真实解释器」两级同名进程（venv 的 `python.exe` 会再
+  拉起一个子进程），`status` 与残留清理按实例去重，不再把一个算成两个。
+
+
 ## [2.1.7] - 2026-10-31
 
 补齐 AI 助手的**字段字典与业务状态口径**，修掉"条件被静默丢掉、只报全表合计数"

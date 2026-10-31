@@ -54,6 +54,36 @@ pip install -r requirements.txt
 > `run_scheduler` 是常驻进程，负责到期提醒、每日未完成提醒、保险续保提醒、每日自动备份
 > 以及站内/邮件发送。**只启动 runserver 不会执行任何定时任务，且页面不会报错。**
 
+### 一键运维（Windows）
+`scripts/windows/project.bat` 用 WMI 拉起隐藏的 web 与调度两个进程（父进程是
+`WmiPrvSE`，不在当前终端的进程树里，**关掉终端不会带走服务**），PID 记在
+`logs/.project-state.json`，`stop` 时按 PID + 命令行双重兜底清理。
+
+```bash
+scripts\windows\project.bat start              # 启动（HTTP，默认 8080）
+scripts\windows\project.bat restart -Https     # 重启为 HTTPS 8443（需先有 certs/）
+scripts\windows\project.bat stop               # 停止 web + 调度器 + 残留进程
+scripts\windows\project.bat status -Https      # 状态：端口、心跳、相关进程
+scripts\windows\project.bat start -SkipStatic  # 只改了 .py 时跳过 collectstatic
+```
+
+不带参数双击 `project.bat` 是交互菜单。`restart` 会依次做
+migrate → createcachetable → collectstatic → 重新拉起两个进程。
+
+**解释器怎么选**：`scripts/windows/detect_python.ps1` 是唯一实现。它读
+`requirements.txt` 的 `django==x.y.z`，逐个探测候选（`%USERPROFILE%\.venvs\*`、
+项目内 `.venv`/`venv`、`C:\Python31x`、PATH 里的 python），**只返回装了正确版本
+Django 的那个**；一个都没有就打印排查清单与修复命令后中止，不再静默挑一个不能用的。
+想强制指定：
+
+```bash
+set WR_PYTHON=C:\Users\me\.venvs\ai-daily-work-record-py313\Scripts\python.exe
+```
+
+> 早前 `project.ps1` 与 `start_windows*.bat` 都只看项目内 `.venv`/`venv` 和 PATH，
+> 虚拟环境建在 `%USERPROFILE%\.venvs\` 时必然退化成 PATH 里那个没装 Django 的
+> python，启动直接报 `ModuleNotFoundError: No module named 'django'`。
+
 ### RBAC 验收账号
 项目内置 4 个验收账号，**不再使用任何固定口令**：
 

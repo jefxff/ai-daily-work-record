@@ -11,16 +11,25 @@ REM       and UTF-8 Chinese text would be garbled on some consoles.
 REM ==========================================================
 cd /d "%~dp0..\.."
 
-python --version
+REM Resolve interpreter by Django version (single implementation: detect_python.ps1).
+REM Using bare `python` from PATH breaks when the venv lives outside the project.
+set "PYTHON="
+for /f "delims=" %%i in ('powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0detect_python.ps1" -Print') do set "PYTHON=%%i"
+if not defined PYTHON (
+    echo [ERROR] No Python with Django found. Follow the hints printed above.
+    pause
+    exit /b 1
+)
+"%PYTHON%" --version
 if %errorlevel% neq 0 (
-    echo [ERROR] Python not found in PATH
+    echo [ERROR] Python not runnable: %PYTHON%
     pause
     exit /b 1
 )
 
 if not exist certs\server.crt.pem (
     echo [INFO] certificate not found, generating...
-    python scripts\gen_dev_cert.py
+    "%PYTHON%" scripts\gen_dev_cert.py
     if %errorlevel% neq 0 (
         echo [ERROR] cert generation failed
         pause
@@ -34,11 +43,11 @@ if not exist certs\server.crt.pem (
 
 if not exist db.sqlite3 (
     echo [INFO] initializing database...
-    python manage.py migrate
+    "%PYTHON%" manage.py migrate
 )
 
 echo [INFO] collecting static files...
-python manage.py collectstatic --noinput --clear
+"%PYTHON%" manage.py collectstatic --noinput --clear
 
 REM Production shape: DEBUG=0. ALLOWED_HOSTS auto-detects LAN IP; add hostname here.
 set DJANGO_DEBUG=0
@@ -47,12 +56,12 @@ REM HTTPS_ONLY (secure cookies + __Host- prefix) is set inside serve_https.py
 set HTTPS_PORT=8443
 
 if not exist logs mkdir logs
-start "WorkRecord-Scheduler" /min cmd /c "python manage.py run_scheduler >> logs\scheduler.out 2>&1"
+start "WorkRecord-Scheduler" /min cmd /c ""%PYTHON%" manage.py run_scheduler >> logs\scheduler.out 2>&1"
 
 echo ========================================
 echo HTTPS : https://127.0.0.1:%HTTPS_PORT%/
 echo Worker: started in background (logs\scheduler.out)
 echo Ctrl+C stops web only; stop the worker in Task Manager.
 echo ========================================
-python scripts\serve_https.py --port %HTTPS_PORT%
+"%PYTHON%" scripts\serve_https.py --port %HTTPS_PORT%
 pause
