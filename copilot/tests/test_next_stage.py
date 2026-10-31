@@ -236,6 +236,13 @@ class PruneTests(BaseCase):
         run.refresh_from_db()
         self.assertEqual(run.status, CopilotRun.Status.INTERRUPTED)
 
+    def test_scheduled_task_runs_confirmed(self):
+        """调度登记的是真删（0006 升级）：参数里必须带 confirm，否则保留策略不落地。"""
+        from notifications.models import ScheduledTask
+        task = ScheduledTask.objects.get(code='copilot_prune')
+        self.assertTrue(task.params.get('confirm'))
+        self.assertEqual(task.run_time.hour, 3)
+
 
 @override_settings(CACHES=LOCMEM)
 class PermissionRecheckTests(BaseCase):
