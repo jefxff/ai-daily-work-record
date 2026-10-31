@@ -63,27 +63,34 @@ def _choice_conditions(spec, keyword):
             if label not in keyword:
                 continue
             if catalog.phrase_hit(keyword, label):
-                matched.append((field.name, value, label))
+                matched.append((field.name, value, label, False))
                 continue
             # 每一处出现都被否定（"没通过"）：落到同字段里带否定词的同义选项
             alt = [c for c in choices
                    if c[1] != label and label in c[1]
                    and any(word in c[1] for word in _NEG_WORDS)]
             if alt:
-                matched.append((field.name, alt[0][0], alt[0][1]))
+                matched.append((field.name, alt[0][0], alt[0][1], False))
+            else:
+                # 没有同义否定选项（"没有判决"）：翻成**排除**该值，而不是
+                # 当成没条件——以前落到 icontains "没有判决"，必然 0 条。
+                matched.append((field.name, value, label, True))
 
     keep = [m for m in matched
             if not any(m[2] != o[2] and m[2] in o[2] for o in matched)]
     cond = Q()
-    for name, value, _label in keep:
-        cond |= Q(**{name: value})
+    for name, value, _label, negated in keep:
+        cond |= ~Q(**{name: value}) if negated else Q(**{name: value})
     return cond
 
 
 # 剥选项标签时连否定词一起剥："没有通过"要整词消失——只删"通过"会留下
 # "没有"，再拿去 icontains 就是 0 条。长词在前，先吃"没有"再吃单字。
-_NEG_PREFIX = r'(?:没有|并非|从未|尚未|未曾|不曾|[没未不非无])?'
+_NEG_PREFIX = r'(?:不是|不为|没有|并非|从未|尚未|未曾|不曾|[没未不非无])?'
 _PUNCT_ONLY_RE = re.compile(r'[\s，,。.！!？?、:：;；()（）]+')
+# "X为Y"句式里 X 的泛称——不是某个字段的本名，但同样是"值的前缀"，
+# 剥选项标签时要连它一起带走，不然 "状态为审理中" 会剩下 "状态" 去 icontains。
+_GENERIC_FIELD_WORDS = ('状态', '情况', '类型', '类别', '阶段', '结果')
 
 
 def _strip_choice_labels(spec, text):
@@ -94,22 +101,42 @@ def _strip_choice_labels(spec, text):
 
     模块名/别名也要剥（"审厂没通过"→ 空）：它们不是任何字段里存的值，带着
     去 icontains 只会把条件查成 0 条。以前这两者混在一起 OR，掩盖了这个问题。
+
+    "字段名+系词+选项标签"要整段剥：「进度为判决」只剥"判决"会剩下"进度为"，
+    它不是任何记录里的值，拿去 icontains 就是 0 条——这正是「诉讼中进度为
+    判决的有哪些」答"没有记录"而「有几条」答对 4 条的原因（统计路径不经过
+    这里）。同理「状态是未完成」「进度属判决」。
     """
     try:
         model = catalog.model_of(spec)
     except Exception:  # noqa: BLE001
         model = None
-    labels = set(catalog.MODULE_ALIASES.get(spec.key, ()))
-    labels.add(spec.label)
-    if model is not None:
-        for field in model._meta.concrete_fields:
-            for _value, label in (getattr(field, 'choices', None) or ()):
-                label = str(label or '')
-                if len(label) >= 2 and label in text:
-                    labels.add(label)
     rest = text
-    for label in sorted((w for w in labels if w), key=len, reverse=True):
-        rest = re.sub(_NEG_PREFIX + re.escape(label), '', rest)
+    for name in sorted({*catalog.MODULE_ALIASES.get(spec.key, ()), spec.label},
+                       key=len, reverse=True):
+        if len(name) >= 2:
+            rest = rest.replace(name, '')
+    if model is not None:
+        # 字段名 → 该字段的选项标签：剥标签时允许把前面的字段名和系词带走
+        for field in model._meta.concrete_fields:
+            choices = [str(v or '') for _val, v in
+                       (getattr(field, 'choices', None) or ()) if v]
+            if not choices:
+                continue
+            fl = str(catalog.field_label(spec, field.name) or '')
+            prefix = r'(?:中|里)?(?:' + '|'.join(re.escape(w) for w in
+                                                 (fl, *_GENERIC_FIELD_WORDS)) + r')?'
+            for label in sorted(choices, key=len, reverse=True):
+                if len(label) < 2 or label not in rest:
+                    continue
+                # (中/里)? + (字段名/泛称)? + 否定前缀? + 系词? + 否定前缀?
+                # + 标签 + 尾粒子。否定词在系词前后都可能：「不是判决」「不为
+                # 判决」「进度为不通过」。尾粒子必须一起走：「进度为判决有几
+                # 条」的残余 "进度为判决有" 剩下的 "有" 拿去 icontains 会把
+                # 4 条筛成 0 条。
+                pattern = (prefix + _NEG_PREFIX + r'[为是属在：:=]*'
+                           + _NEG_PREFIX + re.escape(label) + r'[的有呢吗啊]*')
+                rest = re.sub(pattern, '', rest)
     return _PUNCT_ONLY_RE.sub('', rest)
 
 

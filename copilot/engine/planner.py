@@ -805,6 +805,28 @@ def top_count_answer(top, user, policy=None):
     return '\n'.join(lines), []
 
 
+def _negated_span(text, label):
+    """``label`` 在句中被否定时，返回带否定词的整个短语（"不是判决"）。
+
+    统计路径只拿标签当条件，会把「不是判决的有几条」答成判决的 4 条——
+    正好反了。判定复用 ``catalog.phrase_negated``，提取时把否定词一起带上，
+    交给 ``apply_filters`` 翻成排除条件。
+    """
+    start = text.find(label)
+    if start < 0 or not catalog.phrase_negated(text, start, label):
+        return ''
+    end = start + len(label)
+    head = text[:start]
+    for word in ('不是', '不为', '没有', '并非', '从未', '不曾', '未曾', '尚未'):
+        if head.endswith(word):
+            start -= len(word)
+            break
+    else:
+        if head and head[-1] in '没无不非未别莫勿':
+            start -= 1
+    return text[start:end]
+
+
 def matched_labels(spec, text):
     """问题里出现的该模块选项标签，按字段归组：``{字段: [标签, …]}``。
 
@@ -1062,12 +1084,24 @@ def stat_query(question, modules, user=None):
     keyword_field = ''
     if not group_field:
         keyword_field, keyword = db_value_match(spec, text, user)
+        if keyword:
+            # 值在库里存在不等于问的是它本身："不是判决的有几条"里"判决"
+            # 确实是 progress 的取值，但被"不是"反说——要翻成排除。
+            span = _negated_span(text, keyword)
+            if span:
+                keyword_field, keyword = '', span
         if not keyword:
-            # 只提到一个状态词（"审理中的诉讼有多少条"）：当筛选条件用
+            # 只提到一个状态词（"审理中的诉讼有多少条"）：当筛选条件用；
+            # 被否定时（"不是判决的有几条"）带否定词整个交下去，翻成排除。
             single = [(name, found[0]) for name, found in labels.items()
                       if len(found) == 1]
             if single:
-                keyword_field, keyword = single[0]
+                name, label = single[0]
+                span = _negated_span(text, label)
+                if span:
+                    keyword_field, keyword = '', span
+                else:
+                    keyword_field, keyword = name, label
     state = _state_of_text(spec, text)
     # 「立案的有哪些、结案的又有哪些」：同一字段的两个取值都出现了，是要分组，
     # 不是要筛选。此时若状态词正好等于其中一个取值，会把另一半吃掉——只答"立案"。
@@ -1609,7 +1643,7 @@ def _count_answer(spec, qs, total, keyword, keyword_field='', state_label=''):
         if label:
             head = f'「{spec.label}」中「{label}」为「{keyword}」的共 **{total} {unit}**'
         else:
-            head = f'「{spec.label}」中，{keyword} 的记录共 **{total} {unit}**'
+            head = f'「{spec.label}」中，{keyword}的记录共 **{total} {unit}**'
         if state_label:
             head += f'（状态：{state_label}）'
         head += '。'

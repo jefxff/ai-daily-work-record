@@ -25,7 +25,7 @@ from archive.models import License
 from copilot import catalog, registry
 from copilot.engine import executor, planner, prompt
 from copilot.models import CopilotConversation, CopilotPolicy, CopilotRun
-from records.models import CustomerComplaint
+from records.models import Complaint, CustomerComplaint
 from samples.models import AuditRecord, Partner
 
 LOCMEM = {'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}}
@@ -165,7 +165,6 @@ class ConditionGuardTests(RegressionBase):
 
 class StepNoiseTests(RegressionBase):
     """占位符不是工具调用，别把它写成一条看不懂的步骤。"""
-
     def test_placeholder_tool_name_is_not_recorded(self):
         steps = []
         executor._unknown_tool(steps, {}, '工具名')
@@ -183,3 +182,62 @@ class StepNoiseTests(RegressionBase):
             today=self.today.isoformat())
         self.assertIn('"tool":"query_records"', text)
         self.assertNotIn('"tool":"工具名"', text)
+
+
+class FieldValuePhraseTests(RegressionBase):
+    """「进度为判决」这类"字段名+系词+选项值"句式，两条路径都得答对。
+
+    「诉讼中进度为判决的有哪些」曾答"没有记录"而「有几条」答对 4 条：
+    统计路径把选项值精确翻译成 ``progress='判决'``，列表路径却把剥完标签
+    剩下的"进度为"拿去 icontains——任何记录里都没有这三个字，0 条。
+    """
+
+    def complaint(self, case, progress='判决', court='区人民法院'):
+        return Complaint.objects.create(
+            dispute_type='质量责任纠纷', defendant='被告方', case_number=case,
+            court=court, progress=progress, amount=Decimal('1000'),
+            filed_at=date(2026, 10, 8))
+
+    def test_field_prefix_and_copula_stripped(self):
+        self.complaint('案-1')
+        self.complaint('案-2', progress='审理中')
+        spec = catalog.get_module('complaint')
+        from copilot.tools.common import _strip_choice_labels, apply_filters
+        self.assertEqual(_strip_choice_labels(spec, '进度为判决'), '')
+        qs = catalog.model_of(spec).objects.all()
+        self.assertEqual(apply_filters(qs, spec, keyword='进度为判决').count(), 1)
+        # 泛称前缀同理："状态为审理中"不能剩个"状态"去检索
+        self.assertEqual(apply_filters(qs, spec, keyword='状态为审理中').count(), 1)
+
+    def test_list_and_count_agree_on_choice_value(self):
+        self.complaint('案-1')
+        self.complaint('案-2')
+        self.complaint('案-3', progress='审理中')
+        data = self.query(module='complaint', keyword='进度为判决', limit=10)
+        self.assertEqual(data['total'], 2)
+
+    def test_trailing_particle_does_not_break_filter(self):
+        """「进度为判决有几条」的残余"进度为判决有"剩个"有"会把 4 条筛成 0。"""
+        self.complaint('案-1')
+        self.complaint('案-2')
+        data = self.query(module='complaint', keyword='进度为判决有', limit=10)
+        self.assertEqual(data['total'], 2)
+
+    def test_negated_value_excludes(self):
+        """「不是判决」应翻成排除，而不是当没条件或答反。"""
+        self.complaint('案-1')
+        self.complaint('案-2', progress='执行')
+        data = self.query(module='complaint', keyword='不是判决', limit=10)
+        self.assertEqual(data['total'], 1)
+        self.assertEqual(data['rows'][0]['progress'], '执行')
+
+    def test_stat_count_respects_negation(self):
+        intent = None
+        self.complaint('案-1')
+        self.complaint('案-2', progress='执行')
+        intent = planner.stat_query('诉讼中不是判决的有几条', self.modules,
+                                    self.user)
+        self.assertIsNotNone(intent)
+        text, _refs = planner.stat_answer(intent, self.user)
+        self.assertIn('1', text)
+        self.assertNotIn('「判决」的共 **2', text)
