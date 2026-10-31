@@ -577,6 +577,33 @@ def pick_module(text, modules, user=None):
     return best_hint
 
 
+def _date_scope(spec, text):
+    """显式日期区间 → ``({'字段__range': (起, 止)}, 口径说明)``；解析不了返回 None。
+
+    只接"2024年3月""2024 Q3""2019到2021""最近30天"这类**能算出具体起止日**
+    的问法（复用 tools.daterange，不另写一套解析）。"今年/上月"这类相对口径
+    各模块日期字段语义不同、且 daterange 刻意不解析相对词——解析失败就交回
+    模型，宁可不答也不能把全表数字冒充口径结果。
+    """
+    if not getattr(spec, 'date_field', ''):
+        return None
+    try:
+        from ..tools.daterange import extract_date_range
+        found = extract_date_range(text)
+    except Exception:  # noqa: BLE001 - 解析失败按"没有时间条件"处理
+        return None
+    if found is None:
+        return None
+    return ({f'{spec.date_field}__range': (found.start, found.end)}, found.label)
+
+
+def _time_gate(spec, text):
+    """带时间词的问句闸门：能解析出具体区间就放行本地统计，否则交模型。"""
+    if not (_TIME_SCOPE_RE.search(text) or _DATE_SCOPE_RE.search(text)):
+        return None
+    return _date_scope(spec, text)
+
+
 def stat_query(question, modules, user=None):
     """计数/分组类问题的确定性意图，命中返回 dict，否则 ``None``。
 
@@ -587,10 +614,16 @@ def stat_query(question, modules, user=None):
     结论全错。能算就别问模型。
     """
     text = question or ''
-    if not text.strip() or _TIME_SCOPE_RE.search(text):
+    if not text.strip():
         return None
     spec = pick_module(text, modules, user)
     if spec is None:
+        return None
+    # 时间口径：显式区间（"2024年3月的客诉"）本地就能算；
+    # 模糊相对口径（"今年/上月"）解析不出区间，仍交模型——这两行是同一件事的两面
+    date_scope = _time_gate(spec, text)
+    if date_scope is None and (_TIME_SCOPE_RE.search(text)
+                               or _DATE_SCOPE_RE.search(text)):
         return None
 
     labels = matched_labels(spec, text)
@@ -615,7 +648,8 @@ def stat_query(question, modules, user=None):
             if single:
                 keyword_field, keyword = single[0]
     return {'spec': spec, 'keyword': keyword, 'keyword_field': keyword_field,
-            'group_field': group_field, 'state': _state_of_text(spec, text)}
+            'group_field': group_field, 'state': _state_of_text(spec, text),
+            'date': date_scope}
 
 
 # --------------------------------------------------------------- 排序 / 极值
@@ -777,8 +811,12 @@ def rank_query(question, modules, user=None):
     spec, field, label = _pick_metric_spec(text, modules, user)
     if spec is None or not field:
         return None
-    # 时间是"排序维度"而不是"筛选条件"：说了本月/今年就不是全量排行榜
-    if _TIME_SCOPE_RE.search(text):
+    # 时间是"排序维度"而不是"筛选条件"：说了本月/今年就不是全量排行榜。
+    # 显式区间（"2024年3月赔付最多的客诉"）能解析出来就带上区间继续本地算；
+    # 模糊口径（"本月最…"）仍交模型。
+    date_scope = _time_gate(spec, text)
+    if date_scope is None and (_TIME_SCOPE_RE.search(text)
+                               or _DATE_SCOPE_RE.search(text)):
         return None
     return {
         'spec': spec,
@@ -788,6 +826,7 @@ def rank_query(question, modules, user=None):
         'limit': rank_limit(text),
         'keyword': _rank_keyword(spec, text, user),
         'state': _state_of_text(spec, text),
+        'date': date_scope,
     }
 
 
@@ -851,19 +890,23 @@ def sum_query(question, modules, user=None):
     text = question or ''
     if not _SUM_CUE_RE.search(text):
         return None
-    if _TIME_SCOPE_RE.search(text):
-        return None          # 带时间的口径（今年/本月）留给模型按区间算
     spec, field, label = _pick_metric_spec(text, modules, user)
     if spec is None or not field or not spec.sum_fields:
         return None
     if not catalog.is_numeric(spec, field):
         return None
+    # 显式区间（"2024年3月保费一共多少钱"）本地算；"今年/本月"仍交模型
+    date_scope = _time_gate(spec, text)
+    if date_scope is None and (_TIME_SCOPE_RE.search(text)
+                               or _DATE_SCOPE_RE.search(text)):
+        return None          # 模糊口径解析不出区间，留给模型按日期处理
     return {
         'spec': spec,
         'field': field,
         'label': label,
         'keyword': _rank_keyword(spec, text, user),
         'state': _state_of_text(spec, text),
+        'date': date_scope,
     }
 
 
@@ -884,8 +927,11 @@ def sum_answer(intent, user, policy=None):
     field = intent['field']
     short = _field_name(spec, field, intent.get('label') or '')
     unit = unit_of(spec)
+    date_scope = intent.get('date')
+    date_label = date_scope[1] if date_scope else ''
     scope = _scope_note(intent.get('keyword') or '',
-                        intent['state'].label if intent.get('state') is not None else '')
+                        intent['state'].label if intent.get('state') is not None else '',
+                        date_label)
     money = _field_unit(spec, field)
 
     qs = base_queryset(spec, user)
@@ -893,6 +939,8 @@ def sum_answer(intent, user, policy=None):
         qs = apply_filters(qs, spec, keyword=intent['keyword'])
     if intent.get('state') is not None:
         qs = qs.filter(intent['state'].filter_q())
+    if date_scope:
+        qs = qs.filter(**date_scope[0])
     qs = qs.exclude(**{f'{field}__isnull': True})
     rows = qs.count()
     if not rows:
@@ -917,7 +965,10 @@ def sum_answer(intent, user, policy=None):
                      + (f' —「{title}」' if title else ''))
         if obj is not None:
             refs.append(catalog.build_ref(spec, obj))
-    lines += ['', f'> 求和字段「{short}」；分母 {rows} {unit}，空值不计入。']
+    footer = f'> 求和字段「{short}」；分母 {rows} {unit}，空值不计入。'
+    if date_label:
+        footer += f'时间口径：{date_label}。'
+    lines += ['', footer]
     return '\n'.join(lines), refs
 
 
@@ -927,6 +978,8 @@ def stat_answer(stat, user, policy=None):
     keyword = stat.get('keyword') or ''
     group_field = stat.get('group_field') or ''
     state = stat.get('state')
+    date = stat.get('date')
+    date_label = date[1] if date else ''
     qs = base_queryset(spec, user)
     if keyword:
         # 值已确认归属某字段时用精确匹配："元/吨"不能把"美元/吨"也算进来
@@ -934,19 +987,23 @@ def stat_answer(stat, user, policy=None):
                            keyword_field=stat.get('keyword_field') or '')
     if state is not None:
         qs = qs.filter(state.filter_q())
+    if date:
+        qs = qs.filter(**date[0])
     total = qs.count()
     if not total:
-        bits = []
-        if keyword:
-            bits.append(f'筛选：{keyword}')
-        if state is not None:
-            bits.append(f'状态：{state.label}')
-        scope = f'（{"；".join(bits)}）' if bits else ''
+        scope = _scope_note(keyword,
+                            state.label if state is not None else '', date_label)
         return f'「{spec.label}」没有符合条件的记录{scope}。', []
     if group_field:
-        return _group_answer(spec, qs, total, group_field)
-    return _count_answer(spec, qs, total, keyword, stat.get('keyword_field') or '',
-                         state.label if state is not None else '')
+        text, refs = _group_answer(spec, qs, total, group_field)
+    else:
+        text, refs = _count_answer(spec, qs, total, keyword,
+                                   stat.get('keyword_field') or '',
+                                   state.label if state is not None else '')
+    if date_label:
+        # 口径写在答案末尾：读者第一眼就能对着时间范围核数字
+        text += f'\n\n> 统计口径：{date_label}'
+    return text, refs
 
 
 def _samples(spec, qs, limit=3):
@@ -961,12 +1018,14 @@ def _md_cell(value):
     return text.replace('|', '\\|').replace('\n', ' ').strip()
 
 
-def _scope_note(keyword='', state_label=''):
+def _scope_note(keyword='', state_label='', date_label=''):
     bits = []
     if keyword:
         bits.append(f'筛选：{keyword}')
     if state_label:
         bits.append(f'状态：{state_label}')
+    if date_label:
+        bits.append(f'时间：{date_label}')
     return f"（{'；'.join(bits)}）" if bits else ''
 
 
@@ -1087,10 +1146,16 @@ def rank_answer(rank, user, policy=None):
         qs = apply_filters(qs, spec, keyword=keyword)
     if state is not None:
         qs = qs.filter(state.filter_q())
+    date_scope = rank.get('date')
+    if date_scope:
+        qs = qs.filter(**date_scope[0])
     # 空值不能参与比较：SQL 里 NULL 排在最前（升序）或最后，都会被读成
     # "阅读 0 次的那篇最多"
     qs = qs.exclude(**{f'{field}__isnull': True})
     total = qs.count()
+    if date_scope:
+        scope = _scope_note(keyword, state.label if state is not None else '',
+                            date_scope[1])
 
     is_date = catalog.field_type(spec, field) in ('DateField', 'DateTimeField')
     direction = ('最近' if desc else '最早') if is_date else ('最多' if desc else '最少')

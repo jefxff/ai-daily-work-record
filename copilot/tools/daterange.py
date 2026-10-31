@@ -102,7 +102,10 @@ def _month_end(year, month):
 
 
 def _valid_year(year, today):
-    return MIN_YEAR <= year <= today.year + 1
+    # 上限 today+5：证照签发/合同预签这类字段确实可能出现未来年份的合法数据，
+    # 卡太紧会把"2030年12月的证照"这类问题白白交回模型。防的是"2204"这种
+    # 手滑输错，不必防正常的远期业务。
+    return MIN_YEAR <= year <= today.year + 5
 
 
 def _parse_iso(value):

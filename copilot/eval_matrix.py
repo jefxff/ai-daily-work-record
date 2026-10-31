@@ -342,6 +342,42 @@ def _bank_cases(user, modules, report):
             report.cases.append(case)
 
 
+def _time_cases(spec, qs, total, modules, user, report):
+    """时间口径用例：用最新一条记录的月份造问，验证按区间统计而不是全表。
+
+    期望值动态计算（直接按日期过滤的 SQL 条数），所以无论演示库里数据落在
+    哪个月都能评估；表为空或没有日期字段时整类跳过。
+    """
+    if not spec.date_field:
+        return
+    newest = qs.order_by('-' + spec.date_field).values_list(spec.date_field,
+                                                            flat=True).first()
+    if newest is None:
+        return
+    try:
+        question = f'{newest.year}年{newest.month}月的{spec.label}有多少条'
+    except (TypeError, AttributeError):     # date_field 不是日期型（防御）
+        return
+    expected = qs.filter(**{
+        f'{spec.date_field}__range': (
+            newest.replace(day=1), newest)}).count()
+    case = Case(spec.key, spec.label, 'time', question,
+                f'区间条数应为 {expected}')
+    intent = planner.stat_query(question, modules, user)
+    if intent is None or intent['spec'].key != spec.key:
+        case.actual = f'识别为「{intent["spec"].label if intent else "（交模型）"}」'
+        report.cases.append(case)
+        return
+    answer, _refs = planner.stat_answer(intent, user)
+    case.actual = (answer or '').splitlines()[0][:60]
+    plain = (answer or '').replace('**', '')
+    if expected:
+        case.ok = str(expected) in plain
+    else:
+        case.ok = '没有符合条件' in plain
+    report.cases.append(case)
+
+
 def run_all(user, policy=None, modules=None):
     """跑一遍全模块矩阵，返回 ``Report``。"""
     policy = policy or security.policy()
@@ -369,6 +405,7 @@ def run_all(user, policy=None, modules=None):
         _group_cases(spec, qs, total, modules, user, report)
         _value_cases(spec, qs, total, modules, user, report)
         _rank_cases(spec, qs, total, modules, user, report)
+        _time_cases(spec, qs, total, modules, user, report)
     _bank_cases(user, modules, report)
     return report
 
