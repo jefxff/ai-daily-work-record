@@ -95,12 +95,28 @@ test.describe('暗色主题', () => {
     const resp = await page.goto('/daily_record/');
     expect(resp.status()).toBeLessThan(400);
     await freeze(page);
-    // CI 使用全新空库：没有记录就没有分页控件，此时跳过该断言（本地有数据时仍会执行）
-    test.skip(
-      (await page.locator('.pagination-info .page-link').count()) === 0,
-      '当前数据库无分页数据（空库），跳过暗色分页可读性断言',
-    );
-    await expect(page.locator('.pagination-info .page-link').first()).toBeVisible();
+
+    // 分页控件依赖库里有记录，CI 空库时不存在。
+    // 注意：这里只能跳过「分页可读性」这一条断言，不能用 test.skip() ——
+    // 那会连后面的无障碍扫描和截图一起跳过，导致暗色保护在 CI 上形同虚设。
+    const pageLinks = page.locator('.pagination-info .page-link');
+    if ((await pageLinks.count()) > 0) {
+      await expect(pageLinks.first()).toBeVisible();
+    } else {
+      test.info().annotations.push({
+        type: 'note',
+        description: '空库无分页控件，仅跳过分页可读性断言；无障碍与截图照常执行',
+      });
+    }
+
+    // 暗色下不应出现浅色底块：正文背景必须落在深色区间（亮度 < 0.35）
+    const bg = await page.evaluate(() => {
+      const el = document.querySelector('.main-content') || document.body;
+      return getComputedStyle(el).backgroundColor;
+    });
+    const [r, g, b] = (bg.match(/\d+/g) || ['255', '255', '255']).slice(0, 3).map(Number);
+    expect((0.299 * r + 0.587 * g + 0.114 * b) / 255).toBeLessThan(0.35);
+
     await assertA11y(page, 'daily-records-dark');
     if (!A11Y_ONLY) {
       await expect(page).toHaveScreenshot('daily-records-dark.png', { fullPage: true });
