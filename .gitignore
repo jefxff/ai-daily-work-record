@@ -85,3 +85,7 @@ build/
 
 # 一次性导入/校验脚本（不入库）
 /_*.py
+
+# 前端巡检中间产物（sweep.js 读取的路由清单与截图）
+/.shot_routes.txt
+/.shot/
