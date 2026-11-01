@@ -1205,3 +1205,382 @@ th[aria-sort="descending"] .th-sort__ind::before { display: none; }
 }
 
 
+/* ============================================================================
+   10. 列表页通用件（2026-11 前端整改进驻）
+   ----------------------------------------------------------------------------
+   10.1 面包屑（records/_breadcrumbs 渲染，位置在 .page-actions 之上）
+   10.2 筛选条件的「全部清除」入口
+   10.3 分页「跳至第 N 页」
+   10.4 宽表长文本截断（与 table-tools.js 的 title 兜底配套）
+   10.5 页面主标题升级到 h1 后的视觉对齐
+   ========================================================================== */
+
+/* —— 10.1 面包屑 —— */
+.app-breadcrumb ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  font-size: 12px;
+  color: var(--c-text-tertiary);
+}
+.app-breadcrumb li { display: inline-flex; align-items: center; }
+.app-breadcrumb li + li::before {
+  content: "/";
+  margin-right: 6px;
+  color: var(--c-border-strong);
+}
+.app-breadcrumb a {
+  color: var(--c-text-secondary);
+  text-decoration: none;
+  border-radius: 4px;
+}
+.app-breadcrumb a:hover,
+.app-breadcrumb a:focus-visible {
+  color: var(--c-primary);
+  text-decoration: underline;
+}
+.app-breadcrumb [aria-current="page"] { color: var(--c-text); font-weight: 500; }
+
+@media print {
+  .app-breadcrumb { display: none; }
+}
+
+/* —— 10.2 全部清除 —— */
+.filter-chip--clear {
+  background: transparent;
+  border-style: dashed;
+  color: var(--c-text-tertiary);
+}
+.filter-chip--clear:hover,
+.filter-chip--clear:focus-visible {
+  color: var(--c-danger);
+  border-color: var(--c-danger-line);
+  text-decoration: none;
+}
+
+/* 筛选按钮上的「已生效 N 项」角标（base.html 的筛选面板脚本注入） */
+.filter-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  margin-left: 4px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--c-primary);
+  color: var(--c-text-inverse);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* —— 10.3 页码跳转 —— */
+.pag-jump {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--c-text-secondary);
+}
+.pag-jump input[type="number"] {
+  width: 64px;
+  height: 28px;
+  padding: 0 6px;
+  font-size: 13px;
+  text-align: center;
+  color: var(--c-text);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-strong);
+  border-radius: 6px;
+}
+.pag-jump input[type="number"]:focus {
+  outline: none;
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 2px var(--c-primary-ring);
+}
+/* 去掉数字输入框的上下箭头，避免与「确定」按钮抢位 */
+.pag-jump input[type="number"]::-webkit-inner-spin-button,
+.pag-jump input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.pag-jump input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+
+@media (max-width: 768px) {
+  .pag-jump { display: none; }   /* 小屏页码已经很少，跳转入口价值低于占用的一行 */
+}
+
+/* —— 10.4 列表长文本截断 —— */
+/* 两道闸门：
+   1) 宽表 .table-sticky 的单元格默认截断（列多、宽度紧张，事实上的宽表）；
+   2) 其余列表表格由 table-tools.js 实测后只给「超过 24 字且纯文本」的单元格
+      加 .is-clipped —— 短文案与含列表/嵌套块的单元格（如时间线）不受影响，
+      避免一刀切把小表格的正常换行也压成一行。
+   需要完整展示的列仍可用 .cell-wrap 豁免。小屏卡片模式与打印一律还原。 */
+.table-sticky tbody td:not(.cell-wrap):not(.col-actions):not(.col-expand) {
+  max-width: 22em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.table-sticky tbody td.cell-wrap { white-space: normal; }
+
+td.is-clipped {
+  max-width: 22em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 卡片模式（小屏）本来就把 td 拆成上下两行，截断会丢信息，一律还原 */
+@media (max-width: 768px) {
+  .table-sticky tbody td,
+  td.is-clipped { max-width: none; overflow: visible; text-overflow: clip; white-space: normal; }
+}
+
+@media print {
+  .table-sticky tbody td,
+  td.is-clipped { max-width: none !important; overflow: visible !important; white-space: normal !important; }
+}
+
+/* —— 10.4b 行点击进详情（B4）：整行热区，未声明的行完全不变 —— */
+tr[data-href] { cursor: pointer; }
+tr[data-href]:hover > td { background: var(--c-primary-subtle); }
+tr[data-href]:focus-visible {
+  outline: 2px solid var(--c-primary);
+  outline-offset: -2px;
+}
+/* 行内若有正在编辑的控件或展开区，悬停不再整行变色，避免误以为点哪都跳转 */
+tr[data-href]:has(td .act-more[open]) > td { background: transparent; }
+
+/* —— 10.5 页面主标题 h1 —— */
+.page-header h1 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--c-text);
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+}
+
+/* ============================================================================
+   11. 空态（统一空数据提示）
+   ----------------------------------------------------------------------------
+   规则（写进 CONTRIBUTING 也要，避免再次分叉）：
+     · 表格里某一行没有数据  → 用 records/_empty_row.html（colspan 对齐表头）
+     · 表格外、卡片/区块级     → 用 records/_empty_block.html（本组件）
+   两套都只允许出现这一处样式，模板里不要再写 <style> .empty-state {…}。
+   旧类名 .empty-icon / .empty-text 保留为别名，老模板不用一次性全改。
+   ============================================================================ */
+.empty-state {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--c-text-secondary, #6b7280);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .375rem;
+}
+
+.empty-state__icon,
+.empty-state .empty-icon {
+  font-size: 2.5rem;
+  line-height: 1;
+  margin-bottom: .25rem;
+  opacity: .65;
+}
+
+/* 图标是 SVG 时把尺寸收敛，避免不同页面 48/64 混用 */
+.empty-state__icon svg { width: 44px; height: 44px; }
+
+.empty-state__title,
+.empty-state .empty-text {
+  margin: 0;
+  font-size: .95rem;
+  font-weight: 500;
+  color: var(--c-text, #111827);
+}
+
+.empty-state__desc {
+  margin: 0;
+  font-size: .82rem;
+  color: var(--c-text-secondary, #6b7280);
+}
+
+.empty-state__action { margin-top: .875rem; }
+
+/* 紧凑版：放在卡片内部、表格下方等空间有限的位置 */
+.empty-state--compact { padding: 1.25rem 1rem; }
+.empty-state--compact .empty-state__icon { font-size: 1.75rem; }
+
+/* 表格行内空态（.empty-cell*）定义在 app.css，与 records/_empty_row.html 配套，
+   这里不重复声明，避免同一组件两处取值。 */
+
+/* ============================================================================
+   12. 工具类（u-*）
+   ----------------------------------------------------------------------------
+   只收录「在 3 个以上模板里重复出现」的内联样式。一次性、随数据变化的值
+   （进度条宽度、画布尺寸等）仍留在 style 里，不要为了消内联而造类。
+   命名：u-<属性缩写>-<值>，与 Bootstrap 已有的工具类（m-0 / mb-3 / ms-auto /
+   fw-normal / w-auto / opacity-50）不重叠，出现即复用 Bootstrap 的。
+   ============================================================================ */
+
+/* —— 12.1 宽度 —— */
+.u-col-35 { width: 35%; }
+.u-col-30 { width: 30%; }
+.u-w-140 { width: 140px; }
+.u-w-110 { width: 110px; }
+.u-minw-220 { min-width: 220px; }
+.u-minw-180 { min-width: 180px; }
+.u-maxw-300 { max-width: 300px; }
+.u-maxw-160 { max-width: 160px; }
+.u-maxw-860 { max-width: 860px; }
+
+/* 窄栏页（提示页、单表单页）：居中 + 上下留白 */
+.u-narrow-page { max-width: 540px; margin: 3rem auto; }
+
+/* —— 12.2 排版 —— */
+.u-fs-13 { font-size: 13px; }
+.u-fs-88 { font-size: .88rem; }
+.u-fs-86 { font-size: .86rem; }
+.u-meta-xs { font-size: 12px; color: var(--c-text-tertiary); }
+.u-caption { color: var(--c-text-secondary); font-size: .875rem; margin-bottom: 1.25rem; }
+.u-prose-sm { font-size: 14px; color: var(--c-text-secondary); line-height: 1.9; }
+.u-text-warning { color: var(--c-warning); }
+.u-pad-btn { padding: .5rem 1.5rem; }
+.u-borderless-top { border-top: none; padding-top: 0; }
+
+/* 章节小标题：左侧主色竖条 */
+.u-section-title {
+  font-size: .95rem;
+  font-weight: 600;
+  color: var(--c-text);
+  margin: 0 0 .5rem;
+  padding-left: .5rem;
+  border-left: 3px solid var(--c-primary);
+}
+
+/* —— 12.3 布局 —— */
+.u-toolbar-sm {
+  display: flex;
+  gap: .5rem;
+  align-items: center;
+  font-size: .88rem;
+  font-weight: 400;
+}
+.u-center-toolbar {
+  display: flex;
+  gap: .5rem;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: nowrap;
+}
+.u-stack-tight { display: flex; flex-direction: column; gap: .4rem; }
+
+/* —— 12.4 区块 —— */
+.u-card {
+  background: var(--c-surface);
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: var(--sh-card);
+  margin-bottom: 1rem;
+}
+.u-dialog-card {
+  background: var(--c-surface);
+  border-radius: 12px;
+  max-width: 640px;
+  width: 94%;
+  padding: 1.5rem;
+}
+.u-callout-danger {
+  background: var(--c-danger-bg);
+  border: 1px solid var(--c-danger-line);
+  color: var(--c-danger);
+  border-radius: 6px;
+  padding: .9rem 1rem;
+  margin-bottom: 1.25rem;
+  font-size: .875rem;
+  line-height: 1.8;
+}
+
+/* 弹窗遮罩：初始隐藏，打开时由 JS 追加 .show（内联 style 会让 CSP 的
+   style-src-attr 永远收不紧，这里改成类切换） */
+.u-modal-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .45);
+  z-index: var(--z-modal, 60);
+  align-items: center;
+  justify-content: center;
+}
+.u-modal-backdrop.show { display: flex; }
+
+/* ============================================================================
+   13. Copilot 运维页共用（AI 用量与质量看板 / AI 数据外发审计）
+   ----------------------------------------------------------------------------
+   两页共用的说明条与筛选面板。页面专属的仪表横梁（.aiq-rail）、名次刻度条
+   （.aiq-rank）等留在各自模板的 extra_css 里，避免一个选择器跨两页生效。
+   ============================================================================ */
+
+/* 口径 / 说明条：左侧主色竖条，浅底 */
+.aiq-note {
+  padding: 12px 16px;
+  border-left: 3px solid var(--c-primary);
+  background: var(--c-primary-subtle);
+  border-radius: var(--r-md);
+  color: var(--c-text-secondary);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.aiq-note strong { color: var(--c-text); }
+.aiq-note code {
+  padding: 1px 5px;
+  background: var(--c-surface-sunken);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-xs);
+  font-size: 12px;
+  color: var(--c-code);
+}
+
+/* 页头右侧的元信息（统计窗口 / 记录总数）：Bootstrap .text-secondary 的
+   #6c757d 落在页面底色 #f0f2f5 上只有 4.18:1，改用令牌 secondary（6:1）。 */
+.aiq-meta { color: var(--c-text-secondary); }
+
+/* 外发审计筛选面板：字段带标签纵排，动作靠右与输入框底边对齐 */
+.aiq-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  align-items: flex-end;
+  padding: 12px 16px;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  box-shadow: var(--sh-card);
+  margin-bottom: var(--sp-4);
+}
+.aiq-filter__field { display: flex; flex-direction: column; gap: 4px; }
+.aiq-filter__field label { font-size: var(--fs-xs); color: var(--c-text-tertiary); }
+.aiq-filter__field input { width: 190px; }
+.aiq-filter__check {
+  display: flex; align-items: center; gap: 6px;
+  font-size: var(--fs-sm); color: var(--c-text-secondary);
+  padding-bottom: 9px; cursor: pointer;
+}
+.aiq-filter__actions { display: flex; gap: 8px; margin-left: auto; }
+
+/* 模块名小徽片（等宽字体，审计表里一串 slug 的可扫读形态） */
+.aiq-chip {
+  display: inline-block;
+  padding: 1px 8px;
+  margin: 1px 4px 1px 0;
+  background: var(--c-neutral-bg);
+  border: 1px solid var(--c-neutral-line);
+  border-radius: var(--r-full);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--c-neutral);
+  white-space: nowrap;
+}

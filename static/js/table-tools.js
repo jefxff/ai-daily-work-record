@@ -211,8 +211,9 @@
         var tables = document.querySelectorAll('.table-container table, .table-responsive table');
         Array.prototype.forEach.call(tables, function (table) {
             var title = '';
-            var h2 = document.querySelector('.page-header h2');
-            if (h2) title = (h2.textContent || '').trim().replace(/\s+/g, ' ');
+            // 页面主标题 2026-11 起改用 h1（语义层级），此处两种都认
+            var heading = document.querySelector('.page-header h1, .page-header h2');
+            if (heading) title = (heading.textContent || '').trim().replace(/\s+/g, ' ');
             if (!title) title = (document.title || '').split('-')[0].trim();
 
             if (!table.querySelector('caption')) {
@@ -233,6 +234,25 @@
                     wrap.setAttribute('aria-label', (title || '数据列表') + '，可横向滚动');
                 }
             }
+        });
+
+        /* 长文本被 CSS 截断（text-overflow: ellipsis）后，内容就"看不见"了。
+           现在把截断铺到所有列表表格，但只对「超过 24 字、纯文本、没有嵌套块」
+           的单元格生效：
+           - 含链接/按钮 → 跳过，避免把「操作」列一串按钮文案拼成 tooltip；
+           - 含 ul/ol/dl/details/table → 跳过，时间线、清单类单元格必须能换行；
+           - 短文案不处理，小表格的换行保持原样。 */
+        var clipTargets = document.querySelectorAll(
+            '.table-container tbody td, .table-sticky tbody td'
+        );
+        Array.prototype.forEach.call(clipTargets, function (td) {
+            if (td.title || td.classList.contains('cell-wrap')) return;
+            if (td.getAttribute('data-label') === '操作') return;
+            if (td.querySelector('a, button, form, input, select, textarea, ul, ol, dl, table, details')) return;
+            var text = (td.textContent || '').replace(/\s+/g, ' ').trim();
+            if (text.length <= 24) return;
+            td.title = text;
+            td.classList.add('is-clipped');
         });
     }
 

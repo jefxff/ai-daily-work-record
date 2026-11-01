@@ -72,6 +72,8 @@
   --c-neutral:          #5c6370;   --c-neutral-bg:  #fafafa;  --c-neutral-line: #d9d9d9;
   /* 借出中状态（档案证照借阅），全站唯一，只表示"证照处于借出"这一种业务语义 */
   --c-borrowed:         #722ed1;   --c-borrowed-bg: #f9f0ff;  --c-borrowed-line: #d3adf7;
+  /* 行内代码文字（如 settings.XXX）：替换 Bootstrap 粉 #d63384（淡底上 4.2:1，不达标） */
+  --c-code:             #b02a5f;   /* 淡底上 5.9:1 */
 
   /* ---------- 字体 ---------- */
   /* 标题走宋体：档案系统该有公文语感，也是与"通用后台"最直观的区分点 */
@@ -149,6 +151,8 @@
   --z-sidebar:     30;
   --z-topbar:      40;
   --z-dropdown:    50;   /* 下拉菜单、筛选浮层、用户/通知菜单 */
+  --z-panel:       55;   /* AI 助手面板：高于下拉，低于弹窗（弹窗必须能盖住面板） */
+  --z-panel-pinned: 58;  /* AI 面板钉住态：略高，但绝不越过弹窗与 toast */
   --z-modal:       60;   /* 弹窗遮罩层（确认弹窗、表单弹窗、各类背景层） */
   --z-toast:       70;   /* 全局 toast、跳转链接等最顶层 */
 }
@@ -201,6 +205,7 @@
   --c-success:          #6cc56c;   --c-success-bg:  #14251a;  --c-success-line: #2c4a32;
   --c-info:             #a9b6c8;   --c-info-bg:     #212a36;  --c-info-line:    #39445a;
   --c-neutral:          #a6afbd;   --c-neutral-bg:  #1c232d;  --c-neutral-line: #2f3844;
+  --c-code:             #ff92bb;   /* 深底上 8.6:1 */
   --c-borrowed:         #b37feb;   --c-borrowed-bg: #1f1630;  --c-borrowed-line: #4a2d6b;
 
   --sh-1: 0 1px 2px rgba(0, 0, 0, 0.4);

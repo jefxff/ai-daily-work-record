@@ -14,7 +14,7 @@
     justify-content: center;
     box-shadow: 0 6px 18px rgba(9, 109, 217, .28);
     cursor: pointer;
-    z-index: 1040;
+    z-index: var(--z-dropdown, 50);
 }
 .copilot-fab:hover { background: var(--c-primary-hover, #1890ff); }
 .copilot-fab:focus-visible { outline: 2px solid var(--c-primary-ring, #91caff); outline-offset: 2px; }
@@ -36,7 +36,7 @@
     border: 1px solid var(--c-border, #e4e7ec);
     border-radius: 12px;
     box-shadow: 0 12px 32px rgba(0, 0, 0, .16);
-    z-index: 1050;
+    z-index: var(--z-panel, 55);
     overflow: hidden;
 }
 
@@ -68,7 +68,8 @@ body.copilot-resizing { user-select: none; -webkit-user-select: none; }
 /* ---------- 可拖动 / 钉住 ----------
    拖动后由 JS 写 --copilot-left / --copilot-top（改走 left/top 定位）。
    right/bottom 必须显式清掉，否则两套定位会互相拉扯，面板会跳。
-   is-locked = 钉住：位置定死、不能再拖，z-index 提到 1060 保证压在其他浮层上。 */
+   is-locked = 钉住：位置定死、不能再拖，层级略提到 --z-panel-pinned，
+   仍低于弹窗（--z-modal）与 toast（--z-toast）——确认弹窗必须能盖住面板。 */
 .copilot-panel.is-floating {
     right: auto;
     bottom: auto;
@@ -79,7 +80,7 @@ body.copilot-resizing { user-select: none; -webkit-user-select: none; }
     box-shadow: 0 18px 44px rgba(0, 0, 0, .24);
     cursor: move;
 }
-.copilot-panel.is-locked { z-index: 1060; }
+.copilot-panel.is-locked { z-index: var(--z-panel-pinned, 58); }
 .copilot-panel.is-locked .copilot-header { cursor: default; }
 
 /* 拖动时整页禁止选中：不然鼠标划过正文会拖出一片蓝色选区 */

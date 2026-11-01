@@ -292,11 +292,18 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
             justify-content: space-between;
             gap: 12px;
         }
-        main.container:has(> .page-header) > .page-header h2 { font-size: 1.375rem; letter-spacing: -0.01em; }
+        main.container:has(> .page-header) > .page-header :is(h1, h2) { font-size: 1.375rem; letter-spacing: -0.01em; }
+
+        /* 面包屑固定在「标题之下、工具条之上」：order 2（标题 1 / 面包屑 2 /
+           工具条 3 / 其余内容 4）。全站统一参照数据导出中心的版式。 */
+        main.container:has(> .page-header) > .app-breadcrumb {
+            order: 2;
+            flex: 1 1 100%;
+        }
 
         /* 操作条：白底卡片头部 */
         main.container:has(> .page-header) > .page-actions {
-            order: 2;
+            order: 3;
             flex: 1 1 100%;
             margin: 0;
             padding: 10px 16px;
@@ -314,7 +321,7 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
         /* 只有紧跟在操作条后面的表格才作为「卡片下半部分」拼接；
            标签与说明文字夹在中间时不命中，表格保持自己的完整卡片外观。 */
         main.container:has(> .page-header) > .page-actions + .table-container {
-            order: 3;
+            order: 4;
             border: 1px solid var(--c-border);
             border-radius: 0 0 10px 10px;
             box-shadow: none;
@@ -343,17 +350,58 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
             margin-left: auto;
         }
 
-        /* 其余内容独占整行 */
-        main.container:has(> .page-header) > *:not(.page-header):not(.page-actions) {
-            order: 3;
+        /* 其余内容独占整行（面包屑已在上面单独给 order:2，这里排除） */
+        main.container:has(> .page-header) > *:not(.page-header):not(.page-actions):not(.app-breadcrumb) {
+            order: 4;
             flex: 1 1 100%;
             min-width: 0;
         }
-        /* 宽度不足时回到朴素布局：不加卡片外观，操作条保持一条 */
+        /* 档案模块等「标题不是 .page-header」的页面（.page-title / 嵌套
+           .container）：同样按「标题 1 → 面包屑 2 → 内容 4」排序。
+           嵌套的 .container 全局已被去盒化（padding/margin/max-width 全 0），
+           用 display:contents 把它的子元素提升为 main 的 flex 项参与排序，
+           否则标题在容器里，永远排不到面包屑前面。 */
+        main.container:has(> .app-breadcrumb) {
+            display: flex;
+            flex-wrap: wrap;
+            align-content: flex-start;
+            row-gap: 0;
+        }
+        main.container:has(> .app-breadcrumb) > .app-breadcrumb {
+            order: 2;
+            flex: 1 1 100%;
+        }
+        main.container:has(> .app-breadcrumb) > .container { display: contents; }
+        /* 标题行统一 order:1：三种形态——直属 .page-title（搜索结果）、
+           直属 .page-header、嵌套容器里的 .page-title / .page-header（档案、备份） */
+        main.container:has(> .app-breadcrumb) > .page-title,
+        main.container:has(> .app-breadcrumb) > .container > .page-title,
+        main.container:has(> .app-breadcrumb) > .container > .page-header {
+            order: 1;
+            flex: 1 1 100%;
+        }
+        main.container:has(> .app-breadcrumb) > *:not(.app-breadcrumb):not(.page-title):not(.page-header) {
+            order: 4;
+            flex: 1 1 100%;
+            min-width: 0;
+        }
+        main.container:has(> .app-breadcrumb) > .container > *:not(.page-title):not(.page-header) {
+            order: 4;
+            flex: 1 1 100%;
+            min-width: 0;
+        }
+        /* .card 的 height:100% 是给仪表盘网格等高卡片用的；当卡片成为 main
+           （确定高度）的 flex 项时，100% 会被解析成整页高，页面出现大片空白。
+           这里限主内容直接层级的卡片改回自适应，网格内的等高行为不受影响。 */
+        main.container:has(> .app-breadcrumb) > .card,
+        main.container:has(> .app-breadcrumb) > .container > .card {
+            height: auto;
+        }
+        /* 宽度不足时回到朴素外观：只撤卡片样式，保留 flex 排序
+           （若回退成 block，面包屑会按 DOM 顺序跑到标题上面） */
         @media (max-width: 1280px) {
-            main.container:has(> .page-header) { display: block; }
             main.container:has(> .page-header) > .page-header { margin-bottom: 14px; }
-            main.container:has(> .page-header) > .page-header h2 { font-size: 1.25rem; }
+            main.container:has(> .page-header) > .page-header :is(h1, h2) { font-size: 1.25rem; }
             main.container:has(> .page-header) > .page-actions {
                 margin-bottom: 14px;
                 padding: 0;
@@ -1060,10 +1108,8 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
         .status-badge.info { background: var(--c-primary-subtle); color: var(--c-primary); }
         .status-badge.default { background: var(--c-surface-sunken); color: var(--c-text-secondary); }
 
-        /* 空状态 */
-        .empty-state { text-align: center; padding: 3rem 1rem; color: var(--c-text-secondary); }
-        .empty-state .empty-icon { font-size: 3rem; margin-bottom: 0.75rem; opacity: 0.65; }
-        .empty-state .empty-text { margin-bottom: 1rem; }
+        /* 块级空状态：样式统一在 components.css 第 11 节（.empty-state 组件），
+           这里不再重复声明，避免两处取值打架。 */
         /* 表格空态（records/_empty_row.html）：
            图标 + 标题 + 一句可执行的下一步提示，替代原来只有「📭 暂无数据」的一格。 */
         .empty-cell { padding: var(--sp-9) var(--sp-4); color: var(--c-text-tertiary); }
@@ -1074,7 +1120,7 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
 
         /* 页头信息区 */
         .page-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.25rem; }
-        .page-header h2 { font-size: 1.25rem; font-weight: 600; color: var(--c-text); margin: 0; display: flex; align-items: baseline; }
+        .page-header :is(h1, h2) { font-size: 1.25rem; font-weight: 600; color: var(--c-text); margin: 0; display: flex; align-items: baseline; }
         .total-hint { color: var(--c-text-secondary); font-size: 0.875rem; font-weight: 400; margin-left: 0.5rem; }
         .filter-chips { display: flex; gap: 0.5rem; flex-wrap: wrap; }
         .filter-chip { background: var(--c-surface-sunken); border: 1px solid var(--c-border); color: var(--c-text-secondary); border-radius: 4px; padding: 2px 10px; font-size: 12px; cursor: pointer; text-decoration: none; }
@@ -1720,4 +1766,44 @@ a.home-kpi:hover .home-kpi__value { color: var(--c-primary-active); }
         border-radius: 0 0 var(--r-sm) var(--r-sm);
     }
     .table--cards td.col-expand::before { flex: 0 0 auto; margin-right: var(--sp-2); }
+}
+
+/* ============================================================================
+   冻结表头（宽表专用）
+   ----------------------------------------------------------------------------
+   为什么必须给容器加高度上限：
+   `.table-responsive` 带 overflow-x:auto，按 CSS 规范另一轴会被计算成 auto，
+   该元素因此成为滚动容器。thead 的 sticky 只相对「最近的滚动容器」生效，
+   容器不滚动（高度自适应）时表头会跟着页面一起滚走 —— 写了等于没写。
+   所以先把容器变成有界滚动区，sticky 才有意义。
+   只作用于 .table-sticky（宽表）；普通短表保持原有页面滚动体验。
+   ========================================================================== */
+@media (min-width: 961px) {
+  .table-responsive:has(.table-sticky) {
+    max-height: calc(100vh - var(--h-topbar) - 200px);
+    overflow: auto;
+  }
+  .table-sticky thead th {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-sticky-head);
+    background: var(--c-surface-sunken);
+    box-shadow: inset 0 -1px 0 var(--c-border);
+  }
+  /* 首列与操作列在表头行也要抬到表头之上，否则会被表头盖住一截 */
+  .table-sticky thead th:first-child,
+  .table-sticky thead th.col-actions { z-index: calc(var(--z-sticky-head) + 1); }
+}
+
+@media print {
+  .table-responsive:has(.table-sticky) { max-height: none; overflow: visible; }
+  .table-sticky thead th { position: static; }
+}
+
+/* 侧栏二级菜单的当前项：.sidebar-menu-item a.active 已覆盖背景与左侧竖条，
+   这里只补内边距下的圆角与字色，避免和一级菜单的样式混在一起 */
+.sidebar-dropdown a.active {
+  color: var(--c-primary);
+  font-weight: 600;
+  background: var(--c-primary-subtle);
 }

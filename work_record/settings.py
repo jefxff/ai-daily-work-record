@@ -276,6 +276,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                # 侧栏高亮 + 面包屑：按 URL 路径前缀查表，不依赖 URL 命名空间
+                'records.nav.nav',
             ],
         },
     },

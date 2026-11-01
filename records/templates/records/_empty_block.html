@@ -1,0 +1,24 @@
+{% comment %}
+    块级（表格外）空态。表格内某一行没有数据请改用 records/_empty_row.html。
+    样式只有一份：static/css/components.css 第 11 节。
+
+    用法：
+        {% include 'records/_empty_block.html' %}
+        {% include 'records/_empty_block.html' with empty_icon="🔔" empty_title="暂无通知" %}
+        {% include 'records/_empty_block.html' with empty_title="该周期内暂无送样数据" compact=1 %}
+        {% include 'records/_empty_block.html' with empty_title="暂无分类" empty_action_url=create_url empty_action_label="创建第一个分类" %}
+
+    compact=1 → 紧凑版（卡片内、区块下方这类空间有限的位置）。
+    带权限判断的按钮（{% can %}）无法通过 include 传参，此时请在本页写
+    .empty-state 结构，不要复制样式。
+{% endcomment %}
+<div class="empty-state{% if compact %} empty-state--compact{% endif %}" role="status">
+    <div class="empty-state__icon" aria-hidden="true">{{ empty_icon|default:"📭" }}</div>
+    <p class="empty-state__title">{{ empty_title|default:"暂无数据" }}</p>
+    {% if empty_desc %}<p class="empty-state__desc">{{ empty_desc }}</p>{% endif %}
+    {% if empty_action_url and empty_action_label %}
+    <div class="empty-state__action">
+        <a href="{{ empty_action_url }}" class="btn btn-sm btn-primary">{{ empty_action_label }}</a>
+    </div>
+    {% endif %}
+</div>
