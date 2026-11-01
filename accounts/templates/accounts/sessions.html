@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="page-header">
-    <h2>登录会话管理<span class="total-hint">共 {{ sessions|length }} 个有效会话</span></h2>
+    <h1>登录会话管理<span class="total-hint">共 {{ sessions|length }} 个有效会话</span></h1>
 </div>
 {# 操作条：与下方列表拼成一张卡，标题独占一行 #}
 <div class="page-actions">
@@ -22,7 +22,7 @@
                 <th scope="col">IP 地址</th>
                 <th scope="col">浏览器/设备</th>
                 <th scope="col">有效期至</th>
-                <th scope="col" style="width:110px;">状态/操作</th>
+                <th class="u-w-110" scope="col">状态/操作</th>
             </tr>
         </thead>
         <tbody>

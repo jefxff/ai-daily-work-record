@@ -1,5 +1,5 @@
 {% load static %}
-<form method="post" data-modal-form action="{% if record %}{% url 'daily_record_edit' record.id %}{% else %}{% url 'daily_record_add' %}{% endif %}">
+<form data-validate="1" novalidate method="post" data-modal-form action="{% if record %}{% url 'daily_record_edit' record.id %}{% else %}{% url 'daily_record_add' %}{% endif %}">
     {% csrf_token %}
 
     <div class="form-group mb-3">
@@ -9,13 +9,13 @@
 
     <div class="form-group mb-3">
         <label for="department" class="form-label">提出部门/提出人 <span class="u-text-danger">*</span></label>
-        <input type="text" class="form-control" id="department" name="department" value="{% if record %}{{ record.department }}{% else %}{{ form_data.department }}{% endif %}" required>
+        <input type="text" class="form-control" id="department" name="department" value="{% if record %}{{ record.department }}{% else %}{{ form_data.department }}{% endif %}" required maxlength="50">
         {% if errors.department %}<div class="form-text u-text-danger">{{ errors.department }}</div>{% endif %}
     </div>
 
     <div class="form-group mb-3">
         <label for="work_content" class="form-label">工作内容 <span class="u-text-danger">*</span></label>
-        <textarea class="form-control" id="work_content" name="work_content" rows="4" required>{% if record %}{{ record.work_content }}{% else %}{{ form_data.work_content }}{% endif %}</textarea>
+        <textarea class="form-control" id="work_content" name="work_content" rows="4" required maxlength="50">{% if record %}{{ record.work_content }}{% else %}{{ form_data.work_content }}{% endif %}</textarea>
         {% if errors.work_content %}<div class="form-text u-text-danger">{{ errors.work_content }}</div>{% endif %}
     </div>
 
@@ -37,7 +37,7 @@
     <div class="form-group mb-3">
         <label for="progress" class="form-label">工作进度 <span class="u-text-danger">*</span></label>
         <div class="input-group">
-            <input type="number" class="form-control" id="progress" name="progress" min="0" max="100" value="{% if record %}{{ record.progress }}{% else %}{{ form_data.progress|default:'0' }}{% endif %}" required>
+            <input type="number" class="form-control" id="progress" name="progress" min="0" max="100" value="{% if record %}{{ record.progress }}{% else %}{{ form_data.progress|default:'0' }}{% endif %}" required maxlength="50">
             <span class="input-group-text">%</span>
         </div>
         <div class="form-text">请输入0-100之间的数字</div>

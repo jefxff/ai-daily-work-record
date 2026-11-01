@@ -6,10 +6,6 @@
 
 {% block top_nav_actions %}
     <a href="{% url 'complaint_list' %}" class="btn-transparent">返回列表</a>
-    {% can "copilot" "read" %}
-    <button type="button" class="btn-transparent copilot-ask"
-            data-copilot-ask="案号 {{ complaint.case_number }} 的诉讼进展和涉案金额">问 AI</button>
-    {% endcan %}
     {% can "complaint" "update" %}
     <a href="{% url 'complaint_edit' complaint.id %}" class="btn-transparent" data-modal-edit data-modal-title="编辑诉讼">编辑记录</a>
     {% endcan %}
@@ -20,7 +16,7 @@
 
 {% block content %}
     <div class="page-header">
-        <h2>诉讼详情 · {{ complaint.defendant }}<span class="total-hint">{% if complaint.filed_at %}立案于 {{ complaint.filed_at|date:'Y-m-d' }}{% endif %}</span></h2>
+        <h1>诉讼详情 · {{ complaint.defendant }}<span class="total-hint">{% if complaint.filed_at %}立案于 {{ complaint.filed_at|date:'Y-m-d' }}{% endif %}</span></h1>
         <span class="status-badge {% if complaint.progress == '结案' %}success{% elif complaint.progress == '审理中' %}warning{% else %}info{% endif %}">{{ complaint.progress }}</span>
     </div>
 
@@ -57,7 +53,7 @@
 
         {% if complaint.progress != '结案' %}
         {% can "complaint" "update" %}
-        <form method="post" action="{% url 'complaint_advance' complaint.id %}" class="case-advance">{% csrf_token %}
+        <form data-validate="1" novalidate method="post" action="{% url 'complaint_advance' complaint.id %}" class="case-advance">{% csrf_token %}
             <div class="case-advance-field">
                 <label for="caseAdvanceSelect">推进状态</label>
                 <select id="caseAdvanceSelect" name="progress" class="form-select">

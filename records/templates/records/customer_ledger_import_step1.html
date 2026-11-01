@@ -10,7 +10,7 @@
 
 {% block content %}
     <div class="form-container">
-        <h2 class="form-title">导入客户台账</h2>
+        <h1 class="form-title">导入客户台账</h1>
         <p class="form-text">
             仅支持 Excel（.xlsx / .xls），单次最多 5000 行。系统会先解析并展示预览，
             确认后才会写库；同一文件内统一社会信用代码、档案编号不得重复。
@@ -20,7 +20,7 @@
         <div class="alert alert-danger" role="alert">{{ error }}</div>
         {% endif %}
 
-        <form method="post" enctype="multipart/form-data">
+        <form data-validate="1" novalidate method="post" enctype="multipart/form-data">
             {% csrf_token %}
             <div class="form-group">
                 <label for="id_file" class="form-label">选择 Excel 文件 *</label>

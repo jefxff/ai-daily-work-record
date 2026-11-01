@@ -5,7 +5,7 @@
 
 {% block content %}
 <div class="container arc-page">
-    <div class="page-header"><h2 class="page-title">档案类别</h2></div>
+    <div class="page-header"><h1 class="page-title">档案类别</h1></div>
     <div class="page-actions">
         {% can "archive" "read" %}
         <a href="{% url 'archive:table_export' 'categories' %}" class="btn btn-outline-primary btn-sm" data-col-settings-anchor data-col-settings-position="before">导出 Excel</a>

@@ -1,4 +1,5 @@
 {% extends "records/base.html" %}
+{% load static %}
 
 {% block page_title %}撤回记录 - 每日工作记录管理网站{% endblock %}
 
@@ -38,14 +39,13 @@
     .pill { border-radius: 999px; padding: .125rem .625rem; font-size: .72rem; font-weight: 500; display: inline-block; }
     .pill.read { background: var(--c-success-bg); color: var(--c-success); }
     .pill.unread { background: var(--c-warning-bg); color: var(--c-warning); }
-    .empty-state { text-align: center; padding: 3.5rem 0; color: var(--c-text-secondary); }
-    .empty-state svg { opacity: .35; margin-bottom: .75rem; }
+    /* 空态样式统一在 components.css 第 11 节，这里不再覆盖 */
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h2>撤回记录<span class="total-hint">共 {{ items|length }} 条</span></h2>
+    <h1>撤回记录<span class="total-hint">共 {{ items|length }} 条</span></h1>
 </div>
 {# 操作条：与下方内容拼成一张卡，标题独占一行 #}
 <div class="page-actions">
@@ -107,19 +107,17 @@
 </div>
 {% empty %}
 <div class="table-container">
-    <div class="empty-state">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
-        <p>暂无撤回记录</p>
+    <div class="empty-state" role="status">
+        <div class="empty-state__icon" aria-hidden="true">
+            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+        </div>
+        <p class="empty-state__title">暂无撤回记录</p>
+        <p class="empty-state__desc">撤回一条通知后，记录会出现在这里</p>
     </div>
 </div>
 {% endfor %}
 {% endblock %}
 
 {% block extra_js %}
-<script>
-    // 阅读进度条宽度（data 属性传入，避免 style 内嵌模板标签）
-    document.querySelectorAll(".read-progress > div[data-w]").forEach(function (bar) {
-        bar.style.width = (parseInt(bar.dataset.w, 10) || 0) + "%";
-    });
-</script>
+<script src="{% static 'js/pages/notifications/revoke_log.js' %}?v=20261102" defer></script>
 {% endblock %}

@@ -1,15 +1,25 @@
 {% load pager_tags %}
-{% comment %} 统一分页信息条：左侧总计信息，右侧「每页条数 + 页码」。
+{% comment %} 统一分页信息条：左侧总计信息，右侧「每页条数 + 页码 + 跳转」。
 用法：{% include 'records/_pagination.html' with page_obj=<Page对象> %}
-页码经 page_window 窗口化（当前页 ±2 + 首尾页），其余以省略号代替。 {% endcomment %}
+页码经 page_window 窗口化（当前页 ±2 + 首尾页），其余以省略号代替。
+
+URL 由 Django 内置 {% querystring %} 生成：自动 urlencode，且保留其余筛选参数。
+此前用 `?{% for k, v in request.GET.items %}{{ k }}={{ v }}&{% endfor %}` 手工拼接，
+值里出现 & / # / 空格 时会截断链接（如搜索「A&B」翻页后条件被拆成两个参数）。
+{% endcomment %}
 {% if page_obj.paginator.num_pages > 1 %}
 <div class="pagination-info">
     <span>共 {{ page_obj.paginator.count }} 条 · 第 {{ page_obj.number }} / {{ page_obj.paginator.num_pages }} 页</span>
     <div class="pag-controls">
         <form method="GET" class="pag-perpage">
-            {% for k, v in request.GET.items %}{% if k != 'per_page' and k != 'page' %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endif %}{% endfor %}
-            <label>每页</label>
-            <select class="per-page-select" name="per_page" aria-label="每页条数" onchange="this.form.submit()">
+            {# 用 lists 而不是 items：多选筛选（同一 key 多个值）翻页后才不会丢条件 #}
+            {% for key, values in request.GET.lists %}
+                {% if key != 'per_page' and key != 'page' %}
+                    {% for value in values %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endfor %}
+                {% endif %}
+            {% endfor %}
+            <label for="perPageSelect">每页</label>
+            <select id="perPageSelect" class="per-page-select" name="per_page" aria-label="每页条数" data-auto-submit>
                 <option value="10" {% if page_obj.paginator.per_page == 10 %}selected{% endif %}>10</option>
                 <option value="30" {% if page_obj.paginator.per_page == 30 %}selected{% endif %}>30</option>
                 <option value="50" {% if page_obj.paginator.per_page == 50 %}selected{% endif %}>50</option>
@@ -18,7 +28,7 @@
         </form>
         <ul class="pagination">
             {% if page_obj.has_previous %}
-            <li class="page-item"><a class="page-link" href="?{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}" aria-label="上一页">&laquo;</a></li>
+            <li class="page-item"><a class="page-link" href="{% querystring page=page_obj.previous_page_number %}" aria-label="上一页">&laquo;</a></li>
             {% else %}
             <li class="page-item disabled"><span class="page-link" aria-label="上一页">&laquo;</span></li>
             {% endif %}
@@ -28,7 +38,7 @@
                 {% if page_obj.number == p %}
                 <li class="page-item active"><span class="page-link">{{ p }}</span></li>
                 {% else %}
-                <li class="page-item"><a class="page-link" href="?{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ p }}">{{ p }}</a></li>
+                <li class="page-item"><a class="page-link" href="{% querystring page=p %}">{{ p }}</a></li>
                 {% endif %}
             {% else %}
                 <li class="page-item pag-ellipsis"><span class="page-link">&hellip;</span></li>
@@ -36,11 +46,23 @@
             {% endfor %}
 
             {% if page_obj.has_next %}
-            <li class="page-item"><a class="page-link" href="?{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ page_obj.next_page_number }}" aria-label="下一页">&raquo;</a></li>
+            <li class="page-item"><a class="page-link" href="{% querystring page=page_obj.next_page_number %}" aria-label="下一页">&raquo;</a></li>
             {% else %}
             <li class="page-item disabled"><span class="page-link" aria-label="下一页">&raquo;</span></li>
             {% endif %}
         </ul>
+        <form method="GET" class="pag-jump">
+            {% for key, values in request.GET.lists %}
+                {% if key != 'page' %}
+                    {% for value in values %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endfor %}
+                {% endif %}
+            {% endfor %}
+            <label for="pageJump">跳至</label>
+            <input id="pageJump" type="number" name="page" min="1"
+                   max="{{ page_obj.paginator.num_pages }}" value="{{ page_obj.number }}"
+                   inputmode="numeric" autocomplete="off">
+            <button type="submit" class="btn-transparent btn-sm">确定</button>
+        </form>
     </div>
 </div>
 {% endif %}

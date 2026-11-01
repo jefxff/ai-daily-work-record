@@ -1,4 +1,4 @@
-<form method="post" data-modal-form action="{{ request.path }}">
+<form data-validate="1" novalidate method="post" data-modal-form action="{{ request.path }}">
     {% csrf_token %}
 
     {% if form.code.errors or form.non_field_errors %}
@@ -32,7 +32,7 @@
         <textarea class="form-control" rows="2" disabled aria-label="{{ form.description.label }}">{{ role.description }}</textarea>
         <input type="hidden" name="description" value="{{ role.description }}">
         {% else %}
-        <textarea name="description" class="form-control" rows="2" aria-label="{{ form.description.label }}">{{ form.description.value|default:'' }}</textarea>
+        <textarea name="description" class="form-control" rows="2" aria-label="{{ form.description.label }}" maxlength="500">{{ form.description.value|default:'' }}</textarea>
         {% endif %}
     </div>
     <div class="ac-field">

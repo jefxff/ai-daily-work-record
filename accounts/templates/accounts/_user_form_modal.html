@@ -1,4 +1,4 @@
-<form method="post" data-modal-form action="{{ request.path }}" autocomplete="off">
+<form data-validate="1" novalidate method="post" data-modal-form action="{{ request.path }}" autocomplete="off">
     {% csrf_token %}
 
     {% if form.non_field_errors %}
@@ -13,7 +13,7 @@
     </div>
     <div class="ac-field">
         <label class="form-label">初始密码 <span class="u-text-danger">*</span></label>
-        <input type="password" name="password" class="form-control" autocomplete="new-password" required aria-label="初始密码">
+        <input type="password" name="password" class="form-control" autocomplete="new-password" required aria-label="初始密码" maxlength="128">
         {% if form.password.errors %}<div class="ac-error">{{ form.password.errors|join:'；' }}</div>{% endif %}
     </div>
     {% else %}
@@ -51,7 +51,7 @@
         </div>
     </div>
 
-    <div class="ac-field" style="display:flex; flex-direction:column; gap:0.4rem;">
+    <div class="ac-field u-stack-tight">
         <label class="ac-check">
             {{ form.is_active }} {{ form.is_active.label }}
         </label>

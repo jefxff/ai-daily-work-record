@@ -24,7 +24,7 @@
 
 {% block content %}
     <div class="page-header">
-        <h2>待办工作台<span class="total-hint">共 {{ total }} 项待办</span></h2>
+        <h1>待办工作台<span class="total-hint">共 {{ total }} 项待办</span></h1>
         <div class="filter-chips ws-chips">
             <a href="?{% if source_filter %}source={{ source_filter }}{% endif %}"
                class="ws-chip danger{% if not urgency_filter %} active{% endif %}"

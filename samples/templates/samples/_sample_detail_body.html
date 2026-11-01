@@ -1,3 +1,4 @@
+{% load static %}
 {% load accounts_tags %}
 <style>
     /* ===== 顶部基本信息卡 ===== */
@@ -158,7 +159,7 @@
 <div class="deleted-banner">
     <span>🗑️ 该样品已删除{% if sample.deleted_at %}（删除时间 {{ sample.deleted_at|date:'Y-m-d H:i' }}）{% endif %}，删除后不再出现在台账列表中。</span>
     {% can "samples" "update" %}
-    <form method="POST" action="{% url 'samples:restore' sample.pk %}" style="margin:0;">
+    <form class="m-0" method="POST" action="{% url 'samples:restore' sample.pk %}">
         {% csrf_token %}
         <button type="submit" class="btn-transparent btn-sm" data-confirm="确定要恢复该样品吗？">恢复样品</button>
     </form>
@@ -319,7 +320,7 @@
                 </table>
             </div>
             {% else %}
-            <div class="empty-state"><div class="empty-icon">🧪</div><div class="empty-text">暂无试样记录{% if can_add_test %}，点击右上角新增{% endif %}</div></div>
+            {% include 'records/_empty_block.html' with empty_icon="🧪" empty_title="暂无试样记录" empty_desc="点击右上角「新增」登记第一条试样" compact=1 %}
             {% endif %}
         </div>
 
@@ -361,7 +362,7 @@
                 </table>
             </div>
             {% else %}
-            <div class="empty-state"><div class="empty-icon">🏭</div><div class="empty-text">暂无小批量记录{% if can_add_batch %}，点击右上角新增{% endif %}</div></div>
+            {% include 'records/_empty_block.html' with empty_icon="🏭" empty_title="暂无小批量记录" empty_desc="点击右上角「新增」登记第一条小批量" compact=1 %}
             {% endif %}
         </div>
 
@@ -406,7 +407,7 @@
                 </table>
             </div>
             {% else %}
-            <div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">新增供应商尚未安排审厂{% if can_add_audit %}，点击右上角登记审厂记录{% endif %}</div></div>
+            {% include 'records/_empty_block.html' with empty_icon="📋" empty_title="新增供应商尚未安排审厂" empty_desc="点击右上角「登记审厂」补一条记录" compact=1 %}
             {% endif %}
         </div>
         {% endif %}
@@ -442,7 +443,7 @@
                                 <div class="proof-file-sub">{{ att.uploaded_by|default:'—' }} · {{ att.created_at|date:'Y-m-d H:i' }}{% if att.remark %} · {{ att.remark }}{% endif %}</div>
                             </div>
                             {% if can_upload_proof and request.user|can_do:'samples.delete' %}
-                            <form method="POST" action="{% url 'samples:proof_delete' sample.pk att.pk %}" style="margin:0;">
+                            <form class="m-0" method="POST" action="{% url 'samples:proof_delete' sample.pk att.pk %}">
                                 {% csrf_token %}
                                 <button type="submit" class="btn-transparent btn-sm btn-delete" data-confirm="确定要删除该证明材料吗？">删除</button>
                             </form>
@@ -454,11 +455,11 @@
                     <div class="proof-empty">暂未上传凭证</div>
                     {% endif %}
                     {% if can_upload_proof and request.user|can_do:'samples.create' %}
-                    <form class="upload-form" method="POST" action="{% url 'samples:proof_upload' sample.pk stage.value %}" enctype="multipart/form-data">
+                    <form data-validate="1" novalidate class="upload-form" method="POST" action="{% url 'samples:proof_upload' sample.pk stage.value %}" enctype="multipart/form-data">
                         {% csrf_token %}
                         <input type="file" name="file" class="form-control form-control-sm" required aria-label="上传证明材料"
                                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar,.7z">
-                        <textarea name="remark" class="form-control form-control-sm" rows="1" placeholder="可选：注明订单号/日期/人员等关键信息"></textarea>
+                        <textarea name="remark" class="form-control form-control-sm" rows="1" placeholder="可选：注明订单号/日期/人员等关键信息" maxlength="500"></textarea>
                         <button type="submit" class="btn-upload">⬆ 上传 {{ stage.label }}</button>
                     </form>
                     {% endif %}
@@ -471,34 +472,5 @@
 
 {% include "samples/_toast.html" %}
 
-<script>
-(function () {
-    // 供应商类型 AJAX 切换（弹窗注入时 DOM 已就绪，直接执行）
-    var sel = document.getElementById('supplierTypeSelect');
-    if (!sel) return;
-    var original = sel.value;
-    sel.addEventListener('change', function () {
-        if (sel.value === original) return;
-        var url = sel.dataset.url;
-        var fd = new FormData();
-        fd.append('supplier_type', sel.value);
-        fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
-        fetch(url, { method: 'POST', body: fd })
-            .then(function (r) { return r.json(); })
-            .then(function (data) {
-                if (data.ok) {
-                    if (window.showToast) window.showToast('供应商类型已更新', 'success');
-                    setTimeout(function(){ window.location.reload(); }, 600);
-                }
-                else {
-                    if (window.showToast) window.showToast(data.message || data.error || '更新失败', 'error');
-                    sel.value = original;
-                }
-            })
-            .catch(function () {
-                if (window.showToast) window.showToast('网络错误，更新失败', 'error');
-                sel.value = original;
-            });
-    });
-})();
-</script>
+
+<script src="{% static 'js/pages/samples/_sample_detail_body.js' %}?v=20261102" defer></script>

@@ -1,4 +1,5 @@
 {% extends "records/base.html" %}
+{% load accounts_tags %}
 {% load static accounts_tags %}
 
 {% block page_title %}日志中心 - 每日工作记录管理网站{% endblock %}
@@ -6,7 +7,7 @@
 {% block top_nav_actions %}
     <form class="d-flex gap-2" method="GET" id="logSearchForm">
         <input class="search-input" type="search" name="search" value="{{ search_term }}"
-               placeholder="搜索日志内容或来源 logger" aria-label="搜索日志内容或来源">
+               placeholder="搜索日志内容或来源 logger" aria-label="搜索日志内容或来源" maxlength="100">
         {% if level %}<input type="hidden" name="level" value="{{ level }}">{% endif %}
         {% if source %}<input type="hidden" name="source" value="{{ source }}">{% endif %}
         <input type="hidden" name="days" value="{{ days }}">
@@ -61,21 +62,20 @@
 
 {% block content %}
     <div class="page-header">
-        <h2>日志中心<span class="total-hint">共 {{ logs.paginator.count }} 条匹配记录</span></h2>
+        <h1>日志中心<span class="total-hint">共 {{ logs.paginator.count }} 条匹配记录</span></h1>
         <div class="filter-chips">
             {% if level %}
-            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'level' %}{{ k }}={{ v|urlencode }}&{% endif %}{% endfor %}">级别：{{ level }} ✕</a>
+            <a class="filter-chip" href="{% querystring level=None page=None %}">级别：{{ level }} ✕</a>
             {% endif %}
             {% if source %}
-            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'source' %}{{ k }}={{ v|urlencode }}&{% endif %}{% endfor %}">文件：{{ source }} ✕</a>
+            <a class="filter-chip" href="{% querystring source=None page=None %}">文件：{{ source }} ✕</a>
             {% endif %}
             {% if search_term %}
-            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'search' %}{{ k }}={{ v|urlencode }}&{% endif %}{% endfor %}">搜索：{{ search_term }} ✕</a>
+            <a class="filter-chip" href="{% querystring search=None page=None %}">搜索：{{ search_term }} ✕</a>
             {% endif %}
             {% if days != 7 %}
-            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'days' %}{{ k }}={{ v|urlencode }}&{% endif %}{% endfor %}">时间：{% if days %}近 {{ days }} 天{% else %}全部{% endif %} ✕</a>
-            {% endif %}
-        </div>
+            <a class="filter-chip" href="{% querystring days=None page=None %}">时间：{% if days %}近 {{ days }} 天{% else %}全部{% endif %} ✕</a>
+            {% endif %}{% has_filters as show_clear %}{% if show_clear %}<a class="filter-chip filter-chip--clear" href="{{ request.path }}" aria-label="全部清除筛选条件">全部清除<span aria-hidden="true"> ✕</span></a>{% endif %}</div>
     </div>
 
     <div class="log-cards">

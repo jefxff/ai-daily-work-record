@@ -1,4 +1,5 @@
 {% extends "records/base.html" %}
+{% load static %}
 
 {% block page_title %}{% if record %}编辑小批量记录{% else %}新增小批量记录{% endif %} - 试样管理{% endblock %}
 
@@ -56,17 +57,7 @@
     </form>
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    // 小批量结果为「不通过」时显示终止原因（必填）
-    var result = document.getElementById('id_batch_result');
-    var group = document.getElementById('terminateReasonGroup');
-    function toggle() {
-        if (result && group) group.style.display = result.value === 'fail' ? '' : 'none';
-    }
-    if (result) { result.addEventListener('change', toggle); toggle(); }
-});
-</script>
+<script src="{% static 'js/pages/samples/batch_form.js' %}?v=20261102" defer></script>
 
 {% include "samples/_toast.html" %}
 {% endblock %}

@@ -7,7 +7,7 @@
 
 {% block top_nav_actions %}
     <form class="d-flex gap-2" method="GET" id="searchForm">
-        <input class="search-input" type="search" placeholder="搜索项目名称或施工方" name="search" value="{{ search_term }}" aria-label="搜索项目名称或施工方">
+        <input class="search-input" type="search" placeholder="搜索项目名称或施工方" name="search" value="{{ search_term }}" aria-label="搜索项目名称或施工方" maxlength="100">
         <button class="btn-transparent" type="submit">搜索</button>
     </form>
     <div class="filter-container">
@@ -42,15 +42,14 @@
 
 {% block content %}
     <div class="page-header">
-        <h2>装修记录<span class="total-hint">共 {{ decorations.paginator.count }} 条记录</span></h2>
+        <h1>装修记录<span class="total-hint">共 {{ decorations.paginator.count }} 条记录</span></h1>
         <div class="filter-chips">
             {% if search_term %}
-            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'search' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">搜索：{{ search_term }} ✕</a>
+            <a class="filter-chip" href="{% querystring search=None page=None %}">搜索：{{ search_term }} ✕</a>
             {% endif %}
             {% if constructor_filter %}
-            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'constructor' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">施工方：{{ constructor_filter }} ✕</a>
-            {% endif %}
-        </div>
+            <a class="filter-chip" href="{% querystring constructor=None page=None %}">施工方：{{ constructor_filter }} ✕</a>
+            {% endif %}{% has_filters as show_clear %}{% if show_clear %}<a class="filter-chip filter-chip--clear" href="{{ request.path }}" aria-label="全部清除筛选条件">全部清除<span aria-hidden="true"> ✕</span></a>{% endif %}</div>
     </div>
     <div class="table-container">
         <div class="table-responsive">
@@ -70,7 +69,7 @@
                 </thead>
                 <tbody>
                     {% for decoration in decorations %}
-                    <tr>
+                    <tr data-href="{% url 'decoration_detail' decoration.id %}">
                         <td data-label="序号" class="col-optional">{{ forloop.counter }}</td>
                         <td data-label="项目名称" class="cell-ellipsis">{{ decoration.project_name }}</td>
                         <td data-label="施工方" class="cell-ellipsis">{{ decoration.constructor }}</td>
@@ -80,7 +79,7 @@
                         <td data-label="核后价" class="cell-ellipsis">¥{{ decoration.final_price|floatformat:2|intcomma }}</td>
                         <td data-label="核减金额" class="cell-ellipsis">¥{{ decoration.reduced_price|default:0|floatformat:2|intcomma }}</td>
                         <td data-label="操作">
-                            <div style="display: flex; gap: 0.5rem; align-items: center; justify-content: center; flex-wrap: nowrap;">
+                            <div class="u-center-toolbar">
                                 <a href="{% url 'decoration_detail' decoration.id %}" class="btn-transparent btn-sm" data-modal-detail data-modal-title="装修详情">详细</a>
                                 {% can "decoration" "update" %}
                                 <a href="{% url 'decoration_edit' decoration.id %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑装修">编辑</a>

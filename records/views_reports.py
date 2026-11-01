@@ -112,9 +112,24 @@ _REPORT_ALLOWED_ATTRS = {
 }
 
 
+def _demote_markdown_headings(html):
+    """把正文自带的标题整体降一级。
+
+    Markdown 里写 `# 周报（…）` 会生成 <h1>，与页面自己的 h1 撞车，
+    一页出现两个一级标题（B7 标题层级统一要求每页恰有一个 h1）。
+    降级后 <h1>→<h2>、<h2>→<h3>……<h5>→<h6>，h6 不再下移。
+    必须从最深层往上替换，否则 h1→h2 的结果会被下一轮 h2→h3 再降一次。
+    """
+    for level in range(5, 0, -1):
+        html = html.replace(f"<h{level}>", f"<h{level + 1}>")
+        html = html.replace(f"</h{level}>", f"</h{level + 1}>")
+    return html
+
+
 def _render_report_markdown(text):
     """周报 Markdown 渲染为安全 HTML（仅用于页面预览）。"""
     html = markdown.markdown(text, extensions=["markdown.extensions.extra"])
+    html = _demote_markdown_headings(html)
     return bleach.clean(
         html, tags=_REPORT_ALLOWED_TAGS, attributes=_REPORT_ALLOWED_ATTRS,
         strip=True,

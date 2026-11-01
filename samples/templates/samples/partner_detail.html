@@ -18,13 +18,12 @@
 
 {% block content %}
 <div class="page-header">
-    <h2>{{ partner.name }}<span class="total-hint">供应商档案详情</span></h2>
+    <h1>{{ partner.name }}<span class="total-hint">供应商档案详情</span></h1>
     <div class="filter-chips">
         <a class="btn-secondary" href="{% url 'samples:partner_list' %}">← 返回列表</a>
         {% can "samples" "update" %}
         <a class="btn-primary" href="{% url 'samples:partner_edit' partner.pk %}" data-modal-edit data-modal-title="编辑供应商档案">编辑档案</a>
-        {% endcan %}
-    </div>
+        {% endcan %}{% has_filters as show_clear %}{% if show_clear %}<a class="filter-chip filter-chip--clear" href="{{ request.path }}" aria-label="全部清除筛选条件">全部清除<span aria-hidden="true"> ✕</span></a>{% endif %}</div>
 </div>
 
 <div class="record-card">

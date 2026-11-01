@@ -203,7 +203,7 @@
                     <span class="dc-sec-idx">03</span>
                     <h2>闭环操作</h2>
                 </div>
-                <form method="post" action="{% url 'customer_complaint_close' complaint.id %}">
+                <form data-validate="1" novalidate method="post" action="{% url 'customer_complaint_close' complaint.id %}">
                     {% csrf_token %}
                     <div class="dc-form-field">
                         <label for="closureResult">闭环结论</label>

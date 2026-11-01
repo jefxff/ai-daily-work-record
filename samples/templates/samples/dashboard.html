@@ -1,4 +1,5 @@
 {% extends "records/base.html" %}
+{% load static %}
 
 {% block page_title %}试样看板 - 试样管理{% endblock %}
 
@@ -84,6 +85,9 @@
 {% endblock %}
 
 {% block content %}
+<div class="page-header">
+    <h1>试样看板</h1>
+</div>
 <div class="dash-toolbar">
     <div class="range-tabs">
         <a class="range-tab {% if range_key == 'month' %}active{% endif %}" href="?range=month&basis={{ basis }}">本月</a>
@@ -94,9 +98,9 @@
     <form method="GET" class="custom-range">
         <input type="hidden" name="range" value="custom">
         <input type="hidden" name="basis" value="{{ basis }}">
-        <input type="date" name="date_from" value="{{ date_from }}" class="search-input" style="width:140px;" aria-label="开始日期">
+        <input type="date" name="date_from" value="{{ date_from }}" class="search-input u-w-140" aria-label="开始日期">
         <span class="sep">至</span>
-        <input type="date" name="date_to" value="{{ date_to }}" class="search-input" style="width:140px;" aria-label="结束日期">
+        <input type="date" name="date_to" value="{{ date_to }}" class="search-input u-w-140" aria-label="结束日期">
         <button type="submit" class="btn-primary btn-sm">查询</button>
     </form>
 </div>
@@ -129,7 +133,7 @@
     </div>
     <div class="kpi-card c-orange">
         <div class="kpi-head"><span class="kpi-icon">🚚</span><span class="kpi-label">在途样品</span></div>
-        <div class="kpi-value" style="color:var(--c-warning);">{{ data.in_progress }}</div>
+        <div class="kpi-value u-text-warning">{{ data.in_progress }}</div>
         <div class="kpi-sub">待送样 + 试样中 + 小批量中</div>
     </div>
     <div class="kpi-card c-red">
@@ -157,7 +161,7 @@
             {% endfor %}
         </div>
         {% else %}
-        <div class="empty-state"><div class="empty-icon">📊</div><div class="empty-text">该周期内暂无送样数据</div></div>
+        {% include 'records/_empty_block.html' with empty_icon="📊" empty_title="该周期内暂无送样数据" empty_desc="换一个统计周期试试" compact=1 %}
         {% endif %}
     </div>
 
@@ -202,7 +206,7 @@
         {% endfor %}
     </div>
     {% else %}
-    <div class="empty-state"><div class="empty-icon">🏭</div><div class="empty-text">该周期内暂无供应商送样记录</div></div>
+    {% include 'records/_empty_block.html' with empty_icon="🏭" empty_title="该周期内暂无供应商送样记录" empty_desc="换一个统计周期试试" compact=1 %}
     {% endif %}
 </div>
 
@@ -210,27 +214,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    // 动态样式通过 data-* 注入，避免 style 属性内出现模板语法
-    // 月度趋势柱高（视图按最大 38px 设计，此处等比放大适配 150px 绘图区）
-    document.querySelectorAll('.m-bar[data-h]').forEach(function (bar) {
-        var unit = parseInt(bar.dataset.h, 10) || 3;
-        var px = Math.max(4, Math.round(unit / 38 * 150));
-        bar.style.height = px + 'px';
-    });
-    // 状态分布：圆点颜色 + 条形宽度/颜色
-    document.querySelectorAll('.status-dot[data-color]').forEach(function (dot) {
-        if (dot.dataset.color) dot.style.background = dot.dataset.color;
-    });
-    document.querySelectorAll('.status-fill[data-pct]').forEach(function (el) {
-        el.style.width = el.dataset.pct + '%';
-        if (el.dataset.color) el.style.background = el.dataset.color;
-    });
-    // 供应商条形宽度
-    document.querySelectorAll('.supplier-fill[data-pct]').forEach(function (el) {
-        el.style.width = el.dataset.pct + '%';
-    });
-});
-</script>
+<script src="{% static 'js/pages/samples/dashboard.js' %}?v=20261102" defer></script>
 {% endblock %}

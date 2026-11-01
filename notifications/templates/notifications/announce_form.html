@@ -6,10 +6,10 @@
 <h1 class="form-title">推送系统公告</h1>
 
 <div class="form-container">
-    <p class="text-muted" style="margin-bottom: 1.5rem;">
+    <p class="text-muted mb-4">
         公告将推送给<strong>全部启用用户</strong>的站内收件箱，发送状态由通知队列异步处理。
     </p>
-    <form method="post">
+    <form data-validate="1" novalidate method="post">
         {% csrf_token %}
         {% if errors %}
         <div style="background:var(--c-danger-bg);border:1px solid var(--c-danger-line);border-radius:6px;padding:0.75rem 1rem;margin-bottom:1.25rem;color:var(--c-danger);font-size:0.875rem;">

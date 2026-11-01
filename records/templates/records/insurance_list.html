@@ -7,7 +7,7 @@
 
 {% block top_nav_actions %}
     <form class="d-flex gap-2" method="GET" id="searchForm">
-        <input class="search-input" type="search" placeholder="搜索公司名称或标题" name="search" value="{{ search_term }}" aria-label="搜索公司名称或标题">
+        <input class="search-input" type="search" placeholder="搜索公司名称或标题" name="search" value="{{ search_term }}" aria-label="搜索公司名称或标题" maxlength="100">
         <button class="btn-transparent" type="submit">搜索</button>
     </form>
     <!-- 筛选按钮 -->
@@ -21,11 +21,11 @@
                 <input type="hidden" name="search" value="{{ search_term }}">
                 <div class="filter-group">
                     <label>公司名称</label>
-                    <input type="text" name="company_name" placeholder="模糊搜索公司名称" value="{{ company_name_filter }}" aria-label="公司名称">
+                    <input type="text" name="company_name" placeholder="模糊搜索公司名称" value="{{ company_name_filter }}" aria-label="公司名称" maxlength="100">
                 </div>
                 <div class="filter-group">
                     <label>标题</label>
-                    <input type="text" name="title" placeholder="模糊搜索标题" value="{{ title_filter }}" aria-label="标题">
+                    <input type="text" name="title" placeholder="模糊搜索标题" value="{{ title_filter }}" aria-label="标题" maxlength="100">
                 </div>
                 <div class="filter-group">
                     <label>部门</label>
@@ -69,30 +69,29 @@
 
 {% block content %}
     <div class="page-header">
-        <h2>保险记录<span class="total-hint">共 {{ insurances.paginator.count }} 条记录</span></h2>
+        <h1>保险记录<span class="total-hint">共 {{ insurances.paginator.count }} 条记录</span></h1>
         <div class="filter-chips">
             {% if search_term %}
-            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'search' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">搜索：{{ search_term }} ✕</a>
+            <a class="filter-chip" href="{% querystring search=None page=None %}">搜索：{{ search_term }} ✕</a>
             {% endif %}
             {% if company_name_filter %}
-            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'company_name' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">公司名称：{{ company_name_filter }} ✕</a>
+            <a class="filter-chip" href="{% querystring company_name=None page=None %}">公司名称：{{ company_name_filter }} ✕</a>
             {% endif %}
             {% if title_filter %}
-            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'title' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">标题：{{ title_filter }} ✕</a>
+            <a class="filter-chip" href="{% querystring title=None page=None %}">标题：{{ title_filter }} ✕</a>
             {% endif %}
             {% if department_filter %}
-            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'department' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">部门：{{ department_filter }} ✕</a>
+            <a class="filter-chip" href="{% querystring department=None page=None %}">部门：{{ department_filter }} ✕</a>
             {% endif %}
             {% if is_expired_filter %}
-            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'is_expired' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">到期：{% if is_expired_filter == 'expired' %}已到期{% else %}未到期{% endif %} ✕</a>
+            <a class="filter-chip" href="{% querystring is_expired=None page=None %}">到期：{% if is_expired_filter == 'expired' %}已到期{% else %}未到期{% endif %} ✕</a>
             {% endif %}
             {% if date_start %}
-            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'date_start' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">开始日期：{{ date_start }} ✕</a>
+            <a class="filter-chip" href="{% querystring date_start=None page=None %}">开始日期：{{ date_start }} ✕</a>
             {% endif %}
             {% if date_end %}
-            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'date_end' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">结束日期：{{ date_end }} ✕</a>
-            {% endif %}
-        </div>
+            <a class="filter-chip" href="{% querystring date_end=None page=None %}">结束日期：{{ date_end }} ✕</a>
+            {% endif %}{% has_filters as show_clear %}{% if show_clear %}<a class="filter-chip filter-chip--clear" href="{{ request.path }}" aria-label="全部清除筛选条件">全部清除<span aria-hidden="true"> ✕</span></a>{% endif %}</div>
     </div>
     <div class="table-container">
         <!-- 表格 -->
@@ -114,7 +113,7 @@
                 </thead>
                 <tbody>
                     {% for insurance in insurances %}
-                    <tr>
+                    <tr data-href="{% url 'insurance_detail' insurance.pk %}">
                         <td data-label="序号" class="col-optional">{{ forloop.counter }}</td>
                         <td data-label="公司名称" class="cell-ellipsis" title="{{ insurance.company_name }}">{{ insurance.company_name }}</td>
                         <td data-label="标题" class="cell-ellipsis" title="{{ insurance.title }}">{{ insurance.title }}</td>

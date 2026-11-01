@@ -14,7 +14,7 @@
 
 {% block content %}
     <div class="page-header">
-        <h2>保险续保报告<span class="total-hint">只读聚合 · 截至今日</span></h2>
+        <h1>保险续保报告<span class="total-hint">只读聚合 · 截至今日</span></h1>
     </div>
 
     <div class="ins-dashboard">
@@ -64,7 +64,7 @@
                 </thead>
                 <tbody>
                     {% for s in report.should_renew %}
-                    <tr>
+                    <tr data-href="{% url 'insurance_subject_detail' %}">
                         <td data-label="标的"><a class="ins-subject-link" href="{% url 'insurance_subject_detail' %}?key={{ s.key|urlencode }}">{{ s.label }}</a></td>
                         <td data-label="类型">{{ s.kind_label }}</td>
                         <td data-label="最后保司">{{ s.latest_insurer }}</td>
@@ -77,7 +77,7 @@
                             <a class="btn-transparent btn-sm" href="{% url 'insurance_renew' %}?from_record={{ s.latest.primary_record.id }}" data-modal-add data-modal-title="续保保险 · {{ s.label }}">续保</a>
                             {% endcan %}
                             {% can "insurance" "update" %}
-                            <form method="post" action="{% url 'insurance_subject_one_off' %}" class="d-inline" onsubmit="return confirm('标记为一次性保险后，该标的将不再出现在应续未续与到期提醒中。确定吗？');">
+                            <form method="post" action="{% url 'insurance_subject_one_off' %}" class="d-inline" data-confirm="标记为一次性保险后，该标的将不再出现在应续未续与到期提醒中。确定吗？">
                                 {% csrf_token %}
                                 <input type="hidden" name="key" value="{{ s.key }}">
                                 <input type="hidden" name="action" value="mark">
@@ -116,7 +116,7 @@
                 </thead>
                 <tbody>
                     {% for s in report.gaps %}
-                    <tr>
+                    <tr data-href="{% url 'insurance_subject_detail' %}">
                         <td data-label="标的"><a class="ins-subject-link" href="{% url 'insurance_subject_detail' %}?key={{ s.key|urlencode }}">{{ s.label }}</a></td>
                         <td data-label="类型">{{ s.kind_label }}</td>
                         <td data-label="断档次数">{{ s.gap_terms|length }} 次</td>
@@ -159,7 +159,7 @@
                 </thead>
                 <tbody>
                     {% for s in report.upcoming %}
-                    <tr>
+                    <tr data-href="{% url 'insurance_subject_detail' %}">
                         <td data-label="标的"><a class="ins-subject-link" href="{% url 'insurance_subject_detail' %}?key={{ s.key|urlencode }}">{{ s.label }}</a></td>
                         <td data-label="类型">{{ s.kind_label }}</td>
                         <td data-label="当前保司">{{ s.latest_insurer }}</td>
@@ -171,7 +171,7 @@
                             <a class="btn-transparent btn-sm" href="{% url 'insurance_renew' %}?from_record={{ s.latest.primary_record.id }}" data-modal-add data-modal-title="续保保险 · {{ s.label }}">续保</a>
                             {% endcan %}
                             {% can "insurance" "update" %}
-                            <form method="post" action="{% url 'insurance_subject_one_off' %}" class="d-inline" onsubmit="return confirm('标记为一次性保险后，该标的将不再出现在应续未续与到期提醒中。确定吗？');">
+                            <form method="post" action="{% url 'insurance_subject_one_off' %}" class="d-inline" data-confirm="标记为一次性保险后，该标的将不再出现在应续未续与到期提醒中。确定吗？">
                                 {% csrf_token %}
                                 <input type="hidden" name="key" value="{{ s.key }}">
                                 <input type="hidden" name="action" value="mark">
@@ -210,7 +210,7 @@
                     </thead>
                     <tbody>
                         {% for s in report.overlaps %}
-                        <tr>
+                        <tr data-href="{% url 'insurance_subject_detail' %}">
                             <td data-label="标的"><a class="ins-subject-link" href="{% url 'insurance_subject_detail' %}?key={{ s.key|urlencode }}">{{ s.label }}</a></td>
                             <td data-label="重叠年度">{{ s.overlap_terms|length }} 个</td>
                             <td data-label="重叠明细">
@@ -243,7 +243,7 @@
                     </thead>
                     <tbody>
                         {% for r in report.missing_order %}
-                        <tr>
+                        <tr data-href="{% url 'insurance_detail' r.id %}">
                             <td data-label="标题">{{ r.title }}</td>
                             <td data-label="保司">{{ r.company_name }}</td>
                             <td data-label="保障期间">{{ r.issue_date|date:'Y-m-d' }} ~ {{ r.end_date|date:'Y-m-d' }}</td>
@@ -276,7 +276,7 @@
                     </thead>
                     <tbody>
                         {% for entry in report.multi_item_summary %}
-                        <tr>
+                        <tr data-href="{% url 'insurance_subject_detail' %}">
                             <td data-label="标的"><a class="ins-subject-link" href="{% url 'insurance_subject_detail' %}?key={{ entry.subject.key|urlencode }}">{{ entry.subject.label }}</a></td>
                             <td data-label="涉及年度数">{{ entry.year_count }} 个</td>
                             <td data-label="记录数">{{ entry.record_count }} 条</td>

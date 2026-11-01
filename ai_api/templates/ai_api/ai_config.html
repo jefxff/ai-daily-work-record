@@ -5,7 +5,7 @@
 
 {% block content %}
     <div class="page-header">
-        <h2>AI 配置<span class="total-hint">{{ purpose_subtitle }}</span></h2>
+        <h1>AI 配置<span class="total-hint">{{ purpose_subtitle }}</span></h1>
     </div>
 
     <nav class="ai-tabs" aria-label="AI 配置用途">
@@ -41,7 +41,7 @@
     </div>
     {% endif %}
 
-    <form class="table-container ai-form" method="post" action="{% url 'ai_config_save' %}" id="aiConfigForm">
+    <form data-validate="1" novalidate class="table-container ai-form" method="post" action="{% url 'ai_config_save' %}" id="aiConfigForm">
         {% csrf_token %}
         <input type="hidden" name="purpose" value="{{ purpose }}">
         <div class="ai-form-head">
@@ -65,13 +65,13 @@
             <div class="ai-field">
                 <label for="modelInput">模型名称</label>
                 <input id="modelInput" type="text" name="model" value="{{ config.model }}"
-                       placeholder="如 abab6.5s-chat / qwen2.5:7b" autocomplete="off">
+                       placeholder="如 abab6.5s-chat / qwen2.5:7b" autocomplete="off" maxlength="200">
             </div>
 
             <div class="ai-field ai-field-wide">
                 <label for="baseUrlInput">API 地址</label>
                 <input id="baseUrlInput" type="text" name="base_url" value="{{ config.base_url }}"
-                       placeholder="{{ effective_base_url }}" autocomplete="off">
+                       placeholder="{{ effective_base_url }}" autocomplete="off" maxlength="500">
                 <p class="ai-hint">留空将使用该接入方式的默认地址。远程 Ollama 请填服务器地址，如 http://192.168.x.x:11434（Ollama 服务端需以 OLLAMA_HOST=0.0.0.0 启动）；MiniMax 如需 GroupId，请在地址末尾追加 ?GroupId=你的GroupId。</p>
             </div>
 
@@ -80,7 +80,7 @@
                 <div class="ai-key-wrap">
                     <input id="apiKeyInput" type="password" name="api_key" value=""
                            autocomplete="new-password"
-                           placeholder="{% if api_key_is_masked %}请重新输入完整的 API 密钥{% elif api_key_masked %}已保存：{{ api_key_masked }}（留空表示不修改）{% else %}粘贴完整的 API 密钥{% endif %}">
+                           placeholder="{% if api_key_is_masked %}请重新输入完整的 API 密钥{% elif api_key_masked %}已保存：{{ api_key_masked }}（留空表示不修改）{% else %}粘贴完整的 API 密钥{% endif %}" maxlength="500">
                     <button type="button" class="btn-transparent btn-sm" id="toggleKey">显示</button>
                 </div>
                 <p class="ai-hint">仅系统管理员可见；本地 Ollama 通常无需填写。密钥不会回填到输入框，留空即保持已保存的密钥不变。</p>
@@ -272,62 +272,6 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        var providerSelect = document.getElementById('providerSelect');
-        var baseUrlInput = document.getElementById('baseUrlInput');
-        var defaultsEl = document.getElementById('aiDefaults');
-        var defaults = {};
-        if (defaultsEl) {
-            try { defaults = JSON.parse(defaultsEl.textContent) || {}; } catch (e) { defaults = {}; }
-        }
-        if (providerSelect && baseUrlInput) {
-            providerSelect.addEventListener('change', function () {
-                baseUrlInput.placeholder = defaults[providerSelect.value] || '请填写 API 地址';
-            });
-        }
-
-        var toggleKey = document.getElementById('toggleKey');
-        var keyInput = document.getElementById('apiKeyInput');
-        if (toggleKey && keyInput) {
-            toggleKey.addEventListener('click', function () {
-                var showing = keyInput.type === 'text';
-                keyInput.type = showing ? 'password' : 'text';
-                toggleKey.textContent = showing ? '显示' : '隐藏';
-            });
-        }
-
-        var testBtn = document.getElementById('testBtn');
-        var form = document.getElementById('aiConfigForm');
-        if (testBtn && form) {
-            testBtn.addEventListener('click', function () {
-                var oldText = testBtn.textContent;
-                var csrfField = form.querySelector('[name=csrfmiddlewaretoken]');
-                testBtn.disabled = true;
-                testBtn.textContent = '测试中…';
-                fetch("{% url 'ai_config_test' %}", {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': csrfField ? csrfField.value : '',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    body: new FormData(form)
-                }).then(function (r) {
-                    return r.json();
-                }).then(function (data) {
-                    if (data && data.ok) {
-                        window.showToast(data.message || '连接成功', 'success');
-                    } else {
-                        window.showToast((data && data.message) || '连接失败', 'error');
-                    }
-                }).catch(function () {
-                    window.showToast('测试请求失败，请重试', 'error');
-                }).then(function () {
-                    testBtn.disabled = false;
-                    testBtn.textContent = oldText;
-                });
-            });
-        }
-    });
-</script>
+<script id="pageData-ai_api-ai_config" type="application/json">{"urls": {"u1": "{% url 'ai_config_test' %}"}}</script>
+<script src="{% static 'js/pages/ai_api/ai_config.js' %}?v=20261102" defer></script>
 {% endblock %}

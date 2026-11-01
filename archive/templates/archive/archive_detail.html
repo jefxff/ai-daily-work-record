@@ -1,4 +1,5 @@
 {% extends "records/base.html" %}
+{% load static %}
 {% load accounts_tags %}
 
 {% block page_title %}{{ archive.code }} - 档案详情{% endblock %}
@@ -332,36 +333,6 @@
     </div>
 </div>
 
-<script>
-/* 附件上传：FormData 多文件 AJAX 提交，成功后刷新展示 */
-(function () {
-    var btn = document.getElementById('btnUploadFiles');
-    var input = document.getElementById('arcUploadInput');
-    if (!btn || !input) return;
-    btn.addEventListener('click', function () {
-        if (!input.files.length) {
-            if (window.showToast) window.showToast('请先选择要上传的文件', 'error');
-            return;
-        }
-        var fd = new FormData();
-        for (var i = 0; i < input.files.length; i++) fd.append('files', input.files[i]);
-        btn.disabled = true;
-        fetch('{% url "archive:archive_files_upload" archive.pk %}', {
-            method: 'POST',
-            headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': '{{ csrf_token }}' },
-            body: fd
-        }).then(function (r) { return r.json().then(function (j) { return { status: r.status, j: j }; }); })
-          .then(function (res) {
-              var j = res.j || {};
-              if (window.showToast) window.showToast(j.message || (j.ok ? '上传成功' : '上传失败'), j.ok ? 'success' : 'error');
-              if (j.ok) { setTimeout(function () { window.location.reload(); }, 600); }
-              else { btn.disabled = false; }
-          })
-          .catch(function () {
-              if (window.showToast) window.showToast('上传请求失败，请重试', 'error');
-              btn.disabled = false;
-          });
-    });
-})();
-</script>
+<script id="pageData-archive-archive_detail" type="application/json">{"urls": {"u1": "{% url 'archive:archive_files_upload' archive.pk %}"}}</script>
+<script src="{% static 'js/pages/archive/archive_detail.js' %}?v=20261102" defer></script>
 {% endblock %}

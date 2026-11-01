@@ -10,7 +10,7 @@
 
 {% block content %}
     <div class="form-container">
-        <h2 class="form-title">{% if form.instance.id %}编辑诉讼{% else %}新增诉讼{% endif %}</h2>
+        <h1 class="form-title">{% if form.instance.id %}编辑诉讼{% else %}新增诉讼{% endif %}</h1>
 
         <form method="post">
             {% csrf_token %}

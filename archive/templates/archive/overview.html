@@ -1,4 +1,5 @@
 {% extends "records/base.html" %}
+{% load static %}
 {% load accounts_tags %}
 
 {% block page_title %}档案总览 - 档案管理{% endblock %}
@@ -161,7 +162,7 @@
     <!-- 工具栏 -->
     <div class="lg-toolbar">
         <form method="get" class="d-flex flex-wrap gap-2">
-            <input type="text" name="aq" value="{{ aq }}" class="form-control" placeholder="搜索编号 / 名称" aria-label="搜索档案">
+            <input type="text" name="aq" value="{{ aq }}" class="form-control" placeholder="搜索编号 / 名称" aria-label="搜索档案" maxlength="100">
             <button class="btn btn-outline-secondary btn-sm" type="submit">搜索档案</button>
             <select name="category" class="form-select">
                 <option value="">全部类别</option>
@@ -248,7 +249,7 @@
                 </thead>
                 <tbody>
                     {% for a in item.rows %}
-                    <tr class="{% if a.id in matched_ids %}lg-row-hit{% endif %}">
+                    <tr data-href="{% url 'archive:archive_detail' a.pk %}" class="{% if a.id in matched_ids %}lg-row-hit{% endif %}">
                         <td data-label="编号">{{ a.code }}</td>
                         <td data-label="名称" class="lg-ellipsis" title="{{ a.name }}">{{ a.name }}</td>
                         <td data-label="相对方/公司名称" class="lg-ellipsis" title="{{ a.counterpart }}">{{ a.counterpart|default:"—" }}</td>
@@ -319,7 +320,7 @@
                 </thead>
                 <tbody>
                     {% for a in unassigned_rows %}
-                    <tr class="{% if a.id in matched_ids %}lg-row-hit{% endif %}">
+                    <tr data-href="{% url 'archive:archive_detail' a.pk %}" class="{% if a.id in matched_ids %}lg-row-hit{% endif %}">
                         <td data-label="编号">{{ a.code }}</td>
                         <td data-label="名称" class="lg-ellipsis" title="{{ a.name }}">{{ a.name }}</td>
                         <td data-label="相对方/公司名称" class="lg-ellipsis" title="{{ a.counterpart }}">{{ a.counterpart|default:"—" }}</td>
@@ -386,104 +387,8 @@
 {% endcan %}
 
 {% if aq and match_count %}
-<script>
-(function () {
-    setTimeout(function () {
-        var hit = document.querySelector('.lg-row-hit');
-        if (hit) hit.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 300);
-})();
-</script>
+<script src="{% static 'js/pages/archive/overview-1.js' %}?v=20261102" defer></script>
 {% endif %}
-<script>
-/* 「导出所选」：收集勾选的台账 pk 动态填入隐藏表单提交（卡片内已有删除 POST 表单，不能嵌套包裹） */
-(function () {
-    var btn = document.getElementById('btnBatchExport');
-    var form = document.getElementById('batchExportForm');
-    if (!btn || !form) return;
-    btn.addEventListener('click', function () {
-        var checked = Array.prototype.slice.call(document.querySelectorAll('.lg-check:checked'));
-        if (!checked.length) {
-            if (window.showToast) window.showToast('请先勾选要导出的台账', 'error');
-            return;
-        }
-        form.querySelectorAll('input[name="ledgers"]').forEach(function (i) { i.remove(); });
-        checked.forEach(function (c) {
-            var inp = document.createElement('input');
-            inp.type = 'hidden';
-            inp.name = 'ledgers';
-            inp.value = c.value;
-            form.appendChild(inp);
-        });
-        form.submit();
-    });
-})();
-</script>
-<script>
-/* 台账排序弹窗：置顶/上移/下移，成功后同步移动弹窗行与总览页卡片 */
-(function () {
-    var backdrop = document.getElementById('ledgerSortBackdrop');
-    var openBtn = document.getElementById('btnLedgerSort');
-    if (!backdrop || !openBtn) return;
-
-    function moveEl(el, direction, selector) {
-        var parent = el.parentNode;
-        if (direction === 'top') {
-            var first = parent.querySelector(selector);
-            if (first && first !== el) parent.insertBefore(el, first);
-            else return false;
-        } else if (direction === 'up') {
-            var prev = el.previousElementSibling;
-            while (prev && !prev.matches(selector)) prev = prev.previousElementSibling;
-            if (prev) parent.insertBefore(el, prev);
-            else return false;
-        } else {
-            var next = el.nextElementSibling;
-            while (next && !next.matches(selector)) next = next.nextElementSibling;
-            if (next) parent.insertBefore(next, el);
-            else return false;
-        }
-        return true;
-    }
-    function toast(msg, type) {
-        if (window.showToast) window.showToast(msg, type);
-    }
-
-    openBtn.addEventListener('click', function () { backdrop.classList.add('show'); });
-    document.getElementById('ledgerSortClose').addEventListener('click', function () { backdrop.classList.remove('show'); });
-    backdrop.addEventListener('click', function (e) {
-        if (e.target === backdrop) backdrop.classList.remove('show');
-    });
-
-    backdrop.addEventListener('click', function (e) {
-        var btn = e.target.closest('[data-ledger-move]');
-        if (!btn) return;
-        var row = btn.closest('.ls-row');
-        var direction = btn.getAttribute('data-ledger-move');
-        if (!row || !row.dataset.ledgerId) return;
-        var ledgerId = row.dataset.ledgerId;
-        btn.disabled = true;
-        fetch(row.getAttribute('data-move-url'), {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': getCsrfToken(),
-                'X-Requested-With': 'XMLHttpRequest',
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: 'direction=' + direction
-        })
-        .then(function (r) { return r.json(); })
-        .then(function (data) {
-            if (!data.ok) throw new Error(data.message || '排序失败');
-            var movedRow = moveEl(row, direction, '.ls-row[data-ledger-id]');
-            var card = document.querySelector('.lg-card[data-ledger-id="' + ledgerId + '"]');
-            var movedCard = card ? moveEl(card, direction, '.lg-card[data-ledger-id]') : true;
-            if (!movedRow && !movedCard) toast(direction === 'down' ? '已是最后' : '已在最前', 'info');
-            else toast('排序已更新', 'success');
-        })
-        .catch(function (err) { toast(err.message || '排序失败，请重试', 'error'); })
-        .finally(function () { btn.disabled = false; });
-    });
-})();
-</script>
+<script src="{% static 'js/pages/archive/overview-2.js' %}?v=20261102" defer></script>
+<script src="{% static 'js/pages/archive/overview-3.js' %}?v=20261102" defer></script>
 {% endblock %}

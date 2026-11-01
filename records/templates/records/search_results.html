@@ -1,4 +1,5 @@
 {% extends 'records/base.html' %}
+{% load accounts_tags %}
 {% load static %}
 
 {% block page_title %}搜索结果{% endblock %}
@@ -47,7 +48,7 @@
 {% if empty_term %}
 <div class="state">
     <div class="state__icon">🔎</div>
-    <h2 class="state__title">请输入关键词</h2>
+    <h1 class="state__title">请输入关键词</h1>
     <p class="state__desc">
         搜索页用于"按关键词定位"，不再默认列出全部数据。
         输入编号、名称或任意文字后回车即可；想浏览某个模块的完整清单，请从左侧导航进入对应列表页。
@@ -59,12 +60,10 @@
 </div>
 {% else %}
 <div class="page-header">
-    <h2>搜索结果<span class="total-hint">关键词：{{ search_term }} · 共 {{ search_total }} 条{% if search_counts.daily_record %} · 每日记录 {{ search_counts.daily_record }} 条{% endif %}{% if search_counts.decoration %} · 装修 {{ search_counts.decoration }} 条{% endif %}{% if search_counts.customer_credit %} · 账期 {{ search_counts.customer_credit }} 条{% endif %}{% if search_counts.customer_complaint %} · 客诉 {{ search_counts.customer_complaint }} 条{% endif %}{% if search_counts.regulation %} · 制度 {{ search_counts.regulation }} 条{% endif %}{% if search_counts.price_evaluation %} · 核价 {{ search_counts.price_evaluation }} 条{% endif %}{% if search_counts.insurance %} · 保险 {{ search_counts.insurance }} 条{% endif %}{% if search_counts.complaint %} · 诉讼 {{ search_counts.complaint }} 条{% endif %}{% if search_counts.knowledge %} · 知识库 {{ search_counts.knowledge }} 条{% endif %}{% if search_counts.samples %} · 样品 {{ search_counts.samples }} 条{% endif %}{% if search_counts.partners %} · 供应商 {{ search_counts.partners }} 条{% endif %}{% if search_counts.archive %} · 档案 {{ search_counts.archive }} 条{% endif %}</span></h2>
+    <h1>搜索结果<span class="total-hint">关键词：{{ search_term }} · 共 {{ search_total }} 条{% if search_counts.daily_record %} · 每日记录 {{ search_counts.daily_record }} 条{% endif %}{% if search_counts.decoration %} · 装修 {{ search_counts.decoration }} 条{% endif %}{% if search_counts.customer_credit %} · 账期 {{ search_counts.customer_credit }} 条{% endif %}{% if search_counts.customer_complaint %} · 客诉 {{ search_counts.customer_complaint }} 条{% endif %}{% if search_counts.regulation %} · 制度 {{ search_counts.regulation }} 条{% endif %}{% if search_counts.price_evaluation %} · 核价 {{ search_counts.price_evaluation }} 条{% endif %}{% if search_counts.insurance %} · 保险 {{ search_counts.insurance }} 条{% endif %}{% if search_counts.complaint %} · 诉讼 {{ search_counts.complaint }} 条{% endif %}{% if search_counts.knowledge %} · 知识库 {{ search_counts.knowledge }} 条{% endif %}{% if search_counts.samples %} · 样品 {{ search_counts.samples }} 条{% endif %}{% if search_counts.partners %} · 供应商 {{ search_counts.partners }} 条{% endif %}{% if search_counts.archive %} · 档案 {{ search_counts.archive }} 条{% endif %}</span></h1>
     <div class="filter-chips">
-        <a class="filter-chip" href="{% url 'search' %}">搜索：{{ search_term }} ✕</a>
-    </div>
+        <a class="filter-chip" href="{% url 'search' %}">搜索：{{ search_term }} ✕</a>{% has_filters as show_clear %}{% if show_clear %}<a class="filter-chip filter-chip--clear" href="{{ request.path }}" aria-label="全部清除筛选条件">全部清除<span aria-hidden="true"> ✕</span></a>{% endif %}</div>
 </div>
-<h1 class="page-title">搜索结果 - 关键词: <span class="search-term">{{ search_term }}</span></h1>
 {% if search_total == 0 %}
 <div class="state">
     <div class="state__icon">🗂️</div>
@@ -215,7 +214,7 @@
         </thead>
         <tbody>
             {% for ledger in customer_ledger_results %}
-            <tr>
+            <tr data-href="{% url 'customer_ledger_detail' ledger.id %}">
                 <td data-label="客户名称">{{ ledger.customer_name }}</td>
                 <td data-label="客户分类">{{ ledger.customer_category|default:'' }}</td>
                 <td data-label="责任业务">{{ ledger.responsible_salesperson|default:'' }}</td>
@@ -474,7 +473,7 @@
         </thead>
         <tbody>
             {% for doc in knowledge_results %}
-            <tr>
+            <tr data-href="{% url 'knowledge_base:document_detail' doc.id %}">
                 <td data-label="文档标题">{{ doc.title }}</td>
                 <td data-label="所属分类">{{ doc.category.name|default:'—' }}</td>
                 <td data-label="摘要">{{ doc.summary|default:''|truncatechars:30 }}</td>
@@ -510,7 +509,7 @@
         </thead>
         <tbody>
             {% for sample in sample_results %}
-            <tr>
+            <tr data-href="{% url 'samples:detail' sample.id %}">
                 <td data-label="样品编号">{{ sample.sample_no }}</td>
                 <td data-label="物料名称">{{ sample.material_name }}</td>
                 <td data-label="型号">{{ sample.model }}</td>
@@ -547,7 +546,7 @@
         </thead>
         <tbody>
             {% for partner in partner_results %}
-            <tr>
+            <tr data-href="{% url 'samples:partner_detail' partner.id %}">
                 <td data-label="档案编号">{{ partner.partner_code }}</td>
                 <td data-label="名称">{{ partner.name }}</td>
                 <td data-label="联系人">{{ partner.contact_person|default:'—' }}</td>
@@ -583,7 +582,7 @@
         </thead>
         <tbody>
             {% for archive in archive_results %}
-            <tr>
+            <tr data-href="{% url 'archive:archive_detail' archive.id %}">
                 <td data-label="档案编号">{{ archive.code }}</td>
                 <td data-label="档案名称">{{ archive.name }}</td>
                 <td data-label="存放位置">{{ archive.location_path }}</td>

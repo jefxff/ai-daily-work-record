@@ -1,11 +1,12 @@
 {% extends 'records/base.html' %}
+{% load accounts_tags %}
 {% load static %}
 
 {% block page_title %}操作留痕 - 每日工作记录管理网站{% endblock %}
 
 {% block top_nav_actions %}
     <form class="d-flex gap-2" method="GET" id="searchForm">
-        <input class="search-input" type="search" placeholder="搜索操作人或变更摘要" name="search" value="{{ search_term }}" aria-label="搜索操作人或变更摘要">
+        <input class="search-input" type="search" placeholder="搜索操作人或变更摘要" name="search" value="{{ search_term }}" aria-label="搜索操作人或变更摘要" maxlength="100">
         <button class="btn-transparent" type="submit">搜索</button>
     </form>
     <div class="filter-container">
@@ -44,18 +45,17 @@
 
 {% block content %}
     <div class="page-header">
-        <h2>操作留痕<span class="total-hint">共 {{ logs.paginator.count }} 条记录</span></h2>
+        <h1>操作留痕<span class="total-hint">共 {{ logs.paginator.count }} 条记录</span></h1>
         <div class="filter-chips">
             {% if search_term %}
-            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'search' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">搜索：{{ search_term }} ✕</a>
+            <a class="filter-chip" href="{% querystring search=None page=None %}">搜索：{{ search_term }} ✕</a>
             {% endif %}
             {% if module_filter %}
-            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'module_type' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">模块：{{ module_filter }} ✕</a>
+            <a class="filter-chip" href="{% querystring module_type=None page=None %}">模块：{{ module_filter }} ✕</a>
             {% endif %}
             {% if operation_filter %}
-            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'operation_type' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">类型：{{ operation_filter }} ✕</a>
-            {% endif %}
-        </div>
+            <a class="filter-chip" href="{% querystring operation_type=None page=None %}">类型：{{ operation_filter }} ✕</a>
+            {% endif %}{% has_filters as show_clear %}{% if show_clear %}<a class="filter-chip filter-chip--clear" href="{{ request.path }}" aria-label="全部清除筛选条件">全部清除<span aria-hidden="true"> ✕</span></a>{% endif %}</div>
     </div>
     <div class="table-container">
         <table class="table--cards table table-sticky">
@@ -129,7 +129,7 @@
 <style>
     /* 模板特定样式：表格宽度/单元格内边距覆盖、筛选下拉、空状态、操作徽章、摘要单元格 */
     .table { min-width: 1120px; }
-    .empty-state { text-align: center; padding: 3rem 1rem; color: var(--c-text-secondary); font-size: 1.1rem; }
+    /* 空态样式统一在 components.css 第 11 节，这里不再覆盖 */
     .badge-operation { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.8rem; font-weight: 600; }
     .badge-new { background: rgba(34, 197, 94, 0.3); color: rgba(255, 255, 255, 0.95); }
     .badge-update { background: rgba(59, 130, 246, 0.3); color: rgba(255, 255, 255, 0.95); }

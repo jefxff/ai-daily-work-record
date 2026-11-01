@@ -6,10 +6,10 @@
 <h1 class="form-title">通知偏好</h1>
 
 <div class="form-container">
-    <p class="text-muted" style="margin-bottom: 1.5rem;">
+    <p class="text-muted mb-4">
         站内通知为系统基础能力，始终开启；此处可按类别开关<strong>邮件提醒</strong>，并配置聚合降噪与免打扰时段。
     </p>
-    <form method="post">
+    <form data-validate="1" novalidate method="post">
         {% csrf_token %}
 
         <div class="form-group">
@@ -38,10 +38,10 @@
         <div class="form-group">
             <label class="form-label">免打扰时段（仅影响邮件，高优先级通知不受限）</label>
             <div style="display:flex;align-items:center;gap:0.5rem;">
-                <input type="time" name="quiet_start" class="form-control" style="max-width: 160px;" aria-label="免打扰开始时间"
+                <input type="time" name="quiet_start" class="form-control u-maxw-160" aria-label="免打扰开始时间"
                        value="{{ prefs.quiet_start|time:'H:i'|default_if_none:'' }}">
                 <span class="text-muted">至</span>
-                <input type="time" name="quiet_end" class="form-control" style="max-width: 160px;" aria-label="免打扰结束时间"
+                <input type="time" name="quiet_end" class="form-control u-maxw-160" aria-label="免打扰结束时间"
                        value="{{ prefs.quiet_end|time:'H:i'|default_if_none:'' }}">
             </div>
             <span class="form-text">留空表示不启用免打扰。</span>

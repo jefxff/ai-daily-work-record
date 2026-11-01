@@ -4,13 +4,13 @@
 {% block knowledge_content %}
 <div class="kb-doc-card">
     <div class="kb-doc-header">
-        <h4 class="kb-doc-title">文档列表
+        <h1 class="kb-doc-title">文档列表
             {% if current_folder == 'unarchived' %}<span class="kb-chip" title="按文件夹过滤：未归档">未归档</span>
             {% elif current_folder %}<span class="kb-chip kb-chip-cat" title="按文件夹过滤">{{ current_folder.name }}</span>{% endif %}
-        </h4>
+        </h1>
         <div class="kb-doc-actions">
             <form action="{% url 'knowledge_base:document_search' %}" method="get" class="kb-search-form">
-                <input type="text" name="keyword" class="kb-search-input" placeholder="搜索文档..." value="{{ request.GET.keyword }}" aria-label="搜索文档">
+                <input type="text" name="keyword" class="kb-search-input" placeholder="搜索文档..." value="{{ request.GET.keyword }}" aria-label="搜索文档" maxlength="100">
                 <button type="submit" class="kb-search-btn">搜索</button>
             </form>
             {% can "knowledge" "create" %}
@@ -35,11 +35,14 @@
             </div>
         </a>
         {% empty %}
-        <div class="empty-state">
-            <div class="empty-icon">📄</div>
-            <p class="empty-text">暂无文档</p>
+        <div class="empty-state" role="status">
+            <div class="empty-state__icon" aria-hidden="true">📄</div>
+            <p class="empty-state__title">暂无文档</p>
+            <p class="empty-state__desc">换个关键词，或先新建一篇文档</p>
             {% can "knowledge" "create" %}
-            <a href="{% url 'knowledge_base:document_create' %}" class="kb-btn-primary" data-modal-add data-modal-title="新建文档">创建第一篇文档</a>
+            <div class="empty-state__action">
+                <a href="{% url 'knowledge_base:document_create' %}" class="kb-btn-primary" data-modal-add data-modal-title="新建文档">创建第一篇文档</a>
+            </div>
             {% endcan %}
         </div>
         {% endfor %}

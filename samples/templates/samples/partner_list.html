@@ -13,12 +13,12 @@
 
 {% block content %}
 <div class="page-header">
-    <h2>供应商档案<span class="total-hint">共 {{ page_obj.paginator.count }} 条</span></h2>
+    <h1>供应商档案<span class="total-hint">共 {{ page_obj.paginator.count }} 条</span></h1>
 </div>
 
 <div class="filter-bar">
     <form method="GET" class="filter-form">
-        <input type="text" class="form-control search-input" style="width:240px;" name="keyword" value="{{ keyword }}" placeholder="名称 / 编号 / 联系人" aria-label="搜索名称 / 编号 / 联系人">
+        <input type="text" class="form-control search-input" style="width:240px;" name="keyword" value="{{ keyword }}" placeholder="名称 / 编号 / 联系人" aria-label="搜索名称 / 编号 / 联系人" maxlength="100">
         <select name="status" class="form-select" style="width:130px;">
             <option value="">全部状态</option>
             {% for key, label in status_choices %}
@@ -51,7 +51,7 @@
             </thead>
             <tbody>
                 {% for partner in page_obj %}
-                <tr>
+                <tr data-href="{% url 'samples:partner_detail' partner.pk %}">
                     <td data-label="档案编号">{{ partner.partner_code }}</td>
                     <td data-label="名称"><a href="{% url 'samples:partner_detail' partner.pk %}" data-modal-detail data-modal-title="{{ partner.name }} 档案">{{ partner.name }}</a></td>
                     <td data-label="联系人">{{ partner.contact_person|default:'—' }}</td>

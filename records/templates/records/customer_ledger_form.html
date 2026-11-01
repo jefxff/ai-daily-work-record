@@ -10,7 +10,7 @@
 
 {% block content %}
     <div class="form-container">
-        <h2 class="form-title">{% if form.instance.pk %}编辑客户台账{% else %}新增客户台账{% endif %}</h2>
+        <h1 class="form-title">{% if form.instance.pk %}编辑客户台账{% else %}新增客户台账{% endif %}</h1>
 
         <form method="post" enctype="multipart/form-data">
             {% csrf_token %}

@@ -6,7 +6,7 @@
 
 {% block top_nav_actions %}
     <form class="d-flex gap-2" method="GET" id="searchForm">
-        <input class="search-input" type="search" placeholder="搜索工作内容或部门" name="search" value="{{ search_term }}" aria-label="搜索工作内容或部门">
+        <input class="search-input" type="search" placeholder="搜索工作内容或部门" name="search" value="{{ search_term }}" aria-label="搜索工作内容或部门" maxlength="100">
         <button class="btn-transparent" type="submit">搜索</button>
     </form>
     <div class="filter-button">
@@ -45,7 +45,7 @@
     <a class="btn-transparent quick-filter-btn{% if status_filter == '未完成' %} is-active{% endif %}"
        id="quickUnfinishedFilter" role="button"
        aria-pressed="{% if status_filter == '未完成' %}true{% else %}false{% endif %}"
-       href="?{% for k, v in request.GET.items %}{% if k != 'status' %}{{ k }}={{ v|urlencode }}&{% endif %}{% endfor %}{% if status_filter != '未完成' %}status=未完成{% endif %}"
+       href="{% if status_filter != '未完成' %}{% querystring status='未完成' page=None %}{% else %}{% querystring status=None page=None %}{% endif %}"
        title="{% if status_filter == '未完成' %}取消「未完成」筛选{% else %}只看未完成记录{% endif %}">未完成</a>
     {% can "daily_record" "create" %}
     <a href="{% url 'daily_record_add' %}" class="btn-primary" data-modal-add data-modal-title="新增每日记录">新增记录</a>
@@ -59,18 +59,17 @@
 
 {% block content %}
     <div class="page-header">
-        <h2>每日记录<span class="total-hint">共 {{ records.paginator.count }} 条记录</span></h2>
+        <h1>每日记录<span class="total-hint">共 {{ records.paginator.count }} 条记录</span></h1>
         <div class="filter-chips">
             {% if search_term %}
-            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'search' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">搜索：{{ search_term }} ✕</a>
+            <a class="filter-chip" href="{% querystring search=None page=None %}">搜索：{{ search_term }} ✕</a>
             {% endif %}
             {% if department_filter %}
-            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'department' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">来源：{{ department_filter }} ✕</a>
+            <a class="filter-chip" href="{% querystring department=None page=None %}">提出部门/提出人：{{ department_filter }} ✕</a>
             {% endif %}
             {% if status_filter %}
-            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'status' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">状态：{{ status_filter }} ✕</a>
-            {% endif %}
-        </div>
+            <a class="filter-chip" href="{% querystring status=None page=None %}">状态：{{ status_filter }} ✕</a>
+            {% endif %}{% has_filters as show_clear %}{% if show_clear %}<a class="filter-chip filter-chip--clear" href="{{ request.path }}" aria-label="全部清除筛选条件">全部清除<span aria-hidden="true"> ✕</span></a>{% endif %}</div>
     </div>
     <div class="table-container">
         <div class="table-responsive">
@@ -89,7 +88,7 @@
                 </thead>
                 <tbody>
                     {% for record in records %}
-                    <tr>
+                    <tr data-href="{% url 'daily_record_detail' record.id %}">
                         <td data-label="序号" class="col-optional">{{ forloop.counter }}</td>
                         <td data-label="日期及时间" class="cell-ellipsis" title="{{ record.record_date|date:'Y-m-d H:i:s' }}">{{ record.record_date|date:'Y-m-d H:i:s' }}</td>
                         <td data-label="提出部门/提出人" class="cell-ellipsis">{{ record.department }}</td>
@@ -184,47 +183,6 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // 迷你进度条注入（data-pct -> width）
-        document.querySelectorAll('.mini-progress').forEach(function(el) {
-            var pct = parseInt(el.getAttribute('data-pct'), 10) || 0;
-            if (pct >= 100) el.classList.add('done');
-            var fill = el.querySelector('.mini-progress-fill');
-            if (fill) fill.style.width = Math.min(pct, 100) + '%';
-        });
 
-        // 批量沉淀到知识库（仅 POST；一律私有，D5）
-        var kbSyncBtn = document.getElementById('kbSyncBatchBtn');
-        if (kbSyncBtn) {
-            kbSyncBtn.addEventListener('click', function () {
-                if (!window.confirm('把当前所有未沉淀的每日记录沉淀到知识库？\n批量沉淀的记录一律「仅自己可见」，之后可在知识库里逐篇调整。')) return;
-                kbSyncBtn.disabled = true;
-                var fd = new FormData();
-                fd.append('visibility', 'private');
-                fetch(kbSyncBtn.dataset.url, {
-                    method: 'POST',
-                    headers: { 'X-CSRFToken': getCsrfToken() || '{{ csrf_token }}', 'X-Requested-With': 'XMLHttpRequest' },
-                    body: fd,
-                    keepalive: true
-                })
-                .then(function (resp) { return resp.json().then(function (data) { return { ok: resp.ok, data: data }; }); })
-                .then(function (result) {
-                    if (result.ok && result.data.ok) {
-                        if (window.showToast) window.showToast(result.data.message, 'success');
-                        // 完整消费响应体后再刷新，避免 ERR_ABORTED
-                        setTimeout(function () { window.location.reload(); }, 900);
-                    } else {
-                        if (window.showToast) window.showToast((result.data && result.data.message) || '沉淀失败，请重试', 'error');
-                        kbSyncBtn.disabled = false;
-                    }
-                })
-                .catch(function () {
-                    if (window.showToast) window.showToast('网络异常，请重试', 'error');
-                    kbSyncBtn.disabled = false;
-                });
-            });
-        }
-    });
-</script>
+<script src="{% static 'js/pages/records/daily_record_list.js' %}?v=20261102" defer></script>
 {% endblock %}

@@ -7,213 +7,380 @@
     {% can "system" "update" %}
     <a href="{% url 'copilot:egress_audit' %}" class="btn-transparent">外发审计</a>
     {% endcan %}
+    <span class="aiq-window-group">
+        <span class="aiq-window-label">窗口</span>
+        <span class="aiq-seg" role="group" aria-label="统计窗口天数">
+            {% for choice in day_choices %}
+            <a href="?days={{ choice }}" class="{% if choice == days %}is-on{% endif %}"
+               {% if choice == days %}aria-current="true"{% endif %}>{{ choice }} 天</a>
+            {% endfor %}
+        </span>
+    </span>
 {% endblock %}
 
 {% block extra_css %}
 <style>
-    .aiq-cards {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 12px;
-        margin-bottom: 1.25rem;
-    }
-    .aiq-card {
-        padding: 14px 16px;
+    /* ========================================================================
+       工业仪表风（只作用于本页）：等宽数字 + 发丝分割 + 语义状态色。
+       全部取值来自 tokens.css，暗色主题自动生效；禁止出现字面色值。
+       ======================================================================== */
+
+    /* —— 窗口分段选择器（放在 page-actions，跟随工具条排序） —— */
+    .aiq-seg {
+        display: inline-flex;
+        border: 1px solid var(--c-border-strong);
+        border-radius: var(--r-sm);
+        overflow: hidden;
         background: var(--c-surface);
-        border: 1px solid var(--c-divider);
-        border-radius: var(--r-md);
     }
-    .aiq-card-label {
-        font-size: 12px;
-        color: var(--c-text-tertiary);
-        display: block;
-        margin-bottom: 6px;
-    }
-    .aiq-card-value { font-size: 22px; font-weight: 600; color: var(--c-text); }
-    .aiq-card-suffix { font-size: 12px; color: var(--c-text-tertiary); margin-left: 4px; }
-    .aiq-card-hint { font-size: 12px; color: var(--c-text-tertiary); margin-top: 6px; }
-    .aiq-days { display: flex; gap: 6px; align-items: center; }
-    .aiq-days a {
-        padding: 4px 10px;
-        border: 1px solid var(--c-divider);
-        border-radius: var(--r-full);
-        font-size: 12px;
+    .aiq-seg a {
+        padding: 5px 14px;
+        font-size: var(--fs-sm);
         color: var(--c-text-secondary);
         text-decoration: none;
+        border-left: 1px solid var(--c-border);
     }
-    .aiq-days a.is-on {
+    .aiq-seg a:first-child { border-left: 0; }
+    .aiq-seg a:hover { background: var(--c-surface-sunken); color: var(--c-text); }
+    .aiq-seg a.is-on {
         background: var(--c-primary-subtle);
-        border-color: var(--c-primary);
         color: var(--c-primary);
+        font-weight: 600;
     }
-    .aiq-bar { height: 8px; background: var(--c-surface-sunken); border-radius: var(--r-full); overflow: hidden; }
-    .aiq-bar > span { display: block; height: 100%; background: var(--c-primary); }
-    .aiq-section-title { margin: 1.25rem 0 .5rem; font-size: 15px; font-weight: 600; }
-    .aiq-note {
-        padding: 12px 16px;
-        border-left: 3px solid var(--c-primary);
-        background: var(--c-primary-subtle);
+    /* 窗口切换靠右，与左侧「外发审计」共用一条工具栏 */
+    .aiq-window-group { margin-left: auto; display: inline-flex; align-items: center; }
+    .aiq-window-label {
+        margin-right: var(--sp-2);
+        font-size: var(--fs-xs);
+        color: var(--c-text-tertiary);
+    }
+
+    /* —— 仪表横梁：六格一面板，发丝线分隔，首格放大 —— */
+    .aiq-rail {
+        display: grid;
+        grid-template-columns: 1.35fr repeat(5, 1fr);
+        background: var(--c-surface);
+        border: 1px solid var(--c-border);
         border-radius: var(--r-md);
+        box-shadow: var(--sh-card);
+        margin-bottom: var(--sp-5);
+        overflow: hidden;
+    }
+    .aiq-cell {
+        min-width: 0;
+        padding: var(--sp-4) var(--sp-4) var(--sp-3);
+        border-left: 1px solid var(--c-divider);
+    }
+    .aiq-cell:first-child { border-left: 0; }
+    .aiq-cell--hero { background: var(--c-primary-subtle); }
+    .aiq-cell__label {
+        display: block;
+        margin-bottom: var(--sp-2);
+        font-size: var(--fs-xs);
+        letter-spacing: var(--ls-wide);
+        color: var(--c-text-tertiary);
+    }
+    .aiq-cell__value {
+        font-family: var(--font-mono);
+        font-variant-numeric: tabular-nums;
+        font-size: var(--fs-2xl);
+        font-weight: 600;
+        line-height: 1.1;
+        letter-spacing: -0.02em;
+        color: var(--c-text);
+    }
+    .aiq-cell--hero .aiq-cell__value { font-size: var(--fs-3xl); }
+    .aiq-cell__value.is-good { color: var(--c-success); }
+    .aiq-cell__value.is-warn { color: var(--c-warning); }
+    .aiq-cell__value.is-bad  { color: var(--c-danger); }
+    .aiq-cell__suffix {
+        margin-left: 2px;
+        font-family: var(--font-body);
+        font-size: var(--fs-xs);
+        font-weight: 400;
+        color: var(--c-text-tertiary);
+    }
+    .aiq-cell__hint {
+        margin-top: var(--sp-2);
+        font-size: var(--fs-xs);
+        line-height: 1.55;
+        color: var(--c-text-tertiary);
+    }
+    /* 迷你进度条：宽度来自数据（widthratio），属数据驱动内联样式的既定例外 */
+    .aiq-cell__bar {
+        margin-top: var(--sp-2);
+        height: 4px;
+        border-radius: var(--r-full);
+        background: var(--c-surface-sunken);
+        overflow: hidden;
+    }
+    .aiq-cell--hero .aiq-cell__bar { background: var(--c-primary-ring); }
+    .aiq-cell__bar > span {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: var(--c-primary);
+    }
+
+    /* —— 双栏区块：时延 + 失败拦截并排，窄屏回落单栏 —— */
+    .aiq-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: var(--sp-4);
+        margin-bottom: var(--sp-4);
+    }
+    .aiq-grid .table-container { margin-bottom: 0; }
+    @media (max-width: 1100px) { .aiq-grid { grid-template-columns: 1fr; } }
+
+    /* —— 区块小标题：分组标签语感 + 通栏发丝线 —— */
+    .aiq-section-title {
+        display: flex;
+        align-items: center;
+        gap: var(--sp-3);
+        margin: 0 0 var(--sp-3);
+        font-family: var(--font-body);
+        font-size: var(--fs-xs);
+        font-weight: 600;
+        letter-spacing: var(--ls-wide);
         color: var(--c-text-secondary);
-        font-size: 13px;
-        line-height: 1.7;
+    }
+    .aiq-section-title::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: var(--c-divider);
+    }
+
+    /* —— 名次刻度条：名次 / 模块 / 轨道 / 计数 —— */
+    .aiq-rank { list-style: none; margin: 0; padding: 0; }
+    .aiq-rank li {
+        display: grid;
+        grid-template-columns: 28px 140px 1fr 64px;
+        gap: var(--sp-3);
+        align-items: center;
+        padding: var(--sp-2) 0;
+        border-bottom: 1px solid var(--c-divider);
+    }
+    .aiq-rank li:last-child { border-bottom: 0; }
+    .aiq-rank__pos {
+        font-family: var(--font-mono);
+        font-variant-numeric: tabular-nums;
+        font-size: var(--fs-sm);
+        text-align: right;
+        color: var(--c-text-tertiary);
+    }
+    .aiq-rank li:first-child .aiq-rank__pos { color: var(--c-primary); font-weight: 700; }
+    .aiq-rank__name { font-size: var(--fs-sm); color: var(--c-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .aiq-rank__track {
+        height: 8px;
+        border-radius: var(--r-full);
+        background: var(--c-surface-sunken);
+        overflow: hidden;
+    }
+    .aiq-rank__fill {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: var(--c-primary);
+        opacity: .8;
+        transition: width var(--dur-slow) var(--ease-out);
+    }
+    .aiq-rank li:first-child .aiq-rank__fill { opacity: 1; }
+    .aiq-rank__num {
+        font-family: var(--font-mono);
+        font-variant-numeric: tabular-nums;
+        font-size: var(--fs-sm);
+        text-align: right;
+        color: var(--c-text-secondary);
+    }
+    @media (max-width: 720px) {
+        .aiq-rank li { grid-template-columns: 24px 96px 1fr 48px; }
+    }
+
+    /* —— 数据外发横条：dl 五联，等宽数字 —— */
+    .aiq-strip { display: grid; grid-template-columns: repeat(5, 1fr); margin: 0; }
+    .aiq-strip > div { min-width: 0; padding: var(--sp-2) var(--sp-4); border-left: 1px solid var(--c-divider); }
+    .aiq-strip > div:first-child { border-left: 0; padding-left: 0; }
+    .aiq-strip dt { font-size: var(--fs-xs); color: var(--c-text-tertiary); margin-bottom: 4px; }
+    .aiq-strip dd {
+        margin: 0;
+        font-family: var(--font-mono);
+        font-variant-numeric: tabular-nums;
+        font-size: var(--fs-lg);
+        font-weight: 600;
+        color: var(--c-text);
+    }
+    .aiq-strip dd small { font-family: var(--font-body); font-size: var(--fs-xs); font-weight: 400; color: var(--c-text-tertiary); }
+    @media (max-width: 900px) {
+        .aiq-strip { grid-template-columns: repeat(2, 1fr); row-gap: var(--sp-3); }
+        .aiq-strip > div:nth-child(odd) { border-left: 0; padding-left: 0; }
+    }
+
+    /* —— 响应式：横梁 6 → 3 → 2 列，重排发丝线 —— */
+    @media (max-width: 1280px) {
+        .aiq-rail { grid-template-columns: repeat(3, 1fr); }
+        .aiq-cell:nth-child(3n + 1) { border-left: 0; }
+        .aiq-cell:nth-child(n + 4) { border-top: 1px solid var(--c-divider); }
+        .aiq-cell--hero { grid-column: 1 / -1; border-left: 0; border-bottom: 1px solid var(--c-divider); }
+        .aiq-cell:nth-child(n + 2):nth-child(-n + 3) { border-top: 0; }
+    }
+    @media (max-width: 720px) {
+        .aiq-rail { grid-template-columns: repeat(2, 1fr); }
+        .aiq-cell { border-left: 0 !important; border-top: 1px solid var(--c-divider) !important; }
+        .aiq-cell--hero { grid-column: 1 / -1; border-top: 0 !important; }
+        .aiq-cell:nth-child(2) { border-top: 0 !important; }
+    }
+
+    /* —— 入场编排：横梁逐格 60ms，区块随后整体上浮；reduce 下一律关闭 —— */
+    @media (prefers-reduced-motion: no-preference) {
+        .aiq-cell { animation: aiq-rise .46s var(--ease-out) backwards; }
+        .aiq-cell:nth-child(1) { animation-delay: 40ms; }
+        .aiq-cell:nth-child(2) { animation-delay: 100ms; }
+        .aiq-cell:nth-child(3) { animation-delay: 160ms; }
+        .aiq-cell:nth-child(4) { animation-delay: 220ms; }
+        .aiq-cell:nth-child(5) { animation-delay: 280ms; }
+        .aiq-cell:nth-child(6) { animation-delay: 340ms; }
+        .aiq-after-rail { animation: aiq-rise .5s var(--ease-out) backwards; animation-delay: 400ms; }
+    }
+    @keyframes aiq-rise {
+        from { opacity: 0; transform: translateY(10px); }
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h2>AI 用量与质量</h2>
-    <span class="text-secondary" style="font-size:13px;">
+    <h1>AI 用量与质量</h1>
+    <span class="aiq-meta u-fs-13">
         统计窗口：{{ data.since|date:"Y-m-d" }} 起，共 {{ days }} 天
     </span>
 </div>
 
-<div class="aiq-days" style="margin-bottom:12px;">
-    <span style="font-size:12px;color:var(--c-text-tertiary);">窗口</span>
-    {% for choice in day_choices %}
-    <a href="?days={{ choice }}" class="{% if choice == days %}is-on{% endif %}">{{ choice }} 天</a>
-    {% endfor %}
-</div>
-
-<div class="aiq-cards">
-    <div class="aiq-card">
-        <span class="aiq-card-label">本地应答率</span>
-        <span class="aiq-card-value">{{ data.local_rate }}<span class="aiq-card-suffix">%</span></span>
-        <div class="aiq-card-hint">未调模型的 {{ data.local_hits }} 次 / 共 {{ data.runs_total }} 次</div>
+<section class="aiq-rail" aria-label="核心指标">
+    <div class="aiq-cell aiq-cell--hero">
+        <span class="aiq-cell__label">本地应答率</span>
+        <span class="aiq-cell__value">{{ data.local_rate }}<span class="aiq-cell__suffix">%</span></span>
+        <div class="aiq-cell__bar" aria-hidden="true"><span style="width:{{ data.local_rate }}%;"></span></div>
+        <div class="aiq-cell__hint">未调模型的 {{ data.local_hits }} 次 / 共 {{ data.runs_total }} 次</div>
     </div>
-    <div class="aiq-card">
-        <span class="aiq-card-label">成功率</span>
-        <span class="aiq-card-value">{{ data.success_rate }}<span class="aiq-card-suffix">%</span></span>
-        <div class="aiq-card-hint">成功 {{ data.runs_succeeded }} 次</div>
+    <div class="aiq-cell">
+        <span class="aiq-cell__label">成功率</span>
+        <span class="aiq-cell__value{% if data.success_rate >= 100 %} is-good{% endif %}">{{ data.success_rate }}<span class="aiq-cell__suffix">%</span></span>
+        <div class="aiq-cell__bar" aria-hidden="true"><span style="width:{{ data.success_rate }}%;"></span></div>
+        <div class="aiq-cell__hint">成功 {{ data.runs_succeeded }} 次</div>
     </div>
-    <div class="aiq-card">
-        <span class="aiq-card-label">累计 token</span>
-        <span class="aiq-card-value">{{ data.token_total }}</span>
-        <div class="aiq-card-hint">模型调用 {{ data.model_calls }} 次，均值 {{ data.token_avg_model }}</div>
+    <div class="aiq-cell">
+        <span class="aiq-cell__label">累计 token</span>
+        <span class="aiq-cell__value">{{ data.token_total }}</span>
+        <div class="aiq-cell__hint">模型调用 {{ data.model_calls }} 次，均值 {{ data.token_avg_model }}</div>
     </div>
-    <div class="aiq-card">
-        <span class="aiq-card-label">估算成本</span>
-        <span class="aiq-card-value">
-            {% if data.est_cost is None %}——{% else %}{{ data.est_cost }}{% endif %}
-        </span>
-        <div class="aiq-card-hint">
+    <div class="aiq-cell">
+        <span class="aiq-cell__label">估算成本</span>
+        <span class="aiq-cell__value">{% if data.est_cost is None %}——{% else %}{{ data.est_cost }}<span class="aiq-cell__suffix">元</span>{% endif %}</span>
+        <div class="aiq-cell__hint">
             {% if data.price_per_1k is None %}未配置单价（settings.COPILOT_PRICE_PER_1K）{% else %}单价 {{ data.price_per_1k }} 元 / 1K tokens{% endif %}
         </div>
     </div>
-    <div class="aiq-card">
-        <span class="aiq-card-label">不满意率</span>
-        <span class="aiq-card-value">{{ data.feedback.down_rate }}<span class="aiq-card-suffix">%</span></span>
-        <div class="aiq-card-hint">好评 {{ data.feedback.up }} · 差评 {{ data.feedback.down }}（共 {{ data.feedback.rated }} 条反馈）</div>
+    <div class="aiq-cell">
+        <span class="aiq-cell__label">不满意率</span>
+        <span class="aiq-cell__value{% if data.feedback.down > 0 %} is-warn{% endif %}">{{ data.feedback.down_rate }}<span class="aiq-cell__suffix">%</span></span>
+        <div class="aiq-cell__hint">好评 {{ data.feedback.up }} · 差评 {{ data.feedback.down }}（共 {{ data.feedback.rated }} 条反馈）</div>
     </div>
-    <div class="aiq-card">
-        <span class="aiq-card-label">线程池积压</span>
-        <span class="aiq-card-value">{{ data.queue_depth }}</span>
-        <div class="aiq-card-hint">超过 2 说明并发提问已排上队</div>
+    <div class="aiq-cell">
+        <span class="aiq-cell__label">线程池积压</span>
+        <span class="aiq-cell__value{% if data.queue_depth > 2 %} is-bad{% elif data.queue_depth > 0 %} is-warn{% endif %}">{{ data.queue_depth }}</span>
+        <div class="aiq-cell__hint">超过 2 说明并发提问已排上队</div>
     </div>
+</section>
+
+<div class="aiq-grid aiq-after-rail">
+    <section class="table-container">
+        <h2 class="aiq-section-title">时延（秒）</h2>
+        <table class="table--cards table">
+            <thead>
+                <tr><th scope="col">链路</th><th scope="col">次数</th><th scope="col">P50</th>
+                    <th scope="col">P95</th><th scope="col">平均</th><th scope="col">最长</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td data-label="链路">本地直答</td>
+                    <td data-label="次数" class="num">{{ data.latency_local.count }}</td>
+                    <td data-label="P50" class="num">{{ data.latency_local.p50 }}</td>
+                    <td data-label="P95" class="num">{{ data.latency_local.p95 }}</td>
+                    <td data-label="平均" class="num">{{ data.latency_local.avg }}</td>
+                    <td data-label="最长" class="num">{{ data.latency_local.max }}</td>
+                </tr>
+                <tr>
+                    <td data-label="链路">模型链路</td>
+                    <td data-label="次数" class="num">{{ data.latency_model.count }}</td>
+                    <td data-label="P50" class="num">{{ data.latency_model.p50 }}</td>
+                    <td data-label="P95" class="num">{{ data.latency_model.p95 }}</td>
+                    <td data-label="平均" class="num">{{ data.latency_model.avg }}</td>
+                    <td data-label="最长" class="num">{{ data.latency_model.max }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section class="table-container">
+        <h2 class="aiq-section-title">失败与拦截</h2>
+        <table class="table--cards table">
+            <thead>
+                <tr><th scope="col">错误码</th><th scope="col">次数</th>
+                    <th scope="col">工具调用总数</th><th scope="col">被拒次数</th><th scope="col">外发拦截</th></tr>
+            </thead>
+            <tbody>
+                {% for row in data.errors %}
+                <tr><td data-label="错误码" class="num">{{ row.code }}</td><td data-label="次数" class="num">{{ row.count }}</td>
+                    <td data-label="工具调用总数">—</td><td data-label="被拒次数">—</td>
+                    <td data-label="外发拦截">—</td></tr>
+                {% empty %}
+                <tr><td data-label="错误码" colspan="5">窗口内没有失败记录。</td></tr>
+                {% endfor %}
+                <tr>
+                    <td data-label="错误码">合计</td>
+                    <td data-label="次数">—</td>
+                    <td data-label="工具调用总数" class="num">{{ data.tool_total }}</td>
+                    <td data-label="被拒次数" class="num">{{ data.tool_denied }}（{{ data.tool_denied_rate }}%）</td>
+                    <td data-label="外发拦截" class="num">{{ data.egress_blocked }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
 </div>
 
-<div class="table-container">
-    <h3 class="aiq-section-title">时延（秒）</h3>
-    <table class="table--cards">
-        <thead>
-            <tr><th scope="col">链路</th><th scope="col">次数</th><th scope="col">P50</th>
-                <th scope="col">P95</th><th scope="col">平均</th><th scope="col">最长</th></tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td data-label="链路">本地直答</td>
-                <td data-label="次数">{{ data.latency_local.count }}</td>
-                <td data-label="P50">{{ data.latency_local.p50 }}</td>
-                <td data-label="P95">{{ data.latency_local.p95 }}</td>
-                <td data-label="平均">{{ data.latency_local.avg }}</td>
-                <td data-label="最长">{{ data.latency_local.max }}</td>
-            </tr>
-            <tr>
-                <td data-label="链路">模型链路</td>
-                <td data-label="次数">{{ data.latency_model.count }}</td>
-                <td data-label="P50">{{ data.latency_model.p50 }}</td>
-                <td data-label="P95">{{ data.latency_model.p95 }}</td>
-                <td data-label="平均">{{ data.latency_model.avg }}</td>
-                <td data-label="最长">{{ data.latency_model.max }}</td>
-            </tr>
-        </tbody>
-    </table>
-</div>
-
-<div class="table-container">
-    <h3 class="aiq-section-title">被问最多的模块</h3>
+<section class="table-container aiq-after-rail">
+    <h2 class="aiq-section-title">被问最多的模块</h2>
     {% if top_modules %}
-    <table class="table--cards">
-        <thead><tr><th scope="col">模块</th><th scope="col">工具调用次数</th></tr></thead>
-        <tbody>
-            {% for row in top_modules %}
-            <tr>
-                <td data-label="模块">{{ row.label }}</td>
-                <td data-label="调用次数">
-                    <div class="aiq-bar" style="max-width:220px;">
-                        <span style="width:{% widthratio row.calls max_module_calls 100 %}%;"></span>
-                    </div>
-                    <span style="font-size:12px;color:var(--c-text-tertiary);">{{ row.calls }}</span>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <ol class="aiq-rank">
+        {% for row in top_modules %}
+        <li>
+            <span class="aiq-rank__pos" aria-hidden="true">{{ forloop.counter }}</span>
+            <span class="aiq-rank__name" title="{{ row.label }}">{{ row.label }}</span>
+            <span class="aiq-rank__track" aria-hidden="true"><span class="aiq-rank__fill" style="width:{% widthratio row.calls max_module_calls 100 %}%;"></span></span>
+            <span class="aiq-rank__num">{{ row.calls }}</span>
+        </li>
+        {% endfor %}
+    </ol>
     {% else %}
-    <p class="text-secondary" style="font-size:13px;">窗口内还没有工具调用记录。</p>
+        {% include 'records/_empty_block.html' with empty_icon="🧭" empty_title="窗口内还没有工具调用记录" compact=1 %}
     {% endif %}
-</div>
+</section>
 
-<div class="table-container">
-    <h3 class="aiq-section-title">失败与拦截</h3>
-    <table class="table--cards">
-        <thead>
-            <tr><th scope="col">错误码</th><th scope="col">次数</th>
-                <th scope="col">工具调用总数</th><th scope="col">被拒次数</th><th scope="col">外发拦截</th></tr>
-        </thead>
-        <tbody>
-            {% for row in data.errors %}
-            <tr><td data-label="错误码">{{ row.code }}</td><td data-label="次数">{{ row.count }}</td>
-                <td data-label="工具调用总数">—</td><td data-label="被拒次数">—</td>
-                <td data-label="外发拦截">—</td></tr>
-            {% empty %}
-            <tr><td data-label="错误码" colspan="5">窗口内没有失败记录。</td></tr>
-            {% endfor %}
-            <tr>
-                <td data-label="错误码">合计</td>
-                <td data-label="次数">—</td>
-                <td data-label="工具调用总数">{{ data.tool_total }}</td>
-                <td data-label="被拒次数">{{ data.tool_denied }}（{{ data.tool_denied_rate }}%）</td>
-                <td data-label="外发拦截">{{ data.egress_blocked }}</td>
-            </tr>
-        </tbody>
-    </table>
-</div>
+<section class="table-container aiq-after-rail">
+    <h2 class="aiq-section-title">数据外发</h2>
+    <dl class="aiq-strip">
+        <div><dt>日志条数</dt><dd>{{ data.egress_total }}</dd></div>
+        <div><dt>发往云端</dt><dd>{{ data.egress_remote }}</dd></div>
+        <div><dt>云端行数</dt><dd>{{ data.egress_remote_rows }}</dd></div>
+        <div><dt>会话数</dt><dd>{{ data.conversations }} <small>在用 {{ data.conversations_active }}</small></dd></div>
+        <div><dt>已归档会话</dt><dd>{{ data.conversations_archived }}</dd></div>
+    </dl>
+</section>
 
-<div class="table-container">
-    <h3 class="aiq-section-title">数据外发</h3>
-    <table class="table--cards">
-        <thead>
-            <tr><th scope="col">日志条数</th><th scope="col">发往云端</th>
-                <th scope="col">云端行数</th><th scope="col">会话数</th>
-                <th scope="col">已归档会话</th></tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td data-label="日志条数">{{ data.egress_total }}</td>
-                <td data-label="发往云端">{{ data.egress_remote }}</td>
-                <td data-label="云端行数">{{ data.egress_remote_rows }}</td>
-                <td data-label="会话数">{{ data.conversations }}（在用 {{ data.conversations_active }}）</td>
-                <td data-label="已归档会话">{{ data.conversations_archived }}</td>
-            </tr>
-        </tbody>
-    </table>
-</div>
-
-<div class="aiq-note">
+<p class="aiq-note aiq-after-rail" role="note">
     口径：本地应答率 = 成功且 token 为 0 的运行占比；时延 = 完成时间 − 创建时间，
     本地与模型分开统计（混在一起算出的 P95 两边都不代表）；成本按
     <code>settings.COPILOT_PRICE_PER_1K</code> 估算，未配置时留空而不猜单价。
-</div>
+</p>
 {% endblock %}

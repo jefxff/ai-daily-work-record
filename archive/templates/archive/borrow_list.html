@@ -5,7 +5,7 @@
 
 {% block content %}
 <div class="container arc-page">
-    <div class="page-header"><h2 class="page-title">借阅记录</h2></div>
+    <div class="page-header"><h1 class="page-title">借阅记录</h1></div>
     <div class="page-actions">
         <div class="d-flex gap-2">
             <a href="{% url 'archive:borrow_list' %}" class="btn btn-sm {% if not status %}btn-primary{% else %}btn-outline-secondary{% endif %}" data-col-settings-anchor data-col-settings-position="before">全部</a>
@@ -26,7 +26,7 @@
             <thead><tr><th scope="col">档案</th><th scope="col">借阅人</th><th scope="col">借阅时间</th><th scope="col">应还日期</th><th scope="col">实际归还</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead>
             <tbody>
             {% for r in records %}
-            <tr>
+            <tr data-href="{% url 'archive:archive_detail' r.archive.pk %}">
                 <td data-label="档案"><a href="{% url 'archive:archive_detail' r.archive.pk %}">{{ r.archive.code }} - {{ r.archive.name }}</a></td>
                 <td data-label="借阅人">{{ r.borrower }}</td>
                 <td data-label="借阅时间">{{ r.borrow_time|date:"Y-m-d H:i" }}</td>

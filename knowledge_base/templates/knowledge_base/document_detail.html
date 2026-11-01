@@ -826,6 +826,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>window.KB_COPY_MARKDOWN = "{{ copy_markdown|escapejs }}";</script>
+<script id="pageData-knowledge_base-document_detail" type="application/json">{"vars": {"v1": "{{ copy_markdown|escapejs }}"}}</script>
+<script src="{% static 'js/pages/knowledge_base/document_detail.js' %}?v=20261102" defer></script>
 <script src="{% static 'js/pages/kb_document_detail.js' %}?v=20261026b"></script>
 {% endblock %}

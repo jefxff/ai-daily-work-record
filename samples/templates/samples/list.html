@@ -1,4 +1,5 @@
 {% extends "records/base.html" %}
+{% load static %}
 {% load accounts_tags %}
 
 {% block page_title %}样品台账 - 试样管理{% endblock %}
@@ -80,7 +81,7 @@
 
 {% block content %}
 <div class="page-header">
-    <h2>样品台账<span class="total-hint">共 {{ page_obj.paginator.count }} 条</span></h2>
+    <h1>样品台账<span class="total-hint">共 {{ page_obj.paginator.count }} 条</span></h1>
 </div>
 
 <!-- 筛选栏 -->
@@ -89,9 +90,9 @@
         {% if request.GET.per_page %}<input type="hidden" name="per_page" value="{{ request.GET.per_page }}">{% endif %}
         <!-- 状态快捷筛选 -->
         <div class="quick-chips">
-            <a class="q-chip {% if not flt.status %}active{% endif %}" href="?{% for k, v in request.GET.items %}{% if k != 'status' and k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">全部状态</a>
+            <a class="q-chip {% if not flt.status %}active{% endif %}" href="{% querystring status=None page=None %}">全部状态</a>
             {% for key, label in status_choices %}
-            <a class="q-chip {% if flt.status == key %}active{% endif %}" href="?{% for k, v in request.GET.items %}{% if k != 'status' and k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}status={{ key }}">{{ label }}</a>
+            <a class="q-chip {% if flt.status == key %}active{% endif %}" href="{% querystring status=key page=None %}">{{ label }}</a>
             {% endfor %}
             {# 页面主操作与状态快捷筛选同排，右端对齐 #}
             {# data-col-settings-anchor：table-tools.js 的列设置按钮插到本容器之前—— #}
@@ -106,7 +107,7 @@
         <div class="filter-row">
             <div class="f-capsule search-cap">
                 <span class="search-icon">🔍</span>
-                <input type="text" class="form-control search-input" name="keyword" value="{{ flt.keyword }}" placeholder="编号 / 物料 / 型号" aria-label="关键词">
+                <input type="text" class="form-control search-input" name="keyword" value="{{ flt.keyword }}" placeholder="编号 / 物料 / 型号" aria-label="关键词" maxlength="100">
             </div>
             <div class="f-capsule">
                 <span class="cap-label">供应商</span>
@@ -162,7 +163,7 @@
             </thead>
             <tbody>
                 {% for sample in page_obj %}
-                <tr {% if sample.is_deleted %}class="row-deleted"{% endif %}>
+                <tr data-href="{% url 'samples:detail' sample.pk %}" {% if sample.is_deleted %}class="row-deleted"{% endif %}>
                     <td data-label="样品编号"><a href="{% url 'samples:detail' sample.pk %}">{{ sample.sample_no }}</a></td>
                     <td data-label="物料名称 / 型号" title="{{ sample.material_name }} {{ sample.model }}"><div class="mat-main">{{ sample.material_name }}</div><div class="mat-sub">{{ sample.model }}</div></td>
                     <td data-label="物料规格" class="col-optional td-ellipsis" title="{{ sample.spec }}">{{ sample.spec|default:'—' }}</td>
@@ -182,7 +183,7 @@
                             <a href="{% url 'samples:detail' sample.pk %}" class="btn-transparent btn-sm btn-detail">详细</a>
                             {% if sample.is_deleted %}
                             {% can "samples" "update" %}
-                            <form method="POST" action="{% url 'samples:restore' sample.pk %}" style="margin:0;">
+                            <form class="m-0" method="POST" action="{% url 'samples:restore' sample.pk %}">
                                 {% csrf_token %}
                                 <button type="submit" class="btn-transparent btn-sm" data-confirm="确定要恢复该样品吗？">恢复</button>
                             </form>
@@ -213,30 +214,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    var ff = document.querySelector('.filter-form');
-    if (!ff) return;
-    // 提交前禁用空值控件，保持 URL 干净
-    function cleanSubmit() {
-        ff.querySelectorAll('input[name], select[name]').forEach(function (el) {
-            if (el.type === 'checkbox') { el.disabled = !el.checked; }
-            else { el.disabled = !el.value; }
-        });
-        ff.submit();
-    }
-    ff.addEventListener('submit', function (e) { e.preventDefault(); cleanSubmit(); });
-    // 下拉/日期变更后自动查询
-    ff.querySelectorAll('select').forEach(function (s) {
-        s.addEventListener('change', cleanSubmit);
-    });
-    ff.querySelectorAll('input[type="date"]').forEach(function (d) {
-        d.addEventListener('change', cleanSubmit);
-    });
-    // 含已删除勾选后自动查询
-    ff.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
-        cb.addEventListener('change', cleanSubmit);
-    });
-});
-</script>
+<script src="{% static 'js/pages/samples/list.js' %}?v=20261102" defer></script>
 {% endblock %}

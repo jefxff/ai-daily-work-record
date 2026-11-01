@@ -42,7 +42,7 @@
 
 {% block content %}
 <div class="container arc-page">
-    <div class="page-header"><h2 class="page-title">证照管理</h2></div>
+    <div class="page-header"><h1 class="page-title">证照管理</h1></div>
 
     <!-- 仪表盘 -->
     <div class="lic-dashboard">
@@ -67,8 +67,8 @@
     <!-- 操作条：搜索 / 筛选 / 导入导出，一行放在列表上方 -->
     <div class="page-actions">
     <form method="GET">
-        <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="搜索证照名称/编号/持证单位/发证机关" aria-label="搜索证照">
-        <select name="status" class="form-select" onchange="this.form.submit()">
+        <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="搜索证照名称/编号/持证单位/发证机关" aria-label="搜索证照" maxlength="100">
+        <select name="status" class="form-select" data-auto-submit>
             <option value="">全部状态</option>
             <option value="normal" {% if status == 'normal' %}selected{% endif %}>正常</option>
             <option value="expiring" {% if status == 'expiring' %}selected{% endif %}>即将到期</option>
@@ -107,7 +107,7 @@
             </thead>
             <tbody>
                 {% for lic in licenses %}
-                <tr>
+                <tr data-href="{% url 'archive:license_detail' lic.pk %}">
                     <td data-label="证照编号"><strong>{{ lic.code }}</strong></td>
                     <td data-label="证照名称" class="text-left">{{ lic.name }}</td>
                     <td data-label="持证单位" class="text-left">{{ lic.holder|default:"—" }}</td>

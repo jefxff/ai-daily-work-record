@@ -4,7 +4,7 @@
 {% block page_title %}{{ title }} - 档案管理{% endblock %}
 
 {% block content %}
-<div class="container" style="max-width: 860px;">
+<div class="container u-maxw-860">
     <div class="page-header d-flex justify-content-between align-items-center mb-4">
         <h1 class="page-title">{{ title }}</h1>
         {% if mode == 'single' %}
@@ -16,7 +16,7 @@
 
     <div class="card mb-4">
         <div class="card-header"><h5 class="mb-0">填写说明</h5></div>
-        <div class="card-body" style="font-size: 14px; color: var(--c-text-secondary); line-height: 1.9;">
+        <div class="card-body u-prose-sm">
             {% if mode == 'single' %}
             <p class="mb-2">1. 推荐先在台账页面「导出本台账」，在导出文件中直接修改后再上传导入。</p>
             <p class="mb-2">2. <strong>「{{ match_header }}」为匹配键</strong>：系统中已存在同编号档案时<strong>更新</strong>该条（仅更新非空单元格，空白格保留原值）；不存在时<strong>新增</strong>。</p>
@@ -37,7 +37,7 @@
         <div class="card-body">
             <div class="d-flex flex-wrap gap-2">
                 {% for col in columns %}
-                <span class="badge {% if col == match_header %}bg-danger{% else %}bg-secondary{% endif %}" style="font-weight: 400;">{{ col }}{% if col == match_header %} *{% endif %}</span>
+                <span class="badge {% if col == match_header %}bg-danger{% else %}bg-secondary{% endif %} fw-normal">{{ col }}{% if col == match_header %} *{% endif %}</span>
                 {% endfor %}
             </div>
         </div>
@@ -46,7 +46,7 @@
     <div class="card">
         <div class="card-header"><h5 class="mb-0">上传文件</h5></div>
         <div class="card-body">
-            <form method="post" enctype="multipart/form-data">
+            <form data-validate="1" novalidate method="post" enctype="multipart/form-data">
                 {% csrf_token %}
                 <input type="hidden" name="step" value="upload">
                 <div class="mb-3">

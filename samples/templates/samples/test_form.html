@@ -1,4 +1,5 @@
 {% extends "records/base.html" %}
+{% load static %}
 
 {% block page_title %}{% if record %}编辑试样记录{% else %}新增试样记录{% endif %} - 试样管理{% endblock %}
 
@@ -48,17 +49,7 @@
     </form>
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    // 评审结论为「不通过」时显示终止原因（必填）
-    var conclusion = document.getElementById('id_review_conclusion');
-    var group = document.getElementById('terminateReasonGroup');
-    function toggle() {
-        if (conclusion && group) group.style.display = conclusion.value === 'fail' ? '' : 'none';
-    }
-    if (conclusion) { conclusion.addEventListener('change', toggle); toggle(); }
-});
-</script>
+<script src="{% static 'js/pages/samples/test_form.js' %}?v=20261102" defer></script>
 
 {% include "samples/_toast.html" %}
 {% endblock %}

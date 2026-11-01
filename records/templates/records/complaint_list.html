@@ -7,7 +7,7 @@
 
 {% block top_nav_actions %}
     <form class="d-flex gap-2" method="GET" id="searchForm">
-        <input class="search-input" type="search" placeholder="搜索被告或案号" name="search" value="{{ search_term }}" aria-label="搜索被告或案号">
+        <input class="search-input" type="search" placeholder="搜索被告或案号" name="search" value="{{ search_term }}" aria-label="搜索被告或案号" maxlength="100">
         <button class="btn-transparent" type="submit">搜索</button>
     </form>
     <!-- 筛选按钮 -->
@@ -30,11 +30,11 @@
                 </div>
                 <div class="filter-group">
                     <label>被告</label>
-                    <input type="text" name="defendant" placeholder="模糊搜索被告" value="{{ defendant_filter }}" aria-label="被告">
+                    <input type="text" name="defendant" placeholder="模糊搜索被告" value="{{ defendant_filter }}" aria-label="被告" maxlength="100">
                 </div>
                 <div class="filter-group">
                     <label>案号</label>
-                    <input type="text" name="case_number" placeholder="精确搜索案号" value="{{ case_number_filter }}" aria-label="案号">
+                    <input type="text" name="case_number" placeholder="精确搜索案号" value="{{ case_number_filter }}" aria-label="案号" maxlength="100">
                 </div>
                 <div class="filter-group">
                     <label>受理法院</label>
@@ -78,30 +78,29 @@
 
 {% block content %}
     <div class="page-header">
-        <h2>诉讼列表<span class="total-hint">共 {{ complaints.paginator.count }} 条记录</span></h2>
+        <h1>诉讼列表<span class="total-hint">共 {{ complaints.paginator.count }} 条记录</span></h1>
         <div class="filter-chips">
             {% if search_term %}
-            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'search' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">搜索：{{ search_term }} ✕</a>
+            <a class="filter-chip" href="{% querystring search=None page=None %}">搜索：{{ search_term }} ✕</a>
             {% endif %}
             {% if dispute_type_filter %}
-            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'dispute_type' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">类型：{{ dispute_type_filter }} ✕</a>
+            <a class="filter-chip" href="{% querystring dispute_type=None page=None %}">类型：{{ dispute_type_filter }} ✕</a>
             {% endif %}
             {% if defendant_filter %}
-            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'defendant' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">被告：{{ defendant_filter }} ✕</a>
+            <a class="filter-chip" href="{% querystring defendant=None page=None %}">被告：{{ defendant_filter }} ✕</a>
             {% endif %}
             {% if case_number_filter %}
-            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'case_number' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">案号：{{ case_number_filter }} ✕</a>
+            <a class="filter-chip" href="{% querystring case_number=None page=None %}">案号：{{ case_number_filter }} ✕</a>
             {% endif %}
             {% if court_filter %}
-            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'court' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">法院：{{ court_filter }} ✕</a>
+            <a class="filter-chip" href="{% querystring court=None page=None %}">法院：{{ court_filter }} ✕</a>
             {% endif %}
             {% if lawyer_filter %}
-            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'lawyer' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">律师：{{ lawyer_filter }} ✕</a>
+            <a class="filter-chip" href="{% querystring lawyer=None page=None %}">律师：{{ lawyer_filter }} ✕</a>
             {% endif %}
             {% if progress_filter %}
-            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'progress' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">进度：{{ progress_filter }} ✕</a>
-            {% endif %}
-        </div>
+            <a class="filter-chip" href="{% querystring progress=None page=None %}">进度：{{ progress_filter }} ✕</a>
+            {% endif %}{% has_filters as show_clear %}{% if show_clear %}<a class="filter-chip filter-chip--clear" href="{{ request.path }}" aria-label="全部清除筛选条件">全部清除<span aria-hidden="true"> ✕</span></a>{% endif %}</div>
     </div>
     <div class="table-container">
         <!-- 表格 -->
@@ -124,7 +123,7 @@
                 </thead>
                 <tbody>
                     {% for complaint in complaints %}
-                    <tr>
+                    <tr data-href="{% url 'complaint_detail' complaint.pk %}">
                         <td data-label="序号" class="col-optional">{{ forloop.counter }}</td>
                         <td data-label="纠纷类型">{{ complaint.dispute_type }}</td>
                         <td data-label="被告" class="cell-ellipsis" title="{{ complaint.defendant }}">{{ complaint.defendant }}</td>
@@ -158,11 +157,7 @@
                         </td>
                         <td data-label="操作" class="col-actions">
                             <div class="u-toolbar-inline">
-                                <a href="{% url 'complaint_detail' complaint.pk %}" class="btn-transparent btn-sm">详细</a>
-                                {% can "copilot" "read" %}
-                                <button type="button" class="btn-transparent btn-sm copilot-ask"
-                                        data-copilot-ask="案号 {{ complaint.case_number }} 的诉讼进展和涉案金额">问 AI</button>
-                                {% endcan %}
+                                <a href="{% url 'complaint_detail' complaint.pk %}" class="btn-transparent btn-sm">详情</a>
                                 {% can "complaint" "update" %}
                                 <a href="{% url 'complaint_edit' complaint.pk %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑诉讼">编辑</a>
                                 {% endcan %}

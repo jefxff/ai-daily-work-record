@@ -7,7 +7,7 @@
 <div class="container-fluid py-4">
     <div class="card shadow-sm">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">导入档案 — 第 2 步：列映射</h5>
+            <h1 class="h5 mb-0">导入档案 — 第 2 步：列映射</h1>
             <span class="text-muted small">共 {{ sheets|length }} 个 Sheet</span>
         </div>
         <div class="card-body">
@@ -22,14 +22,14 @@
                 <span class="text-muted">执行导入</span>
             </div>
 
-            <form method="POST">
+            <form data-validate="1" novalidate method="POST">
                 {% csrf_token %}
                 <input type="hidden" name="step" value="import">
 
                 <div class="mb-4 p-3 rounded" style="background:var(--c-primary-subtle);border:1px solid var(--c-border-hover)">
                     <label class="form-label fw-bold mb-1">台账名称</label>
                     <p class="text-muted small mb-2">导入的档案将归入该台账（对应一份 Excel 台账，默认取文件名）。已有同名台账会复用，不会重复创建。</p>
-                    <input type="text" name="ledger_name" value="{{ default_ledger }}" class="form-control" style="max-width:420px" placeholder="如：专利、商标相关合同" aria-label="台账名称">
+                    <input type="text" name="ledger_name" value="{{ default_ledger }}" class="form-control" style="max-width:420px" placeholder="如：专利、商标相关合同" aria-label="台账名称" maxlength="100">
                 </div>
 
                 {% for sname, sdata in sheets.items %}
@@ -42,9 +42,9 @@
                         <table class="table--cards table table-sm table-bordered align-middle">
                             <thead class="table-light">
                                 <tr>
-                                    <th scope="col" style="width:30%">Excel 列头</th>
-                                    <th scope="col" style="width:35%">映射到系统字段</th>
-                                    <th scope="col" style="width:35%">首行数据示例</th>
+                                    <th class="u-col-30" scope="col">Excel 列头</th>
+                                    <th class="u-col-35" scope="col">映射到系统字段</th>
+                                    <th class="u-col-35" scope="col">首行数据示例</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -62,7 +62,7 @@
                                             {% endfor %}
                                         </select>
                                     </td>
-                                    <td data-label="首行数据示例" class="text-muted small text-truncate" style="max-width:300px">
+                                    <td data-label="首行数据示例" class="text-muted small text-truncate u-maxw-300">
                                         {{ h.sample|default:"(空)"|truncatechars:60 }}
                                     </td>
                                 </tr>

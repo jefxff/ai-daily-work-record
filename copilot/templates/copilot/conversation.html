@@ -1,4 +1,5 @@
 {% extends "records/base.html" %}
+{% load static %}
 
 {% comment %}
 会话直达页：只做一件事——把 URL 里的会话 id 交给面板脚本，让面板打开后
@@ -15,16 +16,14 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-    // panel.js 在 window load 时初始化，这里提前挂上目标会话 id
-    window.COPILOT_CONVERSATION_ID = {{ conversation.pk }};
-</script>
+<script id="pageData-copilot-conversation" type="application/json">{"vars": {"v1": {{ conversation.pk }}}}</script>
+<script src="{% static 'js/pages/copilot/conversation.js' %}?v=20261102" defer></script>
 {% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h2>{{ conversation.title|default:"AI 会话" }}</h2>
-    <span class="text-secondary" style="font-size:13px;">
+    <h1>{{ conversation.title|default:"AI 会话" }}</h1>
+    <span class="text-secondary u-fs-13">
         {{ conversation.last_active_at|date:"Y-m-d H:i" }}
     </span>
 </div>

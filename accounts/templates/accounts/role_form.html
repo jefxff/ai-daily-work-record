@@ -1,12 +1,13 @@
 {% extends 'records/base.html' %}
+{% load static %}
 
 {% block page_title %}{% if mode == 'create' %}新建角色{% else %}编辑角色{% endif %} - 每日工作记录{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h2>{% if mode == 'create' %}新建角色{% else %}编辑角色：{{ role.name }}{% endif %}</h2>
+    <h1>{% if mode == 'create' %}新建角色{% else %}编辑角色：{{ role.name }}{% endif %}</h1>
 </div>
-<form method="post">
+<form data-validate="1" novalidate method="post">
     {% csrf_token %}
     <div class="role-form-card">
         {% if form.code.errors or form.non_field_errors %}
@@ -41,7 +42,7 @@
             <textarea class="form-control" rows="2" disabled aria-label="{{ form.description.label }}">{{ role.description }}</textarea>
             <input type="hidden" name="description" value="{{ role.description }}">
             {% else %}
-            <textarea name="description" class="form-control" rows="2" aria-label="{{ form.description.label }}">{{ form.description.value|default:'' }}</textarea>
+            <textarea name="description" class="form-control" rows="2" aria-label="{{ form.description.label }}" maxlength="500">{{ form.description.value|default:'' }}</textarea>
             {% endif %}
         </div>
         <div class="mb-2">
@@ -134,14 +135,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-    var checkAll = document.getElementById('checkAll');
-    var uncheckAll = document.getElementById('uncheckAll');
-    if (checkAll) checkAll.addEventListener('click', function () {
-        document.querySelectorAll('.perm-cb').forEach(function (cb) { cb.checked = true; });
-    });
-    if (uncheckAll) uncheckAll.addEventListener('click', function () {
-        document.querySelectorAll('.perm-cb').forEach(function (cb) { cb.checked = false; });
-    });
-</script>
+<script src="{% static 'js/pages/accounts/role_form.js' %}?v=20261102" defer></script>
 {% endblock %}

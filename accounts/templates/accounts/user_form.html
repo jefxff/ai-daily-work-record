@@ -8,7 +8,7 @@
 
 {% block content %}
 <div class="page-header">
-    <h2>{% if mode == 'create' %}新建用户{% else %}编辑用户：{{ target.username }}{% endif %}</h2>
+    <h1>{% if mode == 'create' %}新建用户{% else %}编辑用户：{{ target.username }}{% endif %}</h1>
 </div>
 <div style="max-width:640px; background:var(--c-surface); border-radius:8px; box-shadow:var(--sh-card); padding:1.75rem;">
     {% if form.non_field_errors %}
@@ -16,7 +16,7 @@
         {{ form.non_field_errors|join:'；' }}
     </div>
     {% endif %}
-    <form method="post">
+    <form data-validate="1" novalidate method="post">
         {% csrf_token %}
 
         {% if mode == 'create' %}
@@ -27,7 +27,7 @@
         </div>
         <div class="mb-3">
             <label class="form-label u-form-label" for="id_password">初始密码 <span class="u-text-danger">*</span></label>
-            <input type="password" id="id_password" name="password" class="form-control" autocomplete="new-password" required>
+            <input type="password" id="id_password" name="password" class="form-control" autocomplete="new-password" required maxlength="128">
             {% if form.password.errors %}<div class="u-hint-danger">{{ form.password.errors|join:'；' }}</div>{% endif %}
         </div>
         {% else %}
@@ -54,9 +54,9 @@
 
         <div class="mb-3">
             <label class="form-label" style="font-size:0.875rem; color:var(--c-text-secondary); font-weight:600; display:block; margin-bottom:0.5rem;">分配角色（可多选，权限取并集）</label>
-            <div style="display:flex; flex-direction:column; gap:0.4rem;">
+            <div class="u-stack-tight">
                 {% for r in roles %}
-                <label style="display:flex; gap:0.5rem; align-items:center; font-size:0.88rem; font-weight:400;">
+                <label class="u-toolbar-sm">
                     <input type="checkbox" name="roles" value="{{ r.id }}" class="form-check-input"
                            {% if r.id in selected_role_ids %}checked{% endif %}>
                     {{ r.name }}
@@ -67,12 +67,11 @@
             </div>
         </div>
 
-        <div class="mb-3" style="display:flex; flex-direction:column; gap:0.4rem;">
-            <label style="display:flex; gap:0.5rem; align-items:center; font-size:0.88rem; font-weight:400;">
+        <div class="mb-3 u-stack-tight">
+            <label class="u-toolbar-sm">
                 {{ form.is_active }} {{ form.is_active.label }}
             </label>
-            <label class="role-row {% if not request.user.is_superuser %}role-disabled{% endif %}"
-                   style="display:flex; gap:0.5rem; align-items:center; font-size:0.88rem; font-weight:400;">
+            <label class="role-row {% if not request.user.is_superuser %}role-disabled{% endif %} u-toolbar-sm">
                 {% if request.user.is_superuser %}{{ form.is_staff }}{% else %}
                 <input type="checkbox" class="form-check-input" disabled {% if form.is_staff.value %}checked{% endif %}>
                 {% endif %}
@@ -82,7 +81,7 @@
         </div>
 
         <div style="display:flex; gap:0.75rem; margin-top:1.25rem;">
-            <button type="submit" class="btn-primary btn-sm" style="padding:0.5rem 1.5rem;">
+            <button type="submit" class="btn-primary btn-sm u-pad-btn">
                 {% if mode == 'create' %}创建用户{% else %}保存修改{% endif %}
             </button>
             <a href="{% url 'accounts:user_list' %}" class="btn-transparent btn-sm">返回列表</a>

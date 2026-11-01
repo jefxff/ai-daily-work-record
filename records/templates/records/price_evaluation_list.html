@@ -7,7 +7,7 @@
 
 {% block top_nav_actions %}
     <form class="d-flex gap-2" method="GET">
-        <input class="search-input" type="search" placeholder="搜索项目分类或提出人" name="search" value="{{ search_term }}" aria-label="搜索项目分类或提出人">
+        <input class="search-input" type="search" placeholder="搜索项目分类或提出人" name="search" value="{{ search_term }}" aria-label="搜索项目分类或提出人" maxlength="100">
         <button class="btn-transparent" type="submit">搜索</button>
     </form>
     {% can "price_evaluation" "create" %}
@@ -18,12 +18,11 @@
 
 {% block content %}
     <div class="page-header">
-        <h2>核价列表<span class="total-hint">共 {{ evaluations.paginator.count }} 条记录</span></h2>
+        <h1>核价列表<span class="total-hint">共 {{ evaluations.paginator.count }} 条记录</span></h1>
         <div class="filter-chips">
             {% if search_term %}
-            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'search' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">搜索：{{ search_term }} ✕</a>
-            {% endif %}
-        </div>
+            <a class="filter-chip" href="{% querystring search=None page=None %}">搜索：{{ search_term }} ✕</a>
+            {% endif %}{% has_filters as show_clear %}{% if show_clear %}<a class="filter-chip filter-chip--clear" href="{{ request.path }}" aria-label="全部清除筛选条件">全部清除<span aria-hidden="true"> ✕</span></a>{% endif %}</div>
     </div>
     <div class="table-container">
         <!-- 表格 -->
@@ -47,7 +46,7 @@
                 </thead>
                 <tbody>
                     {% for evaluation in evaluations %}
-                    <tr>
+                    <tr data-href="{% url 'price_evaluation_detail' evaluation.id %}">
                         <td data-label="序号" class="col-optional">{{ forloop.counter }}</td>
                         <td data-label="项目分类">{{ evaluation.project_category }}</td>
                         <td data-label="项目提出部门">{{ evaluation.proposing_department }}</td>

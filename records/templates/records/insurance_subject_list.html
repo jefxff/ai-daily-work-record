@@ -14,7 +14,7 @@
 
 {% block content %}
     <div class="page-header">
-        <h2>保险续保视图<span class="total-hint">按标的聚合 · 共 {{ summary.total }} 个标的</span></h2>
+        <h1>保险续保视图<span class="total-hint">按标的聚合 · 共 {{ summary.total }} 个标的</span></h1>
     </div>
 
     <div class="ins-dashboard">
@@ -46,7 +46,7 @@
 
     <div class="ins-toolbar">
         <form method="GET">
-            <input type="search" name="q" value="{{ q }}" class="form-control" placeholder="搜索车牌 / 险种 / 保司 / 单号" aria-label="搜索保险标的">
+            <input type="search" name="q" value="{{ q }}" class="form-control" placeholder="搜索车牌 / 险种 / 保司 / 单号" aria-label="搜索保险标的" maxlength="100">
             <select name="kind" class="form-select" aria-label="标的类型">
                 <option value="">全部类型</option>
                 <option value="car" {% if kind_filter == 'car' %}selected{% endif %}>车险</option>
@@ -87,7 +87,7 @@
                 </thead>
                 <tbody>
                     {% for s in subjects %}
-                    <tr>
+                    <tr data-href="{% url 'insurance_subject_detail' %}">
                         <td data-label="标的">
                             <a class="ins-subject-link" href="{% url 'insurance_subject_detail' %}?key={{ s.key|urlencode }}">{{ s.label }}</a>
                             <span class="status-badge {{ s.kind_badge_class }}">{{ s.kind_label }}</span>

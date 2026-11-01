@@ -1,20 +1,5 @@
+{% load static %}
 {% if messages %}
 <div id="djangoMessages" hidden data-items='[{% for message in messages %}{"text":"{{ message|escapejs }}","level":"{% if message.tags == "error" %}error{% elif message.tags == "warning" %}info{% else %}success{% endif %}"}{% if not forloop.last %},{% endif %}{% endfor %}]'></div>
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    var el = document.getElementById('djangoMessages');
-    if (!el) return;
-    var items;
-    try {
-        items = JSON.parse(el.getAttribute('data-items') || '[]');
-    } catch (e) {
-        items = [];
-    }
-    items.forEach(function (item) {
-        if (window.showToast) {
-            window.showToast(item.text, item.level);
-        }
-    });
-});
-</script>
+<script src="{% static 'js/pages/accounts/_messages_toast.js' %}?v=20261102" defer></script>
 {% endif %}

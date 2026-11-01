@@ -9,7 +9,7 @@
         <div class="col-md-7">
             <div class="card shadow-sm">
                 <div class="card-header">
-                    <h5 class="mb-0">导入档案 — 第 1 步：上传 Excel 文件</h5>
+                    <h1 class="h5 mb-0">导入档案 — 第 1 步：上传 Excel 文件</h1>
                 </div>
                 <div class="card-body">
                     <div class="d-flex align-items-center mb-3">
@@ -29,7 +29,7 @@
                     {% endfor %}
                     {% endif %}
 
-                    <form method="POST" enctype="multipart/form-data">
+                    <form data-validate="1" novalidate method="POST" enctype="multipart/form-data">
                         {% csrf_token %}
                         <input type="hidden" name="step" value="upload">
                         <div class="mb-3">

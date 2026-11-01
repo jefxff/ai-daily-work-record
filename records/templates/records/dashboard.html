@@ -11,10 +11,10 @@
         <!-- 概览卡片 -->
         <div class="overview-card">
             <div class="overview-header">
-                <h2 class="overview-title">数据概览</h2>
+                <h1 class="overview-title">数据概览</h1>
                 <div class="overview-meta">
                     <span class="update-time" id="updateTime">加载中...</span>
-                    <button class="refresh-btn" id="refreshBtn">刷新数据</button>
+                    <button type="button" class="refresh-btn" id="refreshBtn">刷新数据</button>
                 </div>
             </div>
             <div class="overview-stats">
@@ -66,10 +66,10 @@
                     <span class="pending-count">{{ pending_count }} 条</span>
                 </div>
                 <div class="pending-filter">
-                    <button class="filter-btn active" data-filter="all">全部</button>
-                    <button class="filter-btn" data-filter="daily">📝 每日记录{% if daily_pending_count > 0 %}<span class="badge">{{ daily_pending_count }}</span>{% endif %}</button>
-                    <button class="filter-btn" data-filter="customer_complaint">📞 客户客诉{% if complaint_pending_count > 0 %}<span class="badge">{{ complaint_pending_count }}</span>{% endif %}</button>
-                    <button class="filter-btn" data-filter="lawsuit">⚖️ 诉讼案件{% if lawsuit_pending_count > 0 %}<span class="badge">{{ lawsuit_pending_count }}</span>{% endif %}</button>
+                    <button type="button" class="filter-btn active" data-filter="all">全部</button>
+                    <button type="button" class="filter-btn" data-filter="daily">📝 每日记录{% if daily_pending_count > 0 %}<span class="badge">{{ daily_pending_count }}</span>{% endif %}</button>
+                    <button type="button" class="filter-btn" data-filter="customer_complaint">📞 客户客诉{% if complaint_pending_count > 0 %}<span class="badge">{{ complaint_pending_count }}</span>{% endif %}</button>
+                    <button type="button" class="filter-btn" data-filter="lawsuit">⚖️ 诉讼案件{% if lawsuit_pending_count > 0 %}<span class="badge">{{ lawsuit_pending_count }}</span>{% endif %}</button>
                 </div>
             </div>
 

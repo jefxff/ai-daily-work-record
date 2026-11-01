@@ -6,7 +6,7 @@
 
 {% block top_nav_actions %}
     <form class="d-flex gap-2" method="GET">
-        <input class="search-input" type="search" placeholder="搜索标题或内容" name="search" value="{{ search_term }}" aria-label="搜索标题或内容">
+        <input class="search-input" type="search" placeholder="搜索标题或内容" name="search" value="{{ search_term }}" aria-label="搜索标题或内容" maxlength="100">
         <button class="btn-transparent" type="submit">搜索</button>
     </form>
     {% can "regulation" "create" %}
@@ -17,12 +17,11 @@
 
 {% block content %}
     <div class="page-header">
-        <h2>制度及处罚<span class="total-hint">共 {{ regulations.paginator.count }} 条记录</span></h2>
+        <h1>制度及处罚<span class="total-hint">共 {{ regulations.paginator.count }} 条记录</span></h1>
         <div class="filter-chips">
             {% if search_term %}
-            <a class="filter-chip" href="?{% for k, v in request.GET.items %}{% if k != 'search' %}{{ k }}={{ v }}&{% endif %}{% endfor %}">搜索：{{ search_term }} ✕</a>
-            {% endif %}
-        </div>
+            <a class="filter-chip" href="{% querystring search=None page=None %}">搜索：{{ search_term }} ✕</a>
+            {% endif %}{% has_filters as show_clear %}{% if show_clear %}<a class="filter-chip filter-chip--clear" href="{{ request.path }}" aria-label="全部清除筛选条件">全部清除<span aria-hidden="true"> ✕</span></a>{% endif %}</div>
     </div>
     <div class="table-container">
         <!-- 表格 -->
@@ -40,14 +39,14 @@
                 </thead>
                 <tbody>
                     {% for regulation in regulations %}
-                    <tr>
+                    <tr data-href="{% url 'regulation_detail' regulation.id %}">
                         <td data-label="序号" class="col-optional">{{ forloop.counter }}</td>
                         <td data-label="出文日期">{{ regulation.issue_date|date:'Y-m-d' }}</td>
                         <td data-label="标题" class="title-cell" title="{{ regulation.title }}">{{ regulation.title }}</td>
                         <td data-label="主要内容" class="content-td"><div class="clamp-2" title="{{ regulation.content }}">{{ regulation.content|truncatechars:120 }}</div></td>
                         <td data-label="文件编号">{{ regulation.doc_no }}</td>
                         <td data-label="操作" class="col-actions">
-                            <div style="display: flex; gap: 0.5rem; align-items: center; justify-content: center; flex-wrap: nowrap;">
+                            <div class="u-center-toolbar">
                                 <a href="{% url 'regulation_detail' regulation.id %}" class="btn-transparent btn-sm" aria-label="查看制度详情" data-modal-detail data-modal-title="制度详情">详细</a>
                                 {% can "regulation" "update" %}
                                 <a href="{% url 'regulation_edit' regulation.id %}" class="btn-transparent btn-sm" aria-label="编辑制度" data-modal-edit data-modal-title="编辑制度">编辑</a>

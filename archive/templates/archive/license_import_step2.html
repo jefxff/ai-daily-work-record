@@ -7,7 +7,7 @@
 <div class="container-fluid py-4">
     <div class="card shadow-sm">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">导入证照 — 第 2 步：列映射</h5>
+            <h1 class="h5 mb-0">导入证照 — 第 2 步：列映射</h1>
             <span class="text-muted small">共 {{ sheets|length }} 个 Sheet</span>
         </div>
         <div class="card-body">
@@ -36,9 +36,9 @@
                         <table class="table--cards table table-sm table-bordered align-middle">
                             <thead class="table-light">
                                 <tr>
-                                    <th scope="col" style="width:30%">Excel 列头</th>
-                                    <th scope="col" style="width:35%">映射到系统字段</th>
-                                    <th scope="col" style="width:35%">首行数据示例</th>
+                                    <th class="u-col-30" scope="col">Excel 列头</th>
+                                    <th class="u-col-35" scope="col">映射到系统字段</th>
+                                    <th class="u-col-35" scope="col">首行数据示例</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -56,7 +56,7 @@
                                             {% endfor %}
                                         </select>
                                     </td>
-                                    <td data-label="首行数据示例" class="text-muted small text-truncate" style="max-width:300px">
+                                    <td data-label="首行数据示例" class="text-muted small text-truncate u-maxw-300">
                                         {{ h.sample|default:"(空)"|truncatechars:60 }}
                                     </td>
                                 </tr>

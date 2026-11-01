@@ -15,10 +15,10 @@
     <div class="terminate-warn">
         ⚠️ 终止为终态操作：样品将转为「已终止」状态，且不再参与状态机重算。请务必填写终止原因。
     </div>
-    <p style="color:var(--c-text-secondary); font-size:0.875rem; margin-bottom:1.25rem;">
+    <p class="u-caption">
         {{ sample.material_name }} / {{ sample.model }} · 当前状态：<span class="status-badge {{ sample.status_badge_class }}">{{ sample.get_status_display }}</span>
     </p>
-    <p style="color:var(--c-text-secondary); font-size:0.875rem; margin-bottom:1.25rem;">操作人：<strong>{{ operator_name }}</strong>（由系统自动记录）</p>
+    <p class="u-caption">操作人：<strong>{{ operator_name }}</strong>（由系统自动记录）</p>
     <form method="POST" novalidate>
         {% csrf_token %}
         {% for field in form.visible_fields %}
