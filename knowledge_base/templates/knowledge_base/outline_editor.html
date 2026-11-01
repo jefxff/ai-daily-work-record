@@ -185,6 +185,6 @@
 {% endblock %}
 
 {% block extra_js %}
-<script id="pageData-knowledge_base-outline_editor" type="application/json">{"urls": {"u1": "{% url 'knowledge_base:api_doc_tree' document.pk %}"}, "vars": {"v1": {{ document.pk }}, "v2": {{ document.title|escapejs }}}}</script>
+<script id="pageData-knowledge_base-outline_editor" type="application/json">{"urls": {"u1": "{% url 'knowledge_base:api_doc_tree' document.pk %}"}, "vars": {"v1": {{ document.pk }}, "v2": "{{ document.title|escapejs }}"}}</script>
 <script src="{% static 'js/pages/knowledge_base/outline_editor.js' %}?v=20261102" defer></script>
 {% endblock %}

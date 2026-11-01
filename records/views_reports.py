@@ -23,6 +23,7 @@ from accounts.decorators import perm_required
 from ai_api.client import polish_text
 from ai_api.models import AiProviderConfig
 from work_record.http_utils import parse_date as _parse_date  # 统一实现（复核报告 CODE-01）
+from work_record.html_utils import demote_headings
 
 from .views import _my_daily_records
 
@@ -113,17 +114,12 @@ _REPORT_ALLOWED_ATTRS = {
 
 
 def _demote_markdown_headings(html):
-    """把正文自带的标题整体降一级。
+    """把正文自带的标题整体降一级（实现见 work_record.html_utils）。
 
     Markdown 里写 `# 周报（…）` 会生成 <h1>，与页面自己的 h1 撞车，
     一页出现两个一级标题（B7 标题层级统一要求每页恰有一个 h1）。
-    降级后 <h1>→<h2>、<h2>→<h3>……<h5>→<h6>，h6 不再下移。
-    必须从最深层往上替换，否则 h1→h2 的结果会被下一轮 h2→h3 再降一次。
     """
-    for level in range(5, 0, -1):
-        html = html.replace(f"<h{level}>", f"<h{level + 1}>")
-        html = html.replace(f"</h{level}>", f"</h{level + 1}>")
-    return html
+    return demote_headings(html, by=1)
 
 
 def _render_report_markdown(text):

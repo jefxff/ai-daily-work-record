@@ -26,6 +26,7 @@ from . import access
 from . import folders as kb_folders
 from . import outline as kb_outline
 from work_record.http_utils import is_ajax as _is_ajax  # 统一实现（复核报告 CODE-01）
+from work_record.html_utils import demote_headings
 
 logger = logging.getLogger(__name__)
 
@@ -313,7 +314,9 @@ def document_detail(request, pk):
 
     # 将Markdown内容转换为HTML，并过滤 script/iframe/事件属性等危险内容
     # （_render_markdown：净化 + 任务列表 checkbox 化）
-    document.content_html = _render_markdown(document.content)
+    # 正文自带的 # 会生成 <h1>，与页面上方的标题撞车（一页只能有一个 h1），
+    # 整体降一级；周报渲染用的是同一个实现。
+    document.content_html = demote_headings(_render_markdown(document.content), by=1)
 
     # 每日记录沉淀容器（UI 反馈 #4）：容器正文只是占位说明（模板层已跳过渲染），
     # 阅读视图按「天」分组渲染记录正文：同一天一个日期大标题，当天内容用无序列表。
@@ -516,7 +519,7 @@ def _sync_days(document):
         if key not in days:
             days[key] = []
             order.append(key)
-        days[key].append({'html': _render_markdown(n.text), 'is_done': n.is_done})
+        days[key].append({'html': demote_headings(_render_markdown(n.text), by=1), 'is_done': n.is_done})
     return [{'date': k, 'items': days[k]} for k in sorted(order) if k != '未知日期'] + \
            ([{'date': '未知日期', 'items': days['未知日期']}] if '未知日期' in days else [])
 
