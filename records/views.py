@@ -636,31 +636,61 @@ insurance_export = make_export_view(
 @perm_required("metal_price", "read")
 def metal_price_detail(request, metal_name):
     """金属价格详情视图 - 优化数据库查询"""
-    # 优化查询：一次性获取所有需要的数据
-    
+
+    def _attach_change_pct(price_obj):
+        """给行情行补一个涨跌幅（相对上一采集日）。
+
+        price_change 存的是「今价 - 昨价」的绝对值，分母还原成昨价再算百分比；
+        昨价为 0（首条数据）时不给涨幅，模板侧隐藏该字段而不是显示除零垃圾。
+        """
+        try:
+            prev = float(price_obj.price) - float(price_obj.price_change)
+            price_obj.change_pct = (
+                round(float(price_obj.price_change) / prev * 100, 2) if prev else None
+            )
+        except (TypeError, ValueError):
+            price_obj.change_pct = None
+
     # 获取所有金属名称列表（去重）
     all_metals = sorted(list(set(MetalPrice.objects.values_list('metal_name', flat=True))))
-    
+
+    # 切换条分两组：真实抓取的行情在前，抓不到才兜底的【演示】数据在后
+    # （库里的前缀是全角【演示】，不能只按半角 [演示] 匹配）
+    live_metals = [m for m in all_metals if '演示' not in m]
+    demo_metals = [m for m in all_metals if '演示' in m]
+
     # 优化：一次性获取当前金属的所有相关数据
     metal_prices = MetalPrice.objects.filter(metal_name=metal_name).order_by('-crawl_date')
-    
+
     # 获取当前金属的最新价格
     latest_price = metal_prices.first()
-    
+    if latest_price:
+        _attach_change_pct(latest_price)
+
     # 获取该金属的历史价格（最近30天）
     price_history = list(metal_prices[:30])
-    
+    for _p in price_history:
+        _attach_change_pct(_p)
+
     # 图表数据使用相同的数据集，避免重复查询
     chart_labels = []
     chart_data = []
-    
+
     # 修复：反转数据以正确的时间顺序显示图表
     for price in reversed(price_history):
         chart_labels.append(price.crawl_date.strftime('%m-%d'))
         chart_data.append(float(price.price))
-    
+
+    # 徽标/标题用的短名：去掉【演示】/[演示] 前缀，如 "【演示】电解铜" -> "电解铜"
+    current_metal_short = (
+        metal_name.replace('【演示】', '').replace('[演示]', '').strip()
+    )
+
     context = {
         'current_metal': metal_name,
+        'current_metal_short': current_metal_short,
+        'live_metals': live_metals,
+        'demo_metals': demo_metals,
         'all_metals': all_metals,
         'latest_price': latest_price,
         'price_history': price_history,
