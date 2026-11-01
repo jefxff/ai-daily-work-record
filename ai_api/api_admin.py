@@ -718,7 +718,7 @@ class SystemHealthAPIView(APIView):
             },
             "db_size": vh._human_size(os.path.getsize(db_path)) if os.path.isfile(db_path) else None,
             "recent_backup_ops": [
-                {"op_type": x.op_type, "file_name": x.file_name, "ok": x.ok,
+                {"op_type": x.op_type, "file_name": x.file_name, "ok": x.success,
                  "created_at": timezone.localtime(x.created_at).isoformat()}
                 for x in BackupOperationLog.objects.all()[:20]
             ],

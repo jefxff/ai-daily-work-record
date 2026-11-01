@@ -14,12 +14,12 @@ from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 
 from accounts.decorators import perm_required
+from work_record.http_utils import per_page
 
 from . import metrics
 from .models import CopilotConversation, CopilotEgressLog
 
 DAY_CHOICES = (7, 30, 90)
-PAGE_SIZE = 30
 
 
 def _days(request):
@@ -69,7 +69,8 @@ def egress_audit(request):
     if local_only:
         rows = rows.filter(is_local=True)
 
-    paginator = Paginator(rows, PAGE_SIZE)
+    # 每页条数走全站统一实现（10/30/50），与 records/_pagination.html 的选择器对齐
+    paginator = Paginator(rows, per_page(request, default=30, choices=(10, 30, 50)))
     page = paginator.get_page(request.GET.get('page'))
     return render(request, 'copilot/egress_audit.html', {
         'page': page,

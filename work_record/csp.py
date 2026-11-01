@@ -1,12 +1,15 @@
 """内容安全策略（CSP）中间件。
 
-现状：全站仍有大量内联脚本与内联事件处理器，直接启用强制 CSP 会导致页面不可用。
+现状：内联 <script> 由本中间件统一注入 nonce，已在 report-only 下验证通过；
+模板里的内联事件处理器（onclick/onchange/onsubmit）已于 2026-11 清零，
+因此 script-src 只剩 'self' + nonce。仍未收敛的是内联 style 属性。
+
 因此默认使用 report-only：只上报违规、不拦截；同时始终下发不含 default-src 的
 最小强制策略（object-src/base-uri/frame-ancestors/form-action），先拿到浏览器层
 对点击劫持、<base> 注入、插件加载、跨站表单提交的缓解能力。
 
-待内联脚本完成 nonce 化、内联事件处理器清理后，设置环境变量
-DJANGO_CSP_MODE=enforce 即可把完整策略切换为强制模式，无需改代码。
+待内联 style 属性完成类化后，设置环境变量 DJANGO_CSP_MODE=enforce
+即可把完整策略切换为强制模式，无需改代码。
 """
 
 import json
@@ -91,8 +94,10 @@ class CSPMiddleware:
         report_policy = "; ".join([
             "default-src 'self'",
             f"script-src 'self' 'nonce-{nonce}'",
-            "script-src-attr 'unsafe-inline'",
-            "style-src 'self' 'unsafe-inline'",
+            # 2026-11：模板里的内联事件处理器（onclick/onchange/onsubmit）已清零，
+            # 下拉即提交改为 data-auto-submit + 事件委托，表单确认改为 data-confirm。
+            # 因此不再需要脚本属性级放行；如有新增内联处理器，enforce 模式下会被拦截。
+            "style-src 'self' 'unsafe-inline'",   # 仍有内联 style，待 C3 批次收敛
             "img-src 'self' data: blob:",
             "font-src 'self' data:",
             "connect-src 'self'",
