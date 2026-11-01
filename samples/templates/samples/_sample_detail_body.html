@@ -5,7 +5,7 @@
     .header-card { background: var(--c-surface); border-radius: 8px; box-shadow: var(--sh-card); padding: 1.25rem 1.5rem 1.4rem; margin-bottom: 1.25rem; }
     .head-top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem; }
     .head-title { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
-    .head-title h2 { margin: 0; font-size: 1.3rem; color: var(--c-text); }
+    .head-title h1 { margin: 0; font-size: 1.3rem; color: var(--c-text); }
     .head-actions { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
     /* 网格轨道统一用 minmax(0, 1fr)：1fr 的自动最小尺寸等于子项 min-content，
        会被长文件名 / 文件选择控件等最宽子项撑开，窄屏下导致整列溢出视口。 */
@@ -171,7 +171,7 @@
 <div class="header-card">
     <div class="head-top">
         <div class="head-title">
-            <h2>{{ sample.sample_no }}</h2>
+            <h1>{{ sample.sample_no }}</h1>
             <span class="status-badge {{ sample.status_badge_class }}">{{ sample.get_status_display }}</span>
         </div>
         <div class="head-actions">

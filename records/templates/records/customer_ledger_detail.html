@@ -25,7 +25,7 @@
         <div class="lgd-avatar" aria-hidden="true">{{ ledger.customer_name|slice:":1" }}</div>
         <div class="lgd-hero-main">
             <div class="lgd-eyebrow">客户台账详细信息</div>
-            <h2 class="lgd-name" id="lgdCustomerName">{{ ledger.customer_name }}</h2>
+            <h1 class="lgd-name" id="lgdCustomerName">{{ ledger.customer_name }}</h1>
             <div class="lgd-tags">
                 {% if ledger.customer_category %}<span class="lgd-tag">{{ ledger.customer_category }}</span>{% endif %}
                 {% if ledger.company_status %}

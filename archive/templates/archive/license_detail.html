@@ -22,11 +22,11 @@
 
 {% block content %}
 <div class="container">
-    <a href="{% url 'archive:license_list' %}" class="btn btn-link btn-sm mb-3 text-decoration-none">&larr;; 返回证照列表</a>
+    <a href="{% url 'archive:license_list' %}" class="btn btn-link btn-sm mb-3 text-decoration-none">&larr; 返回证照列表</a>
 
     <div class="card mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h4 class="mb-0">{{ license.code }} - {{ license.name }}</h4>
+            <h1 class="h4 mb-0">{{ license.code }} - {{ license.name }}</h1>
             <div class="d-flex gap-2">
                 {% can "archive" "update" %}
                 <a href="{% url 'archive:license_edit' license.pk %}" class="btn btn-sm btn-primary" data-modal-edit data-modal-title="编辑证照">编辑</a>
