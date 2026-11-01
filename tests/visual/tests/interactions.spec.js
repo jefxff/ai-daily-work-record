@@ -105,4 +105,24 @@ test.describe('交互增强', () => {
     await expect(page.locator('nav.app-breadcrumb')).toBeVisible();
     await expect(page.locator('nav.app-breadcrumb [aria-current="page"]')).toHaveCount(1);
   });
+
+  // C5 的坑：给字段补 maxlength 时若把上限设得比已有数据还小，浏览器会把
+  // 预填值判成 tooLong，配合 novalidate + 统一校验，等于这条老记录再也存不了。
+  // 这里从数据侧反向守：编辑页上任何预填值都不许超过它自己的 maxlength。
+  test('C5 编辑页预填值不超出自身 maxlength', async ({ page }) => {
+    await page.goto('/daily_record/');
+    const href = await page.locator('tr[data-href]').first().getAttribute('data-href');
+    await page.goto(href.replace('/detail/', '/edit/'));
+
+    const overflow = await page.evaluate(() => {
+      return Array.from(document.querySelectorAll('input[maxlength], textarea[maxlength]'))
+        .filter((el) => el.maxLength > 0 && el.value.length > el.maxLength)
+        .map((el) => `${el.name || el.id}: ${el.value.length} > ${el.maxLength}`);
+    });
+    expect(overflow).toEqual([]);
+
+    // 工作内容是多行自由文本（模型为 TextField），上限不该压到几十字
+    const ml = await page.locator('#work_content').getAttribute('maxlength');
+    expect(Number(ml)).toBeGreaterThanOrEqual(500);
+  });
 });
