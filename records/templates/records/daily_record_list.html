@@ -107,9 +107,10 @@
                         <td data-label="截至日期">
                             {% if record.due_date %}
                             {% with d=record.due_date|days_until %}
-                            <span class="dr-due{% if d < 0 %} dr-due--overdue{% elif d == 0 %} dr-due--today{% elif d <= 3 %} dr-due--soon{% else %} dr-due--later{% endif %}">
+                            {# 已完成的记录不再提示逾期/剩余天数：截止日期只是历史事实，用次级色标注即可 #}
+                            <span class="dr-due{% if record.status == '完成' %} dr-due--later{% elif d < 0 %} dr-due--overdue{% elif d == 0 %} dr-due--today{% elif d <= 3 %} dr-due--soon{% else %} dr-due--later{% endif %}">
                                 <span class="dr-due__date">{{ record.due_date|date:'Y-m-d' }}</span>
-                                <span class="dr-due__note">{% if d < 0 %}已逾期 {{ d|absval }} 天{% elif d == 0 %}今天到期{% elif d == 1 %}明天到期{% else %}剩余 {{ d }} 天{% endif %}</span>
+                                <span class="dr-due__note">{% if record.status == '完成' %}已完成{% elif d < 0 %}已逾期 {{ d|absval }} 天{% elif d == 0 %}今天到期{% elif d == 1 %}明天到期{% else %}剩余 {{ d }} 天{% endif %}</span>
                             </span>
                             {% endwith %}
                             {% else %}
