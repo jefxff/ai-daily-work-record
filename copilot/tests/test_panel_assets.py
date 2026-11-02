@@ -17,6 +17,7 @@ import time
 from pathlib import Path
 from unittest import mock, skipUnless
 
+from django.contrib.staticfiles import finders
 from django.test import SimpleTestCase
 
 from work_record import urls as urlconf
@@ -81,8 +82,13 @@ class PanelAssetTests(SimpleTestCase):
             stale_dir.mkdir()
             stale = stale_dir / 'panel.js'
             stale.write_text('/* stale build, no answer_html */', encoding='utf-8')
-            yesterday = time.time() - 86400
-            os.utime(stale, (yesterday, yesterday))
+            # 「旧」必须以源文件为基准，不能写死「一天前」——仓库里文件的 mtime
+            # 取决于 checkout 时间，可能比 24 小时前还早（本机就踩到：源文件
+            # 10-31、产物设成 11-01，产物反而更新，逻辑正确但断言失败）。
+            source = finders.find('copilot/panel.js')
+            base = os.path.getmtime(source) if source else time.time()
+            stale_time = base - 3600
+            os.utime(stale, (stale_time, stale_time))
 
             with mock.patch.object(urlconf, '_static_root', Path(tmp)):
                 resp = self.client.get('/static/copilot/panel.js')

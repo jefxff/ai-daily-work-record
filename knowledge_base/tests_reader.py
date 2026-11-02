@@ -18,6 +18,7 @@
 
 运行：python manage.py test knowledge_base.tests_reader
 """
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.test import Client, TestCase
@@ -43,6 +44,19 @@ def grant(user, *pairs):
     role.users.add(user)
     if hasattr(user, "_rbac_codes_cache"):
         del user._rbac_codes_cache
+
+
+def kb_base_js():
+    """知识库基座脚本的源码。
+
+    折叠逻辑原先是页面内联 <script>，CSP 收紧后外置到
+    static/js/pages/knowledge_base/base.js（由 knowledge_base/base.html 引入，
+    列表页与详情页共用）。校验「脚本在基座」要看引用 + 源码两处，
+    只在 HTML 里搜选择器字符串已经不再成立。
+    """
+    return (settings.BASE_DIR / "static/js/pages/knowledge_base/base.js").read_text(
+        encoding="utf-8"
+    )
     cache.clear()
 
 
@@ -95,8 +109,13 @@ class ReaderShellTests(TestCase):
 
     def test_caret_toggle_script_present(self):
         """右栏 caret 折叠脚本在基座（两页共用）——放在列表页 extra_js 里会被
-        详情页同名 block 覆盖，详情页的 caret 曾是一排死按钮（2026-10-22）。"""
-        self.assertIn("kb-cat-caret:not(.kb-cat-caret-spacer)", self.html)
+        详情页同名 block 覆盖，详情页的 caret 曾是一排死按钮（2026-10-22）。
+
+        脚本已外置（CSP 不允许内联），因此校验两件事：基座确实引用了它，
+        且文件里确实有折叠逻辑。
+        """
+        self.assertIn("js/pages/knowledge_base/base.js", self.html)
+        self.assertIn("kb-cat-caret:not(.kb-cat-caret-spacer)", kb_base_js())
 
     def test_view_panels_default_state(self):
         """阅读视图默认可见，大纲/导图隐藏；分段控件三个 tab 就位。"""
@@ -191,8 +210,12 @@ class MarkdownRenderingTests(TestCase):
         cache.clear()
 
     def test_structural_markdown_elements(self):
-        self.assertIn("<h1", self.read)
+        # 正文标题渲染后整体降一级（work_record.html_utils.demote_headings）：
+        # 页面自身已有一个 h1，正文的 `#` 不能再产出第二个 h1。
+        # 因此原文 `# 一级标题` 应渲染成 h2、`## 二级标题` 渲染成 h3。
+        self.assertNotIn("<h1", self.read)
         self.assertIn("<h2", self.read)
+        self.assertIn("<h3", self.read)
         self.assertIn("<blockquote", self.read)
         self.assertIn("<pre", self.read)   # codehilite 扩展会带 class
         self.assertIn("<table", self.read)
@@ -362,7 +385,8 @@ class ListCategoryTreeTests(TestCase):
     def test_caret_toggle_script_present(self):
         """caret 折叠脚本在基座（列表页与详情页共用，不得只放列表页）。"""
         html = self.client.get(reverse("knowledge_base:document_list")).content.decode("utf-8")
-        self.assertIn("kb-cat-caret:not(.kb-cat-caret-spacer)", html)
+        self.assertIn("js/pages/knowledge_base/base.js", html)
+        self.assertIn("kb-cat-caret:not(.kb-cat-caret-spacer)", kb_base_js())
 
     def test_ancestors_expand_when_child_selected(self):
         """选中子分类：父链默认展开，子项高亮。"""

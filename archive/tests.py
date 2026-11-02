@@ -664,8 +664,11 @@ class LedgerImportExportTests(TestCase):
     def test_pages_render_new_entries(self):
         resp = self.client.get(reverse("archive:overview"))
         self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, "导出所选")
-        self.assertContains(resp, "批量导入更新")
+        # 批量导出/导入入口按 DOM 锚点断言。原先断言的是「导出所选」四个字，
+        # 而那四个字只出现在内联脚本的注释里（按钮文案一直是「导出」）；
+        # 脚本外置（CSP 不许内联）后注释搬到了 JS 文件，断言就失效了。
+        self.assertContains(resp, 'id="btnBatchExport"')
+        self.assertContains(resp, "/archive/ledgers/import/")
         self.assertContains(resp, "/archive/ledgers/export/")
         resp = self.client.get(reverse("archive:ledger_detail", args=[self.ledger.pk]))
         self.assertEqual(resp.status_code, 200)
