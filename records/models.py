@@ -238,7 +238,7 @@ class DailyRecord(models.Model):
     department = models.CharField(max_length=50, verbose_name='提出部门/提出人', null=False, blank=False)
     work_content = models.TextField(verbose_name='工作内容', null=False, blank=False)
     due_date = models.DateField(verbose_name='截至日期', null=True, blank=True)
-    status = models.CharField(max_length=10, verbose_name='工作状态', null=False, blank=False, choices=[('完成', '完成'), ('未完成', '未完成')])
+    status = models.CharField(max_length=10, verbose_name='工作状态', null=False, blank=False, choices=[('完成', '完成'), ('进行中', '进行中'), ('未完成', '未完成')])
     progress = models.IntegerField(verbose_name='工作进度', null=False, blank=False, default=0, help_text='0-100')
 
     # —— 知识库沉淀（批次 3）：两问一起问，否则没法表达「沉淀，但只给自己看」——

@@ -313,7 +313,7 @@ def daily_record_add(request):
         except (TypeError, ValueError):
             errors['progress'] = '工作进度必须为数字'
             progress = 0
-        if status not in ('完成', '未完成'):
+        if status not in ('完成', '进行中', '未完成'):
             errors['status'] = '工作状态非法'
         # 截至日期：选填，格式 YYYY-MM-DD
         due_date = None
@@ -386,7 +386,7 @@ daily_record_list = make_list_view(
     search_fields=['work_content', 'department'],
     filters=[('department', 'department'), ('status', 'status')],
     option_queries={'departments': ('department', lambda request: _my_daily_records(request.user))},
-    extra_context={'status_choices': [('完成', '完成'), ('未完成', '未完成')]},
+    extra_context={'status_choices': [('完成', '完成'), ('进行中', '进行中'), ('未完成', '未完成')]},
     # 纯 queryset 视图（model=None）需显式声明排序白名单；默认仍按日期倒序
     sortable=['record_date', 'due_date', 'status', 'progress'],
 )
@@ -416,7 +416,7 @@ def daily_record_edit(request, pk):
         except (TypeError, ValueError):
             errors['progress'] = '工作进度必须为数字'
             progress = record.progress
-        if status not in ('完成', '未完成'):
+        if status not in ('完成', '进行中', '未完成'):
             errors['status'] = '工作状态非法'
         # 截至日期：选填，格式 YYYY-MM-DD（留空表示清除）
         due_date = None

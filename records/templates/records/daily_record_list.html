@@ -49,9 +49,6 @@
        title="{% if status_filter == '未完成' %}取消「未完成」筛选{% else %}只看未完成记录{% endif %}">未完成</a>
     {% can "daily_record" "create" %}
     <a href="{% url 'daily_record_add' %}" class="btn-primary" data-modal-add data-modal-title="新增每日记录">新增记录</a>
-    <button type="button" class="btn-transparent" id="kbSyncBatchBtn"
-            data-url="{% url 'daily_record_kb_sync_batch' %}"
-            title="把所有未沉淀的记录一次性沉淀到知识库（一律仅自己可见）">批量沉淀到知识库</button>
     {% endcan %}
     <a href="{% url 'weekly_report' %}" class="btn-transparent">生成周报</a>
     <a href="{% url 'annual_summary' %}" class="btn-transparent">年度总结</a>

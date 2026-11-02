@@ -4,70 +4,128 @@
 {% block page_title %}{% if record %}编辑每日记录{% else %}新增每日记录{% endif %} - 每日工作记录管理网站{% endblock %}
 
 {% block content %}
-    <div class="form-container">
-        <h1 class="form-title">{% if record %}编辑每日记录{% else %}新增每日记录{% endif %}</h1>
+<div class="form-container dr-page-form">
+    <h1 class="form-title">{% if record %}编辑每日记录{% else %}新增每日记录{% endif %}</h1>
 
-        <form data-validate="1" novalidate method="post">
-            {% csrf_token %}
+    <form data-validate="1" novalidate method="post" action="{% if record %}{% url 'daily_record_edit' record.id %}{% else %}{% url 'daily_record_add' %}{% endif %}">
+        {% csrf_token %}
 
-            <div class="form-group">
-                <label class="form-label">序号</label>
-                <input type="text" class="form-control" value="{% if record %}{{ forloop.counter }}{% else %}自动生成{% endif %}" disabled aria-label="序号">
+        {# ====== 第一组：基础信息 ====== #}
+        <div class="dr-form-section">
+            <div class="dr-section-title">
+                <span class="dr-section-icon">📋</span>
+                <span>基础信息</span>
             </div>
 
-            <div class="form-group">
+            <div class="form-group mb-3">
                 <label class="form-label">日期及时间</label>
                 <input type="text" class="form-control" value="{% if record %}{{ record.record_date|date:'Y-m-d H:i:s' }}{% else %}{{ now|date:'Y-m-d H:i:s' }}{% endif %}" disabled aria-label="日期及时间">
             </div>
 
-            <div class="form-group">
-                <label for="department" class="form-label">提出部门/提出人</label>
-                <input type="text" class="form-control" id="department" name="department" value="{% if record %}{{ record.department }}{% endif %}" required maxlength="50">
+            <div class="form-group mb-3">
+                <label for="department" class="form-label">提出部门/提出人 <span class="u-text-danger">*</span></label>
+                <input type="text" class="form-control" id="department" name="department" value="{% if record %}{{ record.department }}{% else %}{{ form_data.department }}{% endif %}" required maxlength="50" placeholder="请输入部门或提出人姓名">
+                {% if errors.department %}<div class="form-text u-text-danger">{{ errors.department }}</div>{% endif %}
             </div>
 
-            <div class="form-group">
-                <label for="work_content" class="form-label">工作内容</label>
-                {# 模型是 TextField，无长度上限；这里只做防误贴的软上限，不要收紧 #}
-                <textarea class="form-control" id="work_content" name="work_content" rows="4" required maxlength="2000">{% if record %}{{ record.work_content }}{% endif %}</textarea>
-            </div>
-
-            <div class="form-group">
+            <div class="form-group mb-0">
                 <label for="due_date" class="form-label">截至日期</label>
-                <input type="date" class="form-control" id="due_date" name="due_date" value="{% if record and record.due_date %}{{ record.due_date|date:'Y-m-d' }}{% endif %}">
+                <input type="date" class="form-control" id="due_date" name="due_date" value="{% if record %}{% if record.due_date %}{{ record.due_date|date:'Y-m-d' }}{% endif %}{% else %}{{ form_data.due_date }}{% endif %}">
+                {% if errors.due_date %}<div class="form-text u-text-danger">{{ errors.due_date }}</div>{% endif %}
+            </div>
+        </div>
+
+        {# ====== 第二组：工作内容 ====== #}
+        <div class="dr-form-section">
+            <div class="dr-section-title">
+                <span class="dr-section-icon">✍️</span>
+                <span>工作内容</span>
             </div>
 
-            <div class="form-group">
-                <label for="status" class="form-label">工作状态</label>
-                <select class="form-select" id="status" name="status" required>
-                    <option value="完成" {% if record and record.status == '完成' %}selected{% endif %}>完成</option>
-                    <option value="未完成" {% if record and record.status == '未完成' %}selected{% elif not record %}selected{% endif %}>未完成</option>
-                </select>
+            <div class="form-group mb-0">
+                <label for="work_content" class="form-label">具体事项 <span class="u-text-danger">*</span></label>
+                <textarea class="form-control dr-textarea" id="work_content" name="work_content" rows="4" required maxlength="2000" placeholder="请描述今日完成或进行中的工作内容...">{% if record %}{{ record.work_content }}{% else %}{{ form_data.work_content }}{% endif %}</textarea>
+                <div class="dr-textarea-hint"><span class="dr-char-count" id="charCount">0</span>/2000</div>
+                {% if errors.work_content %}<div class="form-text u-text-danger">{{ errors.work_content }}</div>{% endif %}
+            </div>
+        </div>
+
+        {# ====== 第三组：状态与进度 ====== #}
+        <div class="dr-form-section">
+            <div class="dr-section-title">
+                <span class="dr-section-icon">🎯</span>
+                <span>工作进展</span>
             </div>
 
-            <div class="form-group">
-                <label for="progress" class="form-label">工作进度</label>
-                <div class="input-group">
-                    <input type="number" class="form-control" id="progress" name="progress" min="0" max="100" step="1" value="{% if record %}{{ record.progress }}{% else %}0{% endif %}" required>
-                    <span class="input-group-text">%</span>
+            <div class="form-group mb-3">
+                <label for="status" class="form-label">工作状态 <span class="u-text-danger">*</span></label>
+                <div class="dr-status-group">
+                    <button type="button" class="dr-status-pill" data-status="未完成" id="pill-unfinished">
+                        <span class="dr-status-dot"></span>
+                        <span>未完成</span>
+                    </button>
+                    <button type="button" class="dr-status-pill" data-status="进行中" id="pill-progress">
+                        <span class="dr-status-dot"></span>
+                        <span>进行中</span>
+                    </button>
+                    <button type="button" class="dr-status-pill" data-status="完成" id="pill-done">
+                        <span class="dr-status-dot"></span>
+                        <span>完成</span>
+                    </button>
                 </div>
-                <div class="form-text">请输入0-100之间的数字</div>
+                <select class="form-select dr-status-hidden" id="status" name="status" required>
+                    <option value="完成" {% if record and record.status == '完成' %}selected{% elif not record and form_data.status == '完成' %}selected{% endif %}>完成</option>
+                    <option value="进行中" {% if record and record.status == '进行中' %}selected{% elif not record and form_data.status == '进行中' %}selected{% endif %}>进行中</option>
+                    <option value="未完成" {% if record and record.status == '未完成' %}selected{% elif not record and not form_data.status %}selected{% elif not record and form_data.status == '未完成' %}selected{% endif %}>未完成</option>
+                </select>
+                {% if errors.status %}<div class="form-text u-text-danger">{{ errors.status }}</div>{% endif %}
             </div>
 
-            <div class="form-group">
-                <label class="form-label d-flex align-items-center gap-2 mb-1" for="kb_enabled">
-                    <input type="checkbox" id="kb_enabled" name="kb_enabled"
+            <div class="form-group mb-0">
+                <label class="form-label">工作进度 <span class="u-text-danger">*</span></label>
+
+                <div class="dr-progress-visual">
+                    <div class="dr-progress-track">
+                        <div class="dr-progress-fill" id="progressFill"></div>
+                        <div class="dr-progress-thumb" id="progressThumb"></div>
+                    </div>
+                    <div class="dr-progress-markers">
+                        <span>0%</span>
+                        <span>50%</span>
+                        <span>100%</span>
+                    </div>
+                </div>
+
+                <div class="dr-progress-row">
+                    <input type="range" class="dr-progress-slider" id="progressSlider" min="0" max="100" step="1"
+                           value="{% if record %}{{ record.progress }}{% else %}{{ form_data.progress|default:'0' }}{% endif %}">
+                    <div class="dr-progress-number">
+                        <input type="number" class="form-control" id="progress" name="progress" min="0" max="100" step="1"
+                               value="{% if record %}{{ record.progress }}{% else %}{{ form_data.progress|default:'0' }}{% endif %}" required>
+                        <span class="dr-progress-number-suffix">%</span>
+                    </div>
+                </div>
+                {% if errors.progress %}<div class="form-text u-text-danger">{{ errors.progress }}</div>{% endif %}
+            </div>
+        </div>
+
+        {# ====== 第四组：知识库 ====== #}
+        <div class="dr-form-section">
+            <div class="form-group mb-0">
+                <label class="form-check d-flex align-items-center gap-2 mb-0" for="kb_enabled">
+                    <input type="checkbox" class="form-check-input mt-0" id="kb_enabled" name="kb_enabled"
                            {% if record and record.kb_enabled %}checked{% endif %}>
-                    <span>沉淀到知识库</span>
+                    <span class="form-label mb-0">沉淀到知识库</span>
                 </label>
-                <div class="kb-sync-scope">
-                    <div class="form-text mb-1">沉淀范围（仅影响知识库里的可见范围，每日记录本身始终只有本人可见）</div>
+                <div class="kb-sync-scope" id="kb_sync_scope">
+                    <span class="form-text mb-1">沉淀范围（仅影响知识库里的可见范围，每日记录本身始终只有本人可见）</span>
                     <div class="d-flex gap-3" role="radiogroup" aria-label="沉淀范围">
-                        <label class="d-flex align-items-center gap-1">
+                        <label class="form-check mb-0 d-flex align-items-center gap-1">
                             <input type="radio" name="kb_visibility" value="private"
                                    {% if not record or not record.kb_visibility or record.kb_visibility == 'private' %}checked{% endif %}>
                             <span>仅自己可见</span>
                         </label>
-                        <label class="d-flex align-items-center gap-1">
+                        <label class="form-check mb-0 d-flex align-items-center gap-1">
                             <input type="radio" name="kb_visibility" value="public"
                                    {% if record and record.kb_visibility == 'public' %}checked{% endif %}>
                             <span>全员可见</span>
@@ -75,19 +133,240 @@
                     </div>
                 </div>
             </div>
+        </div>
 
-            <div class="form-actions">
-                <button type="submit" class="btn btn-primary">{% if record %}保存修改{% else %}保存记录{% endif %}</button>
-                <a href="{% if record %}{% url 'daily_record_list' %}{% else %}{% url 'home' %}{% endif %}" class="btn btn-secondary">取消</a>
-            </div>
-        </form>
-    </div>
+        {% if errors.general %}<div class="alert alert-danger">{{ errors.general }}</div>{% endif %}
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">{% if record %}保存修改{% else %}保存记录{% endif %}</button>
+            <a href="{% if record %}{% url 'daily_record_list' %}{% else %}{% url 'home' %}{% endif %}" class="btn btn-secondary">取消</a>
+        </div>
+    </form>
+</div>
 {% endblock %}
 
 {% block extra_css %}
 <style>
-    .form-container .kb-sync-scope { margin-top: 0.4rem; padding-left: 0.25rem; }
-    .form-container .form-group:has(#kb_enabled:not(:checked)) .kb-sync-scope { display: none; }
-    .form-container .kb-sync-scope input[type="radio"] { accent-color: var(--c-primary); margin: 0; }
+    /* KB 范围隐藏 */
+    .dr-page-form .kb-sync-scope { margin-top: 0.4rem; padding-left: 0.25rem; transition: all var(--dur-base) var(--ease-out); }
+    .dr-page-form .form-group:has(#kb_enabled:not(:checked)) .kb-sync-scope { display: none; }
+    .dr-page-form .kb-sync-scope .form-check-input { accent-color: var(--c-primary); margin: 0; }
+
+    /* ====== 表单分组 ====== */
+    .dr-form-section {
+        margin-bottom: var(--sp-4);
+        padding: var(--sp-4);
+        background: var(--c-surface);
+        border: 1px solid var(--c-border);
+        border-radius: var(--r-md);
+        transition: box-shadow var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out);
+    }
+    .dr-form-section:hover {
+        border-color: var(--c-primary-ring);
+        box-shadow: var(--sh-1);
+    }
+    .dr-form-section:last-of-type { margin-bottom: var(--sp-4); }
+    .dr-form-section .form-group:last-child { margin-bottom: 0; }
+
+    .dr-section-title {
+        display: flex;
+        align-items: center;
+        gap: var(--sp-2);
+        margin-bottom: var(--sp-4);
+        padding-bottom: var(--sp-3);
+        border-bottom: 1px solid var(--c-border);
+        font-size: var(--fs-sm);
+        font-weight: 600;
+        color: var(--c-text);
+        letter-spacing: var(--ls-wide);
+        text-transform: uppercase;
+    }
+    .dr-section-icon { font-size: 1rem; line-height: 1; }
+
+    /* ====== 文本域字符计数 ====== */
+    .dr-textarea { resize: vertical; min-height: 96px; }
+    .dr-textarea-hint { display: flex; justify-content: flex-end; margin-top: 0.25rem; font-size: var(--fs-xs); color: var(--c-text-tertiary); }
+    .dr-char-count { font-variant-numeric: tabular-nums; }
+
+    /* ====== 状态药丸按钮 ====== */
+    .dr-status-group { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin-bottom: var(--sp-2); }
+    .dr-status-pill {
+        display: inline-flex; align-items: center; gap: var(--sp-2);
+        padding: 0.5rem 1rem; font-size: var(--fs-sm); font-weight: 500;
+        border: 1.5px solid var(--c-border-strong); border-radius: var(--r-full);
+        background: var(--c-surface); color: var(--c-text-secondary);
+        cursor: pointer; transition: all var(--dur-fast) var(--ease-out);
+        user-select: none; white-space: nowrap;
+    }
+    .dr-status-pill:hover { border-color: var(--c-primary); color: var(--c-primary); background: var(--c-primary-subtle); }
+    .dr-status-pill:active { transform: scale(0.97); }
+    .dr-status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c-text-disabled); transition: background var(--dur-fast) var(--ease-out); }
+
+    .dr-status-pill[data-status="未完成"].is-active { border-color: var(--c-danger); background: var(--c-danger-bg); color: var(--c-danger); box-shadow: 0 0 0 3px var(--c-danger-line); }
+    .dr-status-pill[data-status="未完成"].is-active .dr-status-dot { background: var(--c-danger); }
+    .dr-status-pill[data-status="进行中"].is-active { border-color: var(--c-warning); background: var(--c-warning-bg); color: var(--c-warning); box-shadow: 0 0 0 3px var(--c-warning-line); }
+    .dr-status-pill[data-status="进行中"].is-active .dr-status-dot { background: var(--c-warning); }
+    .dr-status-pill[data-status="完成"].is-active { border-color: var(--c-success); background: var(--c-success-bg); color: var(--c-success); box-shadow: 0 0 0 3px var(--c-success-line); }
+    .dr-status-pill[data-status="完成"].is-active .dr-status-dot { background: var(--c-success); }
+
+    .dr-status-hidden { display: none; }
+
+    /* ====== 进度条可视化 ====== */
+    .dr-progress-visual { margin: var(--sp-4) 0 var(--sp-3); }
+    .dr-progress-track { position: relative; height: 6px; background: var(--c-border); border-radius: 999px; overflow: visible; }
+    .dr-progress-fill { position: absolute; top: 0; left: 0; height: 100%; width: 0%; background: linear-gradient(90deg, var(--c-primary) 0%, var(--c-success) 100%); border-radius: 999px; transition: width var(--dur-base) var(--ease-out), background var(--dur-base) var(--ease-out); }
+    .dr-progress-fill.is-complete { background: var(--c-success); }
+    .dr-progress-thumb { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 16px; height: 16px; background: var(--c-surface); border: 2px solid var(--c-primary); border-radius: 50%; box-shadow: var(--sh-2); left: 0%; transition: left var(--dur-base) var(--ease-out); pointer-events: none; }
+    .dr-progress-fill.is-complete + .dr-progress-thumb { border-color: var(--c-success); }
+    .dr-progress-markers { display: flex; justify-content: space-between; margin-top: var(--sp-2); font-size: var(--fs-xs); color: var(--c-text-tertiary); font-variant-numeric: tabular-nums; }
+
+    /* ====== 滑动条 + 数字输入 ====== */
+    .dr-progress-row { display: flex; align-items: center; gap: var(--sp-3); margin-top: var(--sp-3); }
+    .dr-progress-slider { flex: 1; -webkit-appearance: none; appearance: none; height: 6px; border-radius: 999px; background: var(--c-border); outline: none; cursor: pointer; }
+    .dr-progress-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--c-surface); border: 2.5px solid var(--c-primary); box-shadow: var(--sh-2); cursor: grab; }
+    .dr-progress-slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--c-surface); border: 2.5px solid var(--c-primary); box-shadow: var(--sh-2); cursor: grab; }
+    .dr-progress-number { position: relative; display: flex; align-items: center; width: 90px; flex-shrink: 0; }
+    .dr-progress-number .form-control { padding-right: 28px; text-align: center; font-variant-numeric: tabular-nums; font-weight: 600; color: var(--c-primary); }
+    .dr-progress-number-suffix { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: var(--fs-sm); color: var(--c-text-tertiary); pointer-events: none; }
+
+    .dr-form-section.is-completed .dr-progress-fill { background: var(--c-success); }
+    .dr-form-section.is-completed .dr-progress-thumb { border-color: var(--c-success); }
+    .dr-form-section.is-completed .dr-progress-number .form-control { color: var(--c-success); }
+    .dr-form-section.is-unfinished .dr-progress-number .form-control { color: var(--c-danger); }
+
+    /* 独立页面：form-container 里的 form-actions 底部对齐 */
+    .dr-page-form .form-actions {
+        display: flex; justify-content: flex-end; gap: var(--sp-3);
+        padding-top: var(--sp-5); border-top: 1px solid var(--c-border); margin-top: var(--sp-4);
+    }
 </style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var $ = function (sel, root) { return (root || document).querySelector(sel); };
+    var $$ = function (sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); };
+
+    var form = $('form[data-validate]');
+    if (!form) return;
+
+    var statusSelect = $('#status', form);
+    var progressNum = $('#progress', form);
+    var progressSlider = $('#progressSlider', form);
+    var progressFill = $('#progressFill', form);
+    var progressThumb = $('#progressThumb', form);
+    var charCount = $('#charCount', form);
+    var workContent = $('#work_content', form);
+    var statusSection = progressSlider ? progressSlider.closest('.dr-form-section') : null;
+
+    // 字符计数
+    if (workContent && charCount) {
+        charCount.textContent = workContent.value.length;
+        workContent.addEventListener('input', function () { charCount.textContent = workContent.value.length; });
+    }
+
+    // 药丸按钮
+    var pillButtons = $$('.dr-status-pill', form);
+    function activatePill(status) {
+        pillButtons.forEach(function (btn) { btn.classList.toggle('is-active', btn.dataset.status === status); });
+    }
+    pillButtons.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var status = btn.dataset.status;
+            if (statusSelect) statusSelect.value = status;
+            activatePill(status);
+            syncProgressFromStatus(status);
+        });
+    });
+
+    // 核心联动
+    var _fromStatus = false;
+    var _fromProgress = false;
+
+    function syncProgressFromStatus(status) {
+        if (!progressNum) return;
+        _fromStatus = true;
+        var targetVal = progressNum.value;
+        if (status === '完成') targetVal = 100;
+        else if (status === '未完成') targetVal = 0;
+        else if (status === '进行中') {
+            var cur = parseInt(progressNum.value, 10);
+            if (!cur || cur === 0 || cur === 100) targetVal = 50; else targetVal = cur;
+        }
+        progressNum.value = targetVal;
+        if (progressSlider) progressSlider.value = targetVal;
+        updateProgressVisuals(targetVal);
+        updateSectionState(targetVal, status);
+        _fromStatus = false;
+    }
+
+    function syncStatusFromProgress(val) {
+        if (!statusSelect) return;
+        _fromProgress = true;
+        var status;
+        if (val >= 100) status = '完成';
+        else if (val <= 0) status = '未完成';
+        else status = '进行中';
+        statusSelect.value = status;
+        activatePill(status);
+        updateSectionState(val, status);
+        _fromProgress = false;
+    }
+
+    function updateProgressVisuals(val) {
+        var pct = Math.max(0, Math.min(100, parseInt(val, 10) || 0));
+        if (progressFill) { progressFill.style.width = pct + '%'; progressFill.classList.toggle('is-complete', pct >= 100); }
+        if (progressThumb) { progressThumb.style.left = pct + '%'; }
+    }
+
+    function updateSectionState(val, status) {
+        if (!statusSection) return;
+        statusSection.classList.remove('is-completed', 'is-unfinished');
+        if (status === '完成' || val >= 100) statusSection.classList.add('is-completed');
+        else if (val === 0 && status === '未完成') statusSection.classList.add('is-unfinished');
+    }
+
+    if (progressNum) {
+        progressNum.addEventListener('input', function () {
+            var val = parseInt(progressNum.value, 10);
+            if (isNaN(val)) return;
+            if (val < 0) { progressNum.value = 0; val = 0; }
+            if (val > 100) { progressNum.value = 100; val = 100; }
+            if (progressSlider && !_fromStatus) progressSlider.value = val;
+            if (!_fromStatus) syncStatusFromProgress(val);
+            updateProgressVisuals(val);
+        });
+        progressNum.addEventListener('blur', function () {
+            var val = parseInt(progressNum.value, 10);
+            if (isNaN(val) || val < 0) { progressNum.value = 0; val = 0; }
+            if (val > 100) { progressNum.value = 100; val = 100; }
+            updateProgressVisuals(val);
+        });
+    }
+
+    if (progressSlider) {
+        progressSlider.addEventListener('input', function () {
+            var val = parseInt(progressSlider.value, 10);
+            if (progressNum && !_fromStatus) progressNum.value = val;
+            if (!_fromStatus) syncStatusFromProgress(val);
+            updateProgressVisuals(val);
+        });
+    }
+
+    if (statusSelect) {
+        statusSelect.addEventListener('change', function () {
+            activatePill(statusSelect.value);
+            syncProgressFromStatus(statusSelect.value);
+        });
+    }
+
+    // 初始化
+    var initStatus = statusSelect ? statusSelect.value : '未完成';
+    var initProgress = progressNum ? parseInt(progressNum.value, 10) || 0 : 0;
+    activatePill(initStatus);
+    updateProgressVisuals(initProgress);
+    updateSectionState(initProgress, initStatus);
+});
+</script>
 {% endblock %}
