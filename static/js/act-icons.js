@@ -66,6 +66,11 @@
        因此这里拆成 timeline / policy / renew 三个独立动作，
        由 components.css §6 各配一枚语义图标。 */
     function actOf(el, text) {
+        /* 待办工作台的「处理」是统一入口（不同来源分别跳详情/编辑页），整列
+           刻意保持纯文字（见 components.css §6 工作台专条）。若被下方
+           a[href*="detail"] 兜底打上 data-act，§6b 会把文字收成 0 号字，
+           而图标又被工作台专条收起——单元格彻底空白。 */
+        if (el.closest('.workspace-table')) return '';
         if (text.indexOf('删除') > -1) return 'delete';
         if (text.indexOf('编辑') > -1) return 'edit';
         if (text.indexOf('续保') > -1) return 'renew';
