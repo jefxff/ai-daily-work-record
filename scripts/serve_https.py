@@ -49,18 +49,41 @@ class ThreadingWSGIServer(ThreadingMixIn, WSGIServer):
 
     daemon_threads = True
     allow_reuse_address = True
+    # socketserver 默认 listen(5)。本服务器每条连接只服务一个请求（见
+    # SingleRequestServerHandler），一页十几个静态资源就会同时涌进来；Windows
+    # 在 accept 队列满时直接 RST，浏览器侧表现为随机的 ERR_CONNECTION_REFUSED。
+    # 队列放大到 128 后可吃下并发突发。
+    request_queue_size = 128
     # 与 HTTP 入口（work_record/server_patch.py）对齐：不暴露 wsgiref/Python 版本
     server_version = "WorkRecord"
     sys_version = ""
 
 
-class KeepAliveServerHandler(_ServerHandler):
-    """HTTP/1.1 响应：有 Content-Length 用定长，流式响应走 chunked。
+class SingleRequestServerHandler(_ServerHandler):
+    """HTTP/1.1 响应，并**显式声明 Connection: close**。
 
-    wsgiref 的 ServerHandler 默认 ``http_version = "1.0"``，即使
-    RequestHandler.protocol_version 设成 1.1，响应行仍是 1.0 → 浏览器每个
-    静态资源都新建 TLS 连接（一页 10 个资源 = 10 次握手）。改成 1.1 后可复用
-    连接；wsgiref 在缺少 Content-Length 时会自动切到 chunked 编码。
+    ⚠️ 不要移除下面 cleanup_headers 里的 Connection: close（2026-11-02 审查）：
+    本服务器的连接语义曾经自相矛盾——
+
+    - ``RequestHandler.handle()`` 覆盖了 ``BaseHTTPRequestHandler.handle()``，
+      每条 TCP/TLS 连接**只处理一个请求**就 close；
+    - 却又把 ``protocol_version`` 声明成 HTTP/1.1，且从不发 ``Connection`` 头。
+
+    按 RFC 9112，HTTP/1.1 在没有 ``Connection: close`` 时默认长连接，浏览器会把
+    这条已关闭的 socket 回收进连接池；下一次请求复用上去，在收到任何响应字节之前
+    就撞上 RST → ``ERR_CONNECTION_CLOSED``（Chrome/Edge 显示“网络问题”）。
+    curl 每次新建连接所以从未暴露；socket 层实测：同一连接发第二个请求必失败。
+
+    这里如实告知客户端“本条连接到此为止”。wsgiref 自己做不到长连接：它没有实现
+    chunked 编码（``wsgiref/handlers.py`` 里只有一句 XXX 注释），而 Django 的
+    非 gzip 响应又不带 Content-Length，响应体只能靠“关闭连接”来界定边界——强行
+    长连接会让浏览器把响应体读成下一个响应的状态行。所以关闭是唯一正确选择。
+
+    ``http_version = "1.1"`` 保留（响应行用 1.1），只是不再假装支持复用。
+
+    另注：备份中心「下载」报“无法下载 - 网络问题”的主因是**证书未受信任 +
+    <a download> 属性**（Chromium 会掐死证书错误站点上的下载管理器请求，请求
+    根本不出网），与本文件无关；见 backup_center.html 同日注释。
     """
 
     http_version = "1.1"
@@ -69,13 +92,21 @@ class KeepAliveServerHandler(_ServerHandler):
     # 改 server_version/sys_version 不生效，必须覆盖 server_software 本身
     server_software = "WorkRecord"
 
+    def cleanup_headers(self):
+        super().cleanup_headers()
+        # 必须在 cleanup_headers 之后写：父类此时可能刚补上 Content-Length
+        self.headers["Connection"] = "close"
+
 
 class RequestHandler(WSGIRequestHandler):
-    """请求处理：保留 HTTP/1.1 语义并注入上面的响应处理器。"""
+    """请求处理：每条连接只服务一个请求（响应侧显式 Connection: close）。"""
 
     protocol_version = "HTTP/1.1"
 
     def handle(self):
+        # 与响应头的 Connection: close 保持一致：这里本来就没有
+        # BaseHTTPRequestHandler.handle() 的请求循环，显式写出来避免读者误会。
+        self.close_connection = True
         self.raw_requestline = self.rfile.readline(65537)
         if len(self.raw_requestline) > 65536:
             self.requestline = ""
@@ -85,7 +116,7 @@ class RequestHandler(WSGIRequestHandler):
             return
         if not self.parse_request():
             return
-        handler = KeepAliveServerHandler(
+        handler = SingleRequestServerHandler(
             self.rfile, self.wfile, self.get_stderr(), self.get_environ(),
             multithread=True,
         )

@@ -238,7 +238,10 @@
                     '<td data-label="操作">' +
                         (b.readable === false ? '' :
                             (BK_PERMS.restore ? '<button type="button" class="btn btn-sm btn-outline-danger btn-restore">恢复</button> ' : '') +
-                            (BK_PERMS.backup ? '<a class="btn btn-sm btn-outline-secondary btn-download" href="' + U.urlDownload + '?path=' + encodeURIComponent(b.path) + '" download="' + esc(b.name) + '">下载</a> ' : '')) +
+                            // 不要加 download 属性：自签证书未被信任时 Chromium 会掐死
+                            // 「下载管理器」类请求（见 backup_center.html 同位置的注释），
+                            // 由响应的 Content-Disposition: attachment 完成下载即可。
+                            (BK_PERMS.backup ? '<a class="btn btn-sm btn-outline-secondary btn-download" href="' + U.urlDownload + '?path=' + encodeURIComponent(b.path) + '">下载</a> ' : '')) +
                         (BK_PERMS.del ? '<button type="button" class="btn btn-sm btn-outline-secondary btn-delete-bk">删除</button>' : '') +
                     '</td></tr>');
             });
