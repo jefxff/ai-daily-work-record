@@ -1,0 +1,847 @@
+/* ============================================================================
+   daily-record.css · 每日记录（列表 / 详情 / 表单 / 弹窗）页面级样式
+   ----------------------------------------------------------------------------
+   定位：只补充「每日记录」这三页的表达，不新造设计语言。
+   - 颜色、字号、圆角、阴影、动效全部取 static/css/tokens.css 的令牌，
+     组件里不出现字面色值（与项目既有的硬约束一致）；
+   - 结构复用项目已有原语：.table--fixed / .cell-stack 思路、.detail-card、
+     .status-badge 语义色、.mini-progress（列表页 JS 已按 data-pct 注入宽度，
+     因此这里只改尺寸与配色，不换类名、不加脚本）；
+   - 唯一"新"的东西是排布：日期与时间分层、截止日期带剩余天数、进度数字
+     等宽定宽、详情页把记录正文提升为主标题、表单宽屏三列铺开。
+
+   为什么单独一个文件而不是写进各模板的 {% block extra_css %}：
+   每日记录的「新增/编辑」和「详情」都是以 AJAX 注入到列表页的弹窗（data-modal-*），
+   弹窗里的 <style> 会随每次注入被重复解析一次；原先 form 与 form_modal 各带一份
+   约 250 行完全相同的样式，等于每次打开弹窗都重算一遍样式表。
+   收到这一个文件里：一次请求、全站缓存（?v= 命中 immutable）、三页与弹窗共用一份。
+
+   性能约束：无新字体、无图片、无 JS 依赖；动画只用 width/opacity，
+   不含 filter / backdrop-filter / box-shadow 动画。
+   ========================================================================== */
+
+/* ==========================================================================
+   1. 列表页表格
+   --------------------------------------------------------------------------
+   列预算（合计 100%，固定布局，宽度不再随内容跳动）：
+     序号 4 / 日期时间 12 / 部门 10 / 内容 30 / 截至 11 / 状态 8 / 进度 13 / 操作 12
+   与原版相比：日期时间从 15% 收到 12%（改两行后不再需要 19 个字符的宽度），
+   省下的 3% 全部给「工作内容」，长句少折一行。
+   ========================================================================== */
+.dr-table {
+    min-width: 1020px;
+    font-variant-numeric: tabular-nums;
+}
+
+.dr-table.table--fixed th:nth-child(1) { width: 4%; }
+.dr-table.table--fixed th:nth-child(2) { width: 12%; }
+.dr-table.table--fixed th:nth-child(3) { width: 10%; }
+.dr-table.table--fixed th:nth-child(4) { width: 28%; }
+.dr-table.table--fixed th:nth-child(5) { width: 11%; }
+.dr-table.table--fixed th:nth-child(6) { width: 9%; }
+.dr-table.table--fixed th:nth-child(7) { width: 14%; }
+.dr-table.table--fixed th:nth-child(8) { width: 12%; }
+
+/* 列头：排序箭头与文字之间留一点空隙，不让 ⇅ 贴着末字 */
+.dr-table thead th .sort-link { gap: 4px; }
+
+/* 1.1 日期与时间分两层
+   原版把「2026-11-02 18:25:14」塞在一格里：长度 19 字符、秒对业务无用，
+   一列吃掉 15% 宽度却仍然要在行内横向读完。拆成「日期（等宽）/ 时间（小一号灰）」，
+   视线先拿日期、需要时再看时间。 */
+.dr-when {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+    line-height: 1.35;
+}
+
+.dr-when__date {
+    font-family: var(--font-mono);
+    font-size: var(--fs-sm);
+    color: var(--c-text);
+}
+
+.dr-when__time {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--c-text-tertiary);
+}
+
+/* 1.2 截至日期 + 剩余天数
+   这是整个列表唯一真正的"业务时钟"：原版只显示一个静态日期，
+   今天（11-02）打开时那 6 条 10 月就到期的记录和 11-07 到期的看起来一模一样。
+   剩余天数按既有语义上色 —— 逾期用 danger（已发生的事实），
+   今天/三天内用 accent（全站唯一表示"到期/待处理"的强调色）。 */
+.dr-due {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    line-height: 1.35;
+}
+
+.dr-due__date {
+    font-family: var(--font-mono);
+    font-size: var(--fs-sm);
+    color: var(--c-text);
+}
+
+.dr-due__note {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: var(--fs-xs);
+    color: var(--c-text-tertiary);
+    white-space: nowrap;
+}
+
+.dr-due__note::before {
+    content: "";
+    flex: 0 0 auto;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.dr-due--overdue .dr-due__note { color: var(--c-danger); }
+.dr-due--today .dr-due__note { color: var(--c-accent); }
+.dr-due--soon .dr-due__note { color: var(--c-accent); }
+.dr-due--later .dr-due__note { color: var(--c-text-tertiary); }
+
+/* 没有截止日的记录：日期位置留一个同等重量的破折号，不做成空白 */
+.dr-due--none .dr-due__date { color: var(--c-text-tertiary); }
+
+/* 1.3 工作内容 + 沉淀标记
+   原版把「已沉淀」徽章作为块级元素跟在两行文本后面，于是一条有徽章的行比
+   没有的高 20px，整页行高在 41/47px 之间来回跳。
+   改成与文本同排的尾部标记（flex + 文本自身两行截断），行高恒等于两行。 */
+.dr-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    min-width: 0;
+}
+
+.dr-content__text {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-width: 0;
+    /* 基线里 .table td 是 nowrap（给短字段用的），长文本列必须显式复位，
+       否则两行截断退化成一行省略 */
+    white-space: normal;
+    line-height: 1.55;
+    word-break: break-word;
+}
+
+.dr-content__flag {
+    flex: 0 0 auto;
+    margin-top: 2px;
+    padding: 0 5px;
+    border-radius: var(--r-xs);
+    background: var(--c-primary-subtle);
+    color: var(--c-primary);
+    font-size: 11px;
+    line-height: 17px;
+    white-space: nowrap;
+}
+
+/* 1.4 状态徽章：统一最小宽度
+   三个状态字数不同（未完成 3 字、进行中 3 字、完成 2 字），原版徽章宽度随文字
+   变化，一列点下来左边缘齐、右边缘参差。定宽 + 居中 + 前置圆点后成一条"信号灯"。 */
+.dr-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    /* 状态列内容区宽 60px（列 9% 减左右 padding）：
+       三个汉字 36px + 圆点 5px + 间距 4px + 内边距 12px = 57px，留 3px 余量。
+       定宽的用意是一列徽章左右边缘齐，但不能定到把文字挤成省略号。 */
+    min-width: 58px;
+    padding: 1px 6px;
+    border-radius: var(--r-xs);
+    font-size: var(--fs-xs);
+    line-height: 18px;
+    white-space: nowrap;
+}
+
+.dr-status::before {
+    content: "";
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.dr-status--done { background: var(--c-success-bg); color: var(--c-success); }
+.dr-status--doing { background: var(--c-warning-bg); color: var(--c-warning); }
+.dr-status--todo { background: var(--c-danger-bg); color: var(--c-danger); }
+
+/* 1.5 进度：条 + 数字
+   数字改成等宽定宽右对齐，扫列时百分号能对齐成一条竖线；
+   0% 的轨道用更浅的底色，避免"空条 + 蓝点"看起来像加载失败。 */
+.dr-table .progress-cell {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    min-width: 0;
+}
+
+/* 条可以伸缩（列窄时先压条、不压数字），数字定宽 34px 保证百分号对齐成一列 */
+.dr-table .mini-progress {
+    flex: 1 1 48px;
+    min-width: 40px;
+    max-width: 96px;
+    height: 5px;
+    background: var(--c-border);
+    box-shadow: none;
+}
+
+/* 填充：span 默认是 inline，必须显式 block，否则行内宽度被忽略（条永远是空的）。
+   宽度由页面已有的 daily_record_list.js 按 data-pct 写入内联 style。 */
+.dr-table .mini-progress-fill {
+    display: block;
+    height: 100%;
+    width: 0;
+    border-radius: inherit;
+    background: var(--c-primary);
+    transition: width var(--dur-base) var(--ease-out);
+}
+
+.dr-table .mini-progress.done .mini-progress-fill { background: var(--c-success); }
+
+.dr-table .mini-progress-text {
+    flex: 0 0 34px;
+    min-width: 34px;
+    text-align: right;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--c-text-secondary);
+}
+
+/* ==========================================================================
+   2. 详情页
+   --------------------------------------------------------------------------
+   原版是一张「标签：值」的流水账：每行 180px 标签 + 一个短值，
+   卡片右侧三分之一完全空着，而真正要去读的工作内容挤在第三行的 13px 正文里。
+   改为：记录正文当标题 → 一行元信息 → 进度条 → 两列事实表。
+   容器仍是 .detail-card，字号、圆角、阴影不动。
+   ========================================================================== */
+.dr-detail .detail-title {
+    /* 正文较长时会折成两三行，行高按中文可读性放到 1.5，字号回到 --fs-xl */
+    font-size: var(--fs-xl);
+    line-height: 1.5;
+    font-weight: 600;
+    letter-spacing: var(--ls-tight);
+    max-width: 34em;
+    margin-bottom: var(--sp-3);
+}
+
+.dr-detail .detail-title::after {
+    /* 主色短横在这里是"标题下划线"，不参与正文折行 */
+    margin-top: var(--sp-3);
+}
+
+.dr-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 16px;
+    margin-bottom: var(--sp-5);
+    font-size: var(--fs-xs);
+    color: var(--c-text-tertiary);
+}
+
+.dr-meta__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.dr-meta__item + .dr-meta__item::before {
+    content: "";
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: var(--c-border-strong);
+}
+
+.dr-meta__num {
+    font-family: var(--font-mono);
+    color: var(--c-text-secondary);
+}
+
+/* 2.1 进度条：降级为「一行元数据」
+   这一页要读的是工作内容，进度只是它的一个属性。原版给进度一块大号
+   34px 数字 + 独立浅底面板，视觉重量直接压过正文。改为：去掉底色和圆角，
+   上下各一条细线分隔，数字回到 22px、轨道压到 5px —— 放在正文与信息表
+   之间读起来是一行状态，而不是第二主角。 */
+.dr-progress-panel {
+    display: grid;
+    grid-template-columns: 76px minmax(0, 1fr);
+    gap: var(--sp-4);
+    align-items: center;
+    padding: var(--sp-3) 0;
+    margin-bottom: var(--sp-5);
+    background: none;
+    border: 0;
+    border-top: 1px solid var(--c-divider);
+    border-bottom: 1px solid var(--c-divider);
+    border-radius: 0;
+}
+
+.dr-progress-panel__figure {
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xl);
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--c-primary);
+}
+
+.dr-progress-panel__figure span {
+    font-size: var(--fs-xs);
+    color: var(--c-text-tertiary);
+}
+
+.dr-progress-panel.is-done .dr-progress-panel__figure { color: var(--c-success); }
+.dr-progress-panel.is-todo .dr-progress-panel__figure { color: var(--c-danger); }
+
+.dr-progress-panel__track {
+    height: 5px;
+    border-radius: var(--r-full);
+    background: var(--c-border);
+    overflow: hidden;
+}
+
+.dr-progress-panel__fill {
+    height: 100%;
+    border-radius: inherit;
+    background: var(--c-primary);
+}
+
+.dr-progress-panel.is-done .dr-progress-panel__fill { background: var(--c-success); }
+.dr-progress-panel.is-todo .dr-progress-panel__fill { background: var(--c-danger); }
+
+.dr-progress-panel__legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 4px 12px;
+    margin-top: var(--sp-2);
+    font-size: var(--fs-xs);
+    color: var(--c-text-secondary);
+}
+
+.dr-progress-panel__legend b {
+    font-weight: 600;
+    color: var(--c-text);
+}
+
+/* 2.2 正文：这一页的视觉重心
+   工作内容上限 2000 字，是唯一需要"长阅读"的段落。原版 15px 正文挤在
+   34px 进度数字下面，读起来像附注。改为：18px / 1.9 行高 / 62ch 限宽，
+   独立浅底 + 主色左边线，让它成为打开页面第一眼落点；进度条降级成一行。
+   不抬高到标题字号 —— 长记录会把卡片撑爆，字重与留白比字号更稳。 */
+.dr-body__label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    margin: 0 0 var(--sp-3);
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    color: var(--c-text);
+    letter-spacing: var(--ls-wide);
+}
+
+.dr-body__label::before {
+    content: "";
+    width: 3px;
+    height: 14px;
+    border-radius: 2px;
+    background: var(--c-primary);
+}
+
+.dr-body {
+    max-width: 62ch;
+    margin-bottom: var(--sp-6);
+    padding: var(--sp-4) var(--sp-5);
+    background: var(--c-surface-sunken);
+    border-left: 3px solid var(--c-primary);
+    border-radius: 0 var(--r-sm) var(--r-sm) 0;
+    color: var(--c-text);
+    font-size: var(--fs-lg);
+    line-height: 1.9;
+    word-break: break-word;
+}
+
+/* 2.3 关键信息表
+   复用 app.css 里 .row-detail__grid 的「1px 描边连成整格」写法：
+   左列浅底标签、右列白底值，两列并排填满卡片宽度，右侧不再留空。 */
+.dr-facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1px;
+    margin: 0;
+    background: var(--c-border);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-md);
+    overflow: hidden;
+}
+
+.dr-facts__item {
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+    gap: var(--sp-3);
+    padding: 10px 14px;
+    background: var(--c-surface);
+}
+
+.dr-facts__label {
+    margin: 0;
+    color: var(--c-text-secondary);
+    font-size: var(--fs-xs);
+    line-height: 1.6;
+    white-space: nowrap;
+}
+
+.dr-facts__value {
+    margin: 0;
+    color: var(--c-text);
+    font-size: var(--fs-sm);
+    font-weight: 500;
+    line-height: 1.6;
+    word-break: break-word;
+}
+
+.dr-facts__value--mono { font-family: var(--font-mono); font-weight: 400; }
+.dr-facts__value--empty { color: var(--c-text-tertiary); font-weight: 400; }
+
+/* 弹窗里（640~720px）两列事实表会挤成三字一行，回落单列；正文收一档内边距与字号 */
+.form-modal .dr-facts { grid-template-columns: minmax(0, 1fr); }
+.form-modal .dr-detail .detail-title { font-size: var(--fs-lg); }
+.form-modal .dr-body { margin-bottom: var(--sp-5); padding: var(--sp-3) var(--sp-4); font-size: var(--fs-md); }
+.form-modal .dr-progress-panel { grid-template-columns: 64px minmax(0, 1fr); gap: var(--sp-3); }
+.form-modal .dr-progress-panel__figure { font-size: var(--fs-lg); }
+
+/* ==========================================================================
+   3. 表单（独立页 + 弹窗共用）
+   --------------------------------------------------------------------------
+   三处改动，都是"同样的字段，占更少的纵向空间、更好的分组辨识"：
+   ① 分组标题去掉 emoji，换成等宽序号 + 右侧说明。emoji 是彩色位图，
+      与全站线性图标、宋体标题、等宽数字三套语汇都不兼容，且各平台渲染不一致；
+   ② 宽屏把「日期/部门/截至」三列并排、状态与进度两列并排，少滚两屏；
+   ③ 保存条固定在表单底部（普通 sticky，不做毛玻璃），长表单不用回滚到底。
+   ========================================================================== */
+.dr-form-section {
+    margin-bottom: var(--sp-4);
+    padding: var(--sp-4) var(--sp-5);
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-md);
+    transition: border-color var(--dur-fast) var(--ease-out);
+}
+
+/* 悬停只变描边色：原来还叠了一层 box-shadow，滚过整张表单会连续重绘 */
+.dr-form-section:hover { border-color: var(--c-border-strong); }
+.dr-form-section:last-of-type { margin-bottom: var(--sp-4); }
+.dr-form-section .form-group:last-child { margin-bottom: 0; }
+
+.dr-section-head {
+    display: flex;
+    align-items: baseline;
+    gap: var(--sp-2);
+    margin-bottom: var(--sp-4);
+    padding-bottom: var(--sp-3);
+    border-bottom: 1px solid var(--c-border);
+}
+
+.dr-section-head__no {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--c-text-tertiary);
+    letter-spacing: var(--ls-wide);
+}
+
+.dr-section-head__title {
+    font-size: var(--fs-md);
+    font-weight: 600;
+    color: var(--c-text);
+    letter-spacing: var(--ls-base);
+}
+
+.dr-section-head__hint {
+    margin-left: auto;
+    font-size: var(--fs-xs);
+    font-weight: 400;
+    color: var(--c-text-tertiary);
+}
+
+/* 3.0 页头：标题 + 一行记录上下文（编号 / 创建时间 / 可见范围） */
+.dr-page-form.form-container {
+    max-width: 1000px;
+    padding: var(--sp-6);
+}
+
+.dr-page-head { margin-bottom: var(--sp-5); }
+
+.dr-page-head .form-title { margin-bottom: var(--sp-2); }
+
+.dr-page-head__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    margin: 0;
+    font-size: var(--fs-xs);
+    color: var(--c-text-tertiary);
+}
+
+.dr-page-head__meta .mono {
+    font-family: var(--font-mono);
+    color: var(--c-text-secondary);
+}
+
+/* 3.1 字段栅格 */
+.dr-field-grid {
+    display: grid;
+    gap: var(--sp-4);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.dr-field-grid--2 {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    align-items: start;
+}
+
+.dr-field-grid > .form-group { margin-bottom: 0; min-width: 0; }
+
+@media (max-width: 900px) {
+    .dr-field-grid,
+    .dr-field-grid--2 { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* 弹窗只有 640px 宽，三列会把「提出部门/提出人」压成一行四个字 */
+.form-modal .dr-field-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* 弹窗两列时「日期及时间」独占一行：它只有一行文字，和输入框并排会空出半个格子 */
+.form-modal .dr-field-grid > .form-group:first-child { grid-column: 1 / -1; }
+.form-modal .dr-field-grid--2 { grid-template-columns: minmax(0, 1fr); }
+.form-modal .dr-form-section { padding: var(--sp-3) var(--sp-4); border-radius: var(--r-sm); }
+
+/* 3.2 只读的「日期及时间」：让它看起来就是系统写的，不是灰掉的输入框 */
+.dr-readonly {
+    display: flex;
+    align-items: center;
+    min-height: 38px;
+    padding: 0 12px;
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-sm);
+    background: var(--c-surface-sunken);
+    color: var(--c-text-secondary);
+    font-family: var(--font-mono);
+    font-size: var(--fs-sm);
+}
+
+/* 3.3 状态药丸：三个等宽，选中态只改描边与底，不再叠 3px 外发光
+   （原版选中态 box-shadow 0 0 0 3px 会让相邻药丸看起来粘连） */
+.dr-status-group { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+
+.dr-status-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex: 1 1 0;
+    min-width: 88px;
+    min-height: 36px;
+    padding: 0 10px;
+    border: 1px solid var(--c-border-strong);
+    border-radius: var(--r-full);
+    background: var(--c-surface);
+    color: var(--c-text-secondary);
+    font-size: var(--fs-sm);
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color var(--dur-fast) var(--ease-out),
+                border-color var(--dur-fast) var(--ease-out),
+                color var(--dur-fast) var(--ease-out);
+}
+
+.dr-status-pill:hover { border-color: var(--c-primary); color: var(--c-primary); background: var(--c-primary-subtle); }
+.dr-status-pill:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 2px; }
+
+.dr-status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--c-text-disabled);
+    transition: background-color var(--dur-fast) var(--ease-out);
+}
+
+.dr-status-pill[data-status="未完成"].is-active {
+    border-color: var(--c-danger);
+    background: var(--c-danger-bg);
+    color: var(--c-danger);
+}
+.dr-status-pill[data-status="未完成"].is-active .dr-status-dot { background: var(--c-danger); }
+
+.dr-status-pill[data-status="进行中"].is-active {
+    border-color: var(--c-warning);
+    background: var(--c-warning-bg);
+    color: var(--c-warning);
+}
+.dr-status-pill[data-status="进行中"].is-active .dr-status-dot { background: var(--c-warning); }
+
+.dr-status-pill[data-status="完成"].is-active {
+    border-color: var(--c-success);
+    background: var(--c-success-bg);
+    color: var(--c-success);
+}
+.dr-status-pill[data-status="完成"].is-active .dr-status-dot { background: var(--c-success); }
+
+.dr-status-hidden { display: none; }
+
+/* 3.4 进度：滑杆 + 数字框
+   原版滑杆上方还有一条「轨道 + 圆点 + 0/50/100 刻度」的装饰条，
+   与滑杆本身表达同一件事，同一格出现两条进度轨道。这里只保留滑杆，
+   把百分比做成滑杆右端的定宽数字框，并在下方给出快捷档位。 */
+.dr-progress-row {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+}
+
+.dr-progress-slider {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    border-radius: var(--r-full);
+    background: var(--c-border);
+    outline: none;
+    cursor: pointer;
+}
+
+.dr-progress-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--c-surface);
+    border: 2px solid var(--c-primary);
+    box-shadow: var(--sh-1);
+    cursor: grab;
+}
+
+.dr-progress-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--c-surface);
+    border: 2px solid var(--c-primary);
+    box-shadow: var(--sh-1);
+    cursor: grab;
+}
+
+.dr-progress-slider:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 4px; }
+
+.dr-progress-number {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 0 0 88px;
+}
+
+.dr-progress-number .form-control {
+    padding-right: 26px;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-weight: 600;
+    color: var(--c-primary);
+}
+
+.dr-progress-number-suffix {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: var(--fs-xs);
+    color: var(--c-text-tertiary);
+    pointer-events: none;
+}
+
+/* 档位按钮：与滑杆同一行不够放，放到下一行，做成四个安静的小方块 */
+.dr-progress-steps {
+    display: flex;
+    gap: var(--sp-2);
+    margin-top: var(--sp-3);
+}
+
+.dr-progress-step {
+    flex: 1 1 0;
+    min-height: 28px;
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-sm);
+    background: var(--c-surface);
+    color: var(--c-text-secondary);
+    font-size: var(--fs-xs);
+    font-family: var(--font-mono);
+    cursor: pointer;
+    transition: border-color var(--dur-fast) var(--ease-out),
+                color var(--dur-fast) var(--ease-out),
+                background-color var(--dur-fast) var(--ease-out);
+}
+
+.dr-progress-step:hover {
+    border-color: var(--c-primary);
+    color: var(--c-primary);
+    background: var(--c-primary-subtle);
+}
+
+/* 3.5 知识库沉淀：勾选是一个动作，范围是它的后续参数
+   原版把「沉淀范围」的说明和两个单选直接铺在复选框下面，未勾选时也占三行高度
+   （靠 :has 隐藏）。这里改成勾选后才展开的一块浅底区域，语义上从属关系更明确。 */
+.dr-kb__toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    margin: 0;
+    font-size: var(--fs-sm);
+    color: var(--c-text);
+    cursor: pointer;
+}
+
+.dr-kb__toggle input { margin: 0; accent-color: var(--c-primary); }
+
+.dr-kb__scope {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--sp-2) var(--sp-4);
+    margin-top: var(--sp-3);
+    padding: 10px 12px;
+    background: var(--c-surface-sunken);
+    border-radius: var(--r-sm);
+}
+
+.dr-kb__scope[hidden] { display: none; }
+
+.dr-kb__scope-label {
+    font-size: var(--fs-xs);
+    color: var(--c-text-secondary);
+}
+
+.dr-kb__option {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-size: var(--fs-sm);
+    color: var(--c-text);
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.dr-kb__option input { margin: 0; accent-color: var(--c-primary); }
+
+.dr-kb__hint {
+    flex: 1 1 100%;
+    font-size: var(--fs-xs);
+    color: var(--c-text-tertiary);
+}
+
+/* 3.6 字符计数落在文本域右下角内侧，不再额外占一行高度 */
+.dr-textarea-wrap { position: relative; }
+.dr-textarea { resize: vertical; min-height: 120px; padding-bottom: 26px; }
+
+.dr-textarea-hint {
+    position: absolute;
+    right: 10px;
+    bottom: 6px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--c-text-tertiary);
+    pointer-events: none;
+}
+
+/* 3.7 保存条：贴住表单底部，长表单滚到哪都能提交 */
+.dr-form-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: var(--z-sticky);
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    margin-top: var(--sp-4);
+    padding: var(--sp-3) var(--sp-5);
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-md);
+    box-shadow: var(--sh-card);
+}
+
+.dr-form-actions__hint {
+    margin-right: auto;
+    font-size: var(--fs-xs);
+    color: var(--c-text-tertiary);
+}
+
+/* ==========================================================================
+   4. 窄屏
+   --------------------------------------------------------------------------
+   ≤640px 时表格由 components.css 的 .table--cards 转成卡片：
+   每个 td 变成「标签 + 值」的一行，日期/截止/进度三处的堆叠结构要收回单行。 */
+@media (max-width: 640px) {
+    /* 卡片模式：每格是「标签 + 值」的一行，值允许折行，不让长日期把卡片顶出屏幕 */
+    .dr-when,
+    .dr-due {
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: baseline;
+        justify-content: flex-end;
+        gap: 2px 8px;
+        text-align: right;
+    }
+
+    .dr-due__note { white-space: normal; }
+
+    /* 正文段落不跟随卡片的值列右对齐：中文长句右对齐读起来会散 */
+    .dr-content { justify-content: flex-start; text-align: left; }
+    .dr-content__text { text-align: left; }
+
+    .dr-status { min-width: 0; }
+
+    /* 卡片里进度条只有 40px，100% 和 10% 看起来差不多；
+       让单元格撑满整行剩余宽度、条放到 140px，比例才读得出来。 */
+    .dr-table .progress-cell { flex: 1 1 auto; }
+    .dr-table .mini-progress { flex: 1 1 auto; max-width: 140px; }
+
+    .dr-progress-panel {
+        grid-template-columns: minmax(0, 1fr);
+        gap: var(--sp-3);
+    }
+
+    .dr-progress-panel__figure { font-size: var(--fs-2xl); }
+
+    .dr-facts { grid-template-columns: minmax(0, 1fr); }
+
+    .dr-facts__item { grid-template-columns: 84px minmax(0, 1fr); }
+
+    .dr-form-actions {
+        flex-wrap: wrap;
+        gap: var(--sp-2);
+    }
+
+    .dr-form-actions__hint { flex: 1 1 100%; margin-right: 0; }
+
+    .dr-form-actions .btn { flex: 1 1 auto; }
+}

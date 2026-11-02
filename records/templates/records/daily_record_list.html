@@ -1,6 +1,7 @@
 {% extends 'records/base.html' %}
 {% load static %}
 {% load accounts_tags %}
+{% load record_tags %}
 
 {% block page_title %}每日记录 - 每日工作记录管理网站{% endblock %}
 
@@ -70,7 +71,7 @@
     </div>
     <div class="table-container">
         <div class="table-responsive">
-            <div class="hidden-cols-hint">窄屏已隐藏 1 个次要列；需要逐列比对时请横屏或改用桌面端。</div><table class="table--cards table table-sticky table--fixed">
+            <div class="hidden-cols-hint">窄屏已隐藏 1 个次要列；需要逐列比对时请横屏或改用桌面端。</div><table class="dr-table table--cards table table-sticky table--fixed">
                 <thead>
                     <tr>
                         <th scope="col" class="col-optional">序号</th>
@@ -87,20 +88,41 @@
                     {% for record in records %}
                     <tr data-href="{% url 'daily_record_detail' record.id %}">
                         <td data-label="序号" class="col-optional">{{ forloop.counter }}</td>
-                        <td data-label="日期及时间" class="cell-ellipsis" title="{{ record.record_date|date:'Y-m-d H:i:s' }}">{{ record.record_date|date:'Y-m-d H:i:s' }}</td>
-                        <td data-label="提出部门/提出人" class="cell-ellipsis">{{ record.department }}</td>
-                        <td data-label="工作内容" class="cell-clamp" title="{{ record.work_content|default:'' }}">
-                            <span>{{ record.work_content|default:'' }}</span>
-                            {% if record.kb_enabled %}<span class="status-badge success kb-badge-mini" title="已沉淀到知识库，可在知识库「工作沉淀」分类查看">已沉淀</span>{% endif %}
+                        {# 日期与时间分两层：日期先被扫到，时间只在需要核对时看 #}
+                        <td data-label="日期及时间" title="{{ record.record_date|date:'Y-m-d H:i:s' }}">
+                            <span class="dr-when">
+                                <span class="dr-when__date">{{ record.record_date|date:'Y-m-d' }}</span>
+                                <span class="dr-when__time">{{ record.record_date|date:'H:i' }}</span>
+                            </span>
                         </td>
-                        <td data-label="截至日期" class="cell-ellipsis">{% if record.due_date %}{{ record.due_date|date:'Y-m-d' }}{% else %}—{% endif %}</td>
+                        <td data-label="提出部门/提出人" class="cell-ellipsis" title="{{ record.department }}">{{ record.department }}</td>
+                        {# 沉淀标记与正文同排：行高恒为两行，不再因徽章换行把整行顶高 #}
+                        <td data-label="工作内容">
+                            <span class="dr-content">
+                                <span class="dr-content__text" title="{{ record.work_content|default:'' }}">{{ record.work_content|default:'' }}</span>
+                                {% if record.kb_enabled %}<span class="dr-content__flag" title="已沉淀到知识库，可在知识库「工作沉淀」分类查看">已沉淀</span>{% endif %}
+                            </span>
+                        </td>
+                        {# 截至日期带剩余天数：逾期转红、三天内转橙，其余保持次级色 #}
+                        <td data-label="截至日期">
+                            {% if record.due_date %}
+                            {% with d=record.due_date|days_until %}
+                            <span class="dr-due{% if d < 0 %} dr-due--overdue{% elif d == 0 %} dr-due--today{% elif d <= 3 %} dr-due--soon{% else %} dr-due--later{% endif %}">
+                                <span class="dr-due__date">{{ record.due_date|date:'Y-m-d' }}</span>
+                                <span class="dr-due__note">{% if d < 0 %}已逾期 {{ d|absval }} 天{% elif d == 0 %}今天到期{% elif d == 1 %}明天到期{% else %}剩余 {{ d }} 天{% endif %}</span>
+                            </span>
+                            {% endwith %}
+                            {% else %}
+                            <span class="dr-due dr-due--none"><span class="dr-due__date">—</span></span>
+                            {% endif %}
+                        </td>
                         <td data-label="工作状态">
                             {% if record.status == '未完成' %}
-                            <span class="status-badge danger">{{ record.status }}</span>
+                            <span class="dr-status dr-status--todo">{{ record.status }}</span>
                             {% elif record.status == '进行中' %}
-                            <span class="status-badge warning">{{ record.status }}</span>
+                            <span class="dr-status dr-status--doing">{{ record.status }}</span>
                             {% else %}
-                            <span class="status-badge success">{{ record.status }}</span>
+                            <span class="dr-status dr-status--done">{{ record.status }}</span>
                             {% endif %}
                         </td>
                         <td data-label="工作进度">
@@ -110,7 +132,7 @@
                             </div>
                         </td>
                         <td data-label="操作">
-                            <div style="display: flex; gap: 0.25rem; align-items: center; justify-content: center; flex-wrap: nowrap;">
+                            <div style="display: flex; gap: 2px; align-items: center; justify-content: center; flex-wrap: nowrap;">
                                 <a href="{% url 'daily_record_detail' record.id %}" class="btn-transparent btn-sm" data-modal-detail data-modal-title="每日记录详情">详情</a>
                                 {% can "daily_record" "update" %}
                                 <a href="{% url 'daily_record_edit' record.id %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑每日记录">编辑</a>
@@ -133,49 +155,14 @@
 {% endblock %}
 
 {% block extra_css %}
+<link href="{% static 'css/daily-record.css' %}?v=20261102b" rel="stylesheet">
 <style>
-
     /* 「未完成」快捷筛选：与筛选按钮同款，激活时高亮 */
     .quick-filter-btn.is-active {
         background: var(--c-primary-subtle) !important;
         color: var(--c-primary) !important;
         border-color: var(--c-primary) !important;
     }
-
-    /* 行高收敛：固定布局（.table--fixed）后列宽由表头决定，「工作内容」两行截断，
-       不再出现某一列被挤成 40px 宽、50 字折十几行、行高冲到 277px 的情况。
-       最小宽度 1000px：低于此值仍允许横向滚动，避免每列被压成几个字。 */
-    .table { min-width: 1000px; }
-    .table--fixed th:nth-child(1) { width: 4%; }
-    .table--fixed th:nth-child(2) { width: 15%; }
-    .table--fixed th:nth-child(3) { width: 13%; }
-    .table--fixed th:nth-child(4) { width: 29%; }
-    .table--fixed th:nth-child(5) { width: 9%; }
-    .table--fixed th:nth-child(6) { width: 8%; }
-    .table--fixed th:nth-child(7) { width: 11%; }
-    .table--fixed th:nth-child(8) { width: 11%; }
-
-    /* 工作进度迷你进度条 */
-    .progress-cell { display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 0; }
-    .mini-progress { flex: 1; max-width: 90px; height: 6px; background: var(--c-border); border-radius: 3px; overflow: hidden; }
-    .mini-progress-fill { display: block; height: 100%; width: 0; background: var(--c-primary); border-radius: 3px; transition: width 0.4s ease; }
-    .mini-progress.done .mini-progress-fill { background: var(--c-success); }
-    .mini-progress-text { font-size: 12px; color: var(--c-text-secondary); font-variant-numeric: tabular-nums; min-width: 36px; text-align: right; }
-
-    /* 状态标签 */
-    .status-tag {
-        display: inline-block;
-        padding: 2px 8px;
-        border-radius: 4px;
-        font-size: 12px;
-        font-weight: 400;
-    }
-    .status-unfinished { background: var(--c-danger-bg); color: var(--c-danger); }
-    .status-progress { background: var(--c-warning-bg); color: var(--c-warning); }
-    .status-done { background: var(--c-success-bg); color: var(--c-success); }
-
-    /* 沉淀徽章（工作内容列内，弱化尺寸） */
-    .kb-badge-mini { font-size: 0.7rem; padding: 1px 6px; margin-left: 0.35rem; vertical-align: 1px; }
 </style>
 {% endblock %}
 

@@ -1,0 +1,138 @@
+{% comment %}
+每日记录表单的字段区：独立页与列表页弹窗共用（原先是两份各约 150 行的重复结构，
+两边的分组序号、KB 说明措辞已经出现分叉）。
+调用方负责 <form> 标签、csrf 与底部操作区，本片段只输出四个分组。
+{% endcomment %}
+{# ====== 01 基础信息 ====== #}
+<div class="dr-form-section">
+    <div class="dr-section-head">
+        <span class="dr-section-head__no">01</span>
+        <span class="dr-section-head__title">基础信息</span>
+        <span class="dr-section-head__hint">日期及时间由系统写入，不可修改</span>
+    </div>
+
+    <div class="dr-field-grid">
+        <div class="form-group">
+            <span class="form-label" id="recordDateLabel">日期及时间</span>
+            <div class="dr-readonly" id="record_date" role="group" aria-labelledby="recordDateLabel">{% if record %}{{ record.record_date|date:'Y-m-d H:i' }}{% else %}{{ now|date:'Y-m-d H:i' }}{% endif %}</div>
+        </div>
+
+        <div class="form-group">
+            <label for="department" class="form-label">提出部门/提出人 <span class="u-text-danger">*</span></label>
+            <input type="text" class="form-control" id="department" name="department" value="{% if record %}{{ record.department }}{% else %}{{ form_data.department }}{% endif %}" required maxlength="50" placeholder="请输入部门或提出人姓名">
+            {% if errors.department %}<div class="form-text u-text-danger">{{ errors.department }}</div>{% endif %}
+        </div>
+
+        <div class="form-group">
+            <label for="due_date" class="form-label">截至日期</label>
+            <input type="date" class="form-control" id="due_date" name="due_date" value="{% if record %}{% if record.due_date %}{{ record.due_date|date:'Y-m-d' }}{% endif %}{% else %}{{ form_data.due_date }}{% endif %}">
+            {% if errors.due_date %}<div class="form-text u-text-danger">{{ errors.due_date }}</div>{% endif %}
+        </div>
+    </div>
+</div>
+
+{# ====== 02 工作内容 ====== #}
+<div class="dr-form-section">
+    <div class="dr-section-head">
+        <span class="dr-section-head__no">02</span>
+        <span class="dr-section-head__title">工作内容</span>
+        <span class="dr-section-head__hint">写清对象与下一步动作，便于回溯</span>
+    </div>
+
+    <div class="form-group mb-0">
+        <label for="work_content" class="form-label">具体事项 <span class="u-text-danger">*</span></label>
+        <div class="dr-textarea-wrap">
+            <textarea class="form-control dr-textarea" id="work_content" name="work_content" rows="5" required maxlength="2000" placeholder="请描述今日完成或进行中的工作内容...">{% if record %}{{ record.work_content }}{% else %}{{ form_data.work_content }}{% endif %}</textarea>
+            <div class="dr-textarea-hint"><span id="charCount">0</span>/2000</div>
+        </div>
+        {% if errors.work_content %}<div class="form-text u-text-danger">{{ errors.work_content }}</div>{% endif %}
+    </div>
+</div>
+
+{# ====== 03 工作进展 ====== #}
+<div class="dr-form-section">
+    <div class="dr-section-head">
+        <span class="dr-section-head__no">03</span>
+        <span class="dr-section-head__title">工作进展</span>
+        <span class="dr-section-head__hint">选状态会自动补进度，也可直接拖滑杆</span>
+    </div>
+
+    <div class="dr-field-grid dr-field-grid--2">
+        <div class="form-group">
+            <label for="status" class="form-label">工作状态 <span class="u-text-danger">*</span></label>
+            <div class="dr-status-group">
+                <button type="button" class="dr-status-pill" data-status="未完成" id="pill-unfinished" aria-pressed="false">
+                    <span class="dr-status-dot"></span>
+                    <span>未完成</span>
+                </button>
+                <button type="button" class="dr-status-pill" data-status="进行中" id="pill-progress" aria-pressed="false">
+                    <span class="dr-status-dot"></span>
+                    <span>进行中</span>
+                </button>
+                <button type="button" class="dr-status-pill" data-status="完成" id="pill-done" aria-pressed="false">
+                    <span class="dr-status-dot"></span>
+                    <span>完成</span>
+                </button>
+            </div>
+            <select class="form-select dr-status-hidden" id="status" name="status" required tabindex="-1" aria-hidden="true">
+                <option value="完成" {% if record and record.status == '完成' %}selected{% elif not record and form_data.status == '完成' %}selected{% endif %}>完成</option>
+                <option value="进行中" {% if record and record.status == '进行中' %}selected{% elif not record and form_data.status == '进行中' %}selected{% endif %}>进行中</option>
+                <option value="未完成" {% if record and record.status == '未完成' %}selected{% elif not record and not form_data.status %}selected{% elif not record and form_data.status == '未完成' %}selected{% endif %}>未完成</option>
+            </select>
+            {% if errors.status %}<div class="form-text u-text-danger">{{ errors.status }}</div>{% endif %}
+        </div>
+
+        <div class="form-group">
+            <label for="progress" class="form-label">工作进度 <span class="u-text-danger">*</span></label>
+            <div class="dr-progress-row">
+                <input type="range" class="dr-progress-slider" id="progressSlider" min="0" max="100" step="1" aria-label="工作进度"
+                       value="{% if record %}{{ record.progress }}{% else %}{{ form_data.progress|default:'0' }}{% endif %}">
+                <div class="dr-progress-number">
+                    <input type="number" class="form-control" id="progress" name="progress" min="0" max="100" step="1"
+                           value="{% if record %}{{ record.progress }}{% else %}{{ form_data.progress|default:'0' }}{% endif %}" required>
+                    <span class="dr-progress-number-suffix">%</span>
+                </div>
+            </div>
+            <div class="dr-progress-steps">
+                <button type="button" class="dr-progress-step" data-step="0">0%</button>
+                <button type="button" class="dr-progress-step" data-step="25">25%</button>
+                <button type="button" class="dr-progress-step" data-step="50">50%</button>
+                <button type="button" class="dr-progress-step" data-step="75">75%</button>
+                <button type="button" class="dr-progress-step" data-step="100">100%</button>
+            </div>
+            {% if errors.progress %}<div class="form-text u-text-danger">{{ errors.progress }}</div>{% endif %}
+        </div>
+    </div>
+</div>
+
+{# ====== 04 知识库 ====== #}
+<div class="dr-form-section">
+    <div class="dr-section-head">
+        <span class="dr-section-head__no">04</span>
+        <span class="dr-section-head__title">知识库</span>
+        <span class="dr-section-head__hint">可选 · 沉淀后可在知识库检索</span>
+    </div>
+    <div class="dr-kb">
+        <label class="dr-kb__toggle" for="kb_enabled">
+            <input type="checkbox" class="form-check-input" id="kb_enabled" name="kb_enabled"
+                   {% if record and record.kb_enabled %}checked{% endif %}>
+            <span>沉淀到知识库</span>
+        </label>
+        <div class="dr-kb__scope" id="kb_sync_scope" hidden>
+            <span class="dr-kb__scope-label">可见范围</span>
+            <label class="dr-kb__option">
+                <input type="radio" name="kb_visibility" value="private"
+                       {% if not record or not record.kb_visibility or record.kb_visibility == 'private' %}checked{% endif %}>
+                <span>仅自己可见</span>
+            </label>
+            <label class="dr-kb__option">
+                <input type="radio" name="kb_visibility" value="public"
+                       {% if record and record.kb_visibility == 'public' %}checked{% endif %}>
+                <span>全员可见</span>
+            </label>
+            <span class="dr-kb__hint">仅影响知识库里的可见范围，每日记录本身始终只有本人可见</span>
+        </div>
+    </div>
+</div>
+
+{% if errors.general %}<div class="alert alert-danger">{{ errors.general }}</div>{% endif %}

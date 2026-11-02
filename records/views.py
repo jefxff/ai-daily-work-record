@@ -333,7 +333,12 @@ def daily_record_add(request):
                     'form_data': {'department': department, 'work_content': work_content, 'status': status, 'progress': progress_raw, 'due_date': due_date_raw},
                 }, request=request)
                 return JsonResponse({'ok': False, 'html': html}, status=422)
-            return render(request, 'records/daily_record_form.html', {'errors': errors})
+            # 独立页非 AJAX 回退：把用户输入与当前时间带回去，否则校验失败会清空整张表单
+            return render(request, 'records/daily_record_form.html', {
+                'now': timezone.now(),
+                'errors': errors,
+                'form_data': {'department': department, 'work_content': work_content, 'status': status, 'progress': progress_raw, 'due_date': due_date_raw},
+            })
 
         # 创建并保存记录（归属绑定当前用户，服务端强制，忽略前端提交的归属字段）
         record = DailyRecord.objects.create(
@@ -377,7 +382,8 @@ def daily_record_add(request):
             'form_data': {},
         }, request=request)
         return JsonResponse({'ok': True, 'html': html})
-    return render(request, 'records/daily_record_form.html')
+    # 独立新增页：日期及时间由模板显示系统当前时间，需显式传入
+    return render(request, 'records/daily_record_form.html', {'now': timezone.now()})
 
 daily_record_list = make_list_view(
     perm_module='daily_record', template_name='records/daily_record_list.html',

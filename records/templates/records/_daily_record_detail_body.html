@@ -1,0 +1,77 @@
+{% load record_tags %}
+{% comment %}
+每日记录详情的正文区：独立详情页与列表页弹窗共用一份（原先是两份各写一套字段流，
+标签措辞已经分叉：页版「提出部门/提出人：」、弹窗版「提出部门：」，改一处要改两遍）。
+信息顺序按「读一条记录」的动线：状态 → 正文 → 进度 → 关键信息表。
+{% endcomment %}
+<div class="dr-meta">
+    {% if record.status == '未完成' %}
+    <span class="dr-status dr-status--todo">{{ record.status }}</span>
+    {% elif record.status == '进行中' %}
+    <span class="dr-status dr-status--doing">{{ record.status }}</span>
+    {% else %}
+    <span class="dr-status dr-status--done">{{ record.status }}</span>
+    {% endif %}
+    <span class="dr-meta__item dr-meta__item--sep">{{ record.department }}</span>
+    <span class="dr-meta__item dr-meta__item--sep"><span class="dr-meta__num">{{ record.record_date|date:'Y-m-d H:i' }}</span></span>
+    <span class="dr-meta__item dr-meta__item--sep">编号 <span class="dr-meta__num">#{{ record.id }}</span></span>
+</div>
+
+<h2 class="dr-body__label">工作内容</h2>
+<div class="dr-body">{{ record.work_content|linebreaksbr }}</div>
+
+{% with d=record.due_date|days_until %}
+<div class="dr-progress-panel{% if record.progress >= 100 %} is-done{% elif record.progress == 0 %} is-todo{% endif %}">
+    <span class="dr-progress-panel__figure">{{ record.progress }}<span>%</span></span>
+    <div>
+        <div class="dr-progress-panel__track">
+            <div class="dr-progress-panel__fill" style="width: {{ record.progress }}%"></div>
+        </div>
+        <div class="dr-progress-panel__legend">
+            <span>工作进度</span>
+            {% if record.due_date %}
+                {% if record.progress >= 100 %}
+                <span class="dr-due dr-due--later"><span class="dr-due__note">已完成 · 截至 {{ record.due_date|date:'Y-m-d' }}</span></span>
+                {% elif d < 0 %}
+                <span class="dr-due dr-due--overdue"><span class="dr-due__note">截至 {{ record.due_date|date:'Y-m-d' }} · 已逾期 {{ d|absval }} 天</span></span>
+                {% elif d == 0 %}
+                <span class="dr-due dr-due--today"><span class="dr-due__note">截至 {{ record.due_date|date:'Y-m-d' }} · 今天到期</span></span>
+                {% elif d <= 3 %}
+                <span class="dr-due dr-due--soon"><span class="dr-due__note">截至 {{ record.due_date|date:'Y-m-d' }} · 剩余 {{ d }} 天</span></span>
+                {% else %}
+                <span class="dr-due dr-due--later"><span class="dr-due__note">截至 {{ record.due_date|date:'Y-m-d' }} · 剩余 {{ d }} 天</span></span>
+                {% endif %}
+            {% else %}
+            <span class="dr-due dr-due--none"><span class="dr-due__note">未设置截至日期</span></span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endwith %}
+
+<div class="dr-facts">
+    <div class="dr-facts__item">
+        <span class="dr-facts__label">提出部门/提出人</span>
+        <span class="dr-facts__value">{{ record.department }}</span>
+    </div>
+    <div class="dr-facts__item">
+        <span class="dr-facts__label">记录时间</span>
+        <span class="dr-facts__value dr-facts__value--mono">{{ record.record_date|date:'Y-m-d H:i:s' }}</span>
+    </div>
+    <div class="dr-facts__item">
+        <span class="dr-facts__label">截至日期</span>
+        {% if record.due_date %}
+        <span class="dr-facts__value dr-facts__value--mono">{{ record.due_date|date:'Y-m-d' }}</span>
+        {% else %}
+        <span class="dr-facts__value dr-facts__value--empty">—</span>
+        {% endif %}
+    </div>
+    <div class="dr-facts__item">
+        <span class="dr-facts__label">知识库沉淀</span>
+        {% if record.kb_enabled %}
+        <span class="dr-facts__value">{% if record.kb_visibility == 'public' %}已沉淀 · 全员可见{% else %}已沉淀 · 仅自己可见{% endif %}{% if record.kb_synced_at %}<span class="u-hint-tertiary"> · {{ record.kb_synced_at|date:'Y-m-d H:i' }}</span>{% endif %}</span>
+        {% else %}
+        <span class="dr-facts__value dr-facts__value--empty">未沉淀</span>
+        {% endif %}
+    </div>
+</div>

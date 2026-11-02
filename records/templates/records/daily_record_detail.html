@@ -15,38 +15,17 @@
 {% endblock %}
 
 {% block content %}
-    <!-- 详情卡片 -->
-    <div class="detail-card">
-        <h1 class="detail-title">每日记录详细信息</h1>
-
-        <div class="detail-row">
-            <div class="detail-label">日期及时间：</div>
-            <div class="detail-value">{{ record.record_date|date:'Y-m-d H:i:s' }}</div>
-        </div>
-
-        <div class="detail-row">
-            <div class="detail-label">提出部门/提出人：</div>
-            <div class="detail-value">{{ record.department }}</div>
-        </div>
-
-        <div class="detail-row">
-            <div class="detail-label">工作内容：</div>
-            <div class="detail-value">{{ record.work_content }}</div>
-        </div>
-
-        <div class="detail-row">
-            <div class="detail-label">截至日期：</div>
-            <div class="detail-value">{% if record.due_date %}{{ record.due_date|date:'Y-m-d' }}{% else %}—{% endif %}</div>
-        </div>
-
-        <div class="detail-row">
-            <div class="detail-label">工作状态：</div>
-            <div class="detail-value">{{ record.status }}</div>
-        </div>
-
-        <div class="detail-row">
-            <div class="detail-label">工作进度：</div>
-            <div class="detail-value">{{ record.progress }}%</div>
-        </div>
+    {% comment %}
+    字段区由 _daily_record_detail_body.html 提供，与列表页弹窗共用同一份结构：
+    改一次两边同步，缺失值（未填截至日期 / 未沉淀）的措辞也不会再分叉。
+    容器仍是全站统一的 .detail-card —— 圆角、阴影、内边距与原版一致。
+    {% endcomment %}
+    <div class="detail-card dr-detail">
+        <h1 class="detail-title">每日记录详情</h1>
+        {% include 'records/_daily_record_detail_body.html' %}
     </div>
+{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/daily-record.css' %}?v=20261102b" rel="stylesheet">
 {% endblock %}
