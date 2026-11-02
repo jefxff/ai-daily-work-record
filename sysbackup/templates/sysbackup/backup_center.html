@@ -125,12 +125,12 @@
                                 <button type="button" class="btn btn-sm btn-outline-danger btn-restore">恢复</button>
                                 {% endcan %}
                                 {% can "system" "backup" %}
-                                {# ⚠️ 不要加 download 属性（2026-11-02 事故）：站点用本地 CA 自签证书，
+                                {% comment %} ⚠️ 不要加 download 属性（2026-11-02 事故）：站点用本地 CA 自签证书，
                                    未装信任的浏览器会放行导航、却把 <a download> 这类「下载管理器」请求
                                    直接掐死（请求根本不发出去），下载气泡报「无法下载 - 网络问题」。
                                    去掉属性后点击变成普通导航，由响应的 Content-Disposition: attachment
                                    接管为下载，对证书信任状态免疫。副作用仅是 DevTools 里该请求显示
-                                   canceled（页面导航被下载接管的正常取消信号），不影响功能。 #}
+                                   canceled（页面导航被下载接管的正常取消信号），不影响功能。{% endcomment %}
                                 <a class="btn btn-sm btn-outline-secondary btn-download"
                                    href="{% url 'sysbackup:download' %}?path={{ b.path|urlencode }}">下载</a>
                                 {% endcan %}
