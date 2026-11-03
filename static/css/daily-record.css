@@ -23,15 +23,16 @@
 /* ==========================================================================
    1. 列表页表格
    --------------------------------------------------------------------------
-   列宽策略（固定布局）：短列给 px 定宽，唯一的长文本列「工作内容」不设宽度，
-   自动吃掉剩余空间 —— 表格宽度恒等于容器宽度，1142px 的 1440 视口和
-   1330px 的宽屏都恰好铺满，不再产生横向滚动（旧版九列合计 1170px，
-   比常用笔记本的可用宽度还宽，任何屏幕都在横向滚动）。
-   定宽列按表头一行放得下校验（fs-sm 13px + 9px 排序箭头 + 28px 内边距）：
-     日期及时间 5 字 106px → 110；提出部门/提出人 8 字 132px → 138。
+   列宽策略（固定布局 + 百分比预算，合计 100%，与装修/制度/核价页同一套）：
+   所有列随容器等比缩放，比例在任何宽度下恒定 —— 旧版 8 列 px 定宽、
+   「工作内容」吃剩余空间，1920 宽屏下内容列独占 854px（52%），
+   短文本行右侧一片空白、右侧四列挤成一撮，宽屏观感失衡。
+   下限按 min-width 1110px 校验（fs-sm 13px 表头 + 9px 排序箭头 + 24px 内边距）：
+     日期及时间 110px → 10%；提出部门/提出人 132px → 12.1%。
+   「工作内容」不设宽度，自动占剩余 32.7%。
    ========================================================================== */
 .dr-table {
-    min-width: 1050px;
+    min-width: 1110px;
     table-layout: fixed;
     font-variant-numeric: tabular-nums;
 }
@@ -57,18 +58,17 @@
 .dr-batch-bar__info b { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--c-primary-active); }
 .dr-batch-bar__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
 
-/* 定宽列（th:nth-child，与全站各列表页同一套预算方式）：
-   44+44+110+138+118+86+118+110 = 768px，工作内容不设宽度、自动吃掉剩余空间。
+/* 列宽按百分比预算（合计 100%，工作内容列不设宽度占剩余 32.7%）：
    不用 colgroup：<col> 的宽度在某一列 display:none（col-optional / 移动端隐藏选择列）
    会被 Chrome 顺移套到下一可见列上，造成整行列宽错位一格。 */
-.dr-table th:nth-child(1) { width: 44px; }  /* 选择 */
-.dr-table th:nth-child(2) { width: 44px; }  /* 序号 */
-.dr-table th:nth-child(3) { width: 110px; } /* 日期及时间 */
-.dr-table th:nth-child(4) { width: 138px; } /* 提出部门/提出人 */
-.dr-table th:nth-child(6) { width: 118px; } /* 截至日期 */
-.dr-table th:nth-child(7) { width: 86px; }  /* 工作状态 */
-.dr-table th:nth-child(8) { width: 118px; } /* 工作进度 */
-.dr-table th:nth-child(9) { width: 110px; } /* 操作 */
+.dr-table th:nth-child(1) { width: 3.9%; }  /* 选择 */
+.dr-table th:nth-child(2) { width: 3.9%; }  /* 序号 */
+.dr-table th:nth-child(3) { width: 10%; }   /* 日期及时间 */
+.dr-table th:nth-child(4) { width: 12.1%; } /* 提出部门/提出人 */
+.dr-table th:nth-child(6) { width: 10%; }   /* 截至日期 */
+.dr-table th:nth-child(7) { width: 8.8%; }  /* 工作状态（状态胶囊需 97px，min-width 1110 下 = 97.7px） */
+.dr-table th:nth-child(8) { width: 9.5%; }  /* 工作进度 */
+.dr-table th:nth-child(9) { width: 9.9%; }  /* 操作（三个图标按钮需 110px） */
 
 /* 列头：排序箭头与文字之间留一点空隙，不让 ⇅ 贴着末字 */
 .dr-table thead th .sort-link { gap: 4px; }
@@ -226,7 +226,7 @@
 .dr-table .mini-progress {
     flex: 1 1 48px;
     min-width: 40px;
-    max-width: 96px;
+    max-width: 120px;
     height: 5px;
     background: var(--c-border);
     box-shadow: none;

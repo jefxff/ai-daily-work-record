@@ -106,22 +106,23 @@
 
 {% block extra_css %}
 <style>
-    /* 列宽策略：th:nth-child 固定像素宽度（合计 1508px），由信息价值决定而不是自动分配。
-       序号 48px 足够放下三位数；核价内容拿最宽；三列报价等宽 120px 才可能纵向比价。
+    /* 列宽策略：th:nth-child 百分比预算（其余列合计 80.9%，「核价内容」占剩余 19.1%），
+       所有列随容器等比缩放 —— 旧版 12 列 px 定宽（合计 1508px），宽屏富余被
+       按比例摊平后「核价内容」只有 215px、金额块却占 645px，主次倒挂。
+       下限按 min-width 1508px 校验：内控审核供应商表头 7 字 132px → 9.2%。
        不用 colgroup：<col> 宽度在列被 .col-optional 隐藏（≤1280）后会错位套到相邻列。 */
     .table { min-width: 1508px; table-layout: fixed; }
-    .table th:nth-child(1)  { width: 48px; }   /* 序号 */
-    .table th:nth-child(2)  { width: 180px; }  /* 项目分类 */
-    .table th:nth-child(3)  { width: 130px; }  /* 项目提出部门 */
-    .table th:nth-child(4)  { width: 90px; }   /* 提出人 */
-    .table th:nth-child(5)  { width: 200px; }  /* 核价内容 */
-    .table th:nth-child(6)  { width: 120px; }  /* 供应商1报价 */
-    .table th:nth-child(7)  { width: 120px; }  /* 供应商2报价 */
-    .table th:nth-child(8)  { width: 120px; }  /* 供应商3报价 */
-    .table th:nth-child(9)  { width: 140px; }  /* 内控审核供应商 */
-    .table th:nth-child(10) { width: 120px; }  /* 内控审核价 */
-    .table th:nth-child(11) { width: 120px; }  /* 核减金额 */
-    .table th:nth-child(12) { width: 120px; }  /* 操作 */
+    .table th:nth-child(1)  { width: 3.4%; }   /* 序号 */
+    .table th:nth-child(2)  { width: 10.8%; }  /* 项目分类 */
+    .table th:nth-child(3)  { width: 8.2%; }   /* 项目提出部门 */
+    .table th:nth-child(4)  { width: 6%; }     /* 提出人 */
+    .table th:nth-child(6)  { width: 7.9%; }   /* 供应商1报价（表头 6 字 + 排序箭头需 117px） */
+    .table th:nth-child(7)  { width: 7.9%; }   /* 供应商2报价 */
+    .table th:nth-child(8)  { width: 7.9%; }   /* 供应商3报价 */
+    .table th:nth-child(9)  { width: 8.8%; }   /* 内控审核供应商（表头 7 字需 132px） */
+    .table th:nth-child(10) { width: 7.5%; }   /* 内控审核价 */
+    .table th:nth-child(11) { width: 7.5%; }   /* 核减金额 */
+    .table th:nth-child(12) { width: 7.5%; }   /* 操作（三个图标按钮 104px） */
     .table td { font-variant-numeric: tabular-nums; }
     /* 金额列：右对齐 + 等宽数字，核价的核心动作是纵向比较三家报价 */
     .table th:nth-child(6), .table th:nth-child(7), .table th:nth-child(8),

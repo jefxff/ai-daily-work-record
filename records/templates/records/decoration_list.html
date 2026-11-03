@@ -106,16 +106,16 @@
     /* 列预算（合计 100%）：固定布局。
        ②版调整：项目地址 18%→14%（两行截断足够）、操作 11%→10%（三个文字钮），
        省下的宽度补给三个金额列（10%→11%），窄屏下「¥3,399,802.28」不再截尾。 */
-    .table { min-width: 1080px; }
-    .table--fixed th:nth-child(1) { width: 5%; }   /* 序号 */
-    .table--fixed th:nth-child(2) { width: 15%; }  /* 项目名称 */
-    .table--fixed th:nth-child(3) { width: 11%; }  /* 施工方 */
-    .table--fixed th:nth-child(4) { width: 13%; }  /* 项目地址 */
-    .table--fixed th:nth-child(5) { width: 9%; }   /* 开工日期 */
-    .table--fixed th:nth-child(6) { width: 12%; }  /* 原价 */
-    .table--fixed th:nth-child(7) { width: 12%; }  /* 核后价 */
-    .table--fixed th:nth-child(8) { width: 12%; }  /* 核减金额 */
-    .table--fixed th:nth-child(9) { width: 11%; }  /* 操作 */
+    .table { min-width: 1200px; }
+    .table--fixed th:nth-child(1) { width: 4.5%; }  /* 序号（min-width 1200 下 = 54px，正好放下表头） */
+    .table--fixed th:nth-child(2) { width: 17.8%; } /* 项目名称 */
+    .table--fixed th:nth-child(3) { width: 12%; }   /* 施工方 */
+    .table--fixed th:nth-child(4) { width: 14%; }   /* 项目地址 */
+    .table--fixed th:nth-child(5) { width: 9%; }    /* 开工日期（2026-10-08 不换行需 106px） */
+    .table--fixed th:nth-child(6) { width: 11%; }   /* 原价（¥2,393,802.20 需 130px） */
+    .table--fixed th:nth-child(7) { width: 11%; }   /* 核后价 */
+    .table--fixed th:nth-child(8) { width: 11%; }   /* 核减金额 */
+    .table--fixed th:nth-child(9) { width: 10.2%; } /* 操作（三个图标按钮 121px，min-width 1200 下 = 122px） */
     /* 金额列右对齐（表头与数据同侧），等宽数字按位对齐，符合财务数字阅读惯例 */
     .table--fixed thead th.col-num,
     .table--fixed tbody td[data-label="原价"],

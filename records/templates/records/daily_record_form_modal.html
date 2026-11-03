@@ -1,6 +1,6 @@
 {% load static %}
 {# 弹窗自带的样式引用：无论从哪一页注入都能拿到同一份（文件已缓存，重复引用不产生新请求） #}
-<link href="{% static 'css/daily-record.css' %}?v=20261103e" rel="stylesheet">
+<link href="{% static 'css/daily-record.css' %}?v=20261103h" rel="stylesheet">
 <form class="dr-form" data-validate="1" novalidate method="post" data-modal-form action="{% if record %}{% url 'daily_record_edit' record.id %}{% else %}{% url 'daily_record_add' %}{% endif %}">
     {% csrf_token %}
     {% include 'records/_daily_record_form_fields.html' %}
