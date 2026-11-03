@@ -1706,6 +1706,10 @@ tr[data-href]:has(td .act-more[open]) > td { background: transparent; }
   gap: 6px;
   height: 30px;
   padding: 0 14px;
+  border: 0;                /* <button> 需要重置 UA 默认样式，否则出现独立的灰底描边块 */
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
   border-radius: calc(var(--r-md) - 2px);
   font-size: var(--fs-sm);
   color: var(--c-text-secondary);

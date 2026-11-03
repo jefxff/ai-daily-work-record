@@ -1350,26 +1350,29 @@ a.home-action__stat:hover { background: var(--c-surface-sunken); color: var(--c-
 .home-panel__link { font-size: 0.8125rem; color: var(--c-primary); text-decoration: none; white-space: nowrap; }
 .home-panel__link:hover { color: var(--c-primary-active); text-decoration: underline; }
 
-/* 面板 1：我的待办 —— KPI 独立成行，动作行单独一行（规划书 home-2） */
+/* 面板 1：我的待办 —— KPI 卡片化：4 个等宽指标卡，数字+标签同行、口径换行
+   （用户反馈：纯文字 + 竖分隔线在大屏上稀疏无重心） */
 .home-todo { display: flex; flex-direction: column; align-items: stretch; gap: 0.875rem; }
-.home-kpis { display: flex; flex-wrap: wrap; align-items: stretch; gap: 0 1.25rem; }
-.home-kpi { display: flex; flex: 1 1 7rem; flex-direction: column; gap: 0.125rem; min-width: 6rem; padding: 0 0 0 1.25rem; border-left: 1px solid var(--c-border); color: var(--c-text-secondary); text-decoration: none; }
-.home-kpi:first-child { padding-left: 0; border-left: 0; }
-a.home-kpi:hover { color: var(--c-text); text-decoration: none; }
+.home-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.625rem; }
+.home-kpi { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 0.5rem; padding: 0.8125rem 1rem 0.6875rem; background: var(--c-surface-sunken); border: 1px solid var(--c-border); border-radius: var(--r-md); color: var(--c-text-secondary); text-decoration: none; }
+a.home-kpi:hover { border-color: var(--c-border-strong); color: var(--c-text); text-decoration: none; }
 a.home-kpi:hover .home-kpi__value { color: var(--c-primary-active); }
-.home-kpi__value { font-family: var(--font-mono); font-size: 1.75rem; font-weight: 600; line-height: 1.15; letter-spacing: -0.02em; color: var(--c-text); }
-.home-kpi--main .home-kpi__value { font-size: 2rem; }
+.home-kpi__value { font-family: var(--font-mono); font-size: 1.75rem; font-weight: 600; line-height: 1.1; letter-spacing: -0.02em; color: var(--c-text); }
 .home-kpi--danger .home-kpi__value { color: var(--c-danger); }
 .home-kpi--warning .home-kpi__value { color: var(--c-warning); }
-.home-kpi__label { font-size: 0.75rem; color: var(--c-text-tertiary); white-space: nowrap; }
+.home-kpi__label { font-size: 0.8125rem; font-weight: 500; color: var(--c-text-secondary); white-space: nowrap; }
 /* 口径副标题：说明这个数字包含什么，避免「54 与 31 是什么关系」无解 */
-.home-kpi__meta { font-size: 0.6875rem; line-height: 1.5; color: var(--c-text-tertiary); white-space: nowrap; }
+.home-kpi__meta { width: 100%; margin-top: 0.1875rem; font-size: 0.6875rem; line-height: 1.5; color: var(--c-text-tertiary); white-space: nowrap; }
 .home-kpi__meta.is-danger { color: var(--c-danger); }
 
 /* 面板 2：待办处理 —— seg-tabs 切换来源，首页内直接展开各来源未完成记录
    （用户反馈：合并 Top5 只能看一个静态视角，且不想每次都跳待办工作台） */
 .seg-tabs--home { margin-bottom: 0.875rem; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
 .seg-tabs--home::-webkit-scrollbar { display: none; }
+/* 计数徽章：容器底上白底描边；激活 tab 上反白主色 */
+.seg-tabs--home .seg-tabs__count { min-width: 1.25rem; padding: 0 6px; border: 1px solid var(--c-border); border-radius: 999px; background: var(--c-surface); text-align: center; font-size: 0.75rem; line-height: 1.375rem; }
+.seg-tabs--home .seg-tabs__item.is-active { background: var(--c-primary-subtle); border: 1px solid var(--c-primary); color: var(--c-primary); font-weight: 600; }
+.seg-tabs--home .seg-tabs__item.is-active .seg-tabs__count { background: var(--c-primary); border-color: var(--c-primary); color: var(--c-text-inverse); }
 .home-tpane__empty { padding: 1.25rem 0.25rem; text-align: center; font-size: 0.8125rem; color: var(--c-text-tertiary); }
 .home-btn { display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.4375rem 0.875rem; border: 1px solid var(--c-border); border-radius: var(--r-sm); background: var(--c-surface); color: var(--c-text); font-size: 0.8125rem; line-height: 1.25; text-decoration: none; white-space: nowrap; transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease; }
 .home-btn:hover { background: var(--c-surface-sunken); border-color: var(--c-border-strong); color: var(--c-text); text-decoration: none; }
@@ -1474,8 +1477,7 @@ a.home-kpi:hover .home-kpi__value { color: var(--c-primary-active); }
 @media (max-width: 640px) {
     .home-panel { padding: 0.75rem; }
     .home-head__meta { display: none; }
-    .home-kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.875rem 0.75rem; }
-    .home-kpi { flex: 0 0 auto; padding: 0; border-left: 0; }
+    .home-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
     .home-kpi__value { font-size: 1.5rem; }
     .home-kpi__meta { white-space: normal; }
     .home-head__actions { justify-content: flex-start; }
