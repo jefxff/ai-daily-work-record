@@ -7,5 +7,27 @@
         document.querySelectorAll('.home-progress__bar i[data-w]').forEach(function (bar) {
             bar.style.width = bar.dataset.w + '%';
         });
+
+        // 待办面板 tab 切换：纯前端显隐，各来源数据已随页面下发（无额外请求）
+        var tabs = Array.prototype.slice.call(document.querySelectorAll('.home-ttab'));
+        if (tabs.length) {
+            var panes = {};
+            document.querySelectorAll('.home-tpane').forEach(function (pane) {
+                panes[pane.id] = pane;
+            });
+            tabs.forEach(function (tab) {
+                tab.addEventListener('click', function () {
+                    tabs.forEach(function (t) {
+                        t.classList.toggle('is-active', t === tab);
+                        t.setAttribute('aria-selected', t === tab ? 'true' : 'false');
+                    });
+                    Object.keys(panes).forEach(function (id) {
+                        var active = id === 'tpane-' + tab.dataset.tab;
+                        panes[id].hidden = !active;
+                        panes[id].classList.toggle('is-active', active);
+                    });
+                });
+            });
+        }
     });
 })();

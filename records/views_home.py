@@ -90,8 +90,8 @@ def home(request):
         'weekly_delta_ready': False,
         'price_reduced_projects': 0,
         'decoration_month_new': 0,
-        'attention_items': [],
         'attention_total': 0,
+        'todo_tabs': [],
     }
     if not mods:
         return render(request, 'records/home.html', context)
@@ -282,12 +282,10 @@ def home(request):
         from .views_workspace import todo_counts
         context['todo_counts'] = todo_counts(request.user)
 
-    # 需要关注：三个来源合并成一条按到期日升序的列表（规划书 home-5）。
-    # 原先是三个 Tab 各 5 条，同一批事在两处用两套筛法；这里只留一个视角，
-    # 明细统一指向待办工作台，source 命名与 /workspace/ 的来源 chips 保持一致。
-    attention = []
-
-    for rec in context['incomplete_daily_records']:
+    # 首页待办面板：按来源分 tab，各取最紧急 5 条，在首页内直接展开查看，
+    # 不再要求跳转到待办工作台。字段口径与原「需要关注」合并列表一致，
+    # 区别只在组织方式（用户反馈：合并 Top5 每次只看到一个视角，切换不了）。
+    def _daily_item(rec):
         if rec.is_overdue:
             tag, kind, level = f'逾期 {abs(rec.days_left)} 天', 'danger', 'danger'
         elif rec.due_date is None:
@@ -296,10 +294,8 @@ def home(request):
             tag, kind, level = f'剩 {rec.days_left} 天', 'warning', 'warning'
         else:
             tag, kind, level = f'剩 {rec.days_left} 天', 'gray', ''
-        attention.append({
-            'sort': rec.due_date.toordinal() if rec.due_date else 10 ** 9,
+        return {
             'title': rec.work_content,
-            'source': '每日记录',
             'meta': rec.department or '—',
             'deadline': f'截止 {rec.due_date:%Y-%m-%d}' if rec.due_date else '未设截止日期',
             'tag': tag, 'tag_kind': kind, 'level': level,
@@ -310,16 +306,14 @@ def home(request):
             'modal_title': '编辑每日记录',
             'perm': 'daily_record.update',
             'fallback': reverse('daily_record_list'),
-        })
+        }
 
-    for subject in context['insurance_due_soon']:
+    def _insurance_item(subject):
         kind = 'danger' if subject.days_level == 'danger' else (
             'warning' if subject.days_level == 'warning' else 'gray'
         )
-        attention.append({
-            'sort': subject.latest.end.toordinal(),
+        return {
             'title': f'{subject.label} · {subject.kind_label}',
-            'source': '保险',
             'meta': subject.latest_insurer or '—',
             'deadline': f'截止 {subject.latest.end:%Y-%m-%d}',
             'tag': subject.days_text,
@@ -332,14 +326,12 @@ def home(request):
             'modal_title': '',
             'perm': None,
             'fallback': '',
-        })
+        }
 
-    for case in context['incomplete_litigations']:
+    def _litigation_item(case):
         kind = case.answer_level if case.answer_level in ('danger', 'warning') else 'gray'
-        attention.append({
-            'sort': case.answer_deadline.toordinal() if case.answer_deadline else 10 ** 9,
+        return {
             'title': f'{case.dispute_type} · {case.case_number} · 被告 {case.defendant}',
-            'source': '诉讼',
             'meta': f'涉案 ¥{case.amount:,.2f}' if case.amount else '—',
             'deadline': (
                 f'答辩截止 {case.answer_deadline:%Y-%m-%d}'
@@ -355,11 +347,69 @@ def home(request):
             'modal_title': '编辑诉讼',
             'perm': 'complaint.update',
             'fallback': reverse('complaint_list'),
+        }
+
+    todo_tabs = []
+    if 'daily_record' in mods:
+        todo_tabs.append({
+            'key': 'daily_record', 'name': '每日记录',
+            'count': context['incomplete_daily_records_count'],
+            'list_url': reverse('daily_record_list'),
+            'items': [_daily_item(rec) for rec in context['incomplete_daily_records']],
         })
 
-    # 到期日升序，无期限的排最后；同日均按来源稳定排序
-    attention.sort(key=lambda x: (x['sort'], x['source']))
-    context['attention_items'] = attention[:5]
+    if 'customer_complaint' in mods:
+        from .models import CustomerComplaint
+        open_qs = CustomerComplaint.objects.filter(
+            complaint_status__in=('未完成', '处理中')
+        ).order_by('complaint_date', '-id')
+        items = []
+        for c in open_qs[:5]:
+            open_days = (today - c.complaint_date).days
+            if open_days > 14:
+                tag, kind = f'已挂起 {open_days} 天', 'danger'
+            elif open_days > 7:
+                tag, kind = f'{open_days} 天', 'warning'
+            else:
+                tag, kind = f'{open_days} 天', 'gray'
+            items.append({
+                'title': c.customer_name,
+                'meta': c.responsible_salesperson or '—',
+                'deadline': f'{c.complaint_date:%Y-%m-%d}',
+                'tag': tag, 'tag_kind': kind, 'level': '' if kind == 'gray' else kind,
+                'progress': None,
+                'has_progress': False,
+                'status': c.complaint_status,
+                'url': reverse('customer_complaint_edit', args=[c.pk]),
+                'modal_title': '编辑客户客诉',
+                'perm': 'customer_complaint.update',
+                'fallback': reverse('customer_complaint_list'),
+            })
+        todo_tabs.append({
+            'key': 'customer_complaint', 'name': '客户客诉',
+            'count': context['incomplete_complaints'],
+            'list_url': reverse('customer_complaint_list'),
+            'items': items,
+        })
+
+    if 'insurance' in mods:
+        todo_tabs.append({
+            'key': 'insurance', 'name': '保险到期',
+            'count': context['insurance_due_soon_count'],
+            'list_url': reverse('insurance_subject_list'),
+            'items': [_insurance_item(s) for s in context['insurance_due_soon']],
+        })
+
+    if 'complaint' in mods:
+        todo_tabs.append({
+            'key': 'complaint', 'name': '诉讼',
+            'count': context['incomplete_litigations_total'],
+            'list_url': reverse('complaint_list'),
+            'items': [_litigation_item(case) for case in context['incomplete_litigations']],
+        })
+
+    context['todo_tabs'] = todo_tabs
+    # tab 上不展示的剩余条数（如每日记录 55 条只显示 5 条），给「查看全部」链接用
     if context['todo_counts']:
         context['attention_total'] = context['todo_counts']['total']
     else:
