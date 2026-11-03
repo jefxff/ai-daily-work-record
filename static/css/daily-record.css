@@ -23,21 +23,20 @@
 /* ==========================================================================
    1. 列表页表格
    --------------------------------------------------------------------------
-   列预算（合计 100%，固定布局，宽度不再随内容跳动）：
-     序号 4 / 日期时间 12 / 部门 10 / 内容 30 / 截至 11 / 状态 8 / 进度 13 / 操作 12
-   与原版相比：日期时间从 15% 收到 12%（改两行后不再需要 19 个字符的宽度），
-   省下的 3% 全部给「工作内容」，长句少折一行。
+   列宽策略（固定布局）：短列给 px 定宽，唯一的长文本列「工作内容」不设宽度，
+   自动吃掉剩余空间 —— 表格宽度恒等于容器宽度，1142px 的 1440 视口和
+   1330px 的宽屏都恰好铺满，不再产生横向滚动（旧版九列合计 1170px，
+   比常用笔记本的可用宽度还宽，任何屏幕都在横向滚动）。
+   定宽列按表头一行放得下校验（fs-sm 13px + 9px 排序箭头 + 28px 内边距）：
+     日期及时间 5 字 106px → 110；提出部门/提出人 8 字 132px → 138。
    ========================================================================== */
 .dr-table {
-    min-width: 1134px;
+    min-width: 1050px;
     table-layout: fixed;
     font-variant-numeric: tabular-nums;
 }
 
-/* 列宽按信息价值固定：工作内容 420px 拿最宽，序号 48px 足够放下三位数，
-   日期压成单行 110px（原来是两行占 12%） */
-/* 首列复选框（drl-3）：36px 窄列，列宽合计 1214 -> 1250 */
-.dr-table col.c-check { width: 36px; }
+/* 首列复选框（drl-3）：44px 窄列（36px 放不下 15px 复选框 + 28px 单元格内边距） */
 .dr-table .dr-check-col { text-align: center; vertical-align: middle; }
 .dr-table .dr-check-col input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--c-primary); cursor: pointer; }
 
@@ -58,14 +57,18 @@
 .dr-batch-bar__info b { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--c-primary-active); }
 .dr-batch-bar__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
 
-.dr-table col.c-seq { width: 48px; }
-.dr-table col.c-when { width: 104px; }
-.dr-table col.c-dept { width: 128px; }
-.dr-table col.c-content { width: 392px; }
-.dr-table col.c-due { width: 124px; }
-.dr-table col.c-status { width: 92px; }
-.dr-table col.c-progress { width: 134px; }
-.dr-table col.c-actions { width: 112px; }
+/* 定宽列（th:nth-child，与全站各列表页同一套预算方式）：
+   44+44+110+138+118+86+118+110 = 768px，工作内容不设宽度、自动吃掉剩余空间。
+   不用 colgroup：<col> 的宽度在某一列 display:none（col-optional / 移动端隐藏选择列）
+   会被 Chrome 顺移套到下一可见列上，造成整行列宽错位一格。 */
+.dr-table th:nth-child(1) { width: 44px; }  /* 选择 */
+.dr-table th:nth-child(2) { width: 44px; }  /* 序号 */
+.dr-table th:nth-child(3) { width: 110px; } /* 日期及时间 */
+.dr-table th:nth-child(4) { width: 138px; } /* 提出部门/提出人 */
+.dr-table th:nth-child(6) { width: 118px; } /* 截至日期 */
+.dr-table th:nth-child(7) { width: 86px; }  /* 工作状态 */
+.dr-table th:nth-child(8) { width: 118px; } /* 工作进度 */
+.dr-table th:nth-child(9) { width: 110px; } /* 操作 */
 
 /* 列头：排序箭头与文字之间留一点空隙，不让 ⇅ 贴着末字 */
 .dr-table thead th .sort-link { gap: 4px; }
@@ -897,7 +900,6 @@
 
 /* 移动端卡片模式下隐藏选择列：批量是桌面高频动作，卡片流里复选框反而占首行 */
 @media (max-width: 768px) {
-    .dr-table col.c-check { width: 0; }
     .dr-table .dr-check-col { display: none; }
     .dr-batch-bar { flex-direction: column; align-items: stretch; }
 }

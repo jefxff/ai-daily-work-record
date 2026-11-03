@@ -103,21 +103,10 @@
         <div class="table-responsive">
             <div class="hidden-cols-hint">窄屏已隐藏 1 个次要列；需要逐列比对时请横屏或改用桌面端。</div><table class="dr-table table--cards table table-sticky table--fixed">
                 {% comment %}
-                列宽由 colgroup 固定（合计 1214px），不再交给浏览器平均分配：
-                原先序号占 4%（约 41px）而「工作内容」只有 28%——列表页的检索目标
-                是「这件事是什么」，最长文本却拿不到最宽的位置。
+                列宽由 daily-record.css 的 th:nth-child 固定预算（定宽列合计 768px），
+                「工作内容」不设宽度、自动吃掉剩余空间，表格恰好铺满容器不产生横向滚动；
+                短列定宽保证「这件事是什么」的长文本拿到最宽位置。
                 {% endcomment %}
-                <colgroup>
-                    <col class="c-check">
-                    <col class="c-seq">
-                    <col class="c-when">
-                    <col class="c-dept">
-                    <col class="c-content">
-                    <col class="c-due">
-                    <col class="c-status">
-                    <col class="c-progress">
-                    <col class="c-actions">
-                </colgroup>
                 <thead>
                     <tr>
                         <th scope="col" class="dr-check-col">
@@ -208,7 +197,7 @@
 {% endblock %}
 
 {% block extra_css %}
-<link href="{% static 'css/daily-record.css' %}?v=20261103b" rel="stylesheet">
+<link href="{% static 'css/daily-record.css' %}?v=20261103e" rel="stylesheet">
 <style>
     /* 「未完成」快捷筛选：与筛选按钮同款，激活时高亮 */
     .quick-filter-btn.is-active {

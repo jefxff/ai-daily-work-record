@@ -32,21 +32,9 @@
                 列宽按信息价值固定，不交给浏览器自动分配：
                 原先序号列只有 34px（显示成「1…」），而核价内容拿到 114px。
                 合计 1508px，窄屏由 .table-responsive 横向滚动承担。
+                列宽用 th:nth-child 声明而不是 colgroup：colgroup 的 <col> 宽度
+                在列被 .col-optional 隐藏（≤1280）后会被 Chrome 顺移套到相邻列上。
                 {% endcomment %}
-                <colgroup>
-                    <col class="col-seq">
-                    <col class="col-category">
-                    <col class="col-dept">
-                    <col class="col-proposer">
-                    <col class="col-content">
-                    <col class="col-price">
-                    <col class="col-price">
-                    <col class="col-price col-optional">
-                    <col class="col-supplier">
-                    <col class="col-money">
-                    <col class="col-money">
-                    <col class="col-actions-w">
-                </colgroup>
                 <thead>
                     <tr>
                         <th scope="col" class="col-optional">序号</th>
@@ -118,18 +106,22 @@
 
 {% block extra_css %}
 <style>
-    /* 列宽策略：colgroup 固定像素宽度（合计 1508px），由信息价值决定而不是自动分配。
-       序号 48px 足够放下三位数；核价内容拿最宽；三列报价等宽 120px 才可能纵向比价。 */
+    /* 列宽策略：th:nth-child 固定像素宽度（合计 1508px），由信息价值决定而不是自动分配。
+       序号 48px 足够放下三位数；核价内容拿最宽；三列报价等宽 120px 才可能纵向比价。
+       不用 colgroup：<col> 宽度在列被 .col-optional 隐藏（≤1280）后会错位套到相邻列。 */
     .table { min-width: 1508px; table-layout: fixed; }
-    .table col.col-seq { width: 48px; }
-    .table col.col-category { width: 180px; }
-    .table col.col-dept { width: 130px; }
-    .table col.col-proposer { width: 90px; }
-    .table col.col-content { width: 200px; }
-    .table col.col-price { width: 120px; }
-    .table col.col-supplier { width: 140px; }
-    .table col.col-money { width: 120px; }
-    .table col.col-actions-w { width: 120px; }
+    .table th:nth-child(1)  { width: 48px; }   /* 序号 */
+    .table th:nth-child(2)  { width: 180px; }  /* 项目分类 */
+    .table th:nth-child(3)  { width: 130px; }  /* 项目提出部门 */
+    .table th:nth-child(4)  { width: 90px; }   /* 提出人 */
+    .table th:nth-child(5)  { width: 200px; }  /* 核价内容 */
+    .table th:nth-child(6)  { width: 120px; }  /* 供应商1报价 */
+    .table th:nth-child(7)  { width: 120px; }  /* 供应商2报价 */
+    .table th:nth-child(8)  { width: 120px; }  /* 供应商3报价 */
+    .table th:nth-child(9)  { width: 140px; }  /* 内控审核供应商 */
+    .table th:nth-child(10) { width: 120px; }  /* 内控审核价 */
+    .table th:nth-child(11) { width: 120px; }  /* 核减金额 */
+    .table th:nth-child(12) { width: 120px; }  /* 操作 */
     .table td { font-variant-numeric: tabular-nums; }
     /* 金额列：右对齐 + 等宽数字，核价的核心动作是纵向比较三家报价 */
     .table th:nth-child(6), .table th:nth-child(7), .table th:nth-child(8),
