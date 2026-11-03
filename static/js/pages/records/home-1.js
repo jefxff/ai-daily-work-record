@@ -29,5 +29,26 @@
                 });
             });
         }
+
+        // 「展开全部 / 收起」：默认每来源只展示前 5 条，点击后首页内全量展开
+        // （用户反馈：不要跳列表页/工作台，展开动作留在首页完成）
+        document.querySelectorAll('.home-rows__toggle').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var pane = btn.closest('.home-tpane');
+                if (!pane) { return; }
+                var expanded = btn.getAttribute('aria-expanded') === 'true';
+                pane.querySelectorAll('.home-rows__item.is-extra').forEach(function (li) {
+                    li.hidden = expanded;
+                });
+                btn.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+                var chevron = btn.querySelector('.home-rows__chevron');
+                // 文案重建：保留条数（按钮 data-count 由模板条数推断）
+                var n = pane.querySelectorAll('.home-rows__item').length;
+                btn.childNodes[0].nodeValue = expanded
+                    ? '展开全部 ' + n + ' 条'
+                    : '收起';
+                if (chevron) { chevron.textContent = expanded ? '▾' : '▴'; }
+            });
+        });
     });
 })();

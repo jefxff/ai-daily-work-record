@@ -1461,6 +1461,10 @@ a.home-kpi:hover .home-kpi__value { color: var(--c-primary-active); }
 .home-progress__val { min-width: 2.75em; text-align: right; font-variant-numeric: tabular-nums; }
 .home-empty { padding: 1.25rem 0; color: var(--c-text-tertiary); font-size: 0.8125rem; text-align: center; }
 .home-rows__more { margin-top: 0.75rem; text-align: right; }
+/* 展开全部 / 收起：轻量描边胶囊按钮，动作留在首页内完成 */
+.home-rows__toggle { display: inline-flex; align-items: center; gap: 0.3125rem; padding: 0.3125rem 0.875rem; border: 1px solid var(--c-border); border-radius: 999px; background: var(--c-surface); color: var(--c-text-secondary); font-size: 0.75rem; cursor: pointer; transition: color var(--dur-fast) ease, border-color var(--dur-fast) ease, background var(--dur-fast) ease; }
+.home-rows__toggle:hover { border-color: var(--c-primary); color: var(--c-primary-active); background: var(--c-primary-subtle); }
+.home-rows__chevron { font-size: 0.6875rem; line-height: 1; }
 
 /* 面板 4：金属行情紧凑条 */
 .home-quote__note { margin: 0 0 0.625rem; color: var(--c-text-tertiary); font-size: 0.75rem; }

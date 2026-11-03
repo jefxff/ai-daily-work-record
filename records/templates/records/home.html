@@ -87,7 +87,7 @@
     <div class="home-tpane{% if forloop.first %} is-active{% endif %}" id="tpane-{{ tab.key }}" role="tabpanel" aria-label="{{ tab.name }}待办"{% if not forloop.first %} hidden{% endif %}>
         <ul class="home-rows">
             {% for item in tab.items %}
-            <li class="home-rows__item">
+            <li class="home-rows__item{% if forloop.counter0 >= 5 %} is-extra{% endif %}"{% if forloop.counter0 >= 5 %} hidden{% endif %}>
                 {% if item.perm and request.user|can_do:item.perm %}
                 <a class="home-row{% if item.level %} home-row--{{ item.level }}{% endif %}"
                    href="{{ item.url }}" data-modal-edit data-modal-title="{{ item.modal_title }}">
@@ -120,7 +120,13 @@
             <li class="home-tpane__empty">该模块暂无未完成事项 🎉</li>
             {% endfor %}
         </ul>
-        {% if tab.count > tab.items|length %}
+        {% if tab.count > 5 %}
+        <div class="home-rows__more">
+            <button type="button" class="home-rows__toggle" aria-expanded="false">
+                展开全部 {{ tab.count }} 条<span class="home-rows__chevron" aria-hidden="true">▾</span>
+            </button>
+        </div>
+        {% elif tab.count > tab.items|length %}
         <div class="home-rows__more">
             <a class="home-panel__link" href="{{ tab.list_url }}">进入{{ tab.name }}列表查看全部 {{ tab.count }} 条 →</a>
         </div>
@@ -355,5 +361,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/pages/records/home-1.js' %}?v=20261103c" defer></script>
+<script src="{% static 'js/pages/records/home-1.js' %}?v=20261104b" defer></script>
 {% endblock %}
