@@ -26,6 +26,13 @@
                     <button type="submit" style="display:none;">搜索</button>
                 </form>
             </div>
+            {% comment %}
+            ≤992px 时顶栏搜索框整体隐藏，全站搜索在手机上曾完全没有入口。
+            这里补一个图标按钮，点开是全屏搜索层（不是下拉，避免小屏被键盘顶掉）。
+            {% endcomment %}
+            <button type="button" class="nav-icon-btn nav-search-trigger" id="navSearchTrigger" aria-label="全站搜索" aria-expanded="false" aria-controls="searchSheet">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </button>
             {% can_view "notifications" %}
             <div class="nav-notify" id="navNotifyArea">
                 {% comment %}
@@ -86,3 +93,15 @@
             </div>
         </div>
     </nav>
+
+    {% comment %}全屏搜索层：输入即提交到 /search/，取消或 Esc 关闭；仅在顶栏搜索框被隐藏的宽度下由图标唤起。{% endcomment %}
+    <div class="search-sheet" id="searchSheet" role="dialog" aria-modal="true" aria-label="全站搜索">
+        <div class="search-sheet__bar">
+            <form class="search-sheet__form" method="GET" action="{% url 'search' %}">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="search" name="search" id="searchSheetInput" class="search-sheet__input" placeholder="搜索模块、记录或报表" aria-label="全站搜索" maxlength="100" enterkeyhint="search">
+            </form>
+            <button type="button" class="search-sheet__cancel" id="searchSheetCancel">取消</button>
+        </div>
+        <p class="search-sheet__hint">支持模块名、记录标题、报表名称</p>
+    </div>

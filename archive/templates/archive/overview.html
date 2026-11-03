@@ -1,6 +1,7 @@
 {% extends "records/base.html" %}
 {% load static %}
 {% load accounts_tags %}
+{% load pager_tags %}
 
 {% block page_title %}档案总览 - 档案管理{% endblock %}
 
@@ -14,6 +15,7 @@
     .lg-stat-label { font-size: 0.75rem; color: var(--c-text-secondary); margin-top: 5px; white-space: nowrap; }
     .lg-stat-card.borrowed::before { background: var(--c-danger); }
     .lg-stat-card.borrowed .lg-stat-value { color: var(--c-danger); }
+    .lg-stat-card.is-zero .lg-stat-value { color: var(--c-text-tertiary); font-weight: 600; }
     .lg-stat-card.expiring::before { background: var(--c-warning); }
     .lg-stat-card.expiring .lg-stat-value { color: var(--c-warning); }
 
@@ -31,6 +33,21 @@
     /* 搜索框收窄到 180px，给右侧按钮让出空间 */
     .lg-toolbar .form-control { flex: 0 0 180px; width: 180px; min-width: 0; }
     .lg-toolbar .form-select { flex: 0 0 auto; width: auto; min-width: 116px; max-width: 150px; }
+    /* 搜索做成「图标 + 输入框」一体控件：工具栏里少一个「搜索档案」按钮（四段收敛） */
+    .lg-toolbar .lg-search { position: relative; flex: 0 0 230px; min-width: 150px; }
+    .lg-toolbar .lg-search .form-control { width: 100%; flex: 1 1 auto; padding-left: 30px; }
+    .lg-search-btn {
+        position: absolute; left: 0; top: 0; width: 30px; height: 34px;
+        display: grid; place-items: center; background: none; border: 0;
+        color: var(--c-text-tertiary); cursor: pointer; border-radius: 6px 0 0 6px;
+    }
+    .lg-search-btn:hover { color: var(--c-primary); }
+    .lg-search-btn:focus-visible { outline: 2px solid var(--c-primary); outline-offset: -2px; }
+    /* 移动端：搜索按钮撑满输入框高度（热区 ≥44），左侧内边距同步让位 */
+    @media (max-width: 768px) {
+        .lg-toolbar .lg-search .form-control { min-height: 44px; padding-left: 44px; }
+        .lg-search-btn { width: 44px; height: 100%; }
+    }
     .lg-toolbar .lg-actions { display: flex; gap: 6px; align-items: center; flex-shrink: 0; flex-wrap: nowrap; margin-left: auto; order: 2; }
     /* 按钮顺序：次要操作 → 录入档案 → 新建台账（最右） */
     .lg-toolbar .lg-actions .btn-outline-primary,
@@ -110,6 +127,9 @@
     .lg-row-actions { display: flex; gap: 6px; flex-wrap: nowrap; }
     .lg-empty { text-align: center; color: var(--c-text-secondary); padding: 1.6rem 0; }
     .lg-more { display: inline-block; margin-top: 0.7rem; font-size: 0.85rem; }
+    /* 金额是这一页唯一可比较的量：右对齐 + 等宽数字，纵向才能比大小 */
+    .lg-table th:nth-child(5),
+    .lg-table td[data-label="金额"] { text-align: right; font-variant-numeric: tabular-nums; }
 
     /* 搜索命中行高亮（橙色） */
     tr.lg-row-hit td { background: var(--c-warning-bg) !important; }
@@ -125,6 +145,17 @@
     @media (max-width: 640px) {
         .lg-toolbar .lg-actions { flex-wrap: wrap; width: 100%; margin-left: 0; }
         .lg-toolbar .lg-actions .btn { flex: 1 1 auto; }
+        /* 检索行在窄屏换行，否则两个下拉会把 390px 视口撑出横向滚动 */
+        .lg-toolbar form { flex-wrap: wrap; width: 100%; }
+        .lg-toolbar .lg-search { flex: 1 1 100%; }
+        .lg-toolbar .form-select { flex: 1 1 calc(50% - 3px); min-width: 0; max-width: none; }
+        .lg-toolbar .tb-more { margin-left: auto; }
+    }
+    /* 页码多时允许换行：33 个台账 / 每页 3 个 = 11 页，单行放不进手机宽度 */
+    .pagination-info .pagination { flex-wrap: wrap; row-gap: 4px; }
+    @media (max-width: 640px) {
+        .pagination-info { flex-direction: column; align-items: flex-start; }
+        .pagination-info .pag-controls { width: 100%; }
     }
 </style>
 {% endblock %}
@@ -143,7 +174,8 @@
             <div class="lg-stat-value">{{ total_archives }}</div>
             <div class="lg-stat-label">档案总数</div>
         </div>
-        <div class="lg-stat-card borrowed">
+        {# 0 是最安全的状态：不再用红色左边条，红色只留给「需要动作」的指标 #}
+        <div class="lg-stat-card{% if borrowed_count %} borrowed{% endif %}{% if not borrowed_count %} is-zero{% endif %}">
             <div class="lg-stat-value">{{ borrowed_count }}</div>
             <div class="lg-stat-label">已借出</div>
         </div>
@@ -153,47 +185,56 @@
             <div class="lg-stat-label">逾期未还</div>
         </div>
         {% endif %}
-        <div class="lg-stat-card expiring">
+        <div class="lg-stat-card{% if expiring_count %} expiring{% else %} is-zero{% endif %}">
             <div class="lg-stat-value">{{ expiring_count }}</div>
             <div class="lg-stat-label">即将到期（30天内）</div>
         </div>
     </div>
 
-    <!-- 工具栏 -->
+    <!-- 工具栏：按「检索 / 筛选 / 主操作 / 更多」四段收敛（原 11 个控件同权） -->
     <div class="lg-toolbar">
-        <form method="get" class="d-flex flex-wrap gap-2">
-            <input type="text" name="aq" value="{{ aq }}" class="form-control" placeholder="搜索编号 / 名称" aria-label="搜索档案" maxlength="100">
-            <button class="btn btn-outline-secondary btn-sm" type="submit">搜索档案</button>
-            <select name="category" class="form-select">
+        <form method="get" class="lg-filters" role="search">
+            <div class="lg-search">
+                <button type="submit" class="lg-search-btn" aria-label="搜索档案">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                </button>
+                <input type="search" name="aq" value="{{ aq }}" class="form-control" placeholder="搜索编号 / 名称" aria-label="搜索档案" maxlength="100">
+            </div>
+            <select name="category" class="form-select" aria-label="按类别筛选" data-auto-submit>
                 <option value="">全部类别</option>
                 {% for c in categories %}
                 <option value="{{ c.id }}" {% if category_id == c.id|stringformat:"s" %}selected{% endif %}>{{ c.full_path }}</option>
                 {% endfor %}
             </select>
-            <select name="status" class="form-select">
+            <select name="status" class="form-select" aria-label="按状态筛选" data-auto-submit>
                 <option value="">全部状态</option>
                 <option value="expiring" {% if status == "expiring" %}selected{% endif %}>即将到期</option>
                 <option value="borrowed" {% if status == "borrowed" %}selected{% endif %}>借出中</option>
             </select>
-            <button class="btn btn-outline-secondary btn-sm" type="submit">筛选</button>
-            <a href="{% url 'archive:overview' %}" class="btn btn-outline-secondary btn-sm" title="清空搜索与筛选条件">重置</a>
         </form>
         <div class="ms-auto lg-actions">
             {% can "archive" "create" %}
             <a href="{% url 'archive:ledger_create' %}" class="btn btn-primary btn-sm" data-modal-add data-modal-title="新建台账">＋ 新建台账</a>
             {% endcan %}
-            {% can "archive" "create" %}
-            <a href="{% url 'archive:archive_create' %}" class="btn btn-success btn-sm" data-modal-add data-modal-title="录入档案">＋ 录入档案</a>
-            {% endcan %}
-            {% can "archive" "read" %}
-            <button type="button" class="btn btn-outline-primary btn-sm" id="btnBatchExport" title="勾选台账后批量导出（每个台账一个工作表）；未勾选时请先勾选">导出</button>
-            {% endcan %}
-            {% can "archive" "update" %}
-            <a href="{% url 'archive:ledger_batch_import' %}" class="btn btn-outline-primary btn-sm" title="上传多工作表 Excel，按工作表名匹配台账批量导入更新">批量导入</a>
-            {% endcan %}
-            {% can "archive" "update" %}
-            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnLedgerSort" title="调整台账在总览页的显示顺序">台账排序</button>
-            {% endcan %}
+            <details class="tb-more" id="archiveMore">
+                <summary class="btn btn-outline-secondary btn-sm" role="button" aria-controls="archiveMoreMenu">
+                    更多
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                </summary>
+                <div class="tb-more-menu" id="archiveMoreMenu">
+                    {% can "archive" "create" %}
+                    <a href="{% url 'archive:archive_create' %}" data-modal-add data-modal-title="录入档案">录入档案</a>
+                    {% endcan %}
+                    {% can "archive" "read" %}
+                    <button type="button" id="btnBatchExport" title="勾选台账后批量导出（每个台账一个工作表）；未勾选时请先勾选">导出所选台账</button>
+                    {% endcan %}
+                    {% can "archive" "update" %}
+                    <a href="{% url 'archive:ledger_batch_import' %}" title="上传多工作表 Excel，按工作表名匹配台账批量导入更新">批量导入</a>
+                    <button type="button" id="btnLedgerSort" title="调整台账在总览页的显示顺序">台账排序</button>
+                    {% endcan %}
+                    <a href="{% url 'archive:overview' %}" title="清空搜索与筛选条件">重置筛选</a>
+                </div>
+            </details>
         </div>
     </div>
 
@@ -210,7 +251,8 @@
     {% endif %}
 
     <!-- 台账卡片列表 -->
-    {% for item in ledger_data %}
+    {# 按台账分组分页：页面高度从 21271px 收到 2500px 左右；ledger_data 仍保留全量，供统计与分页信息使用 #}
+    {% for item in ledger_page %}
     <div class="lg-card" data-ledger-id="{{ item.ledger.pk }}">
         <div class="lg-card-header">
             <div>
@@ -229,7 +271,7 @@
                 <a href="{% url 'archive:ledger_detail' item.ledger.pk %}" class="btn btn-sm btn-primary">查看全部 {{ item.total }} 条</a>
             </div>
         </div>
-        <div class="lg-table-wrap">
+        <div class="lg-table-wrap table-responsive">
             <table class="table--cards lg-table">
                 <thead>
                     <tr>
@@ -294,13 +336,43 @@
     </div>
     {% endfor %}
 
+    <!-- 台账分组分页：33 个台账不再一次性进 DOM -->
+    {% if ledger_page.paginator.num_pages > 1 %}
+    <div class="pagination-info">
+        <span>共 {{ ledger_cards_total }} 个台账 · 每页 {{ ledger_page.paginator.per_page }} 个 · 第 {{ ledger_page.number }} / {{ ledger_page.paginator.num_pages }} 页</span>
+        <div class="pag-controls">
+            <ul class="pagination">
+                {% if ledger_page.has_previous %}
+                <li class="page-item"><a class="page-link" href="{% querystring page=ledger_page.previous_page_number %}" aria-label="上一页">&laquo;</a></li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link" aria-label="上一页">&laquo;</span></li>
+                {% endif %}
+                {% for p in ledger_page|page_window %}
+                    {% if not p %}
+                    <li class="page-item pag-ellipsis"><span class="page-link">&hellip;</span></li>
+                    {% elif ledger_page.number == p %}
+                    <li class="page-item active"><span class="page-link" aria-current="page">{{ p }}</span></li>
+                    {% else %}
+                    <li class="page-item"><a class="page-link" href="{% querystring page=p %}">{{ p }}</a></li>
+                    {% endif %}
+                {% endfor %}
+                {% if ledger_page.has_next %}
+                <li class="page-item"><a class="page-link" href="{% querystring page=ledger_page.next_page_number %}" aria-label="下一页">&raquo;</a></li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link" aria-label="下一页">&raquo;</span></li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- 未分配台账的档案 -->
-    {% if unassigned_total %}
+    {% if unassigned_total and show_unassigned %}
     <div class="lg-card">
         <div class="lg-card-header">
             <div class="lg-card-title">未分配台账 <span class="text-muted small">共 {{ unassigned_total }} 条</span></div>
         </div>
-        <div class="lg-table-wrap">
+        <div class="lg-table-wrap table-responsive">
             <table class="table--cards lg-table">
                 <thead>
                     <tr>

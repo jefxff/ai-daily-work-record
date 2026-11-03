@@ -37,6 +37,11 @@ from .services.import_export import (
 
 # ---------- 档案总览（按台账列表） ----------
 
+# 总览页每个分页渲染的台账分组数量。取 3 是为了让分组数（33）不再决定页高：
+# 每组 10 行时单页约 2.6k px，满足「< 3000px」的验收线（4 组实测 3174px）。
+LEDGERS_PER_PAGE = 3
+
+
 @perm_required("archive", "read")
 def overview(request):
     """档案总览页：顶部仪表盘 + 各台账（对应一份 Excel 台账）卡片列表。
@@ -214,8 +219,19 @@ def overview(request):
     # 逐行展示档案数，annotate 下推，避免每台账一次 COUNT（P2-2）
     sort_ledgers = Ledger.objects.annotate(_archive_count=Count("archives"))
 
+    # 台账分组分页：33 个台账 × 每组 10 行一次性进 DOM 时，页面高 21271px、
+    # 977 个可点元素，滚动定位与筛选都失效。改为每组固定的分组分页（每页 4 个台账），
+    # 单页高度与可点元素数量都和台账总数脱钩。
+    paginator = Paginator(ledger_data, LEDGERS_PER_PAGE)
+    ledger_page = paginator.get_page(request.GET.get("page"))
+    # 未分配台账的卡片只随第一页出现，避免翻页时重复渲染
+    show_unassigned = ledger_page.number == 1
+
     context = {
         "ledger_data": ledger_data,
+        "ledger_page": ledger_page,
+        "ledger_cards_total": len(ledger_data),
+        "show_unassigned": show_unassigned,
         "sort_ledgers": sort_ledgers,
         "unassigned_rows": unassigned_rows,
         "unassigned_total": unassigned_total,

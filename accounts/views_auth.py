@@ -66,6 +66,10 @@ def login_view(request):
                 if user is not None:
                     clear_failures(ip, username)
                     auth_login(request, user)
+                    # 「记住我」：勾选＝沿用 SESSION_COOKIE_AGE（现状不变）；
+                    # 不勾＝会话 Cookie，关掉浏览器即失效（set_expiry(0)）。
+                    if request.POST.get("remember") != "on":
+                        request.session.set_expiry(0)
                     # 会话指纹：用于改密/管理员重置后令其它会话失效；记录登录元信息
                     request.session["_pwd"] = user.password
                     from django.utils.timezone import now
@@ -91,8 +95,32 @@ def login_view(request):
     return render(
         request,
         "accounts/login.html",
-        {"form": form, "error_msg": error_msg, "next_url": request.GET.get("next", "/")},
+        {
+            "form": form,
+            "error_msg": error_msg,
+            "next_url": request.GET.get("next", "/"),
+            "env_label": _env_label(request),
+        },
     )
+
+
+def _env_label(request):
+    """环境标识：让登录的人知道自己在哪套环境上操作，避免把生产当测试。
+
+    优先级：环境变量 ADW_ENV_LABEL（部署时显式声明）→ 本机回环地址 → DEBUG 判定。
+    本机判定放前面：调试实例常以 DJANGO_DEBUG=0 启动，只看 DEBUG 会把本机标成生产。
+    """
+    import os
+
+    from django.conf import settings
+
+    label = (os.environ.get("ADW_ENV_LABEL") or "").strip()
+    if label:
+        return label
+    host = (request.get_host() or "").split(":")[0]
+    if host in ("127.0.0.1", "localhost", "0.0.0.0"):
+        return "本地环境"
+    return "开发环境" if settings.DEBUG else "生产环境"
 
 
 @require_http_methods(["POST"])

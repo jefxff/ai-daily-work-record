@@ -582,4 +582,49 @@ document.addEventListener('DOMContentLoaded', function() {
         refresh();
         setInterval(refresh, 30000);
     })();
+
+    // 工具栏「更多 ▾」（details.tb-more）：点击外部或按 Esc 收起。
+    // 原生 <details> 只有 summary 能切换，点击别处不会关闭，与其他下拉行为不一致。
+    document.addEventListener('click', function (e) {
+        document.querySelectorAll('details.tb-more[open]').forEach(function (d) {
+            if (!d.contains(e.target)) d.removeAttribute('open');
+        });
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Escape') return;
+        document.querySelectorAll('details.tb-more[open]').forEach(function (d) {
+            d.removeAttribute('open');
+            var summary = d.querySelector('summary');
+            if (summary) summary.focus();
+        });
+    });
+
+    // 全屏搜索层（≤992px 顶栏搜索框被隐藏时由图标唤起）。
+    // 只有一个输入框，所以不做二次提交按钮：回车即提交到 /search/。
+    (function () {
+        var trigger = document.getElementById('navSearchTrigger');
+        var sheet = document.getElementById('searchSheet');
+        if (!trigger || !sheet) return;
+        var input = document.getElementById('searchSheetInput');
+        var cancel = document.getElementById('searchSheetCancel');
+        var lastFocus = null;
+
+        function open() {
+            lastFocus = document.activeElement;
+            sheet.classList.add('show');
+            trigger.setAttribute('aria-expanded', 'true');
+            if (input) { input.value = ''; input.focus(); }
+        }
+        function close() {
+            sheet.classList.remove('show');
+            trigger.setAttribute('aria-expanded', 'false');
+            if (lastFocus && lastFocus.focus) lastFocus.focus();
+        }
+
+        trigger.addEventListener('click', open);
+        if (cancel) cancel.addEventListener('click', close);
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && sheet.classList.contains('show')) close();
+        });
+    })();
 });

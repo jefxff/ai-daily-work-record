@@ -72,7 +72,7 @@ class UiRegressionTests(TestCase):
             'archive:borrow_list', 'archive:license_list', 'archive:license_borrow_list',
             'accounts:user_list', 'accounts:login_logs',
             'samples:dashboard', 'samples:list', 'samples:partner_list',
-            'notifications:list', 'sysbackup:center',
+            'notifications:list', 'notifications:task_list', 'sysbackup:center',
         ]
         for name in names:
             with self.subTest(url_name=name):

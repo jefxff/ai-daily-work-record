@@ -46,6 +46,9 @@ NAV_MAP = [
     ('/operation_log/', 'system', '操作留痕', 'operation_log_list'),
     ('/accounts/', 'system', '系统管理', None),
     ('/system/', 'system', '系统管理', None),
+    # 长前缀优先：/notifications/tasks/ 是拆页后的定时任务视图，
+    # 否则会落到 /notifications/ 上、再由 SEGMENT_LABELS['tasks'] 误标成「任务历史」。
+    ('/notifications/tasks/', 'notifications', '定时任务', 'notifications:task_list'),
     ('/notifications/', 'notifications', '消息通知', 'notifications:list'),
     ('/copilot/', 'copilot', 'AI 助手', None),
     ('/search/', 'search', '搜索', None),

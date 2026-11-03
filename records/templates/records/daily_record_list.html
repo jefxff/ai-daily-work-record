@@ -6,9 +6,12 @@
 {% block page_title %}每日记录 - 每日工作记录管理网站{% endblock %}
 
 {% block top_nav_actions %}
-    <form class="d-flex gap-2" method="GET" id="searchForm">
+    {# 四段收敛：检索 / 筛选 / 导出 / 新建。搜索图标与输入框合成一个控件，省掉一个「搜索」按钮 #}
+    <form class="search-field" method="GET" id="searchForm">
+        <button type="submit" class="search-field__btn" aria-label="搜索工作内容或部门">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </button>
         <input class="search-input" type="search" placeholder="搜索工作内容或部门" name="search" value="{{ search_term }}" aria-label="搜索工作内容或部门" maxlength="100">
-        <button class="btn-transparent" type="submit">搜索</button>
     </form>
     <div class="filter-button">
         <button class="btn-transparent" type="button" id="filterBtn" aria-expanded="false" aria-controls="filterDropdown">
@@ -51,8 +54,17 @@
     {% can "daily_record" "create" %}
     <a href="{% url 'daily_record_add' %}" class="btn-primary" data-modal-add data-modal-title="新增每日记录">新增记录</a>
     {% endcan %}
-    <a href="{% url 'weekly_report' %}" class="btn-transparent">生成周报</a>
-    <a href="{% url 'annual_summary' %}" class="btn-transparent">年度总结</a>
+    {# 导出类（周报 / 年度总结）收进「导出 ▾」，主行只留一个主操作 #}
+    <details class="tb-more">
+        <summary class="btn-transparent" role="button" aria-controls="drExportMenu">
+            导出
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="tb-more-menu" id="drExportMenu">
+            <a href="{% url 'weekly_report' %}">生成周报</a>
+            <a href="{% url 'annual_summary' %}">年度总结</a>
+        </div>
+    </details>
 {% endblock %}
 
 {% block content %}
@@ -72,6 +84,21 @@
     <div class="table-container">
         <div class="table-responsive">
             <div class="hidden-cols-hint">窄屏已隐藏 1 个次要列；需要逐列比对时请横屏或改用桌面端。</div><table class="dr-table table--cards table table-sticky table--fixed">
+                {% comment %}
+                列宽由 colgroup 固定（合计 1214px），不再交给浏览器平均分配：
+                原先序号占 4%（约 41px）而「工作内容」只有 28%——列表页的检索目标
+                是「这件事是什么」，最长文本却拿不到最宽的位置。
+                {% endcomment %}
+                <colgroup>
+                    <col class="c-seq">
+                    <col class="c-when">
+                    <col class="c-dept">
+                    <col class="c-content">
+                    <col class="c-due">
+                    <col class="c-status">
+                    <col class="c-progress">
+                    <col class="c-actions">
+                </colgroup>
                 <thead>
                     <tr>
                         <th scope="col" class="col-optional">序号</th>
@@ -88,10 +115,10 @@
                     {% for record in records %}
                     <tr data-href="{% url 'daily_record_detail' record.id %}">
                         <td data-label="序号" class="col-optional">{{ forloop.counter }}</td>
-                        {# 日期与时间分两层：日期先被扫到，时间只在需要核对时看 #}
+                        {# 日期压成单行「11-02 18:35」：年份由页头与筛选范围确定，完整时间进 title #}
                         <td data-label="日期及时间" title="{{ record.record_date|date:'Y-m-d H:i:s' }}">
                             <span class="dr-when">
-                                <span class="dr-when__date">{{ record.record_date|date:'Y-m-d' }}</span>
+                                <span class="dr-when__date">{{ record.record_date|date:'m-d' }}</span>
                                 <span class="dr-when__time">{{ record.record_date|date:'H:i' }}</span>
                             </span>
                         </td>

@@ -28,6 +28,25 @@
         <!-- 表格 -->
         <div class="table-responsive">
             <div class="hidden-cols-hint">窄屏已隐藏 3 个次要列；需要逐列比对时请横屏或改用桌面端。</div><table class="table--cards table table-sticky table--fixed">
+                {% comment %}
+                列宽按信息价值固定，不交给浏览器自动分配：
+                原先序号列只有 34px（显示成「1…」），而核价内容拿到 114px。
+                合计 1508px，窄屏由 .table-responsive 横向滚动承担。
+                {% endcomment %}
+                <colgroup>
+                    <col class="col-seq">
+                    <col class="col-category">
+                    <col class="col-dept">
+                    <col class="col-proposer">
+                    <col class="col-content">
+                    <col class="col-price">
+                    <col class="col-price">
+                    <col class="col-price col-optional">
+                    <col class="col-supplier">
+                    <col class="col-money">
+                    <col class="col-money">
+                    <col class="col-actions-w">
+                </colgroup>
                 <thead>
                     <tr>
                         <th scope="col" class="col-optional">序号</th>
@@ -99,28 +118,30 @@
 
 {% block extra_css %}
 <style>
-    /* 列预算（合计 100%）：固定布局。三个供应商报价列 + 内控审核价 + 核减金额
-       都必须 ≥10%，否则 1080px 最小宽度下内容区不足 78px，
-       「¥110,000.00」这类金额会被省略号截断、名称也会被挤成两三个字。 */
-    .table { min-width: 1080px; }
-    .table--fixed th:nth-child(1)  { width: 3%; }
-    .table--fixed th:nth-child(2)  { width: 6%; }
-    .table--fixed th:nth-child(3)  { width: 7%; }
-    .table--fixed th:nth-child(4)  { width: 6%; }
-    .table--fixed th:nth-child(5)  { width: 10%; }
-    .table--fixed th:nth-child(6)  { width: 10%; }
-    .table--fixed th:nth-child(7)  { width: 10%; }
-    .table--fixed th:nth-child(8)  { width: 10%; }
-    .table--fixed th:nth-child(9)  { width: 8%; white-space: normal; }   /* 表头 7 字，窄列里允许折成两行，避免压到下一列表头 */
-    .table--fixed th:nth-child(10) { width: 10%; }
-    .table--fixed th:nth-child(11) { width: 10%; }
-    .table--fixed th:nth-child(12) { width: 10%; }
+    /* 列宽策略：colgroup 固定像素宽度（合计 1508px），由信息价值决定而不是自动分配。
+       序号 48px 足够放下三位数；核价内容拿最宽；三列报价等宽 120px 才可能纵向比价。 */
+    .table { min-width: 1508px; table-layout: fixed; }
+    .table col.col-seq { width: 48px; }
+    .table col.col-category { width: 180px; }
+    .table col.col-dept { width: 130px; }
+    .table col.col-proposer { width: 90px; }
+    .table col.col-content { width: 200px; }
+    .table col.col-price { width: 120px; }
+    .table col.col-supplier { width: 140px; }
+    .table col.col-money { width: 120px; }
+    .table col.col-actions-w { width: 120px; }
     .table td { font-variant-numeric: tabular-nums; }
-    /* 供应商组：名称上、报价下，两行都从单元格左缘起排（表头同为左对齐）。 */
+    /* 金额列：右对齐 + 等宽数字，核价的核心动作是纵向比较三家报价 */
+    .table th:nth-child(6), .table th:nth-child(7), .table th:nth-child(8),
+    .table th:nth-child(10), .table th:nth-child(11) { text-align: right; }
+    .table td:nth-child(10), .table td:nth-child(11) { text-align: right; white-space: nowrap; }
+    /* 供应商组：名称上（左）、报价下（右），同一列的价格数字才能对齐比较 */
     .supplier-cell { display: flex; flex-direction: column; gap: 1px; min-width: 0; text-align: left; }
     .supplier-name { overflow: hidden; font-size: 12px; color: var(--c-text-secondary); text-overflow: ellipsis; white-space: nowrap; }
     /* 金额超列宽时按…截断，不能溢出到旁边的供应商列（溢出会让整列看起来错位） */
-    .supplier-price { align-self: stretch; overflow: hidden; max-width: 100%; font-size: 13px; font-weight: 600; color: var(--c-text); font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
+    .supplier-price { align-self: stretch; overflow: hidden; max-width: 100%; font-size: 13px; font-weight: 600; color: var(--c-text); font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+    /* 操作列三个按钮并列：给足 120px 并保持不换行 */
+    .table td.col-actions { white-space: nowrap; }
 </style>
 {% endblock %}
 

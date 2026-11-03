@@ -1,0 +1,16 @@
+{% comment %}
+通知中心的两个互斥视图（消息通知 / 定时任务）共用的分段控件。
+原来这两块内容堆在同一页：标题写「消息通知」，正文第一屏是 8 个定时任务，真正的通知在 1685px 以下。
+{% endcomment %}
+<div class="seg-tabs-wrap">
+<nav class="seg-tabs" aria-label="通知中心视图">
+    <a class="seg-tabs__item{% if active == 'list' %} is-active{% endif %}"
+       href="{% url 'notifications:list' %}"{% if active == 'list' %} aria-current="page"{% endif %}>
+        消息通知{% if total %}<span class="seg-tabs__count">{{ total }}</span>{% endif %}
+    </a>
+    <a class="seg-tabs__item{% if active == 'tasks' %} is-active{% endif %}"
+       href="{% url 'notifications:task_list' %}"{% if active == 'tasks' %} aria-current="page"{% endif %}>
+        定时任务{% if scheduled_tasks %}<span class="seg-tabs__count">{{ scheduled_tasks|length }}</span>{% endif %}
+    </a>
+</nav>
+</div>

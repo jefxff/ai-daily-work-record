@@ -31,7 +31,7 @@
             <div class="ins-stat-label">30 天内到期</div>
         </div>
         <div class="ins-stat-card expired">
-            <div class="ins-stat-value">{{ summary.expired }}{% if summary.one_off_expired %}<span class="ins-stat-sub">+{{ summary.one_off_expired }}一次性</span>{% endif %}</div>
+            <div class="ins-stat-value">{{ summary.expired }}{% if summary.one_off_expired %}<span class="ins-stat-sub">含 {{ summary.one_off_expired }} 个一次性</span>{% endif %}</div>
             <div class="ins-stat-label">应续未续{% if summary.one_off_expired %}（其中 {{ summary.one_off_expired }} 个一次性）{% endif %}</div>
         </div>
         <div class="ins-stat-card gap">
@@ -74,6 +74,21 @@
     <div class="table-container">
         <div class="table-responsive">
             <table class="table table--cards table-sticky ins-table">
+                {% comment %}
+                标的列加宽到 260px（原先 194px 时「意外伤害及健康险…」被截断）；
+                原「续保与衔接」一列同时放年度数、保单条数、是否断保，截断恰好发生在
+                「是否断保」这种合规判断上，因此拆为「保单数」与「连续性」两列。
+                {% endcomment %}
+                <colgroup>
+                    <col class="col-subject">
+                    <col class="col-insurer">
+                    <col class="col-period">
+                    <col class="col-status">
+                    <col class="col-premium">
+                    <col class="col-count">
+                    <col class="col-continuity">
+                    <col class="col-ops">
+                </colgroup>
                 <thead>
                     <tr>
                         <th scope="col">标的</th>
@@ -81,7 +96,8 @@
                         <th scope="col">当前保单期间</th>
                         <th scope="col">到期状态</th>
                         <th scope="col">保费与同比</th>
-                        <th scope="col">续保与衔接</th>
+                        <th scope="col">保单数</th>
+                        <th scope="col">连续性</th>
                         <th scope="col" class="col-actions">操作</th>
                     </tr>
                 </thead>
@@ -89,9 +105,11 @@
                     {% for s in subjects %}
                     <tr data-href="{% url 'insurance_subject_detail' %}">
                         <td data-label="标的">
-                            <a class="ins-subject-link" href="{% url 'insurance_subject_detail' %}?key={{ s.key|urlencode }}">{{ s.label }}</a>
-                            <span class="status-badge {{ s.kind_badge_class }}">{{ s.kind_label }}</span>
-                            {% if s.is_one_off %}<span class="status-badge">一次性</span>{% endif %}
+                            <a class="ins-subject-link" href="{% url 'insurance_subject_detail' %}?key={{ s.key|urlencode }}" title="{{ s.label }}">{{ s.label }}</a>
+                            <div class="ins-subject-tags">
+                                <span class="status-badge {{ s.kind_badge_class }}">{{ s.kind_label }}</span>
+                                {% if s.is_one_off %}<span class="status-badge">一次性</span>{% endif %}
+                            </div>
                         </td>
                         <td data-label="当前保司">{{ s.latest_insurer }}</td>
                         <td data-label="当前保单期间">
@@ -120,12 +138,18 @@
                             <div class="ins-muted">首年记录</div>
                             {% endif %}
                         </td>
-                        <td data-label="续保与衔接">
-                            {{ s.term_count }} 个年度
-                            <div class="ins-muted">
-                                {{ s.record_count }} 条保单
-                                {% if s.has_gap %} · 有断档{% elif s.has_overlap %} · 有重叠{% else %} · 无断档{% endif %}
-                            </div>
+                        <td data-label="保单数">
+                            {{ s.record_count }} 条
+                            <div class="ins-muted">{{ s.term_count }} 个年度</div>
+                        </td>
+                        <td data-label="连续性">
+                            {% if s.has_gap %}
+                            <span class="ins-cont ins-cont--gap" title="最近两个保单年度之间存在未投保的空档 {{ s.max_gap_days }} 天">断档 {{ s.max_gap_days }} 天</span>
+                            {% elif s.has_overlap %}
+                            <span class="ins-cont ins-cont--warn" title="相邻保单的保障期存在重叠">有重叠</span>
+                            {% else %}
+                            <span class="ins-cont ins-cont--ok" title="相邻保单的保障期首尾相接">无断档</span>
+                            {% endif %}
                         </td>
                         <td data-label="操作" class="col-actions">
                             <a class="btn-transparent btn-sm" href="{% url 'insurance_subject_detail' %}?key={{ s.key|urlencode }}">时间线</a>
@@ -138,7 +162,7 @@
                         </td>
                     </tr>
                     {% empty %}
-                    {% include 'records/_empty_row.html' with colspan=7 empty_title="没有符合条件的保险标的" %}
+                    {% include 'records/_empty_row.html' with colspan=8 empty_title="没有符合条件的保险标的" %}
                     {% endfor %}
                 </tbody>
             </table>

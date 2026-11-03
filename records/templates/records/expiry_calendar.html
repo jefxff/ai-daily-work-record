@@ -8,28 +8,36 @@
         <h1>到期预警<span class="total-hint">未来 {{ days }} 天内 · 截至 {{ horizon_end|date:'Y-m-d' }}</span></h1>
     </div>
 
-    {# 参数与导出合并进同一行：左边调参数，右边导出，不再分成两块 #}
+    {# 首屏只留「时间范围 + 严重度」；5 个季度级低频参数折进「预警参数 ⚙」 #}
     <form class="table-container expiry-filter" method="GET">
         <div class="expiry-filter-row">
-            <label>展望窗口（天）
-                <input type="number" name="days" min="30" max="365" value="{{ days }}">
+            <label class="expiry-horizon">展望窗口（天）
+                <input type="number" name="days" min="30" max="365" value="{{ days }}" data-auto-submit>
             </label>
-            <label>保险提前（天）
-                <input type="number" name="lead_insurance" min="1" max="180" value="{{ lead_form.lead_insurance }}">
-            </label>
-            <label>合同提前（天）
-                <input type="number" name="lead_contract" min="1" max="180" value="{{ lead_form.lead_contract }}">
-            </label>
-            <label>证照有效期提前（天）
-                <input type="number" name="lead_license" min="1" max="180" value="{{ lead_form.lead_license }}">
-            </label>
-            <label>证照年审提前（天）
-                <input type="number" name="lead_review" min="1" max="180" value="{{ lead_form.lead_review }}">
-            </label>
-            <label>借阅应还提前（天）
-                <input type="number" name="lead_borrow" min="1" max="180" value="{{ lead_form.lead_borrow }}">
-            </label>
-            <button type="submit" class="btn-transparent">应用</button>
+            <details class="expiry-params" {% if params_open %}open{% endif %}>
+                <summary class="btn-transparent">
+                    预警参数
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                </summary>
+                <div class="expiry-params-panel">
+                    <label>保险提前（天）
+                        <input type="number" name="lead_insurance" min="1" max="180" value="{{ lead_form.lead_insurance }}">
+                    </label>
+                    <label>合同提前（天）
+                        <input type="number" name="lead_contract" min="1" max="180" value="{{ lead_form.lead_contract }}">
+                    </label>
+                    <label>证照有效期提前（天）
+                        <input type="number" name="lead_license" min="1" max="180" value="{{ lead_form.lead_license }}">
+                    </label>
+                    <label>证照年审提前（天）
+                        <input type="number" name="lead_review" min="1" max="180" value="{{ lead_form.lead_review }}">
+                    </label>
+                    <label>借阅应还提前（天）
+                        <input type="number" name="lead_borrow" min="1" max="180" value="{{ lead_form.lead_borrow }}">
+                    </label>
+                    <button type="submit" class="btn-primary">应用</button>
+                </div>
+            </details>
             <a href="{% url 'expiry_export' %}" class="btn-transparent expiry-export">导出本月到期清单</a>
         </div>
     </form>
@@ -66,9 +74,11 @@
                    href="?{{ qs_day_base }}&day={{ cell.date|date:'Y-m-d' }}"
                    title="{{ cell.date|date:'Y-m-d' }}：{{ cell.count }} 项到期">
                     <span class="expiry-cal-daynum">{{ cell.date.day }}</span>
-                    <span class="expiry-cal-count">{{ cell.count }}</span>
-                    <span class="expiry-cal-dots">
-                        {% for k in cell.kinds %}<i class="expiry-dot dot-{{ k }}"></i>{% endfor %}
+                    <span class="expiry-cal-items">
+                        {% for t in cell.titles %}
+                        <span class="expiry-cal-item k-{{ t.kind }}" title="{{ t.title }}">{{ t.title }}</span>
+                        {% endfor %}
+                        {% if cell.more %}<span class="expiry-cal-more">+{{ cell.more }} 项</span>{% endif %}
                     </span>
                 </a>
                     {% else %}
@@ -123,7 +133,7 @@
                         <td data-label="说明">{{ item.subtitle|default:'' }}</td>
                         <td data-label="到期日期">{{ item.date|date:'Y-m-d' }}</td>
                         <td data-label="剩余天数">
-                            {% if item.days_left < 0 %}已过 {{ item.days_left }} 天{% else %}{{ item.days_left }} 天{% endif %}
+                            {% if item.days_left < 0 %}已过期 {{ item.days_left|stringformat:"d"|cut:"-" }} 天{% elif item.days_left == 0 %}今天到期{% else %}剩余 {{ item.days_left }} 天{% endif %}
                         </td>
                         <td data-label="状态">
                             {% if item.days_left < 0 %}
@@ -150,6 +160,18 @@
         <div class="empty-cell">📭 展望窗口内暂无到期事项</div>
     </div>
     {% endfor %}
+
+    {% if not selected_day %}
+    <div class="expiry-more-days">
+        {% if day_hidden %}
+        <span>已显示最近 {{ by_day|length }} 天 · 另有 {{ day_hidden }} 天未展开</span>
+        <a class="btn-transparent btn-sm" href="?{{ qs_all_days }}">展开全部 {{ day_total }} 天</a>
+        {% elif show_all_days %}
+        <span>已展开全部 {{ day_total }} 天</span>
+        <a class="btn-transparent btn-sm" href="{{ request.path }}?{{ qs_clear_day }}">收起</a>
+        {% endif %}
+    </div>
+    {% endif %}
 {% endblock %}
 
 {% block extra_css %}
@@ -243,8 +265,8 @@
         display: flex;
         flex-direction: column;
         align-items: flex-start;
-        min-height: 56px;
-        padding: 6px 8px;
+        min-height: 84px;
+        padding: 6px 8px 8px;
         border: 1px solid var(--c-border);
         border-radius: 6px;
         background: var(--c-surface);
@@ -269,14 +291,81 @@
         justify-content: center;
     }
     .expiry-cal-cell.is-selected { outline: 2px solid var(--c-primary-active); outline-offset: 1px; }
-    .expiry-cal-count {
-        position: absolute;
-        top: 6px;
-        right: 8px;
+    /* 格内改为「日期 + 最多 2 条到期项标题 + 「+N 项」」：
+       原来的右上角计数没有任何标签，读者无法判断是保险还是合同。 */
+    .expiry-cal-items {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        width: 100%;
+        min-width: 0;
+        margin-top: 4px;
+    }
+    .expiry-cal-item {
+        position: relative;
+        display: block;
+        padding-left: 10px;
         font-size: 11px;
-        font-weight: 600;
+        line-height: 1.4;
+        color: var(--c-text-secondary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .expiry-cal-item::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 5px;
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: var(--c-border-strong);
+    }
+    .expiry-cal-item.k-insurance::before        { background: var(--c-info); }
+    .expiry-cal-item.k-archive_contract::before { background: var(--c-accent); }
+    .expiry-cal-item.k-license_expire::before   { background: var(--c-danger); }
+    .expiry-cal-item.k-license_review::before   { background: var(--c-warning); }
+    .expiry-cal-item.k-borrow_due::before       { background: var(--c-borrowed); }
+    .expiry-cal-more { font-size: 11px; font-weight: 600; color: var(--c-text-tertiary); padding-left: 10px; }
+    /* 明细列表的折叠提示 */
+    .expiry-more-days {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-top: 0.75rem;
+        padding: 0.6rem 1rem;
+        border: 1px dashed var(--c-border-strong);
+        border-radius: 8px;
+        font-size: 13px;
         color: var(--c-text-secondary);
     }
+    /* 预警参数：季度级低频配置，默认收起 */
+    .expiry-params { position: relative; }
+    .expiry-params > summary {
+        list-style: none;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 34px;
+        padding: 0 12px;
+    }
+    .expiry-params > summary::-webkit-details-marker { display: none; }
+    .expiry-params > summary::marker { content: ""; }
+    .expiry-params[open] > summary { color: var(--c-primary); }
+    .expiry-params-panel {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: flex-end;
+        margin-top: 10px;
+        padding: 12px;
+        border: 1px solid var(--c-border);
+        border-radius: 8px;
+        background: var(--c-surface-sunken);
+    }
+    .expiry-horizon { flex-direction: row; align-items: center; gap: 8px; }
     .expiry-cal-dots {
         display: flex;
         flex-wrap: wrap;

@@ -81,6 +81,10 @@ def _qs(request, **overrides):
     return params.urlencode()
 
 
+# 明细列表默认渲染的天数。日历已提供月视图，明细只在需要逐条处理时使用。
+PREVIEW_DAY_GROUPS = 7
+
+
 @perm_required_any(("insurance", "read"), ("archive", "read"))
 def expiry_calendar(request):
     """未来 N 天内到期事项，按月历浏览、点选日期过滤，红/黄/绿分级。"""
@@ -118,6 +122,15 @@ def expiry_calendar(request):
     if selected:
         by_day = [g for g in by_day if g["date"] == selected]
 
+    # 日历与明细同源，过去默认把 30+ 天各自渲染成一张表（页面 7368px、移动端 21001px）。
+    # 未点选日期时只渲染最近 7 天，其余通过「展开」显式加载；点选日期时只渲染当天。
+    day_total = len(by_day)
+    show_all_days = request.GET.get("all_days") == "1"
+    day_hidden = 0
+    if not selected and not show_all_days and day_total > PREVIEW_DAY_GROUPS:
+        day_hidden = day_total - PREVIEW_DAY_GROUPS
+        by_day = by_day[:PREVIEW_DAY_GROUPS]
+
     return render(request, "records/expiry_calendar.html", {
         "days": days,
         "today": today,
@@ -143,6 +156,13 @@ def expiry_calendar(request):
         "qs_day_base": _qs(request, ym=month_start.strftime("%Y-%m"), day=None),
         "selected_day": selected,
         "qs_clear_day": _qs(request, day=None),
+        # 明细列表的折叠状态（默认只渲染最近 7 天）
+        "day_total": day_total,
+        "day_hidden": day_hidden,
+        "show_all_days": show_all_days,
+        "qs_all_days": _qs(request, all_days="1", day=None),
+        # 有任一提前天数参数时保持「预警参数」面板展开，否则应用后值被折起来看不见
+        "params_open": any(request.GET.get(p) not in (None, "") for p in LEAD_PARAM_MAP),
     })
 
 

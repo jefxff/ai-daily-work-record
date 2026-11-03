@@ -29,18 +29,21 @@
    省下的 3% 全部给「工作内容」，长句少折一行。
    ========================================================================== */
 .dr-table {
-    min-width: 1020px;
+    min-width: 1134px;
+    table-layout: fixed;
     font-variant-numeric: tabular-nums;
 }
 
-.dr-table.table--fixed th:nth-child(1) { width: 4%; }
-.dr-table.table--fixed th:nth-child(2) { width: 12%; }
-.dr-table.table--fixed th:nth-child(3) { width: 10%; }
-.dr-table.table--fixed th:nth-child(4) { width: 28%; }
-.dr-table.table--fixed th:nth-child(5) { width: 11%; }
-.dr-table.table--fixed th:nth-child(6) { width: 9%; }
-.dr-table.table--fixed th:nth-child(7) { width: 14%; }
-.dr-table.table--fixed th:nth-child(8) { width: 12%; }
+/* 列宽按信息价值固定：工作内容 420px 拿最宽，序号 48px 足够放下三位数，
+   日期压成单行 110px（原来是两行占 12%） */
+.dr-table col.c-seq { width: 48px; }
+.dr-table col.c-when { width: 104px; }
+.dr-table col.c-dept { width: 128px; }
+.dr-table col.c-content { width: 392px; }
+.dr-table col.c-due { width: 124px; }
+.dr-table col.c-status { width: 92px; }
+.dr-table col.c-progress { width: 134px; }
+.dr-table col.c-actions { width: 112px; }
 
 /* 列头：排序箭头与文字之间留一点空隙，不让 ⇅ 贴着末字 */
 .dr-table thead th .sort-link { gap: 4px; }
@@ -51,10 +54,12 @@
    视线先拿日期、需要时再看时间。 */
 .dr-when {
     display: flex;
-    flex-direction: column;
-    gap: 1px;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 6px;
     min-width: 0;
     line-height: 1.35;
+    white-space: nowrap;
 }
 
 .dr-when__date {

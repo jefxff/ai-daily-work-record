@@ -177,10 +177,14 @@ def dashboard(request):
     }
 
     # 各模块记录数（仅统计当前用户可见模块，口径与 total_records 一致）
-    module_chart_items = [('每日记录', daily_total_count)]
+    # 档案与其余模块差两个数量级（9074 对个位/百位），并入同一坐标轴会把其余 9 个
+    # 模块压成贴地的一条线。档案不在柱图里画，改为标题下的一行说明文字。
     if 'archive' in visible:
         from archive.models import Archive
-        module_chart_items.append(('档案', Archive.objects.count()))
+        archive_chart_count = Archive.objects.count()
+    else:
+        archive_chart_count = 0
+    module_chart_items = [('每日记录', daily_total_count)]
     if 'samples' in visible:
         from samples.models import Sample
         module_chart_items.append(('样品', Sample.objects.filter(is_deleted=False).count()))
@@ -213,6 +217,7 @@ def dashboard(request):
     ]
 
     chart_payload = {
+        'archive_count': archive_chart_count,
         'module_labels': [x[0] for x in module_chart_items],
         'module_values': [x[1] for x in module_chart_items],
         'trend_labels': [x['label'] for x in trend30],
@@ -250,7 +255,20 @@ def dashboard(request):
         'url': '/archive/borrows/' if archive_borrowed_count else '',
     }
 
+    # 近 7 日新增与环比：周趋势原来只是一条脱离栅格的柱图，
+    # 作为 KPI 一格时才能和其他数字放在同一套阅读节奏里。
+    last7 = sum(d['c'] for d in trend30[-7:])
+    prev7 = sum(d['c'] for d in trend30[-14:-7])
+
     context = {
+        # 档案与业务记录分开呈现：9074 + 364 直接相加得到的「总记录数」无法支撑判断
+        'archive_records': archive_total_count,
+        'business_records': summary['total_records'] - (archive_total_count if 'archive' in visible else 0),
+        'completion_done': summary['completion_done'],
+        'completion_total': summary['completion_total'],
+        'weekly_new': last7,
+        'weekly_prev': prev7,
+        'weekly_delta': last7 - prev7,
         'total_records': summary['total_records'],
         'module_count': summary['module_count'],
         'completion_rate': summary['completion_rate'],

@@ -163,7 +163,8 @@
                 <a href="{% url 'copilot:egress_audit' %}" {% nav_class '/copilot/egress/' %}>AI 外发审计</a>
                 {% endcan %}
                 {% can_view "notifications" %}
-                <a href="{% url 'notifications:list' %}" {% nav_class '/notifications/' %}>消息通知</a>
+                <a href="{% url 'notifications:list' %}" {% nav_class '=/notifications/' %}>消息通知</a>
+                <a href="{% url 'notifications:task_list' %}" {% nav_class '/notifications/tasks/' %}>定时任务</a>
                 {% endcan_view %}
             </div>
         </li>

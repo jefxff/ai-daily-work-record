@@ -4,42 +4,48 @@
 {% block page_title %}待办工作台 - 每日工作记录管理网站{% endblock %}
 
 {% block page_actions %}
-<form class="d-flex gap-2 align-items-center flex-nowrap" method="GET">
-    <select name="source" class="form-select form-select-sm" style="height:34px;width:110px;min-width:110px;max-width:110px;flex:0 0 110px">
-        <option value="">全部来源</option>
-        {% for key, label in source_choices %}
-        <option value="{{ key }}" {% if source_filter == key %}selected{% endif %}>{{ label }}</option>
+{% comment %}一条筛选带：来源 chips（单选）+ 紧急度下拉 + 仅看逾期开关。
+   原先来源下拉与 5 个来源 tab 并行、紧急度胶囊另占一行，用户无法判断哪个条件在生效。{% endcomment %}
+<form class="ws-filter-bar" method="GET">
+    <div class="ws-source-chips" role="group" aria-label="按来源筛选">
+        <a href="?{% if urgency_filter %}urgency={{ urgency_filter|urlencode }}{% endif %}{% if overdue_only %}{% if urgency_filter %}&{% endif %}overdue=1{% endif %}"
+           class="ws-src-chip{% if not source_filter %} is-active{% endif %}">全部来源</a>
+        {% for mod_key, mod_label in source_shortcuts %}
+        <a href="?source={{ mod_key }}{% if urgency_filter %}&urgency={{ urgency_filter|urlencode }}{% endif %}{% if overdue_only %}&overdue=1{% endif %}"
+           class="ws-src-chip{% if source_filter == mod_key %} is-active{% endif %}">{{ mod_label }}</a>
+        {% endfor %}
+    </div>
+    <select name="urgency" class="form-select form-select-sm ws-urgency" aria-label="按紧急度筛选" data-auto-submit>
+        <option value="">全部紧急度</option>
+        {% for label in urgency_choices %}
+        <option value="{{ label }}" {% if urgency_filter == label %}selected{% endif %}>{{ label }}</option>
         {% endfor %}
     </select>
-    <button type="submit" class="btn-transparent">筛选</button>
-    {% if source_filter %}
-    <a href="?{% if urgency_filter %}urgency={{ urgency_filter }}{% endif %}" class="filter-chip">清除来源 ✕</a>
-    {% endif %}
-    {% for mod_key, mod_label in source_shortcuts %}
-    <a href="?source={{ mod_key }}{% if urgency_filter %}&urgency={{ urgency_filter }}{% endif %}"
-       class="filter-chip{% if source_filter == mod_key %} is-active{% endif %}">{{ mod_label }}</a>
-    {% endfor %}
+    <label class="ws-switch">
+        <input type="checkbox" name="overdue" value="1" {% if overdue_only %}checked{% endif %} data-auto-submit>
+        <span>仅看逾期</span>
+    </label>
+    {% if source_filter %}<input type="hidden" name="source" value="{{ source_filter }}">{% endif %}
+    <noscript><button type="submit" class="btn-transparent">筛选</button></noscript>
 </form>
 {% endblock %}
 
 {% block content %}
     <div class="page-header">
         <h1>待办工作台<span class="total-hint">共 {{ total }} 项待办</span></h1>
-        <div class="filter-chips ws-chips">
-            <a href="?{% if source_filter %}source={{ source_filter }}{% endif %}"
-               class="ws-chip danger{% if not urgency_filter %} active{% endif %}"
-               title="全部紧急度">全部 {{ total }}</a>
-            <a href="?urgency=高{% if source_filter %}&source={{ source_filter }}{% endif %}"
-               class="ws-chip danger{% if urgency_filter == '高' %} active{% endif %}">高紧急 {{ counts.高 }}</a>
-            <a href="?urgency=中{% if source_filter %}&source={{ source_filter }}{% endif %}"
-               class="ws-chip warning{% if urgency_filter == '中' %} active{% endif %}">中紧急 {{ counts.中 }}</a>
-            <a href="?urgency=低{% if source_filter %}&source={{ source_filter }}{% endif %}"
-               class="ws-chip info{% if urgency_filter == '低' %} active{% endif %}">低紧急 {{ counts.低 }}</a>
-            {% if urgency_filter %}
-            <a href="?{% if source_filter %}source={{ source_filter }}{% endif %}" class="filter-chip">清除紧急度 ✕</a>
-            {% endif %}
+        {# 只读统计：可点的筛选只保留工具栏一处，页头不再提供第二套入口 #}
+        <div class="filter-chips ws-chips" role="group" aria-label="紧急度分布">
+            <span class="ws-chip danger">高 {{ counts.高 }}</span>
+            <span class="ws-chip warning">中 {{ counts.中 }}</span>
+            <span class="ws-chip info">低 {{ counts.低 }}</span>
         </div>
     </div>
+
+    {% if urgency_hint %}
+    <div class="ws-urgency-hint" role="status">
+        当前 {{ total }} 项待办中有 {{ counts.高 }} 项被标为「高紧急」（超过一半）——紧急度阈值可能过低，建议优先看「剩余天数」这一列。
+    </div>
+    {% endif %}
 
     <div class="table-container">
         <div class="table-responsive">
@@ -59,15 +65,20 @@
                 <tbody>
                     {% for todo in todos %}
                     <tr>
-                        <td data-label="紧急度"><span class="status-badge {{ todo.urgency_badge }}">{{ todo.urgency }}</span></td>
-                        <td data-label="待办事项" class="ws-title">{{ todo.title }}</td>
+                        <td data-label="紧急度"><span class="ws-dot {{ todo.urgency_badge }}" title="紧急度：{{ todo.urgency }}" aria-label="紧急度：{{ todo.urgency }}"></span></td>
+                        <td data-label="待办事项" class="ws-title" title="{{ todo.title }}">{{ todo.title }}</td>
                         <td data-label="来源">{{ todo.source_label }}</td>
                         <td data-label="经办/归属">{{ todo.owner|default:'-' }}</td>
                         <td data-label="期限">{% if todo.deadline %}{{ todo.deadline|date:'Y-m-d' }}{% else %}-{% endif %}</td>
                         <td data-label="剩余天数">
-                            {% if todo.days_left is not None %}
-                                {% if todo.days_left < 0 %}<span class="ws-overdue">已过 {{ todo.days_left|stringformat:"d" }} 天</span>{% else %}{{ todo.days_left }} 天{% endif %}
-                            {% else %}-{% endif %}
+                            {% comment %}主信号改为逾期天数：未逾期 / ≤3 天 / 4–7 天 / >7 天，逾期单独一档{% endcomment %}
+                            {% if todo.days_left is None %}<span class="ws-days">—</span>
+                            {% elif todo.days_left < 0 %}<span class="ws-days ws-days--overdue">逾期 {{ todo.days_left|stringformat:"d"|cut:"-" }} 天</span>
+                            {% elif todo.days_left == 0 %}<span class="ws-days ws-days--d3">今天到期</span>
+                            {% elif todo.days_left <= 3 %}<span class="ws-days ws-days--d3">剩 {{ todo.days_left }} 天</span>
+                            {% elif todo.days_left <= 7 %}<span class="ws-days ws-days--d7">剩 {{ todo.days_left }} 天</span>
+                            {% else %}<span class="ws-days">剩 {{ todo.days_left }} 天</span>
+                            {% endif %}
                         </td>
                         <td data-label="状态">{{ todo.status }}</td>
                         <td data-label="操作" class="col-actions">
@@ -88,44 +99,33 @@
 
 {% block extra_css %}
 <style>
-    /* === page-actions 内的所有控件统一规格（参照 .page-actions .btn-transparent） ===
-       .filter-chip 在 page-actions 里呈现为与 select / 按钮一样的 34px 高按钮外形；
-       但在 page-header 里仍保留小标签外观（color 由全局 .filter-chip 控制）。 */
-    .page-actions .filter-chip {
-        height: 34px !important;
-        min-height: 34px !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        padding: 0 12px !important;
-        background: var(--c-surface) !important;
-        color: var(--c-text-secondary) !important;
-        border: 1px solid var(--c-border-strong) !important;
-        border-radius: 6px !important;
-        font-size: 13px !important;
-        font-weight: 500 !important;
-        text-decoration: none !important;
-        white-space: nowrap !important;
-        line-height: 1 !important;
-        transition: background-color var(--dur-fast) ease,
-                    color var(--dur-fast) ease,
-                    border-color var(--dur-fast) ease;
+    /* === 一条筛选带：来源 chips + 紧急度下拉 + 仅看逾期 === */
+    .ws-filter-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .ws-source-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .ws-src-chip {
+        height: 34px; display: inline-flex; align-items: center; padding: 0 12px;
+        background: var(--c-surface); color: var(--c-text-secondary);
+        border: 1px solid var(--c-border-strong); border-radius: 6px;
+        font-size: 13px; font-weight: 500; white-space: nowrap; text-decoration: none;
+        transition: background-color var(--dur-fast) ease, color var(--dur-fast) ease, border-color var(--dur-fast) ease;
     }
-    .page-actions .filter-chip:hover,
-    .page-actions .filter-chip:focus-visible {
-        background: var(--c-primary-subtle) !important;
-        color: var(--c-primary) !important;
-        border-color: var(--c-primary) !important;
-        text-decoration: none !important;
+    .ws-src-chip:hover { background: var(--c-primary-subtle); color: var(--c-primary); border-color: var(--c-primary); text-decoration: none; }
+    .ws-src-chip.is-active { background: var(--c-primary-subtle); color: var(--c-primary); border-color: var(--c-primary); font-weight: 600; }
+    .ws-urgency { height: 34px; width: 130px; font-size: 13px; }
+    .ws-switch {
+        display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px;
+        border: 1px solid var(--c-border-strong); border-radius: 6px; background: var(--c-surface);
+        font-size: 13px; color: var(--c-text-secondary); cursor: pointer; white-space: nowrap;
     }
-    /* 当前激活的来源快捷筛选：主色 + 加粗 */
-    .page-actions .filter-chip.is-active {
-        background: var(--c-primary-subtle) !important;
-        color: var(--c-primary) !important;
-        border-color: var(--c-primary) !important;
-        font-weight: 600 !important;
+    .ws-switch input { margin: 0; }
+    .ws-urgency-hint {
+        display: flex; align-items: center; gap: 8px;
+        margin: 0 0 12px; padding: 8px 12px;
+        border: 1px solid var(--c-warning-line); border-radius: 6px;
+        background: var(--c-warning-bg); color: var(--c-warning); font-size: 13px;
     }
 
-    /* 紧急度快捷筛选 chip —— page-header 右侧，保持胶囊标签外观 */
+    /* 页头紧急度分布：只读统计，不再可点 */
     .ws-chips { align-items: center; }
     .ws-chip {
         display: inline-flex;
@@ -134,33 +134,52 @@
         border-radius: 999px;
         font-size: 12px;
         font-weight: 600;
-        text-decoration: none;
         border: 1px solid transparent;
         line-height: 1.6;
-        transition: background-color var(--dur-fast) ease, border-color var(--dur-fast) ease, color var(--dur-fast) ease;
     }
-    .ws-chip:hover { text-decoration: none; }
     .ws-chip.danger  { color: var(--c-danger);  background: var(--c-danger-bg);  border-color: var(--c-danger-line); }
     .ws-chip.warning { color: var(--c-warning); background: var(--c-warning-bg); border-color: var(--c-warning-line); }
     .ws-chip.info    { color: var(--c-info);    background: var(--c-info-bg);    border-color: var(--c-info-line); }
-    .ws-chip.active { outline: 2px solid var(--c-primary-active); outline-offset: 1px; }
 
-    /* 表格列宽（layout: fixed 保证桌面端列对齐） */
+    /* === 表格列宽 === */
     .workspace-table { table-layout: fixed; min-width: 960px; }
-    .workspace-table th:nth-child(1) { width: 8%; }   /* 紧急度 */
-    .workspace-table th:nth-child(2) { width: 34%; }  /* 待办事项 */
+    .workspace-table th:nth-child(1) { width: 5%; }   /* 紧急度（圆点） */
+    .workspace-table th:nth-child(2) { width: 36%; }  /* 待办事项 */
     .workspace-table th:nth-child(3) { width: 10%; }  /* 来源 */
-    .workspace-table th:nth-child(4) { width: 12%; }  /* 经办/归属 */
+    .workspace-table th:nth-child(4) { width: 11%; }  /* 经办/归属 */
     .workspace-table th:nth-child(5) { width: 11%; }  /* 期限 */
-    .workspace-table th:nth-child(6) { width: 11%; }  /* 剩余天数 */
-    .workspace-table th:nth-child(7) { width: 8%; }   /* 状态 */
+    .workspace-table th:nth-child(6) { width: 12%; }  /* 剩余天数 */
+    .workspace-table th:nth-child(7) { width: 9%; }   /* 状态 */
     .workspace-table th:nth-child(8) { width: 6%; }   /* 操作 */
-    .ws-title { word-break: break-all; }
-    .ws-overdue { color: var(--c-danger); font-weight: 600; }
+
+    /* 标题两行封顶：从词中间截断后语义不成立，宁可换行也不要省略号切词。
+       表格单元格上 -webkit-box 会被浏览器规范化成 flow-root，clamp 不生效，
+       所以用 line-height 倍数直接限高，行数与 2 行严格对应。 */
+    .ws-title {
+        white-space: normal;
+        word-break: break-word;
+        line-height: 1.45;
+        max-height: 2.9em;
+        overflow: hidden;
+    }
+    /* 紧急度降为行首 6px 圆点，不再整列红标签 */
+    .ws-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--c-text-tertiary); }
+    .ws-dot.badge-danger, .ws-dot.danger { background: var(--c-danger); }
+    .ws-dot.badge-warning, .ws-dot.warning { background: var(--c-warning); }
+    .ws-dot.badge-info, .ws-dot.info { background: var(--c-info); }
+    .ws-dot.badge-success, .ws-dot.success { background: var(--c-success); }
+    /* 剩余天数：逾期 / ≤3 天 / 4–7 天 / 其余中性 */
+    .ws-days { font-variant-numeric: tabular-nums; }
+    .ws-days--overdue { color: var(--c-danger); font-weight: 600; }
+    .ws-days--d3 { color: var(--c-warning); font-weight: 600; }
+    .ws-days--d7 { color: var(--c-warning); }
 
     /* 小屏卡片模式下表头隐藏，列宽定义不影响布局 */
     @media (max-width: 640px) {
         .workspace-table { min-width: 0; }
+        .ws-filter-bar { width: 100%; }
+        .ws-source-chips { width: 100%; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 2px; }
+        .ws-urgency { flex: 1 1 140px; }
     }
 </style>
 {% endblock %}

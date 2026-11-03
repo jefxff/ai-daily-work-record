@@ -17,30 +17,39 @@
                     <button type="button" class="refresh-btn" id="refreshBtn">刷新数据</button>
                 </div>
             </div>
+            {% comment %}
+            每个数字都带口径：54 是记录数还是条数、31 与 54 是否包含关系，
+            原来看板没有给出答案。档案与业务记录分开成组，不再直接相加成一个 9438。
+            {% endcomment %}
             <div class="overview-stats">
                 <div class="stat-item">
-                    <div class="stat-value">{{ module_count }}</div>
-                    <div class="stat-label">业务模块</div>
+                    <div class="stat-value">{{ business_records }}</div>
+                    <div class="stat-label">业务记录</div>
+                    <div class="stat-sub">不含档案 · 覆盖 {{ module_count }} 个可见模块</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-value">{{ total_records }}</div>
-                    <div class="stat-label">总记录数</div>
+                    <div class="stat-value">{{ archive_records }}</div>
+                    <div class="stat-label">档案</div>
+                    <div class="stat-sub">单独计组，不计入业务记录</div>
                 </div>
                 <div class="stat-item">
                     <div class="stat-value">{{ completion_rate }}%</div>
                     <div class="stat-label">完成率</div>
+                    <div class="stat-sub">分母 {{ completion_total }} 条（每日记录 + 客户客诉）</div>
                 </div>
                 <div class="stat-item pending-stat">
                     <div class="stat-value">{{ pending_count }}</div>
                     <div class="stat-label">待处理</div>
+                    <div class="stat-sub">每日记录未完成 + 客诉未闭环 + 诉讼在办</div>
                 </div>
-            </div>
-            <div style="margin-top: 1rem; display: flex; align-items: center; gap: 1rem;">
-                <span style="font-size: 0.75rem; color: var(--c-text-secondary); white-space: nowrap;">近 7 天每日记录</span>
-                <div class="trend-bars">
-                    {% for d in weekly_trend %}
-                    <div class="trend-bar" title="{{ d.date }}：{{ d.c }} 条" data-h="{% widthratio d.c trend_max 40 %}"></div>
-                    {% endfor %}
+                <div class="stat-item">
+                    <div class="stat-value">{{ weekly_new }}</div>
+                    <div class="stat-label">近 7 日新增记录</div>
+                    <div class="stat-sub">
+                        {% if weekly_delta > 0 %}<span class="stat-delta up">↑ 较上周 +{{ weekly_delta }}</span>
+                        {% elif weekly_delta < 0 %}<span class="stat-delta down">↓ 较上周 {{ weekly_delta }}</span>
+                        {% else %}<span class="stat-delta">→ 与上周持平</span>{% endif %}
+                    </div>
                 </div>
             </div>
         </div>
@@ -49,6 +58,9 @@
         <div class="charts-row">
             <div class="chart-box">
                 <div class="chart-title">各模块记录数</div>
+                {% if chart_payload.archive_count %}
+                <div class="chart-note">档案 {{ chart_payload.archive_count }} 条单列，与其它模块差两个数量级，不并入本图</div>
+                {% endif %}
                 <div class="chart-canvas"><canvas id="chartModules" role="img" aria-label="各模块记录数横向条形图"></canvas></div>
             </div>
             <div class="chart-box">
@@ -720,16 +732,17 @@
 
     .overview-stats {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1rem;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 0.75rem;
         margin-top: 1rem;
     }
 
     .stat-item {
         text-align: center;
-        padding: 1rem;
+        padding: 0.9rem 0.75rem;
         background: var(--c-surface-sunken);
         border-radius: 8px;
+        min-width: 0;
     }
 
     .stat-value {
@@ -737,6 +750,7 @@
         font-weight: 600;
         color: var(--c-text);
         margin-bottom: 0.25rem;
+        line-height: 1.2;
     }
 
     .pending-stat .stat-value { color: var(--c-danger); }
@@ -745,6 +759,21 @@
         font-size: 0.875rem;
         color: var(--c-text-secondary);
     }
+
+    /* 口径说明：解释「这个数字数的是什么」，避免 9438 与 364 混读 */
+    .stat-sub {
+        margin-top: 0.35rem;
+        font-size: 0.72rem;
+        line-height: 1.35;
+        color: var(--c-text-secondary);
+        opacity: 0.85;
+        overflow-wrap: anywhere;
+    }
+
+    /* 环比方向用箭头表达，不用红绿：记录数增减不是好坏判断 */
+    .stat-delta { display: inline-block; }
+    .stat-delta.up { color: var(--c-text); }
+    .stat-delta.down { color: var(--c-text-secondary); }
 
     /* 待处理项目卡片 */
     .pending-card {
@@ -1136,6 +1165,7 @@
             border-radius: 8px;
             padding: 1.25rem 1.5rem;
             box-shadow: var(--sh-card);
+            min-width: 0;
         }
         .chart-title {
             font-size: 0.95rem;
@@ -1143,9 +1173,25 @@
             color: var(--c-text);
             margin-bottom: 0.75rem;
         }
-        .chart-canvas { position: relative; height: 230px; }
+        .chart-note {
+            margin: -0.5rem 0 0.6rem;
+            font-size: 0.72rem;
+            color: var(--c-text-secondary);
+        }
+        /* 高度随视口伸缩：1440 下 280px 让 30 个日期刻度有呼吸，矮屏自动收窄 */
+        .chart-canvas { position: relative; height: clamp(220px, 26vh, 300px); }
         a.module-status { text-decoration: none; }
         .pending-footer .view-all-btn { display: inline-block; text-align: center; }
+
+    @media (max-width: 900px) {
+        .overview-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .stat-item { padding: 0.8rem 0.6rem; }
+        .stat-value { font-size: 1.3rem; }
+    }
+
+    @media (max-width: 768px) {
+        .chart-canvas { height: 200px; }
+    }
     </style>
 {% endblock %}
 

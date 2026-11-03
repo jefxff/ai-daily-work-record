@@ -579,11 +579,24 @@ class ScheduledTaskTests(TestCase):
         self.assertEqual(kb_todo.params["days"], 3)
 
     def test_list_page_shows_tasks(self):
-        """通知中心页面展示定时任务区（含任务名与线程状态）。"""
+        """通知中心不再内嵌任务表，只留跳转入口；任务表在独立的定时任务页。
+
+        原用例断言通知页正文里有「到期提醒扫描 / 每日记录提醒」，等于把
+        「标题写通知、主体是运维任务」这个 IA 问题固化成契约。拆页后改为
+        分别校验两页：通知页有入口无任务表，定时任务页有任务无操作入口。
+        """
         grant_perms(self.staff, "notifications.read")
         c = Client()
         c.force_login(self.staff)
+
         resp = c.get(reverse("notifications:list"))
+        self.assertEqual(resp.status_code, 200)
+        body = resp.content.decode()
+        self.assertIn("定时任务", body)                 # 分段控件 + 跳转入口仍在
+        self.assertIn(reverse("notifications:task_list"), body)
+        self.assertNotIn("到期提醒扫描", body)          # 任务表已移出本页
+
+        resp = c.get(reverse("notifications:task_list"))
         self.assertEqual(resp.status_code, 200)
         body = resp.content.decode()
         self.assertIn("定时任务", body)

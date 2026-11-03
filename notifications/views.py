@@ -48,9 +48,22 @@ def _per_page(request, default=10):
     return _shared_per_page(request, default)
 
 
+def _scheduled_task_context():
+    """定时任务上下文：通知页（只读摘要）与定时任务页（完整表格）共用一份。"""
+    return {
+        "scheduled_tasks": [
+            {"task": task, "next_run_at": scheduler.next_run_at(task)}
+            for task in ScheduledTask.objects.all()
+        ],
+        "worker_alive": scheduler.worker_alive(),
+        "scheduler_alive": scheduler.scheduler_alive(),
+        "now": timezone.now(),
+    }
+
+
 @perm_required("notifications", "read")
 def notification_list(request):
-    """通知中心列表：仅本人，且不展示已撤回/已过期；底部展示定时任务状态。"""
+    """通知中心列表：仅本人，且不展示已撤回/已过期。定时任务已拆到 /notifications/tasks/。"""
     from django.core.paginator import Paginator
 
     qs = services._my_notifications(request.user).exclude(
@@ -69,11 +82,7 @@ def notification_list(request):
     paginator = Paginator(qs, _per_page(request))
     page_obj = paginator.get_page(request.GET.get("page"))
 
-    tasks_ctx = [
-        {"task": task, "next_run_at": scheduler.next_run_at(task)}
-        for task in ScheduledTask.objects.all()
-    ]
-    return render(request, "notifications/notification_list.html", {
+    ctx = {
         "page_obj": page_obj,
         "total": paginator.count,
         "unread_count": services.unread_count(request.user),
@@ -81,11 +90,30 @@ def notification_list(request):
         "category_filter": category_filter,
         "unread_only": unread_only,
         "categories": TEMPLATE_CATEGORIES,
-        "now": timezone.now(),
-        "scheduled_tasks": tasks_ctx,
-        "worker_alive": scheduler.worker_alive(),
-        "scheduler_alive": scheduler.scheduler_alive(),
-    })
+    }
+    # 本页只消费任务数量与调度进程状态，用来在顶部给一条跳转入口
+    ctx.update(_scheduled_task_context())
+    return render(request, "notifications/notification_list.html", ctx)
+
+
+@perm_required("notifications", "read")
+def scheduled_task_list(request):
+    """定时任务页：从消息通知页拆出的运维视图（原页面标题是通知、主体是任务表）。"""
+    ctx = _scheduled_task_context()
+    ctx["failed_count"] = sum(
+        1 for item in ctx["scheduled_tasks"] if item["task"].last_status == "fail"
+    )
+    ctx["enabled_count"] = sum(
+        1 for item in ctx["scheduled_tasks"] if item["task"].enabled
+    )
+    # 分段控件上「消息通知」的角标：与本页任务数并列，两个位置口径一致
+    ctx["total"] = (
+        services._my_notifications(request.user)
+        .exclude(status__in=[Notification.Status.REVOKED, Notification.Status.EXPIRED])
+        .count()
+    )
+    ctx["unread_count"] = services.unread_count(request.user)
+    return render(request, "notifications/scheduled_task_list.html", ctx)
 
 
 @perm_required("notifications", "read")

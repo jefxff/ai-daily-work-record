@@ -248,10 +248,17 @@ def workspace(request):
     urgency_filter = request.GET.get("urgency") or None
     if urgency_filter not in URGENCY_RANK:
         urgency_filter = None
+    # 「仅看逾期」开关：逾期天数才是需要立刻动作的信号，紧急度只是它的派生标签
+    overdue_only = request.GET.get("overdue") == "1"
 
     todos = collect_todos(user, source_filter=source_filter)
     if urgency_filter:
         todos = [t for t in todos if t["urgency"] == urgency_filter]
+    if overdue_only:
+        todos = [
+            t for t in todos
+            if t["days_left"] is not None and t["days_left"] < 0
+        ]
 
     # 页头统计基于未筛选集合（保持口径稳定）
     all_todos = collect_todos(user) if (source_filter or urgency_filter) else todos
@@ -268,6 +275,9 @@ def workspace(request):
         ("archive", "档案"),
         ("knowledge", "知识库"),
     ]
+    # 紧急度阈值自检：一列里过半是「高」时，高亮就不再传递优先级，
+    # 页面上需要明确提示「阈值可能过低」，而不是让用户以为真的都很急。
+    urgency_high_ratio = (counts["高"] / len(all_todos)) if all_todos else 0
     return render(request, "records/workspace.html", {
         "todos": page_obj,
         "page_obj": page_obj,
@@ -275,6 +285,9 @@ def workspace(request):
         "total": len(all_todos),
         "source_filter": source_filter,
         "urgency_filter": urgency_filter,
+        "overdue_only": overdue_only,
+        "urgency_high_ratio": urgency_high_ratio,
+        "urgency_hint": urgency_high_ratio > 0.5,
         "source_choices": [(k, m["label"]) for k, m in SOURCE_META.items()],
         "source_shortcuts": source_shortcuts,
         "urgency_choices": list(URGENCY_RANK.keys()),

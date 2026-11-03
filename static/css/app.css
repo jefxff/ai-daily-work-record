@@ -35,9 +35,10 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
 .sidebar-menu-item .dropdown-toggle svg { flex-shrink: 0; opacity: 0.8; }
 .sidebar-menu-item .dropdown-toggle:hover { color: rgba(255, 255, 255, 0.95); background-color: rgba(255, 255, 255, 0.1); }
 .sidebar-menu-item .dropdown-toggle.active { color: var(--c-primary); background: var(--c-primary-subtle); }
-/* 折叠箭头：展开时旋转 180°；试样管理 / 档案管理 / 系统三组行为一致 */
-.sidebar-menu-item .dropdown-toggle > svg:last-child { transition: transform 0.28s ease; }
-.sidebar-menu-item .dropdown-toggle[aria-expanded="true"] > svg:last-child { transform: rotate(180deg); }
+/* 折叠箭头：折叠态朝右、展开态朝下，与 aria-expanded 一一对应；
+   工作台 / 客户管理 / 试样管理 / 档案管理 / 系统五组行为一致 */
+.sidebar-menu-item .dropdown-toggle > svg:last-child { transition: transform 0.28s ease; transform: rotate(-90deg); }
+.sidebar-menu-item .dropdown-toggle[aria-expanded="true"] > svg:last-child { transform: rotate(0deg); }
 /* 折叠子菜单：max-height 过渡实现统一展开/收起动画（display:none 无法过渡）。
    三组共用同一规则；上限必须盖住最长子菜单：超管的「系统」组现有 15 个链接
    （约 36.8rem，每项 0.625rem×2 内边距 + 0.8rem 行高），早先 32rem 已被
@@ -51,8 +52,8 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
 .sidebar-section-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; background: none; border: 0; margin: 0; padding: 0.625rem 1.5rem; font-size: 0.875rem; font-weight: 500; letter-spacing: 0; color: rgba(255, 255, 255, 0.8); cursor: pointer; appearance: none; }
 .sidebar-section-toggle:hover { color: rgba(255, 255, 255, 0.95); background-color: rgba(255, 255, 255, 0.1); }
 .sidebar-section-toggle:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.5); outline-offset: -2px; }
-.sidebar-section-toggle__chevron { flex: 0 0 auto; opacity: 0.8; transition: transform 0.28s ease; color: inherit; }
-.sidebar-section-toggle[aria-expanded="true"] .sidebar-section-toggle__chevron { transform: rotate(180deg); }
+.sidebar-section-toggle__chevron { flex: 0 0 auto; opacity: 0.8; transition: transform 0.28s ease; transform: rotate(-90deg); color: inherit; }
+.sidebar-section-toggle[aria-expanded="true"] .sidebar-section-toggle__chevron { transform: rotate(0deg); }
 /* 分组菜单容器：复用 max-height 过渡（与 sidebar-dropdown 动画/时长一致），
    但不继承 sidebar-dropdown 的 3rem 缩进——内部保留原始 .sidebar-menu-item > li > a 样式 */
 .sidebar-section-menu { max-height: 0; overflow: hidden; transition: max-height 0.28s ease; }
@@ -220,6 +221,16 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
             transition: border-color var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
         }
         .page-actions .search-input::placeholder { color: var(--c-text-tertiary); }
+        /* 搜索框 + 图标提交：一个控件完成「输入 + 提交」，工具栏少一个按钮 */
+        .page-actions .search-field { position: relative; }
+        .page-actions .search-field .search-input { padding-left: 34px; }
+        .page-actions .search-field__btn {
+            position: absolute; left: 0; top: 0; width: 32px; height: 34px;
+            display: grid; place-items: center; background: none; border: 0;
+            color: var(--c-text-tertiary); cursor: pointer; border-radius: 6px 0 0 6px;
+        }
+        .page-actions .search-field__btn:hover { color: var(--c-primary); }
+        .page-actions .search-field__btn:focus-visible { outline: 2px solid var(--c-primary); outline-offset: -2px; }
         .page-actions .search-input:focus {
             outline: none; background: var(--c-surface);
             border-color: var(--c-primary); box-shadow: 0 0 0 3px var(--c-primary-ring);
@@ -344,6 +355,33 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
         main.container:has(> .page-header) > .page-actions:not(:has(+ .table-container)) + * {
             margin-top: 14px;
         }
+
+        /* === 详情页：操作放回标题行右侧（批次 D-2）===
+           详情页只有「返回 / 编辑 / 删除」三个按钮，却独占一条通栏卡片，
+           把真正的正文往下推了一屏；标题右侧本来就是空的。 */
+        main.container:has(> .page-header) > .page-actions.page-actions--inline {
+            /* order / flex 用 !important：后面 `.app-breadcrumb > *:not(...)` 那条
+               通配规则权重更高（多了三个 :not），不打标就被它按「整行内容」重排。 */
+            order: 1 !important;   /* 标题取 0（见下一条），操作取 1，两者同排且标题在左 */
+            flex: 0 0 auto !important;
+            /* 不写 margin-left:auto：标题是 flex-grow:1，会自动把操作顶到右侧；
+               再叠一个 auto 外边距会让这一行算不下宽度而换行 */
+            margin: 0 0 10px;
+            padding: 0;
+            background: none;
+            border: none;
+            border-radius: 0;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 8px;
+        }
+        main.container:has(> .page-header) > .page-actions.page-actions--inline + * { margin-top: 0; }
+        main.container:has(> .page-actions--inline) > .page-header {
+            order: 0 !important;   /* 比面包屑(2)和操作(1)都靠前，标题先落位 */
+            flex: 1 1 0%;          /* 0% 而不是 auto：标题再长也让出位置给右侧按钮 */
+            min-width: 0;
+            padding-right: 12px;
+        }
         /* 主操作固定在工具条最右端（哪怕模板里它写在次要按钮之前） */
         main.container:has(> .page-header) > .page-actions .btn-primary {
             order: 2;
@@ -437,6 +475,26 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
         .nav-notify { position: relative; display: flex; align-items: center; flex-shrink: 0; }
         .nav-bell { position: relative; background: none; border: none; cursor: pointer; padding: 0.5rem; border-radius: 6px; color: var(--c-text-secondary); display: flex; align-items: center; transition: background 0.2s ease; }
         .nav-bell:hover { background: var(--c-surface-sunken); color: var(--c-primary); }
+        /* 顶栏图标按钮：与铃铛同一视觉规格，供 ≤992px 的搜索入口复用 */
+        .nav-icon-btn { position: relative; background: none; border: none; cursor: pointer; padding: 0.5rem; border-radius: 6px; color: var(--c-text-secondary); display: flex; align-items: center; transition: background 0.2s ease; }
+        .nav-icon-btn:hover { background: var(--c-surface-sunken); color: var(--c-primary); }
+        /* 桌面已有搜索框，图标只在搜索框被隐藏后出现 */
+        .nav-search-trigger { display: none; }
+
+        /* 全屏搜索层：手机上不再依赖顶栏那个 240px 的输入框 */
+        .search-sheet { position: fixed; inset: 0; z-index: var(--z-modal); background: var(--c-surface); display: none; flex-direction: column; padding: 0.75rem 1rem 1rem; }
+        .search-sheet.show { display: flex; }
+        .search-sheet__bar { display: flex; align-items: center; gap: 0.5rem; }
+        .search-sheet__form { display: flex; align-items: center; gap: 0.5rem; flex: 1; min-width: 0; height: 44px; padding: 0 12px; background: var(--c-surface-sunken); border: 1px solid var(--c-border-strong); border-radius: 10px; }
+        .search-sheet__form:focus-within { border-color: var(--c-primary); box-shadow: 0 0 0 3px var(--c-primary-ring); }
+        .search-sheet__input { flex: 1; min-width: 0; height: 100%; border: none; background: none; -webkit-appearance: none; appearance: none; font-size: 15px; color: var(--c-text); }
+        /* 焦点环由外层 .search-sheet__form:focus-within 统一给（组件库的
+           :focus-visible 在 components.css，加载顺序在本文件之后，需提高选择器权重压住） */
+        .search-sheet__input:focus,
+        .search-sheet__input:focus-visible { outline: none; }
+        .search-sheet__input::-webkit-search-cancel-button { -webkit-appearance: none; }
+        .search-sheet__cancel { flex-shrink: 0; height: 44px; padding: 0 4px; border: none; background: none; color: var(--c-primary); font-size: 14px; cursor: pointer; }
+        .search-sheet__hint { margin: 0.75rem 2px 0; font-size: 12px; color: var(--c-text-secondary); }
         .nav-bell-badge { position: absolute; top: 2px; right: 2px; min-width: 16px; height: 16px; background: var(--c-danger); color: var(--c-surface); border-radius: 8px; font-size: 10px; line-height: 16px; text-align: center; padding: 0 4px; font-weight: 600; }
         .nav-notify-menu { position: absolute; top: calc(100% + 0.4rem); right: 0; width: 360px; max-width: 92vw; background: var(--c-surface); border-radius: 8px; box-shadow: 0 6px 24px rgba(0,0,0,0.14); border: 1px solid var(--c-border); z-index: var(--z-dropdown); display: none; overflow: hidden; }
         .nav-notify-menu.show { display: block; }
@@ -463,6 +521,8 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
         @media (max-width: 992px) {
             .nav-search-box { display: none; }
             .nav-tabs { display: none; }
+            /* 搜索框消失后由图标接管，否则手机上全站搜索没有任何入口 */
+            .nav-search-trigger { display: flex; }
         }
         @media (max-width: 768px) {
             .nav-user-info { display: none; }
@@ -1798,6 +1858,35 @@ a.home-kpi:hover .home-kpi__value { color: var(--c-primary-active); }
 @media print {
   .table-responsive:has(.table-sticky) { max-height: none; overflow: visible; }
   .table-sticky thead th { position: static; }
+}
+
+/* ============================================================================
+   表头吸附（全站默认）
+   ----------------------------------------------------------------------------
+   .table-sticky 只覆盖了 15/56 个表格页，其余页面滚动后列语义丢失。
+   这里把「表头吸附」与「首列冻结」拆开：.table-head-sticky 由 table-tools.js
+   自动加到每个带 thead 的数据表上，模板无需逐个改类名。
+   容器仍需要有界高度，否则 sticky 没有滚动上下文（原因同上）。
+   ========================================================================== */
+@media (min-width: 961px) {
+  .table-responsive:has(.table-head-sticky) {
+    max-height: calc(100vh - var(--h-topbar) - 200px);
+    overflow: auto;
+  }
+  .table-head-sticky > thead > tr > th {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-sticky-head);
+    background: var(--c-surface-sunken);
+    box-shadow: inset 0 -1px 0 var(--c-border);
+  }
+  .table-head-sticky > thead > tr > th:first-child,
+  .table-head-sticky > thead > tr > th.col-actions { z-index: calc(var(--z-sticky-head) + 1); }
+}
+
+@media print {
+  .table-responsive:has(.table-head-sticky) { max-height: none; overflow: visible; }
+  .table-head-sticky > thead > tr > th { position: static; }
 }
 
 /* 侧栏二级菜单的当前项：.sidebar-menu-item a.active 已覆盖背景与左侧竖条，

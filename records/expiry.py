@@ -181,12 +181,19 @@ def _worst_key(item):
 
 
 def month_day_map(items, year, month):
-    """指定自然月内 日期 -> {count, worst, kinds}，供月历格子渲染。"""
+    """指定自然月内 日期 -> {count, worst, kinds, items}，供月历格子渲染。
+
+    items 一并留存：格子要显示「日期 + 最多 2 条标题」，只给计数的话
+    右上角就只剩一个没有标签的数字（「14 · 7」读者无法判断是保险还是合同）。
+    """
     day_map = {}
     for it in month_items(items, year, month):
-        cell = day_map.setdefault(it["date"], {"count": 0, "worst": "success", "kinds": set()})
+        cell = day_map.setdefault(
+            it["date"], {"count": 0, "worst": "success", "kinds": set(), "items": []}
+        )
         cell["count"] += 1
         cell["kinds"].add(it["kind"])
+        cell["items"].append(it)
         if _SEVERITY_RANK[_worst_key(it)] > _SEVERITY_RANK[cell["worst"]]:
             cell["worst"] = _worst_key(it)
     return day_map
@@ -206,12 +213,23 @@ def build_month_weeks(items, year, month, *, today, selected=None):
         cells = []
         for d in week:
             info = day_map.get(d)
+            # 格内标题：按严重度降序取前 2 条，其余折叠为「+N」
+            preview = []
+            if info:
+                preview = sorted(
+                    info["items"],
+                    key=lambda it: (-_SEVERITY_RANK[_worst_key(it)], it["kind"]),
+                )[:2]
             cells.append({
                 "date": d,
                 "in_month": d.month == month,
                 "count": info["count"] if info else 0,
                 "worst": info["worst"] if info else None,
                 "kinds": sorted(info["kinds"]) if info else [],
+                "titles": [
+                    {"kind": it["kind"], "title": it["title"]} for it in preview
+                ],
+                "more": max(0, (info["count"] if info else 0) - len(preview)),
                 "is_today": d == today,
                 "is_selected": d == selected,
             })

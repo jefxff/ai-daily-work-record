@@ -205,6 +205,10 @@ def dashboard_summary(
         "total_records": total_records(visible, base, user=user),
         "module_count": sum(1 for key in DASHBOARD_MODULE_KEYS if key in visible),
         "completion_rate": int((total_processed / total_items) * 100) if total_items else 0,
+        # 完成率的分母/分子一并返回：看板要在 KPI 上标出「分母是什么」，
+        # 否则 66% 这个数字无法判断覆盖了哪些模块。
+        "completion_done": total_processed,
+        "completion_total": total_items,
         "pending_count": daily["incomplete"] + cc["pending"] + law["incomplete"],
         "total_decorations": dec["total_decorations"],
         "decoration_reduced_total": dec["decoration_reduced_total"],

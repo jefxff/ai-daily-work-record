@@ -100,27 +100,28 @@
         btn.setAttribute('aria-controls', 'colSettingsPanel');
 
         /* 插入位置：
-           1) 模板用 data-col-settings-anchor 声明锚点（重置/导出 Excel/状态按钮等），
-              按 data-col-settings-position="before|after" 插到它前/后——各页操作行
-              布局不同，精确落位只能由模板自己声明；
-           2) 没有锚点时，挂到页面自己的操作行：base.html 顶部有一个空的
-              .page-actions（page_actions/top_nav_actions 挂点），而档案柜/借阅记录/
-              证照管理等页在内容里另有自己的 .page-actions——早先用 querySelector
-              命中的总是前者，列设置因此孤零零悬在页首。挑最后一个非空容器兜底。 */
+           1) 模板用 data-col-settings-anchor 声明锚点，按 data-col-settings-position
+              插到它前/后；
+           2) 默认挂在表格正上方右侧的工具条里（齿轮图标）——列设置作用于「这张表」，
+              放在页面工具栏会被当成又一个页面级动作，也是工具栏控件数下不来的原因之一。 */
+        btn.classList.add('col-settings-gear');
+        btn.setAttribute('aria-label', '列设置');
+        btn.title = '列设置';
+        btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
         var anchor = document.querySelector('[data-col-settings-anchor]');
         if (anchor) {
             anchor.insertAdjacentElement(
                 anchor.getAttribute('data-col-settings-position') === 'before'
                     ? 'beforebegin' : 'afterend', btn);
         } else {
-            var candidates = Array.prototype.filter.call(
-                document.querySelectorAll('.page-actions'),
-                function (el) { return el.children.length > 0; });
-            var target = candidates.length
-                ? candidates[candidates.length - 1]
-                : document.querySelector('.page-actions');
-            if (!target) return;
-            target.appendChild(btn);
+            var host = table.closest('.table-responsive') || table;
+            var bar = host.previousElementSibling;
+            if (!bar || !bar.classList || !bar.classList.contains('table-tools-bar')) {
+                bar = document.createElement('div');
+                bar.className = 'table-tools-bar';
+                host.parentNode.insertBefore(bar, host);
+            }
+            bar.appendChild(btn);
         }
 
         var panel = document.createElement('div');
@@ -256,6 +257,73 @@
         });
     }
 
+    /* ---------- 3.5 表头吸附：全站数据表统一启用 ----------
+       57 个模板里有 41 个没给 table 加 .table-sticky，滚动后表头跟着走、
+       列语义丢失。这里在运行时统一补齐，模板不再需要逐页改类名：
+       - 只处理「有 thead、≥2 列、不在弹窗/菜单里」的数据表；
+       - 缺 .table-responsive 容器时补一层，否则 sticky 没有滚动上下文；
+       - 用 .table-head-sticky 而不是 .table-sticky，避免顺带冻结首列。 */
+    function initStickyHeads() {
+        var skipSelector = '.form-modal, .modal, .confirm-modal, .nav-notify-menu, .nav-user-menu, [role="dialog"]';
+        var tables = document.querySelectorAll('table');
+        Array.prototype.forEach.call(tables, function (table) {
+            if (table.classList.contains('table-head-sticky')) return;
+            if (table.closest(skipSelector)) return;
+            var thead = table.tHead;
+            if (!thead || !thead.rows.length) return;
+            if (thead.rows[0].cells.length < 2) return;
+
+            var wrap = table.parentElement;
+            if (!wrap || !wrap.classList.contains('table-responsive')) {
+                wrap = document.createElement('div');
+                wrap.className = 'table-responsive';
+                table.parentNode.insertBefore(wrap, table);
+                wrap.appendChild(table);
+            }
+            table.classList.add('table-head-sticky');
+        });
+    }
+
+    /* ---------- 3.6 数值列右对齐 ----------
+       金额与数量原先左对齐，千分位宽度不一时无法纵向比大小。
+       按表头文字识别数值列（而不是给 50 多个模板逐个加 class），
+       表头与单元格同时右对齐 + 等宽数字，避免只改一半造成错位。 */
+    var NUMERIC_KEYS = ['金额', '核减', '报价', '保费', '单价', '价格', '数量', '合计', '小计', '费用', '工资', '折扣'];
+
+    function isNumericLabel(text) {
+        if (!text) return false;
+        for (var i = 0; i < NUMERIC_KEYS.length; i++) {
+            if (text.indexOf(NUMERIC_KEYS[i]) !== -1) return true;
+        }
+        return false;
+    }
+
+    function initNumericColumns() {
+        var tables = document.querySelectorAll('table');
+        Array.prototype.forEach.call(tables, function (table) {
+            if (table.classList.contains('is-num-ready')) return;
+            var headRow = table.tHead && table.tHead.rows[0];
+            if (!headRow) return;
+            var indexes = [];
+            Array.prototype.forEach.call(headRow.cells, function (th, i) {
+                if (isNumericLabel((th.textContent || '').trim())) {
+                    indexes.push(i);
+                    th.classList.add('is-num');
+                }
+            });
+            if (!indexes.length) return;
+            Array.prototype.forEach.call(table.tBodies, function (tbody) {
+                Array.prototype.forEach.call(tbody.rows, function (row) {
+                    indexes.forEach(function (i) {
+                        var cell = row.cells[i];
+                        if (cell) cell.classList.add('is-num');
+                    });
+                });
+            });
+            table.classList.add('is-num-ready');
+        });
+    }
+
     /* ---------- 4. 操作列「更多」收纳（桌面端 ≥4 个动作） ---------- */
     function initActMore() {
         if (window.innerWidth <= 640) return;     // 卡片模式操作栏需要平铺，不收纳
@@ -325,6 +393,8 @@
     }
 
     ready(function () {
+        initStickyHeads();
+        initNumericColumns();
         initA11y();
         initColumnSettings();
         initActMore();

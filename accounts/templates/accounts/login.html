@@ -18,6 +18,14 @@
         <label class="form-label" for="{{ form.password.id_for_label }}">{{ form.password.label }}</label>
         {{ form.password }}
     </div>
+    {# 记住我 / 忘记密码：原来两项都没有，用户既不能延长会话，也不知道账号问题找谁 #}
+    <div class="auth-row">
+        <label class="auth-remember" for="id_remember">
+            <input type="checkbox" id="id_remember" name="remember" value="on" checked>
+            <span>记住我</span>
+        </label>
+        <span class="auth-hint" title="出于安全考虑，密码由管理员重置；如需开通请联系系统管理员">忘记密码？联系管理员</span>
+    </div>
     <button type="submit" class="btn btn-primary">登 录</button>
 </form>
 <div class="auth-footer">
