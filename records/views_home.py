@@ -1,9 +1,11 @@
 """首页视图（从 records/views.py 拆出，复核报告 ARC-03）。"""
 
 from datetime import timedelta
+from urllib.parse import quote
 
 from django.db.models import Count, F, Q
 from django.shortcuts import render
+from django.urls import reverse
 from django.utils import timezone
 
 from accounts.services import visible_modules
@@ -12,7 +14,7 @@ from samples.models import Sample
 
 from . import insurance_grouping, insurance_services
 from . import stats as stats_svc
-from .models import Complaint, Insurance, Regulation
+from .models import Complaint, Decoration, Insurance, Regulation
 from .view_common import _my_daily_records, _weekly_trend
 
 
@@ -83,6 +85,13 @@ def home(request):
         'today_submitted_count': 0,
         'weekly_trend': [],
         'trend_max': 1,
+        'weekly_new': 0,
+        'weekly_delta': 0,
+        'weekly_delta_ready': False,
+        'price_reduced_projects': 0,
+        'decoration_month_new': 0,
+        'attention_items': [],
+        'attention_total': 0,
     }
     if not mods:
         return render(request, 'records/home.html', context)
@@ -112,6 +121,16 @@ def home(request):
             'weekly_trend': _weekly_trend(request.user),
         })
         context['trend_max'] = max([x['c'] for x in context['weekly_trend']] + [1])
+        # 环比：本周（近 7 天）新增 vs 上周（再往前 7 天）。卡片第四段统一放环比，
+        # 没有历史序列的模块显示「—」，不编造数字。
+        week_new = sum(x['c'] for x in context['weekly_trend'])
+        prev_week = _my_daily_records(request.user).filter(
+            record_date__date__gte=today - timedelta(days=13),
+            record_date__date__lte=today - timedelta(days=7),
+        ).count()
+        context['weekly_new'] = week_new
+        context['weekly_delta'] = week_new - prev_week
+        context['weekly_delta_ready'] = True
 
     if 'customer_credit' in mods:
         cs = stats_svc.credit_stats()
@@ -154,10 +173,15 @@ def home(request):
         context.update({
             'total_price_evaluations': ps['total_price_evaluations'],
             'total_price_reduction': ps['total_price_reduction'],
+            'price_reduced_projects': ps['reduced_projects'],
         })
 
     if 'decoration' in mods:
         context.update(stats_svc.decoration_stats())
+        # 装修没有创建时间，用开工日期算「本月开工」
+        context['decoration_month_new'] = Decoration.objects.filter(
+            start_date__year=today.year, start_date__month=today.month
+        ).count()
 
     if 'metal_price' in mods:
         all_prices = stats_svc.metal_prices_today()
@@ -257,5 +281,92 @@ def home(request):
     if mods & {'daily_record', 'customer_complaint', 'complaint', 'samples', 'archive'}:
         from .views_workspace import todo_counts
         context['todo_counts'] = todo_counts(request.user)
+
+    # 需要关注：三个来源合并成一条按到期日升序的列表（规划书 home-5）。
+    # 原先是三个 Tab 各 5 条，同一批事在两处用两套筛法；这里只留一个视角，
+    # 明细统一指向待办工作台，source 命名与 /workspace/ 的来源 chips 保持一致。
+    attention = []
+
+    for rec in context['incomplete_daily_records']:
+        if rec.is_overdue:
+            tag, kind, level = f'逾期 {abs(rec.days_left)} 天', 'danger', 'danger'
+        elif rec.due_date is None:
+            tag, kind, level = '未设期限', 'gray', ''
+        elif rec.days_left <= 3:
+            tag, kind, level = f'剩 {rec.days_left} 天', 'warning', 'warning'
+        else:
+            tag, kind, level = f'剩 {rec.days_left} 天', 'gray', ''
+        attention.append({
+            'sort': rec.due_date.toordinal() if rec.due_date else 10 ** 9,
+            'title': rec.work_content,
+            'source': '每日记录',
+            'meta': rec.department or '—',
+            'deadline': f'截止 {rec.due_date:%Y-%m-%d}' if rec.due_date else '未设截止日期',
+            'tag': tag, 'tag_kind': kind, 'level': level,
+            'progress': rec.progress,
+            'has_progress': True,
+            'status': rec.status,
+            'url': reverse('daily_record_edit', args=[rec.pk]),
+            'modal_title': '编辑每日记录',
+            'perm': 'daily_record.update',
+            'fallback': reverse('daily_record_list'),
+        })
+
+    for subject in context['insurance_due_soon']:
+        kind = 'danger' if subject.days_level == 'danger' else (
+            'warning' if subject.days_level == 'warning' else 'gray'
+        )
+        attention.append({
+            'sort': subject.latest.end.toordinal(),
+            'title': f'{subject.label} · {subject.kind_label}',
+            'source': '保险',
+            'meta': subject.latest_insurer or '—',
+            'deadline': f'截止 {subject.latest.end:%Y-%m-%d}',
+            'tag': subject.days_text,
+            'tag_kind': kind,
+            'level': '' if kind == 'gray' else kind,
+            'progress': None,
+            'has_progress': False,
+            'status': '',
+            'url': reverse('insurance_subject_detail') + '?key=' + quote(subject.key),
+            'modal_title': '',
+            'perm': None,
+            'fallback': '',
+        })
+
+    for case in context['incomplete_litigations']:
+        kind = case.answer_level if case.answer_level in ('danger', 'warning') else 'gray'
+        attention.append({
+            'sort': case.answer_deadline.toordinal() if case.answer_deadline else 10 ** 9,
+            'title': f'{case.dispute_type} · {case.case_number} · 被告 {case.defendant}',
+            'source': '诉讼',
+            'meta': f'涉案 ¥{case.amount:,.2f}' if case.amount else '—',
+            'deadline': (
+                f'答辩截止 {case.answer_deadline:%Y-%m-%d}'
+                if case.answer_deadline else '未立案'
+            ),
+            'tag': case.answer_text,
+            'tag_kind': kind,
+            'level': '' if kind == 'gray' else kind,
+            'progress': None,
+            'has_progress': False,
+            'status': case.progress,
+            'url': reverse('complaint_edit', args=[case.pk]),
+            'modal_title': '编辑诉讼',
+            'perm': 'complaint.update',
+            'fallback': reverse('complaint_list'),
+        })
+
+    # 到期日升序，无期限的排最后；同日均按来源稳定排序
+    attention.sort(key=lambda x: (x['sort'], x['source']))
+    context['attention_items'] = attention[:5]
+    if context['todo_counts']:
+        context['attention_total'] = context['todo_counts']['total']
+    else:
+        context['attention_total'] = (
+            context['incomplete_daily_records_count']
+            + context['insurance_due_soon_count']
+            + context['incomplete_litigations_total']
+        )
 
     return render(request, 'records/home.html', context)

@@ -34,30 +34,46 @@
 <!-- 面板 1：我的待办 -->
 {% if todo_counts %}
 <section class="home-panel home-todo" aria-label="我的待办">
+    {# KPI 独立成行：每格补口径副标题，避免 54/31 这类数字无法判断含义 #}
     <div class="home-kpis">
         <a class="home-kpi home-kpi--main" href="{% url 'workspace' %}">
             <span class="home-kpi__value">{{ todo_counts.total }}</span>
             <span class="home-kpi__label">待处理</span>
+            <span class="home-kpi__meta{% if todo_counts.overdue %} is-danger{% endif %}">
+                {% if todo_counts.overdue %}含逾期 {{ todo_counts.overdue }} 条{% else %}无逾期{% endif %}
+            </span>
         </a>
         <a class="home-kpi home-kpi--danger" href="{% url 'workspace' %}?urgency=高">
             <span class="home-kpi__value">{{ todo_counts.urgent }}</span>
             <span class="home-kpi__label">紧急</span>
+            <span class="home-kpi__meta">已逾期或久未闭环</span>
         </a>
         <div class="home-kpi home-kpi--warning">
             <span class="home-kpi__value">{{ todo_counts.due_soon }}</span>
             <span class="home-kpi__label">7 天内到期</span>
+            <span class="home-kpi__meta">不含已逾期</span>
         </div>
         <div class="home-kpi">
             <span class="home-kpi__value">{% if 'daily_record' in mods %}{{ today_submitted_count }}{% else %}—{% endif %}</span>
             <span class="home-kpi__label">今日已提交</span>
+            <span class="home-kpi__meta">我的每日记录</span>
         </div>
     </div>
+    {# 快捷动作收敛：5 个新建进「新建 ▾」，主按钮只留一个页面级主操作 #}
     <div class="home-cta">
-        {% can "daily_record" "create" %}<a class="home-btn" href="{% url 'daily_record_add' %}">+ 每日记录</a>{% endcan %}
-        {% can "customer_complaint" "create" %}<a class="home-btn" href="{% url 'customer_complaint_add' %}">+ 客户客诉</a>{% endcan %}
-        {% can "price_evaluation" "create" %}<a class="home-btn" href="{% url 'price_evaluation_add' %}">+ 核价</a>{% endcan %}
-        {% can "decoration" "create" %}<a class="home-btn" href="{% url 'decoration_add' %}">+ 装修</a>{% endcan %}
-        {% can "samples" "create" %}<a class="home-btn" href="{% url 'samples:create' %}">+ 试样</a>{% endcan %}
+        <details class="tb-more home-cta__more">
+            <summary class="home-btn" role="button" aria-controls="homeCreateMenu">
+                + 新建
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+            </summary>
+            <div class="tb-more-menu" id="homeCreateMenu">
+                {% can "daily_record" "create" %}<a href="{% url 'daily_record_add' %}">每日记录</a>{% endcan %}
+                {% can "customer_complaint" "create" %}<a href="{% url 'customer_complaint_add' %}">客户客诉</a>{% endcan %}
+                {% can "price_evaluation" "create" %}<a href="{% url 'price_evaluation_add' %}">核价</a>{% endcan %}
+                {% can "decoration" "create" %}<a href="{% url 'decoration_add' %}">装修</a>{% endcan %}
+                {% can "samples" "create" %}<a href="{% url 'samples:create' %}">试样</a>{% endcan %}
+            </div>
+        </details>
         <a class="home-btn home-btn--primary" href="{% url 'workspace' %}">前往待办工作台 →</a>
     </div>
 </section>
@@ -67,19 +83,30 @@
 <section class="home-panel" aria-label="业务模块">
     <div class="home-panel__head">
         <h2 class="home-panel__title"><span class="home-panel__dot"></span>业务模块</h2>
-        {% can_view "data_view" %}
-        <a class="home-panel__link" href="{% url 'dashboard' %}">数据展示看板 →</a>
-        {% endcan_view %}
+        <div class="home-panel__aside">
+            <span class="home-panel__hint">环比 = 近 7 日新增 vs 前 7 日；无历史序列的模块显示 —</span>
+            {% can_view "data_view" %}
+            <a class="home-panel__link" href="{% url 'dashboard' %}">数据展示看板 →</a>
+            {% endcan_view %}
+        </div>
     </div>
     <div class="home-modules">
         {% can_view "daily_record" %}
         <a class="home-module" href="{% url 'daily_record_list' %}">
             <div class="home-module__top"><span class="home-module__icon">📅</span><span class="home-module__name">每日记录</span></div>
             <div class="home-module__main">{{ total_daily_records }}</div>
-            <div class="home-spark" aria-hidden="true">
-                {% for d in weekly_trend %}<i class="home-spark__bar{% if forloop.last %} is-today{% endif %}" data-h="{% widthratio d.c trend_max 22 %}"></i>{% endfor %}
+            <div class="home-module__subs">
+                <div class="home-module__sub"><span>未完成</span><b>{{ incomplete_daily_records_count }}</b></div>
+                <div class="home-module__sub"><span>本周新增</span><b>{{ weekly_new }}</b></div>
             </div>
-            <div class="home-module__sub"><span>未完成</span><b>{{ incomplete_daily_records_count }}</b></div>
+            <div class="home-module__foot">
+                <span class="home-module__delta{% if weekly_delta > 0 %} is-up{% elif weekly_delta < 0 %} is-down{% endif %}">
+                    {% if weekly_delta_ready %}较上周 {% if weekly_delta > 0 %}+{% endif %}{{ weekly_delta }}{% else %}—{% endif %}
+                </span>
+                <span class="home-spark" aria-hidden="true">
+                    {% for d in weekly_trend %}<i class="home-spark__bar{% if forloop.last %} is-today{% endif %}" data-h="{% widthratio d.c trend_max 22 %}"></i>{% endfor %}
+                </span>
+            </div>
         </a>
         {% endcan_view %}
 
@@ -87,8 +114,11 @@
         <a class="home-module" href="{% url 'customer_credit_list' %}">
             <div class="home-module__top"><span class="home-module__icon">💳</span><span class="home-module__name">客户账期</span></div>
             <div class="home-module__main">{{ total_customers }}</div>
-            <div class="home-module__sub"><span>同意</span><b>{{ agree_count }}</b></div>
-            <div class="home-module__sub"><span>不同意</span><b>{{ disagree_count }}</b></div>
+            <div class="home-module__subs">
+                <div class="home-module__sub"><span>同意</span><b>{{ agree_count }}</b></div>
+                <div class="home-module__sub"><span>不同意</span><b>{{ disagree_count }}</b></div>
+            </div>
+            <div class="home-module__foot"><span class="home-module__delta is-empty">—</span></div>
         </a>
         {% endcan_view %}
 
@@ -96,8 +126,11 @@
         <a class="home-module" href="{% url 'customer_complaint_list' %}">
             <div class="home-module__top"><span class="home-module__icon">📞</span><span class="home-module__name">客户客诉</span></div>
             <div class="home-module__main">{{ total_complaints }}</div>
-            <div class="home-module__sub"><span>未闭环</span><b>{{ incomplete_complaints }}</b></div>
-            <div class="home-module__sub"><span>已闭环</span><b>{{ complaints_closed }}</b></div>
+            <div class="home-module__subs">
+                <div class="home-module__sub"><span>未闭环</span><b>{{ incomplete_complaints }}</b></div>
+                <div class="home-module__sub"><span>已闭环</span><b>{{ complaints_closed }}</b></div>
+            </div>
+            <div class="home-module__foot"><span class="home-module__delta is-empty">—</span></div>
         </a>
         {% endcan_view %}
 
@@ -105,8 +138,11 @@
         <a class="home-module" href="{% url 'customer_ledger_list' %}">
             <div class="home-module__top"><span class="home-module__icon">📇</span><span class="home-module__name">客户台账</span></div>
             <div class="home-module__main">{{ total_customer_ledgers }}</div>
-            <div class="home-module__sub"><span>含附件</span><b>{{ customer_ledgers_with_attachment }}</b></div>
-            <div class="home-module__sub"><span>待补附件</span><b>{{ customer_ledgers_missing_attachment }}</b></div>
+            <div class="home-module__subs">
+                <div class="home-module__sub"><span>含附件</span><b>{{ customer_ledgers_with_attachment }}</b></div>
+                <div class="home-module__sub"><span>待补附件</span><b>{{ customer_ledgers_missing_attachment }}</b></div>
+            </div>
+            <div class="home-module__foot"><span class="home-module__delta is-empty">—</span></div>
         </a>
         {% endcan_view %}
 
@@ -114,8 +150,11 @@
         <a class="home-module" href="{% url 'regulation_list' %}">
             <div class="home-module__top"><span class="home-module__icon">📜</span><span class="home-module__name">制度及处罚</span></div>
             <div class="home-module__main">{{ total_regulations }}</div>
-            <div class="home-module__sub"><span>本月新增</span><b>{{ regulation_month_count }}</b></div>
-            <div class="home-module__sub"><span>本年新增</span><b>{{ regulation_year_count }}</b></div>
+            <div class="home-module__subs">
+                <div class="home-module__sub"><span>本月新增</span><b>{{ regulation_month_count }}</b></div>
+                <div class="home-module__sub"><span>本年新增</span><b>{{ regulation_year_count }}</b></div>
+            </div>
+            <div class="home-module__foot"><span class="home-module__delta is-empty">—</span></div>
         </a>
         {% endcan_view %}
 
@@ -123,7 +162,11 @@
         <a class="home-module" href="{% url 'price_evaluation_list' %}">
             <div class="home-module__top"><span class="home-module__icon">💰</span><span class="home-module__name">核价</span></div>
             <div class="home-module__main">{{ total_price_evaluations }}</div>
-            <div class="home-module__sub"><span>核减金额</span><b>¥{{ total_price_reduction|floatformat:2 }}</b></div>
+            <div class="home-module__subs">
+                <div class="home-module__sub"><span>核减金额</span><b>¥{{ total_price_reduction|floatformat:2 }}</b></div>
+                <div class="home-module__sub"><span>有核减项目</span><b>{{ price_reduced_projects }}</b></div>
+            </div>
+            <div class="home-module__foot"><span class="home-module__delta is-empty">—</span></div>
         </a>
         {% endcan_view %}
 
@@ -131,7 +174,11 @@
         <a class="home-module" href="{% url 'decoration_list' %}">
             <div class="home-module__top"><span class="home-module__icon">🏠</span><span class="home-module__name">装修</span></div>
             <div class="home-module__main">{{ total_decorations }}</div>
-            <div class="home-module__sub"><span>核减金额</span><b>¥{{ decoration_reduced_total|default:0|floatformat:2 }}</b></div>
+            <div class="home-module__subs">
+                <div class="home-module__sub"><span>核减金额</span><b>¥{{ decoration_reduced_total|default:0|floatformat:2 }}</b></div>
+                <div class="home-module__sub"><span>本月开工</span><b>{{ decoration_month_new }}</b></div>
+            </div>
+            <div class="home-module__foot"><span class="home-module__delta is-empty">—</span></div>
         </a>
         {% endcan_view %}
 
@@ -139,8 +186,11 @@
         <a class="home-module" href="{% url 'insurance_subject_list' %}">
             <div class="home-module__top"><span class="home-module__icon">🛡️</span><span class="home-module__name">保险</span></div>
             <div class="home-module__main">{{ total_insurance }}</div>
-            <div class="home-module__sub"><span>30 天内到期</span><b>{{ insurance_due_soon_count }}</b></div>
-            <div class="home-module__sub"><span>应续未续</span><b>{{ insurance_expired_count }}</b></div>
+            <div class="home-module__subs">
+                <div class="home-module__sub"><span>30 天内到期</span><b>{{ insurance_due_soon_count }}</b></div>
+                <div class="home-module__sub"><span>应续未续</span><b>{{ insurance_expired_count }}</b></div>
+            </div>
+            <div class="home-module__foot"><span class="home-module__delta is-empty">—</span></div>
         </a>
         {% endcan_view %}
 
@@ -148,8 +198,11 @@
         <a class="home-module" href="{% url 'complaint_list' %}">
             <div class="home-module__top"><span class="home-module__icon">⚖️</span><span class="home-module__name">诉讼</span></div>
             <div class="home-module__main">{{ total_litigations }}</div>
-            <div class="home-module__sub"><span>未完结</span><b>{{ incomplete_litigations_total }}</b></div>
-            <div class="home-module__sub"><span>答辩临期</span><b>{{ litigation_answer_soon_count }}</b></div>
+            <div class="home-module__subs">
+                <div class="home-module__sub"><span>未完结</span><b>{{ incomplete_litigations_total }}</b></div>
+                <div class="home-module__sub"><span>答辩临期</span><b>{{ litigation_answer_soon_count }}</b></div>
+            </div>
+            <div class="home-module__foot"><span class="home-module__delta is-empty">—</span></div>
         </a>
         {% endcan_view %}
 
@@ -157,8 +210,11 @@
         <a class="home-module" href="{% url 'samples:list' %}">
             <div class="home-module__top"><span class="home-module__icon">🧪</span><span class="home-module__name">试样管理</span></div>
             <div class="home-module__main">{{ total_samples }}</div>
-            <div class="home-module__sub"><span>进行中</span><b>{{ samples_in_progress }}</b></div>
-            <div class="home-module__sub"><span>已终止</span><b>{{ samples_terminated }}</b></div>
+            <div class="home-module__subs">
+                <div class="home-module__sub"><span>进行中</span><b>{{ samples_in_progress }}</b></div>
+                <div class="home-module__sub"><span>已终止</span><b>{{ samples_terminated }}</b></div>
+            </div>
+            <div class="home-module__foot"><span class="home-module__delta is-empty">—</span></div>
         </a>
         {% endcan_view %}
 
@@ -166,165 +222,61 @@
         <a class="home-module" href="{% url 'archive:overview' %}">
             <div class="home-module__top"><span class="home-module__icon">🗂️</span><span class="home-module__name">档案管理</span></div>
             <div class="home-module__main">{{ total_archives }}</div>
-            <div class="home-module__sub"><span>借出中</span><b>{{ archives_borrowed }}</b></div>
-            <div class="home-module__sub"><span>证照临期</span><b>{{ licenses_expiring }}</b></div>
+            <div class="home-module__subs">
+                <div class="home-module__sub"><span>借出中</span><b>{{ archives_borrowed }}</b></div>
+                <div class="home-module__sub"><span>证照临期</span><b>{{ licenses_expiring }}</b></div>
+            </div>
+            <div class="home-module__foot"><span class="home-module__delta is-empty">—</span></div>
         </a>
         {% endcan_view %}
     </div>
 </section>
 
-<!-- 面板 3：需要关注（三块明细，Tab 折叠） -->
-{% if focus_tab %}
+<!-- 面板 3：需要关注（单一视角：跨模块按到期日排序，只给最紧急 5 条） -->
+{% if attention_items %}
 <section class="home-panel" aria-label="需要关注">
     <div class="home-panel__head">
         <h2 class="home-panel__title"><span class="home-panel__dot home-panel__dot--danger"></span>需要关注</h2>
-        <div class="home-tabs" role="tablist" aria-label="需要关注的明细分类">
-            {% if 'daily_record' in mods %}
-            <button type="button" class="home-tabs__btn" role="tab" id="homeTabDaily"
-                    aria-selected="{% if focus_tab == 'daily_record' %}true{% else %}false{% endif %}"
-                    aria-controls="homePaneDaily" data-tab="daily_record"
-                    tabindex="{% if focus_tab == 'daily_record' %}0{% else %}-1{% endif %}">
-                未完成记录 <span class="home-tabs__count">{{ incomplete_daily_records_count }}</span>
-            </button>
+        <a class="home-panel__link" href="{% url 'workspace' %}">按来源 / 紧急度筛选 →</a>
+    </div>
+    <ul class="home-rows">
+        {% for item in attention_items %}
+        <li class="home-rows__item">
+            {% if item.perm and request.user|can_do:item.perm %}
+            <a class="home-row{% if item.level %} home-row--{{ item.level }}{% endif %}"
+               href="{{ item.url }}" data-modal-edit data-modal-title="{{ item.modal_title }}">
+            {% else %}
+            <a class="home-row{% if item.level %} home-row--{{ item.level }}{% endif %}"
+               href="{% if item.fallback %}{{ item.fallback }}{% else %}{{ item.url }}{% endif %}">
             {% endif %}
-            {% if 'insurance' in mods %}
-            <button type="button" class="home-tabs__btn" role="tab" id="homeTabInsurance"
-                    aria-selected="{% if focus_tab == 'insurance' %}true{% else %}false{% endif %}"
-                    aria-controls="homePaneInsurance" data-tab="insurance"
-                    tabindex="{% if focus_tab == 'insurance' %}0{% else %}-1{% endif %}">
-                临期保险 <span class="home-tabs__count">{{ insurance_due_soon_count }}</span>
-            </button>
-            {% endif %}
-            {% if 'complaint' in mods %}
-            <button type="button" class="home-tabs__btn" role="tab" id="homeTabLitigation"
-                    aria-selected="{% if focus_tab == 'complaint' %}true{% else %}false{% endif %}"
-                    aria-controls="homePaneLitigation" data-tab="complaint"
-                    tabindex="{% if focus_tab == 'complaint' %}0{% else %}-1{% endif %}">
-                未完结诉讼 <span class="home-tabs__count">{{ incomplete_litigations_total }}</span>
-            </button>
-            {% endif %}
-        </div>
+                <span class="home-row__flag" aria-hidden="true"></span>
+                <div class="home-row__main">
+                    <p class="home-row__title" title="{{ item.title }}">{{ item.title }}</p>
+                    <div class="home-row__meta">
+                        <span>{{ item.source }}</span>
+                        <span class="home-row__sep" aria-hidden="true">·</span>
+                        <span>{{ item.meta }}</span>
+                        <span class="home-row__sep" aria-hidden="true">·</span>
+                        <span>{{ item.deadline }}</span>
+                    </div>
+                </div>
+                <div class="home-row__right">
+                    {% if item.has_progress %}
+                    <span class="home-progress">
+                        <span class="home-progress__bar" aria-hidden="true"><i data-w="{{ item.progress }}"></i></span>
+                        <span class="home-progress__val">{{ item.progress }}%</span>
+                    </span>
+                    {% endif %}
+                    <span class="home-tag home-tag--{{ item.tag_kind }}">{{ item.tag }}</span>
+                    <span class="home-row__arrow" aria-hidden="true">›</span>
+                </div>
+            </a>
+        </li>
+        {% endfor %}
+    </ul>
+    <div class="home-rows__more">
+        <a class="home-panel__link" href="{% url 'workspace' %}">前往待办工作台查看全部 {{ attention_total }} 条 →</a>
     </div>
-
-    {% if 'daily_record' in mods %}
-    <div id="homePaneDaily" role="tabpanel" aria-labelledby="homeTabDaily" data-home-pane="daily_record" {% if focus_tab != 'daily_record' %}hidden{% endif %}>
-        <ul class="home-rows" id="homeDailyRows">
-            {% for record in incomplete_daily_records %}
-            <li class="home-rows__item">
-                {% if request.user|can_do:'daily_record.update' %}
-                <a class="home-row{% if record.is_overdue %} home-row--danger{% elif record.due_date and record.days_left <= 3 %} home-row--warning{% endif %}"
-                   href="{% url 'daily_record_edit' record.pk %}" data-modal-edit data-modal-title="编辑每日记录">
-                {% else %}
-                <a class="home-row{% if record.is_overdue %} home-row--danger{% elif record.due_date and record.days_left <= 3 %} home-row--warning{% endif %}"
-                   href="{% url 'daily_record_list' %}">
-                {% endif %}
-                    <span class="home-row__flag" aria-hidden="true"></span>
-                    <div class="home-row__main">
-                        <p class="home-row__title" title="{{ record.work_content }}">{{ record.work_content }}</p>
-                        <div class="home-row__meta">
-                            <span>{{ record.department }}</span>
-                            <span class="home-row__sep" aria-hidden="true">·</span>
-                            <span>{% if record.due_date %}截止 {{ record.due_date|date:"Y-m-d" }}{% else %}未设截止日期{% endif %}</span>
-                            {% if record.is_overdue %}<span class="home-tag home-tag--danger">逾期 {{ record.days_left|cut:"-" }} 天</span>
-                            {% elif record.due_date and record.days_left <= 3 %}<span class="home-tag home-tag--warning">剩 {{ record.days_left }} 天</span>{% endif %}
-                        </div>
-                    </div>
-                    <div class="home-row__right">
-                        <span class="home-progress">
-                            <span class="home-progress__bar" aria-hidden="true"><i data-w="{{ record.progress }}"></i></span>
-                            <span>{{ record.progress }}%</span>
-                        </span>
-                        <span class="home-tag home-tag--gray">{{ record.status }}</span>
-                        <span class="home-row__arrow" aria-hidden="true">›</span>
-                    </div>
-                </a>
-            </li>
-            {% empty %}
-            <li class="home-empty">暂无未完成的工作记录</li>
-            {% endfor %}
-        </ul>
-        {% if incomplete_daily_records_count > incomplete_daily_records|length %}
-        <div class="home-rows__more">
-            <a class="home-panel__link" id="homeDailyToggle"
-               href="{% url 'daily_record_list' %}?status=未完成"
-               data-url="{% url 'daily_record_incomplete' %}"
-               data-total="{{ incomplete_daily_records_count }}"
-               data-initial="{{ incomplete_daily_records|length }}"
-               aria-expanded="false">查看全部 {{ incomplete_daily_records_count }} 条 ↓</a>
-        </div>
-        {% endif %}
-    </div>
-    {% endif %}
-
-    {% if 'insurance' in mods %}
-    <div id="homePaneInsurance" role="tabpanel" aria-labelledby="homeTabInsurance" data-home-pane="insurance" {% if focus_tab != 'insurance' %}hidden{% endif %}>
-        <ul class="home-rows">
-            {% for subject in insurance_due_soon %}
-            <li class="home-rows__item">
-                <a class="home-row{% if subject.days_level == 'danger' %} home-row--danger{% elif subject.days_level == 'warning' %} home-row--warning{% endif %}"
-                   href="{% url 'insurance_subject_detail' %}?key={{ subject.key|urlencode }}">
-                    <span class="home-row__flag" aria-hidden="true"></span>
-                    <div class="home-row__main">
-                        <p class="home-row__title" title="{{ subject.label }}">{{ subject.label }} · {{ subject.kind_label }}</p>
-                        <div class="home-row__meta">
-                            <span>{{ subject.latest_insurer }}</span>
-                            <span class="home-row__sep" aria-hidden="true">·</span>
-                            <span>截止 {{ subject.latest.end|date:"Y-m-d" }}</span>
-                        </div>
-                    </div>
-                    <div class="home-row__right">
-                        <span class="home-tag {% if subject.days_level == 'danger' %}home-tag--danger{% elif subject.days_level == 'warning' %}home-tag--warning{% else %}home-tag--gray{% endif %}">{{ subject.days_text }}</span>
-                        <span class="home-row__arrow" aria-hidden="true">›</span>
-                    </div>
-                </a>
-            </li>
-            {% empty %}
-            <li class="home-empty">近 30 天无临期标的{% if insurance_later_count %}，另有 {{ insurance_later_count }} 个在保标的{% endif %}</li>
-            {% endfor %}
-        </ul>
-        <div class="home-rows__more">
-            <a class="home-panel__link" href="{% url 'insurance_subject_list' %}">查看全部保险标的 →</a>
-        </div>
-    </div>
-    {% endif %}
-
-    {% if 'complaint' in mods %}
-    <div id="homePaneLitigation" role="tabpanel" aria-labelledby="homeTabLitigation" data-home-pane="complaint" {% if focus_tab != 'complaint' %}hidden{% endif %}>
-        <ul class="home-rows">
-            {% for litigation in incomplete_litigations %}
-            <li class="home-rows__item">
-                {% if request.user|can_do:'complaint.update' %}
-                <a class="home-row{% if litigation.answer_level == 'danger' %} home-row--danger{% elif litigation.answer_level == 'warning' %} home-row--warning{% endif %}"
-                   href="{% url 'complaint_edit' litigation.pk %}" data-modal-edit data-modal-title="编辑诉讼">
-                {% else %}
-                <a class="home-row{% if litigation.answer_level == 'danger' %} home-row--danger{% elif litigation.answer_level == 'warning' %} home-row--warning{% endif %}"
-                   href="{% url 'complaint_list' %}">
-                {% endif %}
-                    <span class="home-row__flag" aria-hidden="true"></span>
-                    <div class="home-row__main">
-                        <p class="home-row__title" title="{{ litigation.dispute_type }} · {{ litigation.case_number }} · 被告 {{ litigation.defendant }}">{{ litigation.dispute_type }} · {{ litigation.case_number }} · 被告 {{ litigation.defendant }}</p>
-                        <div class="home-row__meta">
-                            <span>受理法院 {{ litigation.court }}</span>
-                            <span class="home-row__sep" aria-hidden="true">·</span>
-                            <span>涉案 ¥{{ litigation.amount|floatformat:2 }}</span>
-                            <span class="home-tag {% if litigation.answer_level == 'danger' %}home-tag--danger{% elif litigation.answer_level == 'warning' %}home-tag--warning{% else %}home-tag--gray{% endif %}">{{ litigation.answer_text }}</span>
-                        </div>
-                    </div>
-                    <div class="home-row__right">
-                        <span class="home-tag home-tag--gray">{{ litigation.progress }}</span>
-                        <span class="home-row__arrow" aria-hidden="true">›</span>
-                    </div>
-                </a>
-            </li>
-            {% empty %}
-            <li class="home-empty">暂无进度未完结的诉讼案件</li>
-            {% endfor %}
-        </ul>
-        <div class="home-rows__more">
-            <a class="home-panel__link" href="{% url 'complaint_list' %}">查看全部 {{ incomplete_litigations_total }} 件未完结诉讼 →</a>
-        </div>
-    </div>
-    {% endif %}
 </section>
 {% endif %}
 
@@ -367,6 +319,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/pages/records/home-1.js' %}?v=20261102" defer></script>
-<script src="{% static 'js/pages/records/home-2.js' %}?v=20261102" defer></script>
+<script src="{% static 'js/pages/records/home-1.js' %}?v=20261103b" defer></script>
 {% endblock %}

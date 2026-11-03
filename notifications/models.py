@@ -10,6 +10,19 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from django.utils import timezone
 
+import re
+
+# 轻量 Markdown 剥离：通知正文里的 **加粗** / `代码` / 标题井号 / 链接语法
+# 在网页端按纯文本展示，先剥成可读文字（nt-3）。顺序敏感：先剥粗体再剥单星号。
+_MD_STRIP_PATTERNS = [
+    (re.compile(r"\*\*(.+?)\*\*"), r"\1"),
+    (re.compile(r"__(.+?)__"), r"\1"),
+    (re.compile(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)"), r"\1"),
+    (re.compile(r"`([^`]+)`"), r"\1"),
+    (re.compile(r"^#{1,6}\s*", re.M), ""),
+    (re.compile(r"\[([^\]]+)\]\(([^)]+)\)"), r"\1（\2）"),
+]
+
 # 通知类别（与 RBAC 无关，用于偏好过滤与列表筛选）
 TEMPLATE_CATEGORIES = [
     ("business", "业务提醒"),
@@ -159,6 +172,19 @@ class Notification(models.Model):
         }.get(self.status, "default")
 
     @property
+    def content_plain(self):
+        """剥掉轻量 Markdown 标记后的纯文本（规划书 nt-3）。
+
+        通知正文由各业务写入，**加粗** / `代码` / 标题井号会原样落在
+        列表与详情弹窗里；发送渠道（邮件/站内）各自渲染，但网页端
+        一直按纯文本展示，所以展示前统一剥一次。非无损转换，仅服务展示。
+        """
+        text = self.content or ""
+        for pattern, repl in _MD_STRIP_PATTERNS:
+            text = pattern.sub(repl, text)
+        return text
+
+    @property
     def can_revoke(self):
         """可撤回：待发送，或已发送且接收者未读。已读/已撤回/已过期不可撤。"""
         if self.status == self.Status.PENDING:
@@ -264,9 +290,32 @@ class ScheduledTask(models.Model):
 
     @property
     def params_display(self):
+        """参数的业务化描述：days=7 → 「回溯 7 天」，skip_history=False → 「含历史记录」。
+
+        键来自各任务的白名单（views._parse_task_params / scheduler.COMMAND_PARAMS），
+        未知键退回 k=v 原文，保证新任务接入后这里不会静默丢信息。
+        """
         if not self.params:
             return "—"
-        return "，".join(f"{k}={v}" for k, v in self.params.items())
+        parts = []
+        for key, value in self.params.items():
+            if key == "days":
+                parts.append(f"回溯 {value} 天")
+            elif key == "overdue_days":
+                parts.append(f"逾期超 {value} 天提醒")
+            elif key == "skip_history":
+                parts.append("跳过历史记录" if value else "含历史记录")
+            elif key == "purge_days":
+                parts.append(f"清理 {value} 天前的已发通知" if value else "不清理已发通知")
+            elif key == "check":
+                if value:
+                    parts.append("发送前自检")
+            elif key == "confirm":
+                if value:
+                    parts.append("执行前需确认")
+            else:
+                parts.append(f"{key}={value}")
+        return "，".join(parts) if parts else "—"
 
 
 class TaskRunLog(models.Model):

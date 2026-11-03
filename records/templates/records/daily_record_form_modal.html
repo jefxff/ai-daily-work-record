@@ -1,6 +1,6 @@
 {% load static %}
 {# 弹窗自带的样式引用：无论从哪一页注入都能拿到同一份（文件已缓存，重复引用不产生新请求） #}
-<link href="{% static 'css/daily-record.css' %}?v=20261102b" rel="stylesheet">
+<link href="{% static 'css/daily-record.css' %}?v=20261103b" rel="stylesheet">
 <form class="dr-form" data-validate="1" novalidate method="post" data-modal-form action="{% if record %}{% url 'daily_record_edit' record.id %}{% else %}{% url 'daily_record_add' %}{% endif %}">
     {% csrf_token %}
     {% include 'records/_daily_record_form_fields.html' %}
@@ -13,4 +13,4 @@
 </form>
 
 {# 状态与进度的联动逻辑与独立页共用一份；shell.js 注入后会重新执行 script 标签 #}
-<script src="{% static 'js/pages/records/daily_record_form.js' %}?v=20261102b"></script>
+<script src="{% static 'js/pages/records/daily_record_form.js' %}?v=20261103b"></script>

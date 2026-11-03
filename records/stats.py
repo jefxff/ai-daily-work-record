@@ -97,12 +97,21 @@ def price_stats() -> dict:
             | Q(supplier3_price__isnull=False)
         )
     )
-    total_reduction = eligible.aggregate(
-        v=Coalesce(Sum(max_price - F("internal_control_price")), ZERO)
-    )["v"] or Decimal("0")
+    # 金额与「有核减的项目数」合并进同一次 aggregate（保持 assertNumQueries(2)：
+    # 一条聚合 + 一条总数）。先 annotate 出 max_price，聚合与条件计数都引用它。
+    agg = (
+        eligible.annotate(max_price=max_price)
+        .aggregate(
+            v=Coalesce(Sum(F("max_price") - F("internal_control_price")), ZERO),
+            reduced=Count("id", filter=Q(max_price__gt=F("internal_control_price"))),
+        )
+    )
+    total_reduction = agg["v"] or Decimal("0")
     return {
         "total_price_evaluations": qs.count(),
         "total_price_reduction": total_reduction,
+        # 有核减的项目数：金额之外的第二口径，首页卡片第二位指标用它
+        "reduced_projects": agg["reduced"] or 0,
     }
 
 

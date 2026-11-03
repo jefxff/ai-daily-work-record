@@ -533,16 +533,85 @@ def daily_record_kb_sync_batch(request):
     message = f'批量沉淀完成：成功 {ok} 条' + (f'，失败 {fail} 条' if fail else '，没有需要沉淀的记录')
     return JsonResponse({'ok': True, 'message': message, 'synced': ok, 'failed': fail})
 
+def _daily_record_export_queryset(request):
+    """导出取数：默认全部；带 ids 参数时只导出选中行（列表页批量导出，drl-3）。
+
+    ids 始终叠加 _my_daily_records 的归属过滤，跨用户 id 无效。
+    """
+    qs = _my_daily_records(request.user).order_by('-record_date')
+    raw = (request.GET.get('ids') or '').strip()
+    if raw:
+        ids = []
+        for part in raw.split(','):
+            part = part.strip()
+            if part.isdigit():
+                ids.append(int(part))
+        if ids:
+            qs = qs.filter(id__in=ids)
+    return qs
+
+
 daily_record_export = make_export_view(
     perm_module='daily_record', sheet_title='每日记录', log_label='每日记录',
     filename_base='每日记录', empty_text='当前无每日记录，无法导出Excel',
-    queryset=lambda request: _my_daily_records(request.user).order_by('-record_date'),
+    queryset=_daily_record_export_queryset,
     headers=['序号', '日期及时间', '提出部门', '工作内容', '工作状态', '工作进度'],
     row_values=lambda obj, serial: [
         serial, obj.record_date.strftime('%Y-%m-%d %H:%M:%S'),
         obj.department, obj.work_content, obj.status, f'{obj.progress}%',
     ],
 )
+
+
+@require_POST
+def daily_record_batch(request):
+    """列表页批量操作：标记完成 / 删除（规划书 drl-3）。
+
+    数据范围一律叠加 _my_daily_records（行级隔离），权限按动作分别校验：
+    标记完成要 update，删除要 delete；逐动作留痕，before 只在单条时携带快照。
+    """
+    from accounts.services import has_perm
+
+    action = request.POST.get('action', '')
+    ids = []
+    for part in (request.POST.get('ids') or '').split(','):
+        part = part.strip()
+        if part.isdigit():
+            ids.append(int(part))
+    if not ids:
+        return JsonResponse({'ok': False, 'message': '未选择任何记录'}, status=400)
+
+    if action == 'complete':
+        if not has_perm(request.user, 'daily_record', 'update'):
+            return JsonResponse({'ok': False, 'message': '没有执行该操作的权限'}, status=403)
+        updated = (
+            _my_daily_records(request.user)
+            .filter(id__in=ids)
+            .exclude(status='完成')
+            .update(status='完成', progress=100)
+        )
+        log_operation(
+            request, '每日记录', '批量完成', f'[每日记录]下的记录（选中 {len(ids)} 条）',
+            f'批量标记完成：{updated} 条每日记录',
+        )
+        return JsonResponse({'ok': True, 'message': f'已标记完成 {updated} 条', 'updated': updated})
+
+    if action == 'delete':
+        if not has_perm(request.user, 'daily_record', 'delete'):
+            return JsonResponse({'ok': False, 'message': '没有执行该操作的权限'}, status=403)
+        objs = list(_my_daily_records(request.user).filter(id__in=ids))
+        if not objs:
+            return JsonResponse({'ok': False, 'message': '没有可删除的记录'}, status=404)
+        before = snapshot(objs[0]) if len(objs) == 1 else None
+        ids_str = ','.join(str(o.pk) for o in objs)
+        _my_daily_records(request.user).filter(id__in=[o.pk for o in objs]).delete()
+        log_operation(
+            request, '每日记录', '批量删除', f'[每日记录]下的记录#{ids_str}',
+            f'批量删除 {len(objs)} 条每日记录', before=before,
+        )
+        return JsonResponse({'ok': True, 'message': f'已删除 {len(objs)} 条', 'deleted': len(objs)})
+
+    return JsonResponse({'ok': False, 'message': '未知的操作类型'}, status=400)
 
 
 # 删除功能视图（工厂统一实现：仅 POST + 权限校验 + 操作留痕）

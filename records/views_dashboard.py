@@ -3,7 +3,7 @@
 只做「取统计 + 取明细 + 渲染」，统计口径统一在 records/stats.py。
 """
 
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 from django.db.models import Count
 from django.db.models.functions import TruncDate
@@ -63,56 +63,9 @@ def dashboard(request):
     lawsuit_total_count = summary['lawsuit_total_count']
     daily_total_count = summary['daily_total_count']
 
-    # 待处理明细（列表展示，不参与统计口径）
-    pending_items = []
-    for record in daily_records.filter(status='未完成'):
-        pending_items.append({
-            'id': record.id,
-            'type': 'daily',
-            'type_name': '每日记录',
-            'type_icon': '📝',
-            'title': record.work_content[:50] + '...' if len(record.work_content) > 50 else record.work_content,
-            'department': record.department,
-            'created_at': record.record_date.strftime('%Y-%m-%d %H:%M'),
-            'sort_at': record.record_date.timestamp(),
-            'status': '未完成',
-            'url': f'/daily_record/detail/{record.id}/'
-        })
-
-    for complaint in customer_complaints.filter(complaint_status='未完成'):
-        pending_items.append({
-            'id': complaint.id,
-            'type': 'customer_complaint',
-            'type_name': '客户客诉',
-            'type_icon': '📞',
-            'title': complaint.customer_name,
-            'department': complaint.responsible_salesperson,
-            'created_at': complaint.complaint_date.strftime('%Y-%m-%d'),
-            'sort_at': datetime.combine(complaint.complaint_date, datetime.min.time()).timestamp(),
-            'status': '未完成',
-            'url': f'/customer_complaint/edit/{complaint.id}/'
-        })
-
-    for lawsuit in complaints.exclude(progress='结案'):
-        pending_items.append({
-            'id': lawsuit.id,
-            'type': 'lawsuit',
-            'type_name': '诉讼案件',
-            'type_icon': '⚖️',
-            'title': lawsuit.defendant,
-            'department': lawsuit.lawyer,
-            # 诉讼没有登记日期字段：不再把「立案中」塞进日期列（审计 #37）
-            'created_at': '—',
-            'sort_at': None,
-            'status': lawsuit.progress,
-            'url': f'/complaint/detail/{lawsuit.id}/'
-        })
-
-    # 有日期的按时间倒序在前；无日期项（诉讼）排在最后并保持 id 倒序
-    dated = [i for i in pending_items if i['sort_at'] is not None]
-    undated = [i for i in pending_items if i['sort_at'] is None]
-    dated.sort(key=lambda x: x['sort_at'], reverse=True)
-    pending_items = dated + undated
+    # 待处理明细不再在看板渲染（规划书 db-5）：同一批待办此前在
+    # 首页「需要关注」、看板 Top10、/workspace/ 三处各维护一套视图。
+    # 看板只留按模块的聚合计数，明细统一指向待办工作台。
 
     weekly_trend = _weekly_trend(request.user)
 
@@ -273,7 +226,6 @@ def dashboard(request):
         'module_count': summary['module_count'],
         'completion_rate': summary['completion_rate'],
         'pending_count': summary['pending_count'],
-        'pending_items': pending_items,  # 返回所有待处理事项
         'daily_pending_count': daily_pending_count,
         'complaint_pending_count': complaint_pending_count,
         'lawsuit_pending_count': lawsuit_pending_count,

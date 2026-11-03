@@ -11,13 +11,27 @@
     <link href="{% static 'css/tokens.css' %}?v=20261022b" rel="stylesheet">
     <style>
         body { font-family: var(--font-body); background: var(--c-bg); min-height: 100vh; margin: 0; display: flex; align-items: center; justify-content: center; padding: 1.5rem; }
-        .auth-brand .auth-brand-title, .auth-card h1, .auth-card h2 { font-family: var(--font-display); }
-        .auth-shell { width: 100%; max-width: 420px; }
-        .auth-brand { text-align: center; margin-bottom: 1.5rem; }
-        .auth-brand .brand-logo { width: 48px; height: 48px; background: var(--c-primary); border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 0.75rem; }
-        .auth-brand .auth-brand-title { font-size: 1.25rem; font-weight: 600; color: var(--c-text); margin: 0 0 4px; }
-        .auth-brand p { font-size: 0.85rem; color: var(--c-text-secondary); margin: 0; }
-        .auth-card { background: var(--c-surface); border-radius: 8px; box-shadow: var(--sh-card); padding: 2rem; }
+        .auth-card h1, .auth-card h2 { font-family: var(--font-display); }
+
+        /* 5:5 双栏（规划书 lg-1）：登录页要回答「这是哪个系统、什么环境、
+           出问题找谁」，而不是一块 420px 的孤立表单。左栏固定深色，右栏表单。 */
+        .auth-shell { width: 100%; max-width: 960px; display: grid; grid-template-columns: 1fr 1fr; border-radius: 12px; overflow: hidden; box-shadow: var(--sh-card); }
+        .auth-shell > .auth-card { border-radius: 0; box-shadow: none; }
+
+        .auth-brand-pane { display: flex; flex-direction: column; justify-content: space-between; gap: 2rem; padding: 2.25rem 2rem; background: #161b23; color: #e6eaef; }
+        .auth-brand-pane .brand-logo { width: 44px; height: 44px; background: var(--c-primary); border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 1rem; }
+        .auth-brand-pane .auth-brand-title { font-family: var(--font-display); font-size: 1.3rem; font-weight: 600; color: #fff; margin: 0 0 6px; }
+        .auth-brand-pane .auth-brand-sub { font-size: 0.85rem; color: #aeb7c2; margin: 0; }
+
+        .auth-brand-pane dl { margin: 0; display: flex; flex-direction: column; gap: 0.875rem; }
+        .auth-brand-pane dt { font-size: 0.875rem; font-weight: 600; color: #dfe5ec; }
+        .auth-brand-pane dd { margin: 2px 0 0; font-size: 0.78rem; line-height: 1.6; color: #9aa4b1; }
+
+        .auth-brand-pane__foot { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; color: #9aa4b1; }
+        .auth-env__chip { display: inline-block; padding: 1px 8px; border-radius: 999px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18); color: #cfd6de; }
+
+        .auth-main { display: flex; flex-direction: column; justify-content: center; padding: 2.25rem 2rem; background: var(--c-surface); }
+        .auth-card { padding: 0; background: none; }
         .auth-card h1, .auth-card h2 { font-size: 1.15rem; font-weight: 600; color: var(--c-text); margin: 0 0 1.25rem; }
         .form-label { font-size: 0.875rem; color: var(--c-text-secondary); font-weight: 500; }
         .form-control { border-radius: 6px; border-color: var(--c-border-strong); font-size: 0.9rem; padding: 0.55rem 0.75rem; }
@@ -42,27 +56,57 @@
         .auth-remember input { margin: 0; width: 15px; height: 15px; accent-color: var(--c-primary); }
         .auth-hint { color: var(--c-text-tertiary); }
 
-        /* 环境标识：登录前就要知道自己在哪套环境，避免误操作生产数据 */
-        .auth-env { text-align: center; margin-top: 1rem; font-size: 0.75rem; color: var(--c-text-tertiary); }
-        .auth-env__chip { display: inline-block; padding: 1px 8px; border-radius: 999px; background: var(--c-surface-sunken); border: 1px solid var(--c-border); }
+        /* 窄屏回退单栏：品牌区收成顶部横条，模块说明隐藏 */
+        @media (max-width: 880px) {
+            body { padding: 1rem; align-items: flex-start; }
+            .auth-shell { grid-template-columns: 1fr; max-width: 480px; }
+            .auth-brand-pane { gap: 0.875rem; padding: 1.25rem 1.5rem; }
+            .auth-brand-pane .brand-logo { width: 36px; height: 36px; margin-bottom: 0; }
+            .auth-brand-pane dl, .auth-brand-pane .auth-brand-sub { display: none; }
+            .auth-brand-pane__head { display: flex; align-items: center; gap: 0.75rem; }
+            .auth-brand-pane__head .auth-brand-title { margin: 0; font-size: 1.05rem; }
+            .auth-brand-pane__foot { justify-content: space-between; }
+            .auth-main { padding: 1.5rem; }
+        }
     </style>
 </head>
 <body>
     <div class="auth-shell">
-        <div class="auth-brand">
-            <div class="brand-logo">
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-inverse)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        <aside class="auth-brand-pane" aria-label="系统介绍">
+            <div class="auth-brand-pane__head">
+                <div class="brand-logo">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                </div>
+                <div>
+                    <p class="auth-brand-title">每日工作记录管理系统</p>
+                    <p class="auth-brand-sub">内部业务平台</p>
+                </div>
             </div>
-            <p class="auth-brand-title">每日工作记录管理系统</p>
-            <p>试样跟进 · 业务台账 · 知识管理</p>
-        </div>
-        <div class="auth-card">
-            {% block auth_content %}{% endblock %}
-        </div>
-        {% block auth_outside %}{% endblock %}
-        {% if env_label %}
-        <div class="auth-env"><span class="auth-env__chip">{{ env_label }}</span></div>
-        {% endif %}
+            <dl>
+                <div>
+                    <dt>试样跟进</dt>
+                    <dd>从委托登记到小批试产的全流程状态跟踪，逾期自动提醒。</dd>
+                </div>
+                <div>
+                    <dt>业务台账</dt>
+                    <dd>客诉、核价、装修、诉讼、保险等台账统一录入与检索。</dd>
+                </div>
+                <div>
+                    <dt>知识管理</dt>
+                    <dd>工作记录沉淀为知识库，支持全文检索与经验复用。</dd>
+                </div>
+            </dl>
+            <div class="auth-brand-pane__foot">
+                <span class="auth-env__chip">{{ env_label|default:"—" }}</span>
+                {% if sys_version %}<span>{{ sys_version }}</span>{% endif %}
+            </div>
+        </aside>
+        <main class="auth-main">
+            <div class="auth-card">
+                {% block auth_content %}{% endblock %}
+            </div>
+            {% block auth_outside %}{% endblock %}
+        </main>
     </div>
 </body>
 </html>

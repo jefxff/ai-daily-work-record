@@ -38,28 +38,8 @@ document.addEventListener('DOMContentLoaded', function () {
     // 定时刷新时间显示（每秒更新）
     setInterval(setCurrentTime, 1000);
 
-    // 待处理事项筛选功能
-    const filterButtons = document.querySelectorAll('.filter-btn');
-    const pendingItems = document.querySelectorAll('.pending-item');
-
-    filterButtons.forEach(button => {
-        button.addEventListener('click', function () {
-            // 移除所有按钮的active状态
-            filterButtons.forEach(btn => btn.classList.remove('active'));
-            // 添加当前按钮的active状态
-            this.classList.add('active');
-
-            const filter = this.dataset.filter;
-
-            pendingItems.forEach(item => {
-                if (filter === 'all' || item.dataset.type === filter) {
-                    item.style.display = 'flex';
-                } else {
-                    item.style.display = 'none';
-                }
-            });
-        });
-    });
+    // 待处理明细已外移至待办工作台（规划书 db-5），看板只展示聚合计数，
+    // 原页内筛选按钮与明细展开逻辑随之移除。
 
     // 查看全部入口已改为跳转待办工作台（见模板底部链接），不再需要本地展开逻辑
 
@@ -105,6 +85,31 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
+        // 小量级不自欺（规划书 db-4）：日新增 ≤10 条时，面积图会把 7 条
+        // 数据撑满 230px 高的画布，视觉上像剧烈波动。改纯点 + 数值标注，
+        // 不铺面积；量级起来后（>10）才恢复面积图。数值标注用内联插件画，
+        // 不为此引入 chartjs-plugin-datalabels 依赖。
+        var trendMax = Math.max.apply(null, (chartData.trend_values || [0]).concat([0]));
+        var trendSmall = trendMax <= 10;
+        var trendValueLabels = {
+            id: 'trendValueLabels',
+            font: { size: 10 },
+            afterDatasetsDraw: function (chart) {
+                var meta = chart.getDatasetMeta(0);
+                if (!meta || chart.chartArea.width / meta.data.length < 18) return; // 点太密时标注会互相叠
+                var ctx = chart.ctx;
+                ctx.save();
+                ctx.fillStyle = cText;
+                ctx.font = '10px ' + (chart.options.font && chart.options.font.family || 'sans-serif');
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                meta.data.forEach(function (el, i) {
+                    var v = chart.data.datasets[0].data[i];
+                    if (v > 0) ctx.fillText(String(v), el.x, el.y - 5);
+                });
+                ctx.restore();
+            }
+        };
         new Chart(document.getElementById('chartTrend'), {
             type: 'line',
             data: {
@@ -113,20 +118,34 @@ document.addEventListener('DOMContentLoaded', function () {
                     label: '每日记录',
                     data: chartData.trend_values,
                     borderColor: cPrimary,
-                    backgroundColor: withAlpha(cPrimary, 0.13),
-                    fill: true,
+                    backgroundColor: trendSmall ? cPrimary : withAlpha(cPrimary, 0.13),
+                    fill: !trendSmall,
                     tension: 0.3,
-                    pointRadius: 2
+                    pointRadius: trendSmall ? 3 : 2,
+                    pointHoverRadius: trendSmall ? 5 : 4
                 }]
             },
             options: {
                 maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function (ctx) { return ctx.parsed.y + ' 条'; }
+                        }
+                    }
+                },
                 scales: {
                     x: { ticks: { color: cText, maxTicksLimit: 8 }, grid: { display: false } },
-                    y: { ticks: { color: cText }, grid: { color: cBorder }, beginAtZero: true }
+                    y: {
+                        ticks: { color: cText, precision: 0 },
+                        grid: { color: cBorder },
+                        beginAtZero: true,
+                        suggestedMax: trendSmall ? trendMax + 1 : undefined
+                    }
                 }
-            }
+            },
+            plugins: trendSmall ? [trendValueLabels] : []
         });
     }
 });

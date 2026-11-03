@@ -97,6 +97,6 @@ class DashboardSummaryTests(TestCase):
         resp = self.client.get(reverse('dashboard'))
         self.assertEqual(resp.status_code, 200)
         for key in ('total_records', 'module_count', 'completion_rate',
-                    'pending_items', 'decoration_reduced_total',
+                    'pending_count', 'decoration_reduced_total',
                     'insurance_total_count', 'chart_payload', 'module_badges'):
             self.assertIn(key, resp.context)

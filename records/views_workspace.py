@@ -218,6 +218,11 @@ def todo_counts(user, *, today=None):
         "due_soon": sum(
             1 for t in todos if t["days_left"] is not None and 0 <= t["days_left"] <= 7
         ),
+        # 已逾期：首页 KPI 需要说明「待处理」里有多少已经过期，
+        # 否则 54 这个数字看不出紧急程度（规划书 home-2）
+        "overdue": sum(
+            1 for t in todos if t["days_left"] is not None and t["days_left"] < 0
+        ),
     }
 
 

@@ -71,6 +71,8 @@ urlpatterns = [
     path('daily_record/edit/<int:pk>/', views.daily_record_edit, name='daily_record_edit'),
     path('daily_record/delete/<int:pk>/', views.daily_record_delete, name='daily_record_delete'),
     path('daily_record/export/', views.daily_record_export, name='daily_record_export'),
+    # 列表页批量操作：标记完成 / 删除（仅 POST，权限按动作分别校验）
+    path('daily_record/batch/', views.daily_record_batch, name='daily_record_batch'),
     # 批量沉淀到知识库（仅 POST；一律私有，D5）
     path('daily_record/kb/sync-batch/', views.daily_record_kb_sync_batch, name='daily_record_kb_sync_batch'),
     

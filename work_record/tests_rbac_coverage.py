@@ -52,6 +52,8 @@ WHITELIST = {
     # —— 高危动作收紧到超管（与备份下载同一思路）——
     "notifications.views.scheduled_task_run": "@_superuser_required，超管专属",
     "notifications.views.scheduled_task_update": "@_superuser_required，超管专属",
+    # —— 批量动作：同一视图两个动作权限不同，不能挂单一装饰器 ——
+    "records.views.daily_record_batch": "批量完成/删除按动作在视图内分别 has_perm(update/delete)，数据范围叠加 _my_daily_records 行级隔离",
 }
 
 

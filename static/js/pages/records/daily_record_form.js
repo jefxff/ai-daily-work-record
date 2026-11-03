@@ -30,6 +30,7 @@
         var charCount = $('#charCount');
         var workContent = $('#work_content');
         var progressSection = progressNum ? progressNum.closest('.dr-form-section') : null;
+        var progressRow = form.querySelector('.dr-progress-row');
 
         // ---------- 字数计数 ----------
         if (workContent && charCount) {
@@ -67,6 +68,21 @@
             if (progressNum) progressNum.setAttribute('aria-valuetext', val + '%');
         }
 
+        // 滑块只在「进行中」出现：未完成/完成两态的进度由状态唯一确定，
+        // 再给一个可拖的滑杆就是第三重入口（规划书 add-2）
+        function syncProgressMode(status) {
+            var editing = status === '进行中';
+            if (progressSlider) {
+                progressSlider.hidden = !editing;
+                progressSlider.disabled = !editing;
+            }
+            if (progressNum) {
+                progressNum.readOnly = !editing;
+                progressNum.classList.toggle('is-locked', !editing);
+            }
+            if (progressRow) progressRow.classList.toggle('is-locked', !editing);
+        }
+
         function applyProgress(val, opts) {
             val = clamp(val);
             if (progressNum) progressNum.value = val;
@@ -94,6 +110,7 @@
             applyProgress(next, { keepStatus: true });
             paint(clamp(next), status);
             fromStatus = false;
+            syncProgressMode(status);
         }
 
         pills.forEach(function (btn) {
@@ -120,14 +137,11 @@
                 if (fromStatus) return;
                 applyProgress(progressSlider.value);
             });
-        }
-
-        // ---------- 快捷档位 +1 行：0 / 25 / 50 / 75 / 100 ----------
-        Array.prototype.forEach.call(form.querySelectorAll('[data-step]'), function (btn) {
-            btn.addEventListener('click', function () {
-                applyProgress(btn.dataset.step);
+            // 拖动过程中不收起滑杆（否则 pointerup 会丢），松手后再同步显隐
+            progressSlider.addEventListener('change', function () {
+                if (statusSelect) syncProgressMode(statusSelect.value);
             });
-        });
+        }
 
         // ---------- 知识库范围：勾选后才展开 ----------
         var kbToggle = $('#kb_enabled');
@@ -142,6 +156,7 @@
         var initStatus = statusSelect ? statusSelect.value : '未完成';
         activatePill(initStatus);
         paint(clamp(progressNum ? progressNum.value : 0), initStatus);
+        syncProgressMode(initStatus);
     }
 
     init(document);

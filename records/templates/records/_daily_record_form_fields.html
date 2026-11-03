@@ -93,13 +93,8 @@
                     <span class="dr-progress-number-suffix">%</span>
                 </div>
             </div>
-            <div class="dr-progress-steps">
-                <button type="button" class="dr-progress-step" data-step="0">0%</button>
-                <button type="button" class="dr-progress-step" data-step="25">25%</button>
-                <button type="button" class="dr-progress-step" data-step="50">50%</button>
-                <button type="button" class="dr-progress-step" data-step="75">75%</button>
-                <button type="button" class="dr-progress-step" data-step="100">100%</button>
-            </div>
+            {# 快捷档位已删：状态胶囊本身就会带出 0 / 50 / 100，五个档位按钮是第三重冗余 #}
+            <p class="dr-field-hint" id="progressHint">切换状态会自动带出 0 / 50 / 100；只有「进行中」需要拖滑杆</p>
             {% if errors.progress %}<div class="form-text u-text-danger">{{ errors.progress }}</div>{% endif %}
         </div>
     </div>

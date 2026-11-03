@@ -13,6 +13,9 @@ from django.views.decorators.http import require_http_methods
 
 from .forms import LoginForm, RegisterForm
 from .models import LoginLog, UserProfile
+
+# 登录页品牌栏展示用：与 CHANGELOG.md 最新版本号同步维护
+SYS_VERSION = "v2.3.2"
 from .security import (
     clear_failures, client_ip, get_failure_count, is_locked,
     record_failure, record_register, register_throttled,
@@ -100,6 +103,7 @@ def login_view(request):
             "error_msg": error_msg,
             "next_url": request.GET.get("next", "/"),
             "env_label": _env_label(request),
+            "sys_version": SYS_VERSION,
         },
     )
 
@@ -168,4 +172,9 @@ def register_view(request):
             form = RegisterForm()
     else:
         form = RegisterForm()
-    return render(request, "accounts/register.html", {"form": form, "submitted": submitted})
+    return render(request, "accounts/register.html", {
+        "form": form,
+        "submitted": submitted,
+        "env_label": _env_label(request),
+        "sys_version": SYS_VERSION,
+    })

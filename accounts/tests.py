@@ -449,7 +449,8 @@ class RbacAuthTests(TestCase):
 
         # home：按可见模块裁剪内容，不加单模块装饰器（否则只有档案权限的用户打不开首页）
         # search：跨模块页面，用 @require_any_module（零权限 403）
-        records_whitelist = {"home", "search", "test_view"}
+        # daily_record_batch：批量完成/删除按动作在视图内分别校验 update/delete
+        records_whitelist = {"home", "search", "test_view", "daily_record_batch"}
         checked = 0
         for p in records_urls.urlpatterns:
             if p.name in records_whitelist:

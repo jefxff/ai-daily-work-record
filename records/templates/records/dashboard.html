@@ -70,52 +70,25 @@
         </div>
         {{ chart_payload|json_script:"dashboardChartData" }}
 
-        <!-- 待处理项目卡片 -->
-        <div class="pending-card" data-pending-count="{{ pending_count }}">
+        <!-- 待处理事项：看板只做聚合（规划书 db-5）。同一批待办此前在
+             首页「需要关注」、看板 Top10 明细、/workspace/ 三处各维护一套视图，
+             改一处要改三处；明细与筛选统一在待办工作台完成。 -->
+        <div class="pending-card pending-card--agg" data-pending-count="{{ pending_count }}">
             <div class="pending-header">
                 <div class="pending-title">
                     <h3>📋 待处理事项</h3>
                     <span class="pending-count">{{ pending_count }} 条</span>
                 </div>
                 <div class="pending-filter">
-                    <button type="button" class="filter-btn active" data-filter="all">全部</button>
-                    <button type="button" class="filter-btn" data-filter="daily">📝 每日记录{% if daily_pending_count > 0 %}<span class="badge">{{ daily_pending_count }}</span>{% endif %}</button>
-                    <button type="button" class="filter-btn" data-filter="customer_complaint">📞 客户客诉{% if complaint_pending_count > 0 %}<span class="badge">{{ complaint_pending_count }}</span>{% endif %}</button>
-                    <button type="button" class="filter-btn" data-filter="lawsuit">⚖️ 诉讼案件{% if lawsuit_pending_count > 0 %}<span class="badge">{{ lawsuit_pending_count }}</span>{% endif %}</button>
+                    <span class="pending-agg">全部 <b>{{ pending_count }}</b></span>
+                    <span class="pending-agg">📝 每日记录 <b>{{ daily_pending_count }}</b></span>
+                    <span class="pending-agg">📞 客户客诉 <b>{{ complaint_pending_count }}</b></span>
+                    <span class="pending-agg">⚖️ 诉讼案件 <b>{{ lawsuit_pending_count }}</b></span>
                 </div>
             </div>
-
-            <div class="pending-list" id="pendingList">
-                {% if pending_items %}
-                    {% for item in pending_items %}
-                    <a class="pending-item {{ item.type }}{% if forloop.counter > 10 %} pending-hidden{% endif %}" data-type="{{ item.type }}" href="{{ item.url }}"{% if forloop.counter > 10 %} style="display: none;"{% endif %}>
-                        <div class="pending-icon">{{ item.type_icon }}</div>
-                        <div class="pending-content">
-                            <div class="pending-title-text">{{ item.title }}</div>
-                            <div class="pending-meta">
-                                <span class="pending-type">{{ item.type_name }}</span>
-                                <span>{{ item.department }}</span>
-                                <span>{{ item.created_at }}</span>
-                                <span class="pending-status {{ item.status }}">{{ item.status }}</span>
-                            </div>
-                        </div>
-                        <div class="pending-actions">
-                            <span class="action-btn" aria-hidden="true">👁️</span>
-                        </div>
-                    </a>
-                    {% endfor %}
-                {% else %}
-                    <div class="pending-empty">
-                        <p>🎉 暂无待处理事项</p>
-                    </div>
-                {% endif %}
-            </div>
-
-            {% if pending_count > 0 %}
             <div class="pending-footer">
-                <a class="view-all-btn" href="{% url 'workspace' %}">前往待办工作台查看全部 {{ pending_count }} 条待处理事项 →</a>
+                <a class="view-all-btn" href="{% url 'workspace' %}">前往待办工作台查看明细与筛选 →</a>
             </div>
-            {% endif %}
         </div>
 
         <!-- 业务模块卡片 -->
@@ -823,147 +796,23 @@
         flex-wrap: wrap;
     }
 
-    .filter-btn {
-        background: var(--c-surface);
-        border: 1px solid var(--c-border-strong);
-        border-radius: 4px;
-        padding: 0.375rem 0.75rem;
-        color: var(--c-text-secondary);
-        font-size: 0.85rem;
-        cursor: pointer;
-        transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+    /* 聚合 chips：只读统计，点击行为统一交给「前往待办工作台」 */
+    .pending-agg {
         display: inline-flex;
         align-items: center;
         gap: 0.375rem;
-    }
-
-    .filter-btn:hover {
-        color: var(--c-primary);
-        border-color: var(--c-primary);
-    }
-
-    .filter-btn.active {
-        background: var(--c-primary-subtle);
-        border-color: var(--c-border-hover);
-        color: var(--c-primary);
-    }
-
-    /* 待处理数量徽章样式 */
-    .pending-card .badge {
-        background: var(--c-danger);
-        color: var(--c-surface);
-        border-radius: 10px;
-        font-size: 0.7rem;
-        font-weight: 600;
-        min-width: 18px;
-        height: 18px;
-        padding: 0 4px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .pending-list {
-        max-height: 400px;
-        overflow-y: auto;
-    }
-
-    .pending-list::-webkit-scrollbar { width: 6px; }
-    .pending-list::-webkit-scrollbar-track { background: var(--c-surface-sunken); border-radius: 3px; }
-    .pending-list::-webkit-scrollbar-thumb { background: var(--c-border-strong); border-radius: 3px; }
-
-    .pending-item {
-        display: flex;
-        align-items: center;
-        padding: 1rem;
-        margin-bottom: 0.5rem;
-        background: var(--c-surface-sunken);
-        border-radius: 8px;
-        transition: background-color 0.2s ease;
-        cursor: pointer;
-        border-left: 3px solid transparent;
-        text-decoration: none;
-        color: inherit;
-    }
-
-    .pending-item:hover {
-        background: var(--c-primary-subtle);
-    }
-
-    .pending-item.daily { border-left-color: var(--c-primary); }
-    .pending-item.customer_complaint { border-left-color: var(--c-warning); }
-    .pending-item.lawsuit { border-left-color: var(--c-danger); }
-
-    .pending-icon {
-        font-size: 1.5rem;
-        margin-right: 1rem;
-        flex-shrink: 0;
-    }
-
-    .pending-content { flex: 1; min-width: 0; }
-
-    .pending-title-text {
-        font-weight: 500;
-        margin-bottom: 0.25rem;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        color: var(--c-text);
-    }
-
-    .pending-meta {
-        display: flex;
-        gap: 1rem;
-        font-size: 0.875rem;
-        color: var(--c-text-secondary);
-        flex-wrap: wrap;
-    }
-
-    .pending-type {
-        background: var(--c-border);
-        color: var(--c-text-secondary);
-        padding: 0.125rem 0.5rem;
-        border-radius: 4px;
-        font-size: 0.75rem;
-    }
-
-    .pending-status {
-        padding: 0.125rem 0.5rem;
-        border-radius: 4px;
-        font-size: 0.75rem;
-    }
-
-    .pending-status.未完成 { background: var(--c-danger-bg); color: var(--c-danger); }
-    .pending-status.立案 { background: var(--c-warning-bg); color: var(--c-warning); }
-    .pending-status.审理中 { background: var(--c-surface-sunken); color: var(--c-text-secondary); }
-
-    .pending-actions {
-        display: flex;
-        gap: 0.5rem;
-        margin-left: 1rem;
-        flex-shrink: 0;
-    }
-
-    .action-btn {
-        display: inline-block;
-        background: var(--c-surface);
+        padding: 0.375rem 0.75rem;
         border: 1px solid var(--c-border);
-        border-radius: 4px;
-        padding: 0.5rem;
+        border-radius: 999px;
+        background: var(--c-surface-sunken);
         color: var(--c-text-secondary);
-        transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+        font-size: 0.8125rem;
+        white-space: nowrap;
     }
-
-    .action-btn:hover {
-        background: var(--c-primary-subtle);
-        color: var(--c-primary);
-        border-color: var(--c-border-hover);
-    }
-
-    .pending-empty {
-        text-align: center;
-        padding: 2rem;
-        color: var(--c-text-tertiary);
+    .pending-agg b {
+        font-family: var(--font-mono);
+        font-variant-numeric: tabular-nums;
+        color: var(--c-text);
     }
 
     .pending-footer {
@@ -1144,14 +993,6 @@
         }
 
         .pending-filter { flex-wrap: wrap; }
-        .pending-item { flex-wrap: wrap; }
-
-        .pending-actions {
-            margin-left: 0;
-            margin-top: 0.5rem;
-            width: 100%;
-            justify-content: flex-end;
-        }
     }
 /* 图表区（P5 第二步：各模块记录数 + 近 30 天趋势） */
         .charts-row {

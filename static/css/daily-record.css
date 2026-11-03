@@ -36,6 +36,28 @@
 
 /* 列宽按信息价值固定：工作内容 420px 拿最宽，序号 48px 足够放下三位数，
    日期压成单行 110px（原来是两行占 12%） */
+/* 首列复选框（drl-3）：36px 窄列，列宽合计 1214 -> 1250 */
+.dr-table col.c-check { width: 36px; }
+.dr-table .dr-check-col { text-align: center; vertical-align: middle; }
+.dr-table .dr-check-col input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--c-primary); cursor: pointer; }
+
+/* 批量操作条：勾选任意行后出现在表格上方 */
+.dr-batch-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    padding: 0.625rem 1rem;
+    border: 1px solid var(--c-primary);
+    border-radius: var(--r-md);
+    background: var(--c-primary-subtle);
+}
+.dr-batch-bar__info { font-size: 0.875rem; color: var(--c-text); }
+.dr-batch-bar__info b { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--c-primary-active); }
+.dr-batch-bar__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+
 .dr-table col.c-seq { width: 48px; }
 .dr-table col.c-when { width: 104px; }
 .dr-table col.c-dept { width: 128px; }
@@ -553,6 +575,56 @@
     font-size: var(--fs-sm);
 }
 
+/* 3.2b 同一行三种控件（只读框 / 文本输入 / 原生日期）统一到 40px 高、同一内边距
+   （规划书 add-1）。日期控件保留浏览器原生选择器——自己造一个会丢掉键盘输入
+   与移动端的系统日历——只把它的高度、边框和图标透明度拉齐。 */
+.dr-form input.form-control,
+.dr-form .dr-readonly {
+    height: 40px;
+    min-height: 40px;
+    padding: 0 12px;
+    font-size: var(--fs-sm);
+    font-variant-numeric: tabular-nums;
+}
+
+.dr-form textarea.form-control {
+    height: auto;
+    min-height: 120px;
+    padding: 10px 12px;
+}
+
+.dr-form input[type="date"].form-control {
+    padding-right: 8px;
+    line-height: 38px;
+}
+
+.dr-form input[type="date"].form-control::-webkit-calendar-picker-indicator {
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    opacity: 0.45;
+    cursor: pointer;
+}
+
+.dr-form input[type="date"].form-control::-webkit-calendar-picker-indicator:hover {
+    opacity: 0.8;
+}
+
+/* 进度区：滑杆只在「进行中」出现，另两态的百分比是只读结果 */
+.dr-progress-row.is-locked .dr-progress-number .form-control,
+.dr-progress-number .form-control.is-locked {
+    background: var(--c-surface-sunken);
+    border-color: var(--c-border);
+    color: var(--c-text-secondary);
+    cursor: default;
+}
+
+.dr-field-hint {
+    margin: 6px 0 0;
+    font-size: var(--fs-xs);
+    color: var(--c-text-tertiary);
+}
+
 /* 3.3 状态药丸：三个等宽，选中态只改描边与底，不再叠 3px 外发光
    （原版选中态 box-shadow 0 0 0 3px 会让相邻药丸看起来粘连） */
 .dr-status-group { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
@@ -682,34 +754,6 @@
     font-size: var(--fs-xs);
     color: var(--c-text-tertiary);
     pointer-events: none;
-}
-
-/* 档位按钮：与滑杆同一行不够放，放到下一行，做成四个安静的小方块 */
-.dr-progress-steps {
-    display: flex;
-    gap: var(--sp-2);
-    margin-top: var(--sp-3);
-}
-
-.dr-progress-step {
-    flex: 1 1 0;
-    min-height: 28px;
-    border: 1px solid var(--c-border);
-    border-radius: var(--r-sm);
-    background: var(--c-surface);
-    color: var(--c-text-secondary);
-    font-size: var(--fs-xs);
-    font-family: var(--font-mono);
-    cursor: pointer;
-    transition: border-color var(--dur-fast) var(--ease-out),
-                color var(--dur-fast) var(--ease-out),
-                background-color var(--dur-fast) var(--ease-out);
-}
-
-.dr-progress-step:hover {
-    border-color: var(--c-primary);
-    color: var(--c-primary);
-    background: var(--c-primary-subtle);
 }
 
 /* 3.5 知识库沉淀：勾选是一个动作，范围是它的后续参数
@@ -849,4 +893,11 @@
     .dr-form-actions__hint { flex: 1 1 100%; margin-right: 0; }
 
     .dr-form-actions .btn { flex: 1 1 auto; }
+}
+
+/* 移动端卡片模式下隐藏选择列：批量是桌面高频动作，卡片流里复选框反而占首行 */
+@media (max-width: 768px) {
+    .dr-table col.c-check { width: 0; }
+    .dr-table .dr-check-col { display: none; }
+    .dr-batch-bar { flex-direction: column; align-items: stretch; }
 }

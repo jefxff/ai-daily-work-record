@@ -81,6 +81,24 @@
             <a class="filter-chip" href="{% querystring status=None page=None %}">状态：{{ status_filter }} ✕</a>
             {% endif %}{% has_filters as show_clear %}{% if show_clear %}<a class="filter-chip filter-chip--clear" href="{{ request.path }}" aria-label="全部清除筛选条件">全部清除<span aria-hidden="true"> ✕</span></a>{% endif %}</div>
     </div>
+    {# 批量操作条（drl-3）：默认隐藏，勾选任意行后出现；动作按权限渲染 #}
+    <div class="dr-batch-bar" id="drBatchBar" hidden
+         data-batch-url="{% url 'daily_record_batch' %}"
+         data-export-url="{% url 'daily_record_export' %}">
+        <span class="dr-batch-bar__info">已选 <b id="drBatchCount">0</b> 条</span>
+        <div class="dr-batch-bar__actions">
+            {% can "daily_record" "update" %}
+            <button type="button" class="btn-secondary btn-sm" data-batch="complete"
+               data-confirm="确定把选中的记录全部标记为「完成」吗？">标记完成</button>
+            {% endcan %}
+            <button type="button" class="btn-secondary btn-sm" data-batch="export">导出选中</button>
+            {% can "daily_record" "delete" %}
+            <button type="button" class="btn-transparent btn-sm btn-delete" data-batch="delete"
+               data-confirm="确定删除选中的记录吗？删除后不可恢复。">删除</button>
+            {% endcan %}
+            <button type="button" class="btn-transparent btn-sm" data-batch-clear>取消选择</button>
+        </div>
+    </div>
     <div class="table-container">
         <div class="table-responsive">
             <div class="hidden-cols-hint">窄屏已隐藏 1 个次要列；需要逐列比对时请横屏或改用桌面端。</div><table class="dr-table table--cards table table-sticky table--fixed">
@@ -90,6 +108,7 @@
                 是「这件事是什么」，最长文本却拿不到最宽的位置。
                 {% endcomment %}
                 <colgroup>
+                    <col class="c-check">
                     <col class="c-seq">
                     <col class="c-when">
                     <col class="c-dept">
@@ -101,6 +120,9 @@
                 </colgroup>
                 <thead>
                     <tr>
+                        <th scope="col" class="dr-check-col">
+                            <input type="checkbox" id="drCheckAll" aria-label="全选本页记录">
+                        </th>
                         <th scope="col" class="col-optional">序号</th>
                         {% include 'records/_sort_th.html' with label="日期及时间" field="record_date" %}
                         <th scope="col">提出部门/提出人</th>
@@ -114,6 +136,9 @@
                 <tbody>
                     {% for record in records %}
                     <tr data-href="{% url 'daily_record_detail' record.id %}">
+                        <td data-label="选择" class="dr-check-col">
+                            <input type="checkbox" class="dr-row-check" value="{{ record.id }}" data-no-row-click aria-label="选择第 {{ forloop.counter }} 条记录">
+                        </td>
                         <td data-label="序号" class="col-optional">{{ forloop.counter }}</td>
                         {# 日期压成单行「11-02 18:35」：年份由页头与筛选范围确定，完整时间进 title #}
                         <td data-label="日期及时间" title="{{ record.record_date|date:'Y-m-d H:i:s' }}">
@@ -172,7 +197,7 @@
                         </td>
                     </tr>
                     {% empty %}
-                    {% include 'records/_empty_row.html' with colspan=8 %}
+                    {% include 'records/_empty_row.html' with colspan=9 %}
                     {% endfor %}
                 </tbody>
             </table>
@@ -183,7 +208,7 @@
 {% endblock %}
 
 {% block extra_css %}
-<link href="{% static 'css/daily-record.css' %}?v=20261102b" rel="stylesheet">
+<link href="{% static 'css/daily-record.css' %}?v=20261103b" rel="stylesheet">
 <style>
     /* 「未完成」快捷筛选：与筛选按钮同款，激活时高亮 */
     .quick-filter-btn.is-active {
@@ -196,5 +221,5 @@
 
 {% block extra_js %}
 
-<script src="{% static 'js/pages/records/daily_record_list.js' %}?v=20261102" defer></script>
+<script src="{% static 'js/pages/records/daily_record_list.js' %}?v=20261103b" defer></script>
 {% endblock %}

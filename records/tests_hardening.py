@@ -137,7 +137,11 @@ class SearchHardeningTests(TestCase):
 
 
 class PendingItemsSortTests(TestCase):
-    """#37：诉讼不再因为字符串 '立案中' 恒排首位。"""
+    """db-5：看板不再渲染待处理明细，明细统一指向待办工作台。
+
+    原 #37（诉讼不因字符串 '立案中' 恒排首位）随明细移除而退役，
+    保留一个回归：看板仍给出各模块聚合计数，且不再逐条渲染待办行。
+    """
 
     def setUp(self):
         call_command("sync_rbac", verbosity=0)
@@ -145,8 +149,8 @@ class PendingItemsSortTests(TestCase):
         grant("data_view", ("read",), self.user)
         self.client.force_login(self.user)
 
-    def test_lawsuit_is_not_forced_to_top(self):
-        """有待办日期的事项排在前面，诉讼（无日期）排在最后。"""
+    def test_dashboard_shows_aggregate_not_items(self):
+        """看板保留按模块聚合计数，不再输出 .pending-item 明细行。"""
         DailyRecord.objects.create(
             user=self.user, department="甲", work_content="未完成事项", status="未完成"
         )
@@ -158,14 +162,13 @@ class PendingItemsSortTests(TestCase):
             dispute_type="合同", defendant="被告公司", case_number="(2026)1号",
             amount=100, court="某法院", lawyer="王律师", progress="立案",
         )
-        resp = self.client.get(reverse("dashboard"))
-        items = resp.context["pending_items"]
-        self.assertTrue(items, "待处理列表不应为空")
-        self.assertNotEqual(items[0]["type"], "lawsuit", "诉讼不应恒排首位")
-        self.assertEqual(items[-1]["type"], "lawsuit", "无日期的诉讼应排在最后")
+        html = self.client.get(reverse("dashboard")).content.decode()
+        self.assertNotIn("pending-item", html, "待办明细不应再在看板逐条渲染")
+        self.assertIn("诉讼案件", html, "聚合 chips 仍应显示各模块计数")
+        self.assertIn("待办工作台", html, "应保留指向待办工作台的入口")
 
-    def test_sort_key_has_no_string_dates(self):
-        """直接断言构造逻辑：任何待办的 sort_at 要么是 float，要么是 None。"""
+    def test_lawsuit_status_not_leaked_into_dashboard(self):
+        """审计 #37 回归：诉讼进度原文不再以明细行落在看板。"""
         DailyRecord.objects.create(user=self.user, department="甲", work_content="x", status="未完成")
         Complaint.objects.create(
             dispute_type="合同", defendant="被告公司", case_number="(2026)1号",

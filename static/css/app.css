@@ -1348,10 +1348,10 @@ a.home-action__stat:hover { background: var(--c-surface-sunken); color: var(--c-
 .home-panel__link { font-size: 0.8125rem; color: var(--c-primary); text-decoration: none; white-space: nowrap; }
 .home-panel__link:hover { color: var(--c-primary-active); text-decoration: underline; }
 
-/* 面板 1：我的待办 */
-.home-todo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
-.home-kpis { display: flex; flex-wrap: wrap; align-items: stretch; }
-.home-kpi { display: flex; flex-direction: column; gap: 0.125rem; min-width: 5.5rem; padding: 0 1.25rem; border-left: 1px solid var(--c-border); color: var(--c-text-secondary); text-decoration: none; }
+/* 面板 1：我的待办 —— KPI 独立成行，动作行单独一行（规划书 home-2） */
+.home-todo { display: flex; flex-direction: column; align-items: stretch; gap: 0.875rem; }
+.home-kpis { display: flex; flex-wrap: wrap; align-items: stretch; gap: 0 1.25rem; }
+.home-kpi { display: flex; flex: 1 1 7rem; flex-direction: column; gap: 0.125rem; min-width: 6rem; padding: 0 0 0 1.25rem; border-left: 1px solid var(--c-border); color: var(--c-text-secondary); text-decoration: none; }
 .home-kpi:first-child { padding-left: 0; border-left: 0; }
 a.home-kpi:hover { color: var(--c-text); text-decoration: none; }
 a.home-kpi:hover .home-kpi__value { color: var(--c-primary-active); }
@@ -1360,23 +1360,36 @@ a.home-kpi:hover .home-kpi__value { color: var(--c-primary-active); }
 .home-kpi--danger .home-kpi__value { color: var(--c-danger); }
 .home-kpi--warning .home-kpi__value { color: var(--c-warning); }
 .home-kpi__label { font-size: 0.75rem; color: var(--c-text-tertiary); white-space: nowrap; }
+/* 口径副标题：说明这个数字包含什么，避免「54 与 31 是什么关系」无解 */
+.home-kpi__meta { font-size: 0.6875rem; line-height: 1.5; color: var(--c-text-tertiary); white-space: nowrap; }
+.home-kpi__meta.is-danger { color: var(--c-danger); }
 
-.home-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.home-cta { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 0.5rem; padding-top: 0.75rem; border-top: 1px solid var(--c-divider); }
 .home-btn { display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.4375rem 0.875rem; border: 1px solid var(--c-border); border-radius: var(--r-sm); background: var(--c-surface); color: var(--c-text); font-size: 0.8125rem; line-height: 1.25; text-decoration: none; white-space: nowrap; transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease; }
 .home-btn:hover { background: var(--c-surface-sunken); border-color: var(--c-border-strong); color: var(--c-text); text-decoration: none; }
 .home-btn--primary { background: var(--c-primary-subtle); border-color: var(--c-primary); color: var(--c-primary-active); font-weight: 600; }
 .home-btn--primary:hover { background: var(--c-primary); color: var(--c-text-inverse); }
 
-/* 面板 2：业务模块 */
-.home-modules { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.75rem; }
-.home-module { display: flex; flex-direction: column; gap: 0.5rem; min-height: 6.75rem; padding: 0.75rem 0.875rem; border: 1px solid var(--c-border); border-radius: var(--r-md); background: var(--c-surface); color: inherit; text-decoration: none; transition: border-color var(--dur-fast) ease, box-shadow var(--dur-fast) ease, transform var(--dur-fast) ease; }
+/* 面板 2：业务模块 —— 统一四段式（标题 / 主数 / 两个次级指标 / 页脚环比） */
+.home-panel__aside { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
+.home-panel__hint { font-size: 0.6875rem; color: var(--c-text-tertiary); }
+.home-modules { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.75rem; align-items: stretch; }
+.home-module { display: flex; flex-direction: column; gap: 0.3125rem; min-height: 8.75rem; padding: 0.75rem 0.875rem; border: 1px solid var(--c-border); border-radius: var(--r-md); background: var(--c-surface); color: inherit; text-decoration: none; transition: border-color var(--dur-fast) ease, box-shadow var(--dur-fast) ease, transform var(--dur-fast) ease; }
 .home-module:hover { border-color: var(--c-primary); box-shadow: var(--sh-2); color: inherit; text-decoration: none; transform: translateY(-1px); }
 .home-module__top { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8125rem; color: var(--c-text-secondary); }
 .home-module__icon { font-size: 0.9375rem; line-height: 1; }
 .home-module__name { font-weight: 500; color: var(--c-text); }
 .home-module__main { font-family: var(--font-mono); font-size: 1.5rem; font-weight: 600; line-height: 1.1; letter-spacing: -0.02em; color: var(--c-text); }
-.home-module__sub { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; margin-top: auto; font-size: 0.75rem; color: var(--c-text-tertiary); }
-.home-module__sub b { font-family: var(--font-mono); font-size: 0.8125rem; font-weight: 600; color: var(--c-text-secondary); }
+/* 次级指标固定两行：缺数据也占位，卡片之间才能横向对齐 */
+.home-module__subs { display: flex; flex-direction: column; gap: 0.125rem; margin-top: auto; }
+.home-module__sub { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; min-height: 1.125rem; font-size: 0.75rem; color: var(--c-text-tertiary); }
+.home-module__sub b { font-family: var(--font-mono); font-size: 0.8125rem; font-weight: 600; color: var(--c-text-secondary); font-variant-numeric: tabular-nums; }
+/* 页脚槽位：环比（无历史序列显示 —）+ 迷你趋势，高度固定让 11 张卡节奏一致 */
+.home-module__foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 0.5rem; height: 1.375rem; margin-top: 0.375rem; padding-top: 0.375rem; border-top: 1px dashed var(--c-divider); }
+.home-module__delta { font-family: var(--font-mono); font-size: 0.6875rem; color: var(--c-text-secondary); white-space: nowrap; }
+.home-module__delta.is-up::before { content: "↑"; margin-right: 2px; }
+.home-module__delta.is-down::before { content: "↓"; margin-right: 2px; }
+.home-module__delta.is-empty { color: var(--c-text-disabled); }
 .home-spark { display: flex; align-items: flex-end; gap: 3px; height: 1.375rem; }
 .home-spark__bar { display: block; width: 6px; min-height: 2px; background: var(--c-primary-subtle); border-radius: 2px 2px 0 0; }
 .home-spark__bar.is-today { background: var(--c-primary); }
@@ -1408,8 +1421,11 @@ a.home-kpi:hover .home-kpi__value { color: var(--c-primary-active); }
 .home-tag--warning { background: var(--c-warning-bg); color: var(--c-warning); }
 .home-tag--gray { background: var(--c-surface-sunken); color: var(--c-text-secondary); }
 .home-progress { display: flex; align-items: center; gap: 0.375rem; color: var(--c-text-tertiary); font-family: var(--font-mono); font-size: 0.71875rem; }
-.home-progress__bar { width: 3.5rem; height: 4px; overflow: hidden; border-radius: 2px; background: var(--c-border); }
-.home-progress__bar i { display: block; width: 0; height: 100%; background: var(--c-primary); }
+.home-progress__bar { width: 3.5rem; height: 6px; border-radius: 3px; background: var(--c-border); }
+/* 0% 不再是「一条浅灰实轨」：虚线轨道专表「未开始」，和后两者区分开（规划书 home-4） */
+.home-progress__bar:has(i[data-w="0"]) { background: repeating-linear-gradient(90deg, var(--c-border-strong) 0 4px, transparent 4px 8px); }
+.home-progress__bar i { display: block; width: 0; height: 100%; background: var(--c-primary-active); }
+.home-progress__val { min-width: 2.75em; text-align: right; font-variant-numeric: tabular-nums; }
 .home-empty { padding: 1.25rem 0; color: var(--c-text-tertiary); font-size: 0.8125rem; text-align: center; }
 .home-rows__more { margin-top: 0.75rem; text-align: right; }
 
@@ -1439,11 +1455,14 @@ a.home-kpi:hover .home-kpi__value { color: var(--c-primary-active); }
 @media (max-width: 640px) {
     .home-panel { padding: 0.75rem; }
     .home-head__meta { display: none; }
-    .home-todo { flex-direction: column; align-items: stretch; }
-    .home-kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
-    .home-kpi { padding: 0; border-left: 0; }
+    .home-kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.875rem 0.75rem; }
+    .home-kpi { flex: 0 0 auto; padding: 0; border-left: 0; }
     .home-kpi__value { font-size: 1.5rem; }
-    .home-tabs { width: 100%; }
+    .home-kpi__meta { white-space: normal; }
+    .home-cta { justify-content: stretch; }
+    .home-cta__more { flex: 1 1 auto; }
+    .home-cta__more > summary { justify-content: center; }
+    .home-cta .home-btn--primary { flex: 1 1 auto; justify-content: center; }
     .home-rows__more { text-align: left; }
 }
 
