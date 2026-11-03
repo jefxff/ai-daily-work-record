@@ -82,8 +82,12 @@
     .table--fixed th:nth-child(5) { width: 13.8%; } /* 文件编号（最长「富字学[20262020号]」≈146px） */
     .table--fixed th:nth-child(6) { width: 11.4%; } /* 操作（三个图标按钮 121px，min-width 1064 下 = 121px） */
 
-    /* 标题加粗截断；固定布局下列宽由表头决定，不再需要 max-width 硬截 */
-    .title-cell { font-weight: 500; color: var(--c-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* 标题两行截断：与主要内容列同节奏，单行省略会让 470px 的列右半长期空白 */
+    .title-cell {
+        font-weight: 500; color: var(--c-text);
+        display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
     /* 不设宽度下限时窄屏会把「出文日期」挤成两行、操作列三个图标竖排（行高 125px）；
        日期/编号不换行，列放不下就交给表格横向滚动。 */
     .table { min-width: 1064px; }

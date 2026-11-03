@@ -62,12 +62,13 @@
    不用 colgroup：<col> 的宽度在某一列 display:none（col-optional / 移动端隐藏选择列）
    会被 Chrome 顺移套到下一可见列上，造成整行列宽错位一格。 */
 .dr-table th:nth-child(1) { width: 3.9%; }  /* 选择 */
-.dr-table th:nth-child(2) { width: 3.9%; }  /* 序号 */
+.dr-table th:nth-child(2) { width: 3.9%; text-align: center; }  /* 序号（与核价/制度页一致，数字居中） */
+.dr-table td:nth-child(2) { text-align: center; }
 .dr-table th:nth-child(3) { width: 10%; }   /* 日期及时间 */
 .dr-table th:nth-child(4) { width: 12.1%; } /* 提出部门/提出人 */
 .dr-table th:nth-child(6) { width: 10%; }   /* 截至日期 */
 .dr-table th:nth-child(7) { width: 8.8%; }  /* 工作状态（状态胶囊需 97px，min-width 1110 下 = 97.7px） */
-.dr-table th:nth-child(8) { width: 9.5%; }  /* 工作进度 */
+.dr-table th:nth-child(8) { width: 9.5%; text-align: left; }  /* 工作进度（数据左对齐，表头同步） */
 .dr-table th:nth-child(9) { width: 9.9%; }  /* 操作（三个图标按钮需 110px） */
 
 /* 列头：排序箭头与文字之间留一点空隙，不让 ⇅ 贴着末字 */

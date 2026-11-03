@@ -118,7 +118,7 @@
                         <th scope="col">工作内容</th>
                         {% include 'records/_sort_th.html' with label="截至日期" field="due_date" %}
                         <th scope="col">工作状态</th>
-                        {% include 'records/_sort_th.html' with label="工作进度" field="progress" th_class="col-center" %}
+                        {% include 'records/_sort_th.html' with label="工作进度" field="progress" %}
                         <th scope="col" class="col-actions">操作</th>
                     </tr>
                 </thead>
@@ -197,7 +197,7 @@
 {% endblock %}
 
 {% block extra_css %}
-<link href="{% static 'css/daily-record.css' %}?v=20261103h" rel="stylesheet">
+<link href="{% static 'css/daily-record.css' %}?v=20261103i" rel="stylesheet">
 <style>
     /* 「未完成」快捷筛选：与筛选按钮同款，激活时高亮 */
     .quick-filter-btn.is-active {

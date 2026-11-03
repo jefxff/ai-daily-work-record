@@ -100,22 +100,25 @@
     white-space: nowrap;
 }
 
-/* 列宽由 colgroup 按信息价值固定（合计 1320px），不再用百分比平均分配：
-   标的 260px 才能放下「意外伤害及健康险…」这类主标识。 */
+/* 列宽与对齐（th:nth-child 百分比预算，合计 100%，与装修/制度/核价/每日记录同一套）：
+   旧版 colgroup px 定宽（合计 1200px）在宽屏被等比摊平，且表头沿用基线居中、
+   内容块级左对齐，整表头与数据错位半列宽。这里同时声明列宽与每列对齐：
+   文本列左对齐、保费列右对齐（数字按位比价）、连续性/操作居中。 */
 .ins-table {
-    min-width: 1200px;
+    min-width: 1260px;
     table-layout: fixed;
 }
-/* 列宽合计 1200px：1440 视口下仅溢出约 58px，连续性列仍在首屏右缘可见，
-   不会因为挤出视口而让「是否断保」这个合规判断再次读不到。 */
-.ins-table col.col-subject { width: 250px; }
-.ins-table col.col-insurer { width: 140px; }
-.ins-table col.col-period { width: 180px; }
-.ins-table col.col-status { width: 180px; }
-.ins-table col.col-premium { width: 130px; }
-.ins-table col.col-count { width: 80px; }
-.ins-table col.col-continuity { width: 100px; }
-.ins-table col.col-ops { width: 140px; }
+.ins-table th:nth-child(1), .ins-table td:nth-child(1) { width: 18%;   text-align: left; }  /* 标的 */
+.ins-table th:nth-child(2), .ins-table td:nth-child(2) { width: 12%;   text-align: left; }  /* 当前保司 */
+.ins-table th:nth-child(3), .ins-table td:nth-child(3) { width: 15.5%; text-align: left; }  /* 当前保单期间 */
+.ins-table th:nth-child(4), .ins-table td:nth-child(4) { width: 13.5%; text-align: left; }  /* 到期状态 */
+/* 到期状态可能同时有状态徽章 + 断档徽章，nowrap 会把第二枚截掉，允许换行
+   （!important：压过下方 .ins-table td 的 nowrap 基线） */
+.ins-table td:nth-child(4) { white-space: normal !important; }
+.ins-table th:nth-child(5), .ins-table td:nth-child(5) { width: 13%;   text-align: right; } /* 保费与同比 */
+.ins-table th:nth-child(6), .ins-table td:nth-child(6) { width: 6.5%;  text-align: left; }  /* 保单数 */
+.ins-table th:nth-child(7), .ins-table td:nth-child(7) { width: 8%;    text-align: center; }/* 连续性 */
+.ins-table th:nth-child(8), .ins-table td:nth-child(8) { width: 13.5%; text-align: center; }/* 操作 */
 
 /* 标的主标识：单行 + title 全文；险种 chip 移到第二行，不再与主标识抢宽度 */
 .ins-subject-link {

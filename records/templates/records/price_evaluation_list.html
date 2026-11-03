@@ -128,9 +128,9 @@
     .table th:nth-child(6), .table th:nth-child(7), .table th:nth-child(8),
     .table th:nth-child(10), .table th:nth-child(11) { text-align: right; }
     .table td:nth-child(10), .table td:nth-child(11) { text-align: right; white-space: nowrap; }
-    /* 供应商组：名称上（左）、报价下（右），同一列的价格数字才能对齐比较 */
-    .supplier-cell { display: flex; flex-direction: column; gap: 1px; min-width: 0; text-align: left; }
-    .supplier-name { overflow: hidden; font-size: 12px; color: var(--c-text-secondary); text-overflow: ellipsis; white-space: nowrap; }
+    /* 供应商组：名称与报价同列右对齐（表头/名称/金额一条右边缘，不再左右错位） */
+    .supplier-cell { display: flex; flex-direction: column; gap: 1px; min-width: 0; text-align: right; }
+    .supplier-name { overflow: hidden; font-size: 12px; color: var(--c-text-secondary); text-overflow: ellipsis; white-space: nowrap; text-align: right; }
     /* 金额超列宽时按…截断，不能溢出到旁边的供应商列（溢出会让整列看起来错位） */
     .supplier-price { align-self: stretch; overflow: hidden; max-width: 100%; font-size: 13px; font-weight: 600; color: var(--c-text); font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
     /* 操作列三个按钮并列：给足 120px 并保持不换行 */

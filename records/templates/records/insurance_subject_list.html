@@ -75,20 +75,9 @@
         <div class="table-responsive">
             <table class="table table--cards table-sticky ins-table">
                 {% comment %}
-                标的列加宽到 260px（原先 194px 时「意外伤害及健康险…」被截断）；
-                原「续保与衔接」一列同时放年度数、保单条数、是否断保，截断恰好发生在
-                「是否断保」这种合规判断上，因此拆为「保单数」与「连续性」两列。
+                列宽与对齐在 _insurance_aggregation_css.html 用 th:nth-child 百分比预算：
+                文本列左对齐、保费列右对齐、连续性/操作居中，表头与数据逐列一致。
                 {% endcomment %}
-                <colgroup>
-                    <col class="col-subject">
-                    <col class="col-insurer">
-                    <col class="col-period">
-                    <col class="col-status">
-                    <col class="col-premium">
-                    <col class="col-count">
-                    <col class="col-continuity">
-                    <col class="col-ops">
-                </colgroup>
                 <thead>
                     <tr>
                         <th scope="col">标的</th>
