@@ -65,7 +65,12 @@
 .dr-table th:nth-child(2) { width: 3.9%; text-align: center; }  /* 序号（与核价/制度页一致，数字居中） */
 .dr-table td:nth-child(2) { text-align: center; }
 .dr-table th:nth-child(3) { width: 10%; }   /* 日期及时间 */
-.dr-table th:nth-child(4) { width: 12.1%; } /* 提出部门/提出人 */
+/* 提出部门/提出人：内容多为 3~4 字部门名（实测最长 39px），% 预算在 1920 下
+   膨胀到 196px、右侧空 143px。改 px 定宽（137px = 表头 8 字 104px + 内边距
+   28px + 余量），任何屏宽不再膨胀；省出的空间由「工作内容」列（auto）接收。
+   注意不能用 clamp()：Chrome 在 table-layout:fixed 下不解析 th 的 clamp 宽度，
+   声明失效后退化为 auto，会和工作内容列平分剩余（实测各 357px）。 */
+.dr-table th:nth-child(4) { width: 137px; } /* 提出部门/提出人 */
 .dr-table th:nth-child(6) { width: 10%; }   /* 截至日期 */
 .dr-table th:nth-child(7) { width: 8.8%; }  /* 工作状态（状态胶囊需 97px，min-width 1110 下 = 97.7px） */
 .dr-table th:nth-child(8) { width: 9.5%; text-align: left; }  /* 工作进度（数据左对齐，表头同步） */

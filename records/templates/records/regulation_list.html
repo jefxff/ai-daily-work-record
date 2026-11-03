@@ -77,8 +77,8 @@
        内容左对齐，同一列纵向错开半个列宽。 */
     .table--fixed th:nth-child(1) { width: 4.8%; }  /* 序号（min-width 1064 下 = 51px） */
     .table--fixed th:nth-child(2) { width: 10%; }   /* 出文日期（2026-09-12 不换行需 103px） */
-    .table--fixed th:nth-child(3) { width: 28.6%; } /* 标题 */
-    .table--fixed th:nth-child(4) { width: 31.4%; } /* 主要内容 */
+    .table--fixed th:nth-child(3) { width: 290px; } /* 标题（现有最长标题实测 286px；% 预算在 1920 下膨胀到 438px、右侧空 152px，px 定宽永不膨胀） */
+    /* 主要内容不设宽度（fixed 布局下的 auto 列），吃掉标题与窄列省出的全部剩余空间 */
     .table--fixed th:nth-child(5) { width: 13.8%; } /* 文件编号（最长「富字学[20262020号]」≈146px） */
     .table--fixed th:nth-child(6) { width: 11.4%; } /* 操作（三个图标按钮 121px，min-width 1064 下 = 121px） */
 

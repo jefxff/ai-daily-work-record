@@ -108,13 +108,17 @@
        省下的宽度补给三个金额列（10%→11%），窄屏下「¥3,399,802.28」不再截尾。 */
     .table { min-width: 1200px; }
     .table--fixed th:nth-child(1) { width: 4.5%; }  /* 序号（min-width 1200 下 = 54px，正好放下表头） */
-    .table--fixed th:nth-child(2) { width: 17.8%; } /* 项目名称 */
-    .table--fixed th:nth-child(3) { width: 12%; }   /* 施工方 */
-    .table--fixed th:nth-child(4) { width: 14%; }   /* 项目地址 */
-    .table--fixed th:nth-child(5) { width: 9%; }    /* 开工日期（2026-10-08 不换行需 106px） */
-    .table--fixed th:nth-child(6) { width: 11%; }   /* 原价（¥2,393,802.20 需 130px） */
-    .table--fixed th:nth-child(7) { width: 11%; }   /* 核后价 */
-    .table--fixed th:nth-child(8) { width: 11%; }   /* 核减金额 */
+    .table--fixed th:nth-child(2) { width: 18%; }   /* 项目名称 */
+    .table--fixed th:nth-child(3) { width: 12.5%; } /* 施工方 */
+    /* 项目地址不设宽度（fixed 布局下的 auto 列）：所有列都声明宽度时 Chrome 会把
+       px 定宽列也等比放大（104px 被放大到 141px），必须留一个 auto 列吸收富余，
+       px 列才能锁定；宽屏下地址是内容最长的文本列，富余给它最合适。 */
+    /* 短内容列 px 定宽，宽屏不再膨胀（开工日期内容 72px + 内边距 32px = 104px；
+       金额实测 86px + 32px = 118px，留 6px 余量） */
+    .table--fixed th:nth-child(5) { width: 104px; } /* 开工日期 */
+    .table--fixed th:nth-child(6) { width: 124px; } /* 原价 */
+    .table--fixed th:nth-child(7) { width: 124px; } /* 核后价 */
+    .table--fixed th:nth-child(8) { width: 124px; } /* 核减金额 */
     .table--fixed th:nth-child(9) { width: 10.2%; } /* 操作（三个图标按钮 121px，min-width 1200 下 = 122px） */
     /* 金额列右对齐（表头与数据同侧），等宽数字按位对齐，符合财务数字阅读惯例 */
     .table--fixed thead th.col-num,
