@@ -128,16 +128,36 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
         .sidebar-header { border-bottom: 1px solid var(--c-border); }
         .sidebar-logo { color: var(--c-primary); }
         .sidebar-section-title { color: var(--c-text-secondary); }
-        .sidebar-menu-item a, .sidebar-menu-item .dropdown-toggle { color: var(--c-text-secondary); border-radius: 0; }
-        .sidebar-menu-item a svg, .sidebar-menu-item .dropdown-toggle svg { opacity: 0.7; }
+        /* 修复双箭头：模板 .dropdown-toggle 撞了 Bootstrap caret（::after ▾），
+           与自带 chevron（rotate 后的 >）叠加成「> ▾」两个箭头，屏蔽 Bootstrap 的 */
+        .sidebar .dropdown-toggle::after { display: none; }
+        /* 菜单项圆角化：脱离贴边直角，改内缩胶囊行（Ant 风格） */
+        .sidebar-menu-item a, .sidebar-menu-item .dropdown-toggle {
+            margin: 0.125rem 0.625rem;
+            padding: 0.4375rem 0.625rem;
+            border-radius: 8px;
+            color: var(--c-text-secondary);
+        }
+        .sidebar-menu-item a svg, .sidebar-menu-item .dropdown-toggle svg { opacity: 1; }
+        /* 图标着色底座：复用首页业务卡 hm-ic 色板，28px 紧凑版 */
+        .sidebar .hm-ic { width: 28px; height: 28px; border-radius: 7px; }
+        .sidebar .hm-ic svg { width: 16px; height: 16px; }
         .sidebar-menu-item a:hover, .sidebar-menu-item a.active {
-            color: var(--c-primary);
+            color: var(--c-primary-active);
             background: var(--c-primary-subtle);
-            border-radius: 0;
         }
         .sidebar-menu-item a:hover svg, .sidebar-menu-item a.active svg { opacity: 1; }
-        .sidebar-menu-item a.active::before { background: var(--c-primary); }
+        /* 激活色条：圆头短条，贴回侧栏左缘（菜单项自身有 0.625rem 内缩） */
+        .sidebar-menu-item a.active::before {
+            left: -0.625rem;
+            width: 3px;
+            height: 55%;
+            border-radius: 0 3px 3px 0;
+        }
         .sidebar-menu-item .dropdown-toggle:hover { color: var(--c-primary); background: var(--c-surface-sunken); }
+        .sidebar-menu-item .dropdown-toggle.active { color: var(--c-primary-active); background: var(--c-primary-subtle); border-radius: 8px; }
+        /* 二级子菜单：缩进对齐到底座后的文字起点，圆角行 */
+        .sidebar-dropdown a { margin: 0.125rem 0.625rem; padding: 0.375rem 0.625rem 0.375rem 3.625rem; border-radius: 6px; }
         /* 工作台（.sidebar-section-toggle）与 dropdown-toggle 完全对齐的主题覆盖 */
         .sidebar-section-toggle { color: var(--c-text-secondary); }
         .sidebar-section-toggle:hover { color: var(--c-primary); background: var(--c-surface-sunken); }
