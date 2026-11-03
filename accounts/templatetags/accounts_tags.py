@@ -8,6 +8,7 @@
 """
 
 from django import template
+from django.utils import timezone
 from django.utils.safestring import mark_safe
 
 from accounts.services import (
@@ -167,3 +168,27 @@ def has_filters(context):
         if value:
             return True
     return False
+
+
+@register.filter
+def ago(dt):
+    """相对时间（单单位精简版）：1 分钟内 / N 分钟 / N 小时 / N 天，超过 7 天回落日期。
+
+    内建 timesince 输出「3 日, 7 小时」复合格式，列表行里太长。
+    """
+    if not dt:
+        return ''
+    now = timezone.localtime()
+    delta = now - timezone.localtime(dt)
+    mins = int(delta.total_seconds() // 60)
+    if mins < 1:
+        return '刚刚'
+    if mins < 60:
+        return f'{mins} 分钟前'
+    hours = mins // 60
+    if hours < 24:
+        return f'{hours} 小时前'
+    days = hours // 24
+    if days < 7:
+        return f'{days} 天前'
+    return timezone.localtime(dt).strftime('%m-%d')

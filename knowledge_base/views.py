@@ -103,6 +103,10 @@ def _sidebar_context(user, selected_category_id=None, selected_tag=None, current
     total_categories = KnowledgeCategory.objects.count()
     total_views = visible.aggregate(total=Sum('view_count'))['total'] or 0
     avg_views = total_views // total_documents if total_documents > 0 else 0
+    # 本周更新：从本周一 0 点起算（列表页统计横幅用）
+    week_start = (timezone.localtime() - timedelta(days=timezone.localtime().weekday())) \
+        .replace(hour=0, minute=0, second=0, microsecond=0)
+    week_new = visible.filter(updated_at__gte=week_start).count()
 
     # 获取所有标签并统计数量（支持中文逗号和英文逗号分隔）
     # 仅取 tags 单列（values_list），避免全表对象实例化；口径=可见文档
@@ -161,6 +165,7 @@ def _sidebar_context(user, selected_category_id=None, selected_tag=None, current
         'total_categories': total_categories,
         'total_views': total_views,
         'avg_views': avg_views,
+        'week_new': week_new,
         'tag_list': tag_list,
     }
 
@@ -195,6 +200,11 @@ def document_list(request):
     # 后端分页（沿用 records.crud._per_page：10/30/50）
     per_page = _per_page(request)
     page_obj = Paginator(documents, per_page).get_page(request.GET.get('page'))
+
+    # 分类色板索引：同分类恒定同色（category_id % 8），卡片左侧色条与分类
+    # chip 同色相；无分类文档回退中性色（模板 default:'none'）
+    for doc in page_obj.object_list:
+        doc.cat_pi = doc.category_id % 8 if doc.category_id else None
 
     context = {
         'documents': page_obj,

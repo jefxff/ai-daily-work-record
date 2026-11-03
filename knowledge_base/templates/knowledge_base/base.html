@@ -183,13 +183,35 @@
        ≤1366（笔记本/侧栏隐藏断点附近）回单列。 */
     .kb-doc-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; padding-top: 1rem; }
     .kb-doc-list .empty-state { grid-column: 1 / -1; }
-    .kb-doc-item { display: flex; flex-direction: column; gap: 0.35rem; padding: 0.85rem 1.1rem; border: 1px solid var(--c-border); border-radius: 8px; text-decoration: none; transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease; }
-    .kb-doc-item:hover { background: var(--c-surface-sunken); border-color: var(--c-border-hover); box-shadow: var(--sh-card); text-decoration: none; }
+    .kb-doc-item { display: flex; flex-direction: column; gap: 0.35rem; padding: 0.85rem 1.1rem; border: 1px solid var(--c-border); border-left: 3px solid var(--kb-cat, var(--c-border-strong)); border-radius: 8px; text-decoration: none; transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, transform 0.2s ease; }
+    .kb-doc-item:hover { background: var(--c-surface); border-color: var(--kb-cat, var(--c-border-hover)); box-shadow: var(--sh-card); transform: translateY(-2px); text-decoration: none; }
     .kb-doc-list .kb-doc-item-summary { margin: 0; }
     @media (max-width: 1366px) { .kb-doc-list { grid-template-columns: 1fr; } }
+
+    /* 分类色板：8 色循环（view 里 category_id % 8），同分类恒定同色相。
+       色条 + hover 描边 + 分类 chip 文字同色相，卡片间一眼可分。 */
+    .kb-pi-0 { --kb-cat: #185fa5; }  /* 蓝 */
+    .kb-pi-1 { --kb-cat: #0f6e56; }  /* 青 */
+    .kb-pi-2 { --kb-cat: #993556; }  /* 玫红 */
+    .kb-pi-3 { --kb-cat: #534ab7; }  /* 紫 */
+    .kb-pi-4 { --kb-cat: #3b6d11; }  /* 橄榄绿 */
+    .kb-pi-5 { --kb-cat: #854f0b; }  /* 琥珀 */
+    .kb-pi-6 { --kb-cat: #a32d2d; }  /* 绛红 */
+    .kb-pi-7 { --kb-cat: #5f5e5a; }  /* 石灰 */
+    .kb-pi-none { --kb-cat: var(--c-border-strong); }
+    .kb-doc-item:hover .kb-doc-item-title { color: var(--kb-cat, var(--c-primary)); }
+    .kb-doc-item .kb-chip-cat { background: var(--c-surface-sunken); color: var(--kb-cat, var(--c-primary)); font-weight: 500; }
+
+    /* 统计横幅：四格数字条（文档/本周更新/分类/总浏览），数据复用侧栏口径 */
+    .kb-doc-stats { display: flex; align-items: stretch; margin-top: 1rem; border: 1px solid var(--c-border); border-radius: 8px; background: var(--c-surface-sunken); overflow: hidden; }
+    .kb-doc-stat { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 0.55rem 0.25rem; position: relative; }
+    .kb-doc-stat + .kb-doc-stat { border-left: 1px solid var(--c-border); }
+    .kb-doc-stat b { font-size: 1.15rem; font-weight: 600; color: var(--c-text); line-height: 1.2; font-variant-numeric: tabular-nums; }
+    .kb-doc-stat b.is-accent { color: var(--c-primary); }
+    .kb-doc-stat span { font-size: 0.72rem; color: var(--c-text-tertiary); }
     .kb-doc-item-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
     .kb-doc-item-title { font-size: 1rem; font-weight: 600; color: var(--c-text); margin: 0; }
-    .kb-doc-item:hover .kb-doc-item-title { color: var(--c-primary); }
+    /* hover 标题染分类色相（规则声明在上方色板块，勿在此重复声明） */
     /* 可见性徽章（列表行内标题旁，弱化尺寸避免喧宾夺主） */
     .kb-vis-mini { font-size: 0.7rem; padding: 1px 6px; margin-left: 0.35rem; vertical-align: 2px; }
     .kb-doc-item-date { font-size: 0.75rem; color: var(--c-text-secondary); white-space: nowrap; }

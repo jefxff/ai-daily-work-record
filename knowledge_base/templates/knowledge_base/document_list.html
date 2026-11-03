@@ -18,14 +18,20 @@
             {% endcan %}
         </div>
     </div>
+    <div class="kb-doc-stats" role="status" aria-label="知识库统计">
+        <div class="kb-doc-stat"><b>{{ total_documents }}</b><span>文档</span></div>
+        <div class="kb-doc-stat"><b class="is-accent">{{ week_new }}</b><span>本周更新</span></div>
+        <div class="kb-doc-stat"><b>{{ total_categories }}</b><span>分类</span></div>
+        <div class="kb-doc-stat"><b>{{ total_views }}</b><span>总浏览</span></div>
+    </div>
     <div class="kb-doc-list">
         {% for document in documents %}
-        <a href="{% url 'knowledge_base:document_detail' document.pk %}" class="kb-doc-item">
+        <a href="{% url 'knowledge_base:document_detail' document.pk %}" class="kb-doc-item kb-pi-{{ document.cat_pi|default:'none' }}">
             <div class="kb-doc-item-head">
                 <h5 class="kb-doc-item-title">{{ document.title }}
                     {% if document.visibility == 'private' %}<span class="status-badge warning kb-vis-mini">仅自己可见</span>{% endif %}
                 </h5>
-                <span class="kb-doc-item-date">{{ document.updated_at|date:"Y-m-d H:i" }}</span>
+                <span class="kb-doc-item-date" title="{{ document.updated_at|date:'Y-m-d H:i' }}">{{ document.updated_at|ago }}</span>
             </div>
             <p class="kb-doc-item-summary">{{ document.summary|default:document.content|truncatechars:100 }}</p>
             <div class="kb-doc-item-meta">
