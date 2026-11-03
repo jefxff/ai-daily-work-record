@@ -18,7 +18,7 @@
             {% endcan %}
         </div>
     </div>
-    <div>
+    <div class="kb-doc-list">
         {% for document in documents %}
         <a href="{% url 'knowledge_base:document_detail' document.pk %}" class="kb-doc-item">
             <div class="kb-doc-item-head">

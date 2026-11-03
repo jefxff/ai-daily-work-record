@@ -178,9 +178,15 @@
     .kb-search-btn:hover { color: var(--c-primary); border-color: var(--c-primary); }
     .kb-btn-primary { background: var(--c-primary); color: var(--c-surface); border: 1px solid var(--c-primary); border-radius: 4px; padding: 6px 14px; font-size: 0.85rem; text-decoration: none; display: inline-block; transition: all 0.2s ease; }
     .kb-btn-primary:hover { background: var(--c-primary-hover); border-color: var(--c-primary-hover); color: var(--c-surface); text-decoration: none; }
-    .kb-doc-item { display: block; padding: 1rem 0.5rem; border-bottom: 1px solid var(--c-border); text-decoration: none; transition: background 0.2s ease; }
-    .kb-doc-item:last-child { border-bottom: none; }
-    .kb-doc-item:hover { background: var(--c-surface-sunken); text-decoration: none; }
+    /* 文档列表：宽屏双列卡片网格。原单列分隔行在 1500px 主区里每行拉满、
+       右半长期空白；双列后每张卡约半宽，标题+摘要+标签密度饱满，
+       ≤1366（笔记本/侧栏隐藏断点附近）回单列。 */
+    .kb-doc-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; padding-top: 1rem; }
+    .kb-doc-list .empty-state { grid-column: 1 / -1; }
+    .kb-doc-item { display: flex; flex-direction: column; gap: 0.35rem; padding: 0.85rem 1.1rem; border: 1px solid var(--c-border); border-radius: 8px; text-decoration: none; transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease; }
+    .kb-doc-item:hover { background: var(--c-surface-sunken); border-color: var(--c-border-hover); box-shadow: var(--sh-card); text-decoration: none; }
+    .kb-doc-list .kb-doc-item-summary { margin: 0; }
+    @media (max-width: 1366px) { .kb-doc-list { grid-template-columns: 1fr; } }
     .kb-doc-item-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
     .kb-doc-item-title { font-size: 1rem; font-weight: 600; color: var(--c-text); margin: 0; }
     .kb-doc-item:hover .kb-doc-item-title { color: var(--c-primary); }
