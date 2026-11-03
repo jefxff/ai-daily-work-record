@@ -29,27 +29,27 @@
         <p class="home-head__sub">{{ today_label }}</p>
     </div>
     <div class="home-head__actions">
-        {% can "daily_record" "create" %}<a class="home-btn" href="{% url 'daily_record_add' %}">+ 每日记录</a>{% endcan %}
-        {% can "customer_complaint" "create" %}<a class="home-btn" href="{% url 'customer_complaint_add' %}">+ 客户客诉</a>{% endcan %}
-        {% can "price_evaluation" "create" %}<a class="home-btn" href="{% url 'price_evaluation_add' %}">+ 核价</a>{% endcan %}
-        {% can "decoration" "create" %}<a class="home-btn" href="{% url 'decoration_add' %}">+ 装修</a>{% endcan %}
-        {% can "samples" "create" %}<a class="home-btn" href="{% url 'samples:create' %}">+ 试样</a>{% endcan %}
-        <a class="home-btn home-btn--primary" href="{% url 'workspace' %}">待办工作台 →</a>
+        {% can "daily_record" "create" %}<a class="home-btn" href="{% url 'daily_record_add' %}"><span class="home-btn__plus" aria-hidden="true">+</span>每日记录</a>{% endcan %}
+        {% can "customer_complaint" "create" %}<a class="home-btn" href="{% url 'customer_complaint_add' %}"><span class="home-btn__plus" aria-hidden="true">+</span>客户客诉</a>{% endcan %}
+        {% can "price_evaluation" "create" %}<a class="home-btn" href="{% url 'price_evaluation_add' %}"><span class="home-btn__plus" aria-hidden="true">+</span>核价</a>{% endcan %}
+        {% can "decoration" "create" %}<a class="home-btn" href="{% url 'decoration_add' %}"><span class="home-btn__plus" aria-hidden="true">+</span>装修</a>{% endcan %}
+        {% can "samples" "create" %}<a class="home-btn" href="{% url 'samples:create' %}"><span class="home-btn__plus" aria-hidden="true">+</span>试样</a>{% endcan %}
+        <a class="home-btn home-btn--primary" href="{% url 'workspace' %}">待办工作台<span class="home-btn__arrow" aria-hidden="true">→</span></a>
     </div>
 </header>
 
-<!-- 面板 1：我的待办（KPI + 口径副标题） -->
+<!-- 面板 1：我的待办（KPI + 口径副标题）。点击 KPI 页内锚点滚到待办面板，不跳工作台 -->
 {% if todo_counts %}
 <section class="home-panel home-todo" aria-label="我的待办">
     <div class="home-kpis">
-        <a class="home-kpi home-kpi--main" href="{% url 'workspace' %}">
+        <a class="home-kpi home-kpi--main" href="#panel-todo">
             <span class="home-kpi__value">{{ todo_counts.total }}</span>
             <span class="home-kpi__label">待处理</span>
             <span class="home-kpi__meta{% if todo_counts.overdue %} is-danger{% endif %}">
                 {% if todo_counts.overdue %}含逾期 {{ todo_counts.overdue }} 条{% else %}无逾期{% endif %}
             </span>
         </a>
-        <a class="home-kpi home-kpi--danger" href="{% url 'workspace' %}?urgency=高">
+        <a class="home-kpi home-kpi--danger" href="#panel-todo">
             <span class="home-kpi__value">{{ todo_counts.urgent }}</span>
             <span class="home-kpi__label">紧急</span>
             <span class="home-kpi__meta">已逾期或久未闭环</span>
@@ -68,21 +68,20 @@
 </section>
 {% endif %}
 
-<!-- 面板 2：待办处理（tab 切换，首页内直接展开各来源的未完成记录，不跳工作台） -->
+<!-- 面板 2：待办处理（tab 在标题行右侧切换来源，各来源未完成记录在首页内全量展开，不跳工作台） -->
 {% if todo_tabs %}
-<section class="home-panel" aria-label="待办处理">
+<section class="home-panel" id="panel-todo" aria-label="待办处理">
     <div class="home-panel__head">
-        <h2 class="home-panel__title"><span class="home-panel__dot home-panel__dot--danger"></span>待办处理</h2>
-        <a class="home-panel__link" href="{% url 'workspace' %}">共 {{ attention_total }} 条 · 前往待办工作台 →</a>
-    </div>
-    <div class="seg-tabs seg-tabs--home" role="tablist" aria-label="待办来源切换">
-        {% for tab in todo_tabs %}
-        <button type="button" class="seg-tabs__item home-ttab{% if forloop.first %} is-active{% endif %}"
-                role="tab" aria-selected="{{ forloop.first|yesno:'true,false' }}"
-                aria-controls="tpane-{{ tab.key }}" data-tab="{{ tab.key }}">
-            {{ tab.name }}<span class="seg-tabs__count">{{ tab.count }}</span>
-        </button>
-        {% endfor %}
+        <h2 class="home-panel__title"><span class="home-panel__dot home-panel__dot--danger"></span>待办处理<span class="home-panel__badge">{{ attention_total }}</span></h2>
+        <div class="seg-tabs seg-tabs--home seg-tabs--home-head" role="tablist" aria-label="待办来源切换">
+            {% for tab in todo_tabs %}
+            <button type="button" class="seg-tabs__item home-ttab{% if forloop.first %} is-active{% endif %}"
+                    role="tab" aria-selected="{{ forloop.first|yesno:'true,false' }}"
+                    aria-controls="tpane-{{ tab.key }}" data-tab="{{ tab.key }}">
+                {{ tab.name }}<span class="seg-tabs__count">{{ tab.count }}</span>
+            </button>
+            {% endfor %}
+        </div>
     </div>
     {% for tab in todo_tabs %}
     <div class="home-tpane{% if forloop.first %} is-active{% endif %}" id="tpane-{{ tab.key }}" role="tabpanel" aria-label="{{ tab.name }}待办"{% if not forloop.first %} hidden{% endif %}>

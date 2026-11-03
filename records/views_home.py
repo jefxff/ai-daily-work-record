@@ -99,11 +99,11 @@ def home(request):
     if 'daily_record' in mods:
         ds = stats_svc.daily_stats(request.user)
         today = timezone.localdate()
-        # 首页只渲染最紧急的 5 条（截止日期升序、空值置后），其余到列表页查看
+        # 用户反馈：未完成事项要在首页内直接展开全部，不再只截 5 条
         records = list(
             _my_daily_records(request.user)
             .filter(status='未完成')
-            .order_by(F('due_date').asc(nulls_last=True), '-record_date')[:5]
+            .order_by(F('due_date').asc(nulls_last=True), '-record_date')
         )
         for rec in records:
             if rec.due_date:
@@ -210,7 +210,8 @@ def home(request):
         ))
         subjects = insurance_grouping.build_subjects(records, today=today)
         summary = insurance_grouping.summarize(subjects)
-        expiring_subjects = [s for s in subjects if s.status == 'expiring'][:5]
+        # 全部临期主体随页面下发，首页内直接展开（不再截 5 条）
+        expiring_subjects = [s for s in subjects if s.status == 'expiring']
         for s in expiring_subjects:
             if s.days_left <= 7:
                 s.days_level = 'danger'
@@ -236,8 +237,8 @@ def home(request):
         context['litigation_answer_soon_count'] = open_qs.filter(
             filed_at__range=(today - timedelta(days=15), today - timedelta(days=12))
         ).count()
-        # 日期越早越紧急；首页只取最紧急的 5 件
-        litigations = list(open_qs.order_by(F('filed_at').asc(nulls_last=True), '-id')[:5])
+        # 全部未完结案件随页面下发，首页内直接展开（不再截 5 条）
+        litigations = list(open_qs.order_by(F('filed_at').asc(nulls_last=True), '-id'))
         for case in litigations:
             case.answer_days = (case.answer_deadline - today).days if case.answer_deadline else None
             if case.answer_days is None:
@@ -364,7 +365,7 @@ def home(request):
             complaint_status__in=('未完成', '处理中')
         ).order_by('complaint_date', '-id')
         items = []
-        for c in open_qs[:5]:
+        for c in open_qs:
             open_days = (today - c.complaint_date).days
             if open_days > 14:
                 tag, kind = f'已挂起 {open_days} 天', 'danger'
@@ -409,7 +410,8 @@ def home(request):
         })
 
     context['todo_tabs'] = todo_tabs
-    # tab 上不展示的剩余条数（如每日记录 55 条只显示 5 条），给「查看全部」链接用
+    # 各 tab 已全量下发未完成明细（用户反馈：在首页直接展开，不跳待办工作台）；
+    # attention_total 仍保留总数口径，供面板标题徽章展示
     if context['todo_counts']:
         context['attention_total'] = context['todo_counts']['total']
     else:
