@@ -179,14 +179,44 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ===== 全局交互组件 =====
     // 1) 搜索框防抖：输入停顿 500ms 后自动提交所在表单
-    let __searchTimer = null;
+    //    三条保护，否则会出现「还没输入内容，页面就跳走」：
+    //    - 输入法组词期间（拼音尚未上屏）不提交，compositionend 后重新计时；
+    //    - 值为空不自动提交，清空输入框不等于搜索空串；
+    //    - 与上次已提交的值相同不再提交，浏览器恢复表单/重复事件不会误触发。
     document.querySelectorAll('.search-input').forEach(function (inp) {
-        inp.addEventListener('input', function () {
-            clearTimeout(__searchTimer);
-            __searchTimer = setTimeout(function () {
-                if (inp.form) inp.form.requestSubmit();
+        let composing = false;
+        let lastSubmitted = inp.value.trim();
+        let timer = null;
+
+        function schedule() {
+            clearTimeout(timer);
+            if (composing) return;
+            const value = inp.value.trim();
+            if (!value || value === lastSubmitted) return;
+            timer = setTimeout(function () {
+                if (composing || !inp.form) return;
+                lastSubmitted = inp.value.trim();
+                inp.form.requestSubmit();
             }, 500);
+        }
+
+        inp.addEventListener('compositionstart', function () {
+            composing = true;
+            clearTimeout(timer);
         });
+        inp.addEventListener('compositionend', function () {
+            composing = false;
+            schedule();
+        });
+        inp.addEventListener('input', function (e) {
+            if (e.isComposing || composing) return;
+            schedule();
+        });
+        if (inp.form) {
+            inp.form.addEventListener('submit', function () {
+                lastSubmitted = inp.value.trim();
+            });
+        }
     });
 
     // 2) 「选完即提交」的下拉（每页条数、状态快捷筛选）
