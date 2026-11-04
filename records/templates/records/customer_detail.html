@@ -7,7 +7,7 @@
 {% block top_nav_actions %}
     <a href="{% url 'customer_complaint_list' %}" class="btn-transparent">返回列表</a>
     {% can "customer_complaint" "update" %}
-    <a href="{% url 'customer_complaint_edit' complaint.id %}" class="btn-transparent" data-modal-edit data-modal-title="编辑客户客诉">编辑客诉</a>
+    <a href="{% url 'customer_complaint_edit' complaint.id %}" class="btn-transparent">编辑客诉</a>
     {% endcan %}
     {% if not complaint.is_closed %}
     {% can "customer_complaint" "update" %}

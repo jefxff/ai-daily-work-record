@@ -40,7 +40,7 @@
             <svg class="icon text-gray-400 icon--xl" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="font-size: 4rem;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <p class="mt-4 text-muted">{% if keyword %}未找到相关文档{% else %}输入关键词开始搜索{% endif %}</p>
             {% can "knowledge" "create" %}
-            <a href="{% url 'knowledge_base:document_create' %}" class="btn btn-primary" data-modal-add data-modal-title="新建文档">创建新文档</a>
+            <a href="{% url 'knowledge_base:document_create' %}" class="btn btn-primary">创建新文档</a>
             {% endcan %}
         </div>
         {% endif %}

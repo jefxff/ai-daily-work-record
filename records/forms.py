@@ -69,8 +69,8 @@ class CustomerCreditForm(forms.ModelForm):
         model = CustomerCredit
         fields = ['proposal_date', 'site_date', 'customer_name', 'customer_type', 'customer_segment', 'approved_terms_days', 'approved_limit', 'salesperson', 'work_content', 'specific_content', 'pre_survey', 'work_method', 'result', 'remarks', 'has_assessment_period', 'assessment_start_date', 'assessment_end_date', 'assessment_content']
         widgets = {
-            'proposal_date': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
-            'site_date': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+            'proposal_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}, format='%Y-%m-%d'),
+            'site_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}, format='%Y-%m-%d'),
             'customer_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '请输入客户名称', 'list': 'customer-roster'}),
             'customer_type': forms.Select(attrs={'class': 'form-select'}),
             'salesperson': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '请输入业务员'}),

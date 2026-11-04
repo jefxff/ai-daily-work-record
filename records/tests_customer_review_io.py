@@ -609,8 +609,10 @@ class CreditDetailPageTests(ReviewIoTestBase):
         self.assertIsNotNone(link)
         self.assertNotIn('data-modal-detail', link.group(0))
         self.assertNotIn('data-modal-title="客户账期详情"', html)
-        # 新增 / 编辑表单弹窗是另一套机制，不受本次改动影响
-        self.assertIn('data-modal-edit', html)
+        # 编辑入口改为整页表单，不再走 AJAX 弹窗
+        edit_link = re.search(r'<a[^>]+href="[^"]*customer_credit/edit/\d+/"[^>]*>', html)
+        self.assertIsNotNone(edit_link)
+        self.assertNotIn('data-modal-edit', edit_link.group(0))
 
     def test_ajax_header_returns_full_detail(self):
         resp = self.client.get(
@@ -636,5 +638,9 @@ class CreditDetailPageTests(ReviewIoTestBase):
         self.assertContains(resp, '发起评审')
         self.assertContains(resp, '保存前期资料')
         self.assertContains(resp, '尚未发起评审')
-        self.assertContains(resp, 'data-modal-edit')
+        # 编辑入口改为整页表单（列表与详情一致），不再走 AJAX 弹窗
+        self.assertNotContains(resp, 'data-modal-edit')
         self.assertContains(resp, 'credit-detail-grid')
+        # 前期资料统一附件上传口 + 待处理/已提供状态
+        self.assertContains(resp, '前期资料附件')
+        self.assertContains(resp, '已提供')

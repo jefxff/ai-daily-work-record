@@ -30,7 +30,7 @@
         <a class="btn-secondary" href="{% url 'samples:partner_list' %}" data-col-settings-anchor data-col-settings-position="after">重置</a>
         {# 主操作固定在最右，与全站列表页一致 #}
         {% can "samples" "create" %}
-        <a class="btn-primary" href="{% url 'samples:partner_create' %}" data-modal-add data-modal-title="新增供应商档案" style="margin-left:auto;">＋ 新增供应商</a>
+        <a class="btn-primary" href="{% url 'samples:partner_create' %}" style="margin-left:auto;">＋ 新增供应商</a>
         {% endcan %}
     </form>
 </div>
@@ -53,16 +53,16 @@
                 {% for partner in page_obj %}
                 <tr data-href="{% url 'samples:partner_detail' partner.pk %}">
                     <td data-label="档案编号">{{ partner.partner_code }}</td>
-                    <td data-label="名称"><a href="{% url 'samples:partner_detail' partner.pk %}" data-modal-detail data-modal-title="{{ partner.name }} 档案">{{ partner.name }}</a></td>
+                    <td data-label="名称"><a href="{% url 'samples:partner_detail' partner.pk %}">{{ partner.name }}</a></td>
                     <td data-label="联系人">{{ partner.contact_person|default:'—' }}</td>
                     <td data-label="联系方式">{{ partner.contact_info|default:'—' }}</td>
                     <td data-label="合作状态"><span class="status-badge {{ partner.status_badge }}">{{ partner.get_status_display }}</span></td>
                     <td data-label="创建时间">{{ partner.created_at|date:'Y-m-d' }}</td>
                     <td data-label="操作">
                         <div style="display:flex; gap:0.25rem; align-items:center; justify-content:center;">
-                            <a href="{% url 'samples:partner_detail' partner.pk %}" class="btn-transparent btn-sm" data-modal-detail data-modal-title="{{ partner.name }} 档案">详细</a>
+                            <a href="{% url 'samples:partner_detail' partner.pk %}" class="btn-transparent btn-sm">详细</a>
                             {% can "samples" "update" %}
-                            <a href="{% url 'samples:partner_edit' partner.pk %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑供应商档案">编辑</a>
+                            <a href="{% url 'samples:partner_edit' partner.pk %}" class="btn-transparent btn-sm">编辑</a>
                             {% endcan %}
                             {% can "samples" "delete" %}
                             <a href="{% url 'samples:partner_delete' partner.pk %}" class="btn-transparent btn-sm btn-delete">删除</a>

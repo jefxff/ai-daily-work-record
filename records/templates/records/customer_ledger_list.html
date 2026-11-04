@@ -132,7 +132,7 @@
                         </td>
                         <td data-label="操作" class="col-actions">
                             <div class="u-toolbar-inline">
-                                <a href="{% url 'customer_ledger_detail' ledger.id %}" class="btn-transparent btn-sm" data-modal-detail data-modal-title="客户台账详情">详情</a>
+                                <a href="{% url 'customer_ledger_detail' ledger.id %}" class="btn-transparent btn-sm">详情</a>
                                 {% can "customer_ledger" "update" %}
                                 <a href="{% url 'customer_ledger_edit' ledger.id %}" class="btn-transparent btn-sm">编辑</a>
                                 {% endcan %}

@@ -90,7 +90,7 @@
             <li class="home-rows__item{% if forloop.counter0 >= 5 %} is-extra{% endif %}"{% if forloop.counter0 >= 5 %} hidden{% endif %}>
                 {% if item.perm and request.user|can_do:item.perm %}
                 <a class="home-row{% if item.level %} home-row--{{ item.level }}{% endif %}"
-                   href="{{ item.url }}" data-modal-edit data-modal-title="{{ item.modal_title }}">
+                   href="{{ item.url }}">
                 {% else %}
                 <a class="home-row{% if item.level %} home-row--{{ item.level }}{% endif %}"
                    href="{% if item.fallback %}{{ item.fallback }}{% else %}{{ item.url }}{% endif %}">
@@ -318,9 +318,9 @@
     <div class="home-panel__head">
         <h2 class="home-panel__title">
             <span class="home-panel__dot"></span>
-            <a class="home-panel__link" href="{% url 'metal_price_detail' metal_name=metal_prices.0.metal_name|default:'1#铜' %}" data-modal-detail data-modal-title="金属价格行情">金属价格行情</a>
+            <a class="home-panel__link" href="{% url 'metal_price_detail' metal_name=metal_prices.0.metal_name|default:'1#铜' %}">金属价格行情</a>
         </h2>
-        <a class="home-panel__link" href="{% url 'metal_price_detail' metal_name=metal_prices.0.metal_name|default:'1#铜' %}" data-modal-detail data-modal-title="金属价格行情">全部 {{ metal_price_total }} 个品种 →</a>
+        <a class="home-panel__link" href="{% url 'metal_price_detail' metal_name=metal_prices.0.metal_name|default:'1#铜' %}">全部 {{ metal_price_total }} 个品种 →</a>
     </div>
     <p class="home-quote__note">
         数据来源：长江有色金属网 · 最后更新 {% if metal_price_updated %}{{ metal_price_updated|date:"m-d H:i" }}{% else %}—{% endif %}

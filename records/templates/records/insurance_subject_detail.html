@@ -13,7 +13,7 @@
     <a href="{% url 'insurance_renewal_report' %}" class="btn-transparent">续保报告</a>
     {% can "insurance" "create" %}
     {% if not subject.is_one_off %}
-    <a href="{% url 'insurance_renew' %}?from_record={{ subject.latest.primary_record.id }}" class="btn-primary" data-modal-add data-modal-title="续保保险 · {{ subject.label }}">续保</a>
+    <a href="{% url 'insurance_renew' %}?from_record={{ subject.latest.primary_record.id }}" class="btn-primary">续保</a>
     {% endif %}
     {% endcan %}
     {% if subject.is_one_off %}

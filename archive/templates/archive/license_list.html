@@ -84,7 +84,7 @@
             {% can "archive" "update" %}
             <a href="{% url 'archive:table_import' 'licenses' %}" class="btn btn-outline-secondary btn-sm">导入/更新</a>
             {% endcan %}
-            <a href="{% url 'archive:license_create' %}" class="btn btn-primary btn-sm" data-modal-add data-modal-title="新增证照">+ 新增证照</a>
+            <a href="{% url 'archive:license_create' %}" class="btn btn-primary btn-sm">+ 新增证照</a>
             {% endcan %}
         </div>
     </div>
@@ -122,7 +122,7 @@
                     <td data-label="操作">
                         <a href="{% url 'archive:license_detail' lic.pk %}" class="btn btn-sm btn-outline-primary">详情</a>
                         {% can "archive" "update" %}
-                        <a href="{% url 'archive:license_edit' lic.pk %}" class="btn btn-sm btn-outline-secondary" data-modal-edit data-modal-title="编辑证照">编辑</a>
+                        <a href="{% url 'archive:license_edit' lic.pk %}" class="btn btn-sm btn-outline-secondary">编辑</a>
                         {% endcan %}
                     </td>
                 </tr>

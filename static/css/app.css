@@ -969,25 +969,95 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
             line-height: 1.6;
         }
 
-        /* === 表单容器 === */
+        /* === 轻量对话框（台账排序等非表单弹层） === */
+        .form-modal-backdrop { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.45); z-index: var(--z-modal); display: none; align-items: flex-start; justify-content: center; padding: 5vh 1rem 2rem; overflow-y: auto; }
+        .form-modal-backdrop.show { display: flex; }
+        .form-modal { background: var(--c-surface); border-radius: var(--r-lg); width: 640px; max-width: 96vw; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18); display: flex; flex-direction: column; max-height: 90vh; }
+        .form-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 0.875rem 1.25rem; border-bottom: 1px solid var(--c-border); flex-shrink: 0; }
+        .form-modal-title { font-size: 1rem; font-weight: 600; color: var(--c-text); margin: 0; }
+        .form-modal-close { background: none; border: none; cursor: pointer; color: var(--c-text-secondary); padding: 0.25rem; border-radius: 4px; line-height: 1; font-size: 1.5rem; }
+        .form-modal-close:hover { color: var(--c-text); background: var(--c-surface-sunken); }
+        .form-modal-body { padding: 1.25rem; overflow-y: auto; flex: 1; }
+        .form-modal-loading { text-align: center; padding: 2rem; color: var(--c-text-secondary); }
+        .form-modal-actions { padding: 0.875rem 1.25rem; border-top: 1px solid var(--c-border); display: flex; gap: 0.75rem; justify-content: flex-end; flex-shrink: 0; background: var(--c-surface-sunken); border-radius: 0 0 var(--r-lg) var(--r-lg); }
+
+        /* === 表单容器（独立页统一外壳） === */
         .form-container {
             background: var(--c-surface);
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            padding: 2rem;
+            border: 1px solid var(--c-border);
+            border-radius: var(--r-lg);
+            box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 10px 30px rgba(16, 24, 40, 0.05);
+            padding: var(--sp-7) var(--sp-8);
             max-width: 900px;
             width: 100%;
             margin: 0 auto;
-            border: none;
         }
+        .form-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: var(--sp-4);
+            margin-bottom: var(--sp-6);
+        }
+        .form-head .form-title { margin-bottom: 0; }
         .form-title {
-            font-size: 1.5rem;
+            font-size: var(--fs-xl);
             font-weight: 600;
+            letter-spacing: -0.01em;
             margin-bottom: 1.5rem;
             color: var(--c-text);
             text-align: left;
             position: relative;
             padding-bottom: 0.5rem;
+        }
+        .form-subtitle {
+            margin: var(--sp-2) 0 0;
+            font-size: var(--fs-sm);
+            line-height: 1.6;
+            color: var(--c-text-secondary);
+        }
+        .form-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            flex: none;
+            height: 32px;
+            padding: 0 10px;
+            border: 1px solid var(--c-border-strong);
+            border-radius: var(--r-sm);
+            color: var(--c-text-secondary);
+            font-size: var(--fs-sm);
+            text-decoration: none;
+            background: var(--c-surface);
+            transition: color .15s ease, border-color .15s ease, background .15s ease;
+        }
+        .form-back:hover {
+            color: var(--c-primary);
+            border-color: var(--c-primary);
+            background: var(--c-primary-subtle);
+            text-decoration: none;
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0 var(--sp-5);
+        }
+        .form-grid > .form-group:has(textarea) { grid-column: 1 / -1; }
+        .form-hint { margin-top: 4px; font-size: var(--fs-xs); color: var(--c-text-tertiary); }
+        .field-error { margin-top: 4px; font-size: var(--fs-xs); color: var(--c-danger); }
+        .form-alert {
+            margin-bottom: var(--sp-4);
+            padding: 10px 12px;
+            border: 1px solid var(--c-danger-line);
+            border-radius: var(--r-sm);
+            background: var(--c-danger-bg);
+            color: var(--c-danger);
+            font-size: var(--fs-sm);
+        }
+        @media (max-width: 768px) {
+            .form-container { padding: var(--sp-5); border-radius: var(--r-md); }
+            .form-grid { grid-template-columns: minmax(0, 1fr); }
+            .form-head { flex-direction: column; gap: var(--sp-2); }
         }
         .form-title::after {
             content: '';
@@ -1279,18 +1349,6 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
         .confirm-modal .confirm-message { text-align: center; color: var(--c-text); margin-bottom: 1.25rem; }
         .confirm-modal .confirm-actions { display: flex; gap: 0.75rem; justify-content: center; }
 
-        /* 通用表单弹窗 */
-        .form-modal-backdrop { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.45); z-index: var(--z-modal); display: none; align-items: flex-start; justify-content: center; padding: 5vh 1rem 2rem; overflow-y: auto; }
-        .form-modal-backdrop.show { display: flex; }
-        .form-modal { background: var(--c-surface); border-radius: 8px; width: 640px; max-width: 96vw; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18); display: flex; flex-direction: column; max-height: 90vh; }
-        .form-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 0.875rem 1.25rem; border-bottom: 1px solid var(--c-border); flex-shrink: 0; }
-        .form-modal-title { font-size: 1rem; font-weight: 600; color: var(--c-text); margin: 0; }
-        .form-modal-close { background: none; border: none; cursor: pointer; color: var(--c-text-secondary); padding: 0.25rem; border-radius: 4px; line-height: 1; font-size: 1.5rem; }
-        .form-modal-close:hover { color: var(--c-text-secondary); background: var(--c-surface-sunken); }
-        .form-modal-body { padding: 1.25rem; overflow-y: auto; flex: 1; }
-        .form-modal-loading { text-align: center; padding: 2rem; color: var(--c-text-secondary); }
-        .form-modal-actions { padding: 0.875rem 1.25rem; border-top: 1px solid var(--c-border); display: flex; gap: 0.75rem; justify-content: flex-end; flex-shrink: 0; background: var(--c-surface-sunken); border-radius: 0 0 8px 8px; }
-    
 /* 仅"整卡可跳转"的卡片（<a class="card">）给手型指针并抑制链接默认下划线：
    全局 .card{cursor:pointer} 会让纯展示卡片也显示可点击，属误导（前端方案 F3-1 ⑤）。 */
 a.card { cursor: pointer; text-decoration: none; color: inherit; }

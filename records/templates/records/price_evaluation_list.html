@@ -11,7 +11,7 @@
         <button class="btn-transparent" type="submit">搜索</button>
     </form>
     {% can "price_evaluation" "create" %}
-    <a href="{% url 'price_evaluation_add' %}" class="btn-primary" data-modal-add data-modal-title="新增核价">新增核价</a>
+    <a href="{% url 'price_evaluation_add' %}" class="btn-primary">新增核价</a>
     {% endcan %}
     <a href="{% url 'price_evaluation_export' %}" class="btn-transparent">下载Excel</a>
 {% endblock %}
@@ -82,9 +82,9 @@
                         <td data-label="核减金额" class="cell-ellipsis" title="¥{{ evaluation.get_reduction_amount|floatformat:2|intcomma }}">¥{{ evaluation.get_reduction_amount|floatformat:2|intcomma }}</td>
                         <td data-label="操作" class="col-actions">
                     <div class="u-toolbar-inline">
-                        <a href="{% url 'price_evaluation_detail' evaluation.id %}" class="btn-transparent btn-sm" data-modal-detail data-modal-title="核价详情">详细</a>
+                        <a href="{% url 'price_evaluation_detail' evaluation.id %}" class="btn-transparent btn-sm">详细</a>
                         {% can "price_evaluation" "update" %}
-                        <a href="{% url 'price_evaluation_edit' evaluation.id %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑核价">编辑</a>
+                        <a href="{% url 'price_evaluation_edit' evaluation.id %}" class="btn-transparent btn-sm">编辑</a>
                         {% endcan %}
                         {% can "price_evaluation" "delete" %}
                         <form class="u-inline" method="post" action="{% url 'price_evaluation_delete' evaluation.id %}"  data-confirm="确定要删除这条记录吗？">{% csrf_token %}<button type="submit" class="btn-transparent btn-sm btn-delete">删除</button></form>

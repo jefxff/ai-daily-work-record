@@ -2,7 +2,6 @@
 <div style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:1rem;justify-content:center;">
     {% for metal in all_metals %}
     <a href="{% url 'metal_price_detail' metal_name=metal %}"
-       data-modal-detail data-modal-title="{{ metal }} 价格详情"
        class="metal-tab {% if metal == current_metal %}active{% endif %}">{{ metal }}</a>
     {% endfor %}
 </div>
@@ -60,5 +59,4 @@
 <style>
     .metal-tab { border: 1px solid var(--c-border-strong); background: var(--c-surface); color: var(--c-text-secondary); border-radius: 4px; padding: 0.25rem 0.7rem; text-decoration: none; font-size: 0.8rem; font-weight: 500; }
     .metal-tab.active { background: var(--c-primary); border-color: var(--c-primary); color: var(--c-surface); }
-    #formModal.form-modal { width: 820px; }
 </style>

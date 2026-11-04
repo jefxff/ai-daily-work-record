@@ -158,12 +158,16 @@ def ask(request):
 
     conversation = None
     conversation_id = body.get('conversation_id')
+    requested_mode = body.get('mode') or CopilotConversation.Mode.AUTO
     if conversation_id:
         conversation = CopilotConversation.objects.filter(
             pk=conversation_id, user=request.user).first()
     if conversation is None:
         conversation = CopilotConversation.objects.create(
-            user=request.user, title=question[:60])
+            user=request.user, title=question[:60], mode=requested_mode)
+    elif conversation.mode != requested_mode:
+        conversation.mode = requested_mode
+        conversation.save(update_fields=['mode'])
 
     # 幂等：同会话已有进行中的 run，直接复用，避免连点造成并发调用
     active = CopilotRun.objects.filter(

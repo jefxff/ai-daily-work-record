@@ -1,11 +1,17 @@
 {% extends "records/base.html" %}
 {% block page_title %}年审登记{% endblock %}
 {% block content %}
-<div class="container u-max-600">
-    <h1 class="page-title mb-4">年审登记</h1>
+<div class="form-container">
+    <div class="form-head">
+        <div>
+            <h1 class="form-title">年审登记</h1>
+            <p class="form-subtitle">{{ license.name }}{% if license.number %} · {{ license.number }}{% endif %}，登记年审结论后将同步顺延有效期。</p>
+        </div>
+        <a class="form-back" href="{{ cancel_url }}">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+            返回
+        </a>
+    </div>
     {% include "archive/_license_review_modal.html" %}
-    <p class="mt-4">
-        <a class="btn-transparent" href="{% url 'archive:license_detail' license.pk %}">返回证照详情</a>
-    </p>
 </div>
 {% endblock %}

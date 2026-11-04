@@ -7,7 +7,7 @@
 {% block top_nav_actions %}
     <a href="{% url 'decoration_list' %}" class="btn-transparent">返回列表</a>
     {% can "decoration" "update" %}
-    <a href="{% url 'decoration_edit' decoration.id %}" class="btn-transparent" data-modal-edit data-modal-title="编辑装修">编辑记录</a>
+    <a href="{% url 'decoration_edit' decoration.id %}" class="btn-transparent">编辑记录</a>
     {% endcan %}
     {% can "decoration" "delete" %}
     <form class="u-inline" method="post" action="{% url 'decoration_delete' decoration.id %}"  data-confirm="确定要删除这条记录吗？">{% csrf_token %}<button type="submit" class="btn-transparent btn-delete">删除记录</button></form>

@@ -14,7 +14,7 @@
                 <button type="submit" class="kb-search-btn">搜索</button>
             </form>
             {% can "knowledge" "create" %}
-            <a href="{% url 'knowledge_base:document_create' %}" class="kb-btn-primary" data-modal-add data-modal-title="新建文档"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> 新建文档</a>
+            <a href="{% url 'knowledge_base:document_create' %}" class="kb-btn-primary"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> 新建文档</a>
             {% endcan %}
         </div>
     </div>
@@ -47,7 +47,7 @@
             <p class="empty-state__desc">换个关键词，或先新建一篇文档</p>
             {% can "knowledge" "create" %}
             <div class="empty-state__action">
-                <a href="{% url 'knowledge_base:document_create' %}" class="kb-btn-primary" data-modal-add data-modal-title="新建文档">创建第一篇文档</a>
+                <a href="{% url 'knowledge_base:document_create' %}" class="kb-btn-primary">创建第一篇文档</a>
             </div>
             {% endcan %}
         </div>

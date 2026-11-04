@@ -1,9 +1,17 @@
 {% extends "records/base.html" %}
 {% block page_title %}移动档案{% endblock %}
 {% block content %}
-<div class="container u-max-600">
-    <h1 class="page-title mb-4">移动档案 - {{ archive.code }}</h1>
-    <p class="text-muted">当前位置：{{ archive.location_path }}</p>
+<div class="form-container">
+    <div class="form-head">
+        <div>
+            <h1 class="form-title">移动档案</h1>
+            <p class="form-subtitle">{{ archive.code }} · 当前位置：{{ archive.location_path }}</p>
+        </div>
+        <a class="form-back" href="{{ cancel_url }}">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+            返回
+        </a>
+    </div>
     {% include "archive/_archive_form_modal.html" %}
 </div>
 {% endblock %}

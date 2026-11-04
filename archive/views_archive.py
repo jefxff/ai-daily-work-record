@@ -12,6 +12,7 @@ from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.http import FileResponse, Http404, HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 
 from accounts.decorators import perm_required
 from records.models import OperationLog
@@ -56,7 +57,10 @@ def archive_create(request):
     if _is_ajax(request):
         html = render(request, "archive/_archive_form_modal.html", {"form": form, "mode": "create"}).content.decode()
         return JsonResponse({"ok": True, "html": html})
-    return render(request, "archive/archive_form.html", {"form": form, "mode": "create"})
+    return render(
+        request, "archive/archive_form.html",
+        {"form": form, "mode": "create", "cancel_url": reverse("archive:overview")},
+    )
 
 
 @perm_required("archive", "read")
@@ -101,7 +105,11 @@ def archive_edit(request, pk):
     if _is_ajax(request):
         html = render(request, "archive/_archive_form_modal.html", {"form": form, "mode": "edit", "archive": arc}).content.decode()
         return JsonResponse({"ok": True, "html": html})
-    return render(request, "archive/archive_form.html", {"form": form, "mode": "edit", "archive": arc})
+    return render(
+        request, "archive/archive_form.html",
+        {"form": form, "mode": "edit", "archive": arc,
+         "cancel_url": reverse("archive:archive_detail", kwargs={"pk": arc.pk})},
+    )
 
 
 @perm_required("archive", "update")
@@ -121,7 +129,11 @@ def archive_move(request, pk):
             if _is_ajax(request):
                 return JsonResponse({"ok": True, "message": "档案已移动"})
             return redirect("archive:archive_detail", pk=arc.pk)
-    return render(request, "archive/archive_move.html", {"form": form, "archive": arc})
+    return render(
+        request, "archive/archive_move.html",
+        {"form": form, "archive": arc,
+         "cancel_url": reverse("archive:archive_detail", kwargs={"pk": arc.pk})},
+    )
 
 
 @perm_required("archive", "update")

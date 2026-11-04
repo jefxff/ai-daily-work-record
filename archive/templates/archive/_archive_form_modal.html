@@ -1,4 +1,4 @@
-<form method="POST" data-modal-form action="{{ request.path }}" enctype="multipart/form-data" novalidate>
+<form method="POST" action="{{ request.path }}" enctype="multipart/form-data" novalidate>
     {% csrf_token %}
     <div class="arc-form-grid">
         {% for field in form.visible_fields %}
@@ -15,9 +15,9 @@
         {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
     </div>
     {% endif %}
-    <div class="form-modal-actions">
-        <button type="button" class="btn-transparent" data-modal-close>取消</button>
-        <button type="submit" class="btn-transparent btn-delete" data-modal-save>{% if mode == 'edit' %}保存{% else %}录入{% endif %}</button>
+    <div class="form-actions">
+        <a class="btn-transparent" href="{{ cancel_url|default:'#' }}">取消</a>
+        <button type="submit" class="btn-primary">{% if mode == 'edit' %}保存{% else %}录入{% endif %}</button>
     </div>
 </form>
 

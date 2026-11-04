@@ -1,4 +1,4 @@
-<form method="POST" data-modal-form action="{% url 'archive:annual_review_create' license.pk %}" novalidate>
+<form method="POST" action="{% url 'archive:annual_review_create' license.pk %}" novalidate>
     {% csrf_token %}
     <div class="rev-banner">
         证照：<strong>{{ license.code }} - {{ license.name }}</strong>
@@ -37,9 +37,9 @@
         {% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}
     </div>
     {% endif %}
-    <div class="form-modal-actions">
-        <button type="button" class="btn-transparent" data-modal-close>取消</button>
-        <button type="submit" class="btn-transparent btn-delete" data-modal-save>确认年审</button>
+    <div class="form-actions">
+        <a class="btn-transparent" href="{{ cancel_url|default:'#' }}">取消</a>
+        <button type="submit" class="btn-primary">确认年审</button>
     </div>
 </form>
 <style>

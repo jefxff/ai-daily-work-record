@@ -7,7 +7,7 @@
 {% block top_nav_actions %}
     <a href="{% url 'price_evaluation_list' %}" class="btn-transparent">返回列表</a>
     {% can "price_evaluation" "update" %}
-    <a href="{% url 'price_evaluation_edit' evaluation.id %}" class="btn-transparent" data-modal-edit data-modal-title="编辑核价">编辑记录</a>
+    <a href="{% url 'price_evaluation_edit' evaluation.id %}" class="btn-transparent">编辑记录</a>
     {% endcan %}
     {% can "price_evaluation" "delete" %}
     <form class="u-inline" method="post" action="{% url 'price_evaluation_delete' evaluation.id %}"  data-confirm="确定要删除这条记录吗？">{% csrf_token %}<button type="submit" class="btn-transparent btn-delete">删除记录</button></form>

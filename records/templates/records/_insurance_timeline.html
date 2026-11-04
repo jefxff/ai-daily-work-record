@@ -28,7 +28,7 @@
         </div>
         <div class="ins-timeline-list-links">
             {% for rec in term.records %}
-            <a href="{% url 'insurance_detail' rec.id %}" data-modal-detail data-modal-title="保险详情">{{ rec.title|truncatechars:24 }}</a>{% if not forloop.last %}<span class="ins-muted"> · </span>{% endif %}
+            <a href="{% url 'insurance_detail' rec.id %}">{{ rec.title|truncatechars:24 }}</a>{% if not forloop.last %}<span class="ins-muted"> · </span>{% endif %}
             {% endfor %}
         </div>
     </li>
@@ -79,7 +79,7 @@
                 </td>
                 <td data-label="保单明细">
                     {% for rec in term.records %}
-                    <a href="{% url 'insurance_detail' rec.id %}" data-modal-detail data-modal-title="保险详情">{{ rec.title|truncatechars:16 }}</a>{% if not forloop.last %}<span class="ins-muted"> · </span>{% endif %}
+                    <a href="{% url 'insurance_detail' rec.id %}">{{ rec.title|truncatechars:16 }}</a>{% if not forloop.last %}<span class="ins-muted"> · </span>{% endif %}
                     {% endfor %}
                 </td>
             </tr>

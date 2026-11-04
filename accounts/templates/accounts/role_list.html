@@ -10,7 +10,7 @@
 {# 操作条：与下方列表拼成一张卡，标题独占一行 #}
 <div class="page-actions">
     {% can "system" "create" %}
-    <a class="btn-primary" href="{% url 'accounts:role_create' %}" data-modal-add data-modal-title="新建角色" data-col-settings-anchor data-col-settings-position="before">+ 新建角色</a>
+    <a class="btn-primary" href="{% url 'accounts:role_create' %}" data-col-settings-anchor data-col-settings-position="before">+ 新建角色</a>
     {% endcan %}
 </div>
 <div class="table-container">
@@ -46,7 +46,7 @@
                 </td>
                 <td class="u-nowrap" data-label="操作">
                     {% can "system" "update" %}
-                    <a class="btn-transparent btn-sm" href="{% url 'accounts:role_edit' r.id %}" data-modal-edit data-modal-title="编辑角色：{{ r.name }}">权限矩阵/编辑</a>
+                    <a class="btn-transparent btn-sm" href="{% url 'accounts:role_edit' r.id %}">权限矩阵/编辑</a>
                     {% endcan %}
                     {% can "system" "delete" %}
                     {% if r.is_builtin %}

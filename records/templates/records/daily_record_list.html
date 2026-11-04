@@ -52,7 +52,7 @@
        href="{% if status_filter != '未完成' %}{% querystring status='未完成' page=None %}{% else %}{% querystring status=None page=None %}{% endif %}"
        title="{% if status_filter == '未完成' %}取消「未完成」筛选{% else %}只看未完成记录{% endif %}">未完成</a>
     {% can "daily_record" "create" %}
-    <a href="{% url 'daily_record_add' %}" class="btn-primary" data-modal-add data-modal-title="新增每日记录">新增记录</a>
+    <a href="{% url 'daily_record_add' %}" class="btn-primary">新增记录</a>
     {% endcan %}
     {# 导出类（周报 / 年度总结）收进「导出 ▾」，主行只留一个主操作 #}
     <details class="tb-more">
@@ -175,9 +175,9 @@
                         </td>
                         <td data-label="操作">
                             <div style="display: flex; gap: 2px; align-items: center; justify-content: center; flex-wrap: nowrap;">
-                                <a href="{% url 'daily_record_detail' record.id %}" class="btn-transparent btn-sm" data-modal-detail data-modal-title="每日记录详情">详情</a>
+                                <a href="{% url 'daily_record_detail' record.id %}" class="btn-transparent btn-sm">详情</a>
                                 {% can "daily_record" "update" %}
-                                <a href="{% url 'daily_record_edit' record.id %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑每日记录">编辑</a>
+                                <a href="{% url 'daily_record_edit' record.id %}" class="btn-transparent btn-sm">编辑</a>
                                 {% endcan %}
                                 {% can "daily_record" "delete" %}
                                 <form class="u-inline" method="post" action="{% url 'daily_record_delete' record.id %}"  data-confirm="确定要删除这条记录吗？">{% csrf_token %}<button type="submit" class="btn-transparent btn-sm btn-delete">删除</button></form>
@@ -197,7 +197,7 @@
 {% endblock %}
 
 {% block extra_css %}
-<link href="{% static 'css/daily-record.css' %}?v=20261104a" rel="stylesheet">
+<link href="{% static 'css/daily-record.css' %}?v=20261104b" rel="stylesheet">
 <style>
     /* 「未完成」快捷筛选：与筛选按钮同款，激活时高亮 */
     .quick-filter-btn.is-active {

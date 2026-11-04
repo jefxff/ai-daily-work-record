@@ -1,5 +1,5 @@
 /* ============================================================================
-   daily-record.css · 每日记录（列表 / 详情 / 表单 / 弹窗）页面级样式
+   daily-record.css · 每日记录（列表 / 详情 / 表单）页面级样式
    ----------------------------------------------------------------------------
    定位：只补充「每日记录」这三页的表达，不新造设计语言。
    - 颜色、字号、圆角、阴影、动效全部取 static/css/tokens.css 的令牌，
@@ -11,10 +11,9 @@
      等宽定宽、详情页把记录正文提升为主标题、表单宽屏三列铺开。
 
    为什么单独一个文件而不是写进各模板的 {% block extra_css %}：
-   每日记录的「新增/编辑」和「详情」都是以 AJAX 注入到列表页的弹窗（data-modal-*），
-   弹窗里的 <style> 会随每次注入被重复解析一次；原先 form 与 form_modal 各带一份
-   约 250 行完全相同的样式，等于每次打开弹窗都重算一遍样式表。
-   收到这一个文件里：一次请求、全站缓存（?v= 命中 immutable）、三页与弹窗共用一份。
+   每日记录的原先 form 与 form_modal 各带一份约 250 行完全相同的样式，
+   且弹窗样式会随每次 AJAX 注入被重复解析。收到这一个文件里：
+   一次请求、全站缓存（?v= 命中 immutable），三页共用一份。
 
    性能约束：无新字体、无图片、无 JS 依赖；动画只用 width/opacity，
    不含 filter / backdrop-filter / box-shadow 动画。
@@ -460,13 +459,6 @@
 .dr-facts__value--mono { font-family: var(--font-mono); font-weight: 400; }
 .dr-facts__value--empty { color: var(--c-text-tertiary); font-weight: 400; }
 
-/* 弹窗里（640~720px）两列事实表会挤成三字一行，回落单列；正文收一档内边距与字号 */
-.form-modal .dr-facts { grid-template-columns: minmax(0, 1fr); }
-.form-modal .dr-detail .detail-title { font-size: var(--fs-lg); }
-.form-modal .dr-body { margin-bottom: var(--sp-5); padding: var(--sp-3) var(--sp-4); font-size: var(--fs-md); }
-.form-modal .dr-progress-panel { grid-template-columns: 64px minmax(0, 1fr); gap: var(--sp-3); }
-.form-modal .dr-progress-panel__figure { font-size: var(--fs-lg); }
-
 /* ==========================================================================
    3. 表单（独立页 + 弹窗共用）
    --------------------------------------------------------------------------
@@ -562,13 +554,6 @@
     .dr-field-grid,
     .dr-field-grid--2 { grid-template-columns: minmax(0, 1fr); }
 }
-
-/* 弹窗只有 640px 宽，三列会把「提出部门/提出人」压成一行四个字 */
-.form-modal .dr-field-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-/* 弹窗两列时「日期及时间」独占一行：它只有一行文字，和输入框并排会空出半个格子 */
-.form-modal .dr-field-grid > .form-group:first-child { grid-column: 1 / -1; }
-.form-modal .dr-field-grid--2 { grid-template-columns: minmax(0, 1fr); }
-.form-modal .dr-form-section { padding: var(--sp-3) var(--sp-4); border-radius: var(--r-sm); }
 
 /* 3.2 只读的「日期及时间」：让它看起来就是系统写的，不是灰掉的输入框 */
 .dr-readonly {

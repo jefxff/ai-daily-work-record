@@ -36,6 +36,15 @@ class CopilotPolicy(models.Model):
     egress_retention_days = models.PositiveIntegerField('外发日志保留天数', default=180)
     max_tool_rounds = models.PositiveIntegerField('单次问答最多工具轮次', default=3)
     max_total_tokens = models.PositiveIntegerField('单次问答 token 预算', default=6000)
+    free_chat_enabled = models.BooleanField(
+        '开启自由对话', default=False,
+        help_text='允许 AI 在不命中任何业务模块时自由闲聊（不查业务数据也没关系）。'
+                  '关闭时，未命中业务的问题会礼貌拒绝。',
+    )
+    free_chat_max_tokens = models.PositiveIntegerField(
+        '自由对话最大输出 tokens', default=512,
+        help_text='自由对话分支单次调用的 max_tokens；业务查询走模型配置里的值。',
+    )
     updated_at = models.DateTimeField('更新时间', auto_now=True)
     updated_by = models.CharField('最后修改人', max_length=150, blank=True)
 
@@ -62,11 +71,18 @@ class CopilotConversation(models.Model):
         ACTIVE = 'active', '进行中'
         ARCHIVED = 'archived', '已归档'
 
+    class Mode(models.TextChoices):
+        AUTO = 'auto', '自动（默认）'
+        BUSINESS = 'business', '业务查询'
+        FREE_CHAT = 'free_chat', '自由闲聊'
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
         related_name='copilot_conversations', verbose_name='归属用户',
     )
     title = models.CharField('标题', max_length=120, blank=True)
+    mode = models.CharField('会话模式', max_length=16, choices=Mode.choices,
+                            default=Mode.AUTO)
     status = models.CharField('状态', max_length=16, choices=Status.choices,
                               default=Status.ACTIVE)
     # 会话级"槽位记忆"：上一轮解析出的模块/关键词/状态/时间口径。

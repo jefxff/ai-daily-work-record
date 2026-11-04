@@ -32,6 +32,8 @@ MODEL_MODULE_MAP = {
     ("records", "customercomplaint"): "customer_complaint",
     ("records", "complaint"): "complaint",
     ("records", "insurance"): "insurance",
+    # 客户账期：前期资料统一一个附件上传口（多文件 / 合并 PDF）
+    ("records", "customercredit"): "customer_credit",
     # 客户评审三张表与付款穿行测试同属「客户评审」模块（侧栏同一分组）：
     # 三类评审共用一套证据口径，穿行测试的底稿也挂在同一权限下。
     ("records", "customerreview"): "customer_review",

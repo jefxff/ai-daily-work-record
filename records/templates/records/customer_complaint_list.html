@@ -72,7 +72,7 @@
         </div>
     </div>
     {% can "customer_complaint" "create" %}
-    <a href="{% url 'customer_complaint_add' %}" class="btn-primary" data-modal-add data-modal-title="新增客户客诉">新增客户客诉</a>
+    <a href="{% url 'customer_complaint_add' %}" class="btn-primary">新增客户客诉</a>
     {% endcan %}
     <a href="{% url 'customer_complaint_export' %}" class="btn-transparent">下载Excel</a>
 {% endblock %}
@@ -198,7 +198,7 @@
                             <div class="u-toolbar-inline">
                                 <a href="{% url 'customer_detail' complaint.id %}" class="btn-transparent btn-sm" title="打开客户档案，查看该客户的全部客诉">客户档案</a>
                                 {% can "customer_complaint" "update" %}
-                                <a href="{% url 'customer_complaint_edit' complaint.id %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑客户客诉">编辑</a>
+                                <a href="{% url 'customer_complaint_edit' complaint.id %}" class="btn-transparent btn-sm">编辑</a>
                                 {% endcan %}
                                 {% can "customer_complaint" "delete" %}
                                 <form class="u-inline" method="post" action="{% url 'customer_complaint_delete' complaint.id %}"  data-confirm="确定要删除这条记录吗？">{% csrf_token %}<button type="submit" class="btn-transparent btn-sm btn-delete">删除</button></form>

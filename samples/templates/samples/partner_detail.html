@@ -22,7 +22,7 @@
     <div class="filter-chips">
         <a class="btn-secondary" href="{% url 'samples:partner_list' %}">← 返回列表</a>
         {% can "samples" "update" %}
-        <a class="btn-primary" href="{% url 'samples:partner_edit' partner.pk %}" data-modal-edit data-modal-title="编辑供应商档案">编辑档案</a>
+        <a class="btn-primary" href="{% url 'samples:partner_edit' partner.pk %}">编辑档案</a>
         {% endcan %}{% has_filters as show_clear %}{% if show_clear %}<a class="filter-chip filter-chip--clear" href="{{ request.path }}" aria-label="全部清除筛选条件">全部清除<span aria-hidden="true"> ✕</span></a>{% endif %}</div>
 </div>
 
@@ -55,7 +55,7 @@
     <div class="record-card-header">
         <h5>🏭 审厂记录（共 {{ audit_records|length }} 轮）</h5>
         {% can "samples" "create" %}
-        <a class="btn-primary btn-sm" href="{% url 'samples:audit_create' partner.pk %}" data-modal-add data-modal-title="新增第 {{ next_audit_round }} 轮审厂记录">＋ 新增第 {{ next_audit_round }} 轮</a>
+        <a class="btn-primary btn-sm" href="{% url 'samples:audit_create' partner.pk %}">＋ 新增第 {{ next_audit_round }} 轮</a>
         {% endcan %}
     </div>
     <div class="audit-hint">ℹ️ 审厂记录按供应商维度管理，同一供应商的所有样品共享审厂结果。</div>
@@ -90,7 +90,7 @@
                     <td data-label="操作">
                         <div class="u-toolbar-inline">
                             {% can "samples" "update" %}
-                            <a href="{% url 'samples:audit_edit' partner.pk r.pk %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑第{{ r.round_no }}轮审厂记录">编辑</a>
+                            <a href="{% url 'samples:audit_edit' partner.pk r.pk %}" class="btn-transparent btn-sm">编辑</a>
                             {% endcan %}
                             {% can "samples" "delete" %}
                             <a href="{% url 'samples:audit_delete' partner.pk r.pk %}" class="btn-transparent btn-sm btn-delete">删除</a>

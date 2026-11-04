@@ -9,70 +9,90 @@
 {% endblock %}
 
 {% block content %}
-    <div class="form-container">
-        <h1 class="form-title">{% if form.instance.id %}编辑客户账期{% else %}新增客户账期{% endif %}</h1>
+<div class="cf-page">
+    <header class="cf-hero">
+        <div class="cf-hero__main">
+            <p class="cf-eyebrow">客户管理 · 客户账期</p>
+            <h1 class="cf-title">{% if form.instance.id %}编辑客户账期{% else %}新增客户账期{% endif %}</h1>
+            <p class="cf-subtitle">
+                {% if form.instance.id %}
+                    调整客户账期申请信息。保存后可在详情页继续维护前期资料与附件。
+                {% else %}
+                    填写基础信息、业务内容与审核结论；创建后可在详情页继续维护前期资料与附件。
+                {% endif %}
+            </p>
+        </div>
+        <div class="cf-hero__meta" aria-hidden="true">
+            <span class="cf-hero__step">01</span>
+            <span class="cf-hero__line"></span>
+            <span class="cf-hero__step cf-hero__step--muted">02</span>
+            <span class="cf-hero__caption">填写 → 资料归档</span>
+        </div>
+    </header>
 
-        <form method="post">
-            {% csrf_token %}
-            {% if form.errors %}
-                <div class="alert alert-danger" role="alert">
-                    <strong>表单验证失败:</strong>
-                    <ul>
-                        {% for field in form %}
-                            {% for error in field.errors %}
-                                <li>{{ field.label }}: {{ error }}</li>
-                            {% endfor %}
-                        {% endfor %}
-                        {% for error in form.non_field_errors %}
-                            <li>{{ error }}</li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            {% endif %}
+    <form method="post" class="cf-form">
+        {% csrf_token %}
 
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label for="id_proposal_date" class="form-label">提出日期 *</label>
-                        {{ form.proposal_date }}
-                    </div>
+        {% if form.errors %}
+        <div class="cf-alert" role="alert">
+            <span class="cf-alert__icon" aria-hidden="true">!</span>
+            <div>
+                <strong>还有 {{ form.errors|length }} 项未填写正确</strong>
+                <ul class="cf-alert__list">
+                    {% for field in form %}
+                        {% for error in field.errors %}
+                            <li>{{ field.label }}：{{ error }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                    {% for error in form.non_field_errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 01 基础信息 -->
+        <section class="cf-card">
+            <header class="cf-card__head">
+                <span class="cf-card__num">01</span>
+                <div>
+                    <h2 class="cf-card__title">基础信息</h2>
+                    <p class="cf-card__desc">提出来源、客户身份与负责人，决定后续评审走哪种流程。</p>
                 </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label for="id_site_date" class="form-label">现场日期</label>
-                        {{ form.site_date }}
-                    </div>
+            </header>
+
+            <div class="cf-grid cf-grid--2">
+                <div class="cf-field">
+                    <label for="id_proposal_date" class="cf-label">提出日期 <span class="cf-req">*</span></label>
+                    {{ form.proposal_date }}
+                </div>
+                <div class="cf-field">
+                    <label for="id_site_date" class="cf-label">现场日期</label>
+                    {{ form.site_date }}
+                    <p class="cf-hint">上门审核当天的日期，可后补。</p>
                 </div>
             </div>
 
-            <div class="row">
-                <div class="col-md-3">
-                    <div class="form-group">
-                        <label for="id_customer_name" class="form-label">客户名称 *</label>
-                        {{ form.customer_name }}
-                        <small class="form-text">输入几个字可从历史客户中选择，选中后自动带出细分与业务员</small>
-                    </div>
+            <div class="cf-grid cf-grid--4">
+                <div class="cf-field cf-field--wide">
+                    <label for="id_customer_name" class="cf-label">客户名称 <span class="cf-req">*</span></label>
+                    {{ form.customer_name }}
+                    <p class="cf-hint">输入几个字可从历史客户中选择，选中后自动带出细分与业务员。</p>
                 </div>
-                <div class="col-md-3">
-                    <div class="form-group">
-                        <label for="id_customer_type" class="form-label">客户类型 *</label>
-                        {{ form.customer_type }}
-                        <small class="form-text">普通客户建议现场审核，代加工客户建议内部流程</small>
-                    </div>
+                <div class="cf-field">
+                    <label for="id_customer_type" class="cf-label">客户类型 <span class="cf-req">*</span></label>
+                    {{ form.customer_type }}
+                    <p class="cf-hint">普通客户走现场审核，代加工客户走内部流程。</p>
                 </div>
-                <div class="col-md-3">
-                    <div class="form-group">
-                        <label for="id_customer_segment" class="form-label">客户细分 *</label>
-                        {{ form.customer_segment }}
-                        <small class="form-text">与客户评审单的「客户类型」一致，发起评审时直接带入</small>
-                        {{ form.customer_segment.errors }}
-                    </div>
+                <div class="cf-field">
+                    <label for="id_customer_segment" class="cf-label">客户细分 <span class="cf-req">*</span></label>
+                    {{ form.customer_segment }}
+                    <p class="cf-hint">与客户评审单「客户类型」一致，发起评审时直接带入。</p>
                 </div>
-                <div class="col-md-3">
-                    <div class="form-group">
-                        <label for="id_salesperson" class="form-label">业务员 *</label>
-                        {{ form.salesperson }}
-                    </div>
+                <div class="cf-field">
+                    <label for="id_salesperson" class="cf-label">业务员 <span class="cf-req">*</span></label>
+                    {{ form.salesperson }}
                 </div>
             </div>
 
@@ -82,129 +102,389 @@
                     {% for r in customer_roster %}<option value="{{ r.customer_name }}" label="{{ r.salesperson }}{% if r.customer_segment %} · {{ r.customer_segment }}{% endif %}"></option>{% endfor %}
                 </datalist>
             {% endif %}
+        </section>
 
-            <div class="form-group">
-                <label for="id_work_content" class="form-label">工作内容</label>
-                {{ form.work_content }}
-            </div>
+        <!-- 02 业务内容 -->
+        <section class="cf-card">
+            <header class="cf-card__head">
+                <span class="cf-card__num">02</span>
+                <div>
+                    <h2 class="cf-card__title">业务内容</h2>
+                    <p class="cf-card__desc">记录本次接触的内容与调查依据，便于后续复核。</p>
+                </div>
+            </header>
 
-            <div class="form-group">
-                <label for="id_specific_content" class="form-label">具体内容</label>
-                {{ form.specific_content }}
-            </div>
-
-            <div class="row">
-                <div class="col-md-4">
-                    <div class="form-group">
-                        <label for="id_pre_survey" class="form-label">前期调查表</label>
-                        {{ form.pre_survey }}
-                    </div>
+            <div class="cf-grid cf-grid--4">
+                <div class="cf-field">
+                    <label for="id_work_content" class="cf-label">工作内容</label>
+                    {{ form.work_content }}
                 </div>
-                <div class="col-md-4">
-                    <div class="form-group">
-                        <label for="id_work_method" class="form-label">工作方式</label>
-                        {{ form.work_method }}
-                    </div>
+                <div class="cf-field">
+                    <label for="id_specific_content" class="cf-label">具体内容</label>
+                    {{ form.specific_content }}
                 </div>
-                <div class="col-md-4">
-                    <div class="form-group">
-                        <label for="id_result" class="form-label">结果 *</label>
-                        {{ form.result }}
-                    </div>
+                <div class="cf-field">
+                    <label for="id_pre_survey" class="cf-label">前期调查表</label>
+                    {{ form.pre_survey }}
                 </div>
-            </div>
-
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label for="id_approved_terms_days" class="form-label">批准账期（天）</label>
-                        {{ form.approved_terms_days }}
-                        <small class="form-text">结论批准后的账期天数；填写后穿行测试的「约定账期」可一键带入</small>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label for="id_approved_limit" class="form-label">批准额度（万元）</label>
-                        {{ form.approved_limit }}
-                        <small class="form-text">结论批准后的信用额度</small>
-                    </div>
+                <div class="cf-field">
+                    <label for="id_work_method" class="cf-label">工作方式</label>
+                    {{ form.work_method }}
                 </div>
             </div>
+        </section>
 
-            <div class="form-group">
-                <label for="id_remarks" class="form-label">备注</label>
+        <!-- 03 审核结论 -->
+        <section class="cf-card">
+            <header class="cf-card__head">
+                <span class="cf-card__num">03</span>
+                <div>
+                    <h2 class="cf-card__title">审核结论</h2>
+                    <p class="cf-card__desc">填写本次审核结果；批准账期与额度将带入穿行测试与信用评价。</p>
+                </div>
+            </header>
+
+            <div class="cf-grid cf-grid--3">
+                <div class="cf-field">
+                    <label for="id_result" class="cf-label">结果 <span class="cf-req">*</span></label>
+                    {{ form.result }}
+                </div>
+                <div class="cf-field">
+                    <label for="id_approved_terms_days" class="cf-label">批准账期（天）</label>
+                    {{ form.approved_terms_days }}
+                    <p class="cf-hint">结论批准后的账期天数，可一键带入穿行测试。</p>
+                </div>
+                <div class="cf-field">
+                    <label for="id_approved_limit" class="cf-label">批准额度（万元）</label>
+                    {{ form.approved_limit }}
+                    <p class="cf-hint">结论批准后的信用额度。</p>
+                </div>
+            </div>
+
+            <div class="cf-field">
+                <label for="id_remarks" class="cf-label">备注</label>
                 {{ form.remarks }}
-                <small class="form-text">最多输入500个字符</small>
+                <p class="cf-hint">最多 500 个字符。</p>
             </div>
+        </section>
 
-            <!-- 业绩考核期模块 -->
-            <div id="assessment-section" class="assessment-section">
-                <h3>业绩考核期</h3>
-                <div class="form-group assessment-toggle-row">
-                    {{ form.has_assessment_period }}
-                    <label for="id_has_assessment_period" class="form-label">是否有业绩考核期</label>
-                    <small class="form-text">（仅普通客户适用）</small>
+        <!-- 04 业绩考核期 -->
+        <section id="assessment-section" class="cf-card cf-card--assessment"{% if form.customer_type.value != '普通客户' %} style="display: none;"{% endif %}>
+            <header class="cf-card__head">
+                <span class="cf-card__num">04</span>
+                <div>
+                    <h2 class="cf-card__title">业绩考核期</h2>
+                    <p class="cf-card__desc">仅普通客户适用；开启后需填写考核区间与考核内容。</p>
                 </div>
-                <div id="assessment-fields" style="display: none;">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="id_assessment_start_date" class="form-label">考核期开始日期</label>
-                                {{ form.assessment_start_date }}
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="id_assessment_end_date" class="form-label">考核期结束日期</label>
-                                {{ form.assessment_end_date }}
-                            </div>
-                        </div>
+            </header>
+
+            <label class="cf-switch">
+                {{ form.has_assessment_period }}
+                <span class="cf-switch__ui" aria-hidden="true"></span>
+                <span class="cf-switch__text">
+                    <strong>启用业绩考核期</strong>
+                    <small>记录考核指标、未达标后果等约定</small>
+                </span>
+            </label>
+
+            <div id="assessment-fields" class="cf-assessment-fields" style="display: none;">
+                <div class="cf-grid cf-grid--2">
+                    <div class="cf-field">
+                        <label for="id_assessment_start_date" class="cf-label">考核期开始日期</label>
+                        {{ form.assessment_start_date }}
                     </div>
-                    <div class="form-group">
-                        <label for="id_assessment_content" class="form-label">考核内容</label>
-                        {{ form.assessment_content }}
-                        <small class="form-text">描述考核指标、未达标后果等，最多500个字符</small>
+                    <div class="cf-field">
+                        <label for="id_assessment_end_date" class="cf-label">考核期结束日期</label>
+                        {{ form.assessment_end_date }}
                     </div>
+                </div>
+                <div class="cf-field">
+                    <label for="id_assessment_content" class="cf-label">考核内容</label>
+                    {{ form.assessment_content }}
+                    <p class="cf-hint">描述考核指标、未达标后果等，最多 500 个字符。</p>
                 </div>
             </div>
+        </section>
 
-            <div class="form-actions">
-                <button type="submit" class="btn btn-primary">{% if form.instance.id %}保存修改{% else %}保存记录{% endif %}</button>
+        <div class="cf-actions">
+            <p class="cf-actions__hint"><span class="cf-req">*</span> 为必填项，保存后可随时回到列表继续编辑。</p>
+            <div class="cf-actions__buttons">
                 <a href="{% url 'customer_credit_list' %}" class="btn btn-outline-secondary">取消</a>
+                <button type="submit" class="btn btn-primary">{% if form.instance.id %}保存修改{% else %}保存记录{% endif %}</button>
             </div>
-        </form>
-    </div>
+        </div>
+    </form>
+</div>
 {% endblock %}
 
 {% block extra_css %}
 <style>
-    /* 业绩考核期模块 */
-    .assessment-section {
-        margin-top: 2rem;
-        padding-top: 1.5rem;
-        border-top: 1px solid var(--c-border);
+    .cf-page {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding-bottom: var(--sp-6);
     }
-    .assessment-section h3 {
-        font-size: 1.2rem;
+
+    /* ---------- 页头 ---------- */
+    .cf-hero {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: var(--sp-5);
+        padding: var(--sp-5) 0 var(--sp-5);
+        border-bottom: 1px solid var(--c-border);
+        margin-bottom: var(--sp-5);
+    }
+    .cf-eyebrow {
+        margin: 0 0 var(--sp-2);
+        font-size: var(--fs-xs);
         font-weight: 600;
-        color: var(--c-text);
-        margin-bottom: 1rem;
+        letter-spacing: var(--ls-wide);
+        color: var(--c-text-secondary);
+        text-transform: uppercase;
     }
-    .assessment-toggle-row {
+    .cf-title {
+        margin: 0 0 var(--sp-2);
+        font-family: var(--font-display);
+        font-size: var(--fs-2xl);
+        font-weight: 600;
+        letter-spacing: var(--ls-tight);
+        color: var(--c-text);
+    }
+    .cf-subtitle {
+        margin: 0;
+        max-width: 60ch;
+        font-size: var(--fs-sm);
+        line-height: var(--lh-base);
+        color: var(--c-text-secondary);
+    }
+    .cf-hero__meta {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: var(--sp-2);
+        flex-shrink: 0;
+        padding-bottom: var(--sp-1);
+        color: var(--c-text-tertiary);
     }
-    .assessment-toggle-row .form-label {
-        margin-bottom: 0;
+    .cf-hero__step {
+        font-family: var(--font-mono);
+        font-size: var(--fs-xs);
+        font-weight: 600;
+        color: var(--c-primary);
     }
-    .assessment-toggle-row .form-text {
-        margin-left: 0.5rem;
+    .cf-hero__step--muted { color: var(--c-text-tertiary); }
+    .cf-hero__line { width: 28px; height: 1px; background: var(--c-border-strong); }
+    .cf-hero__caption { margin-left: var(--sp-2); font-size: var(--fs-xs); }
+
+    /* ---------- 分区卡片 ---------- */
+    .cf-form { display: flex; flex-direction: column; gap: var(--sp-4); }
+    .cf-card {
+        background: var(--c-surface);
+        border: 1px solid var(--c-border);
+        border-radius: var(--r-lg);
+        padding: var(--sp-5);
+        box-shadow: 0 1px 2px rgba(16, 24, 40, .04);
+    }
+    .cf-card__head {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--sp-3);
+        padding-bottom: var(--sp-4);
+        margin-bottom: var(--sp-4);
+        border-bottom: 1px solid var(--c-divider);
+    }
+    .cf-card__num {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 30px;
+        height: 30px;
+        flex-shrink: 0;
+        border-radius: var(--r-full);
+        background: var(--c-primary-subtle);
+        color: var(--c-primary);
+        font-family: var(--font-mono);
+        font-size: var(--fs-xs);
+        font-weight: 700;
+    }
+    .cf-card__title {
+        margin: 0 0 2px;
+        font-family: var(--font-display);
+        font-size: var(--fs-lg);
+        font-weight: 600;
+        color: var(--c-text);
+    }
+    .cf-card__desc {
+        margin: 0;
+        font-size: var(--fs-sm);
+        line-height: var(--lh-base);
+        color: var(--c-text-secondary);
+    }
+
+    .cf-grid {
+        display: grid;
+        gap: var(--sp-4) var(--sp-4);
+    }
+    .cf-grid + .cf-grid,
+    .cf-grid + .cf-field { margin-top: var(--sp-4); }
+    .cf-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .cf-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .cf-grid--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .cf-field--wide { grid-column: span 2; }
+    .cf-field { min-width: 0; }
+    .cf-field + .cf-field { margin-top: 0; }
+
+    .cf-label {
+        display: block;
+        margin-bottom: var(--sp-2);
+        font-size: var(--fs-sm);
+        font-weight: 600;
+        color: var(--c-text);
+    }
+    .cf-req { color: var(--c-danger); font-weight: 600; }
+    .cf-hint {
+        margin: var(--sp-2) 0 0;
+        font-size: var(--fs-xs);
+        line-height: var(--lh-base);
+        color: var(--c-text-tertiary);
+    }
+    .cf-field .form-control,
+    .cf-field .form-select {
+        height: 40px;
+        padding: 0 var(--sp-3);
+        border: 1px solid var(--c-border-strong);
+        border-radius: var(--r-sm);
+        font-size: var(--fs-base);
+        color: var(--c-text);
+        background-color: var(--c-surface);
+        transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+    }
+    .cf-field textarea.form-control {
+        height: auto;
+        padding: var(--sp-2) var(--sp-3);
+        resize: vertical;
+    }
+    .cf-field .form-control:focus,
+    .cf-field .form-select:focus {
+        border-color: var(--c-primary);
+        box-shadow: 0 0 0 3px var(--c-primary-subtle);
+        outline: none;
+    }
+    .cf-field .form-control::placeholder { color: var(--c-text-tertiary); }
+
+    /* 错误摘要 */
+    .cf-alert {
+        display: flex;
+        gap: var(--sp-3);
+        padding: var(--sp-3) var(--sp-4);
+        border: 1px solid var(--c-danger-line);
+        border-radius: var(--r-md);
+        background: var(--c-danger-bg);
+        color: var(--c-danger);
+        font-size: var(--fs-sm);
+    }
+    .cf-alert__icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        flex-shrink: 0;
+        border-radius: 50%;
+        background: var(--c-danger);
+        color: #fff;
+        font-weight: 700;
+    }
+    .cf-alert__list { margin: var(--sp-2) 0 0; padding-left: 1.1em; }
+
+    /* 考核期开关 */
+    .cf-card--assessment .cf-card__head { margin-bottom: var(--sp-3); }
+    .cf-switch {
+        position: relative;
+        display: flex;
+        align-items: flex-start;
+        gap: var(--sp-3);
+        padding: var(--sp-3) var(--sp-4);
+        border: 1px solid var(--c-border);
+        border-radius: var(--r-md);
+        background: var(--c-surface-sunken);
+        cursor: pointer;
+        transition: border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
+    }
+    .cf-switch:hover { border-color: var(--c-primary); }
+    .cf-switch input {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: -1px;
+        opacity: 0;
+    }
+    .cf-switch__ui {
+        position: relative;
+        width: 42px;
+        height: 24px;
+        flex-shrink: 0;
+        margin-top: 2px;
+        border-radius: var(--r-full);
+        background: var(--c-border-strong);
+        transition: background-color var(--dur-fast) var(--ease-out);
+    }
+    .cf-switch__ui::after {
+        content: "";
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, .18);
+        transition: transform var(--dur-fast) var(--ease-out);
+    }
+    .cf-switch input:checked + .cf-switch__ui { background: var(--c-primary); }
+    .cf-switch input:checked + .cf-switch__ui::after { transform: translateX(18px); }
+    .cf-switch input:focus-visible + .cf-switch__ui { outline: 2px solid var(--c-primary); outline-offset: 2px; }
+    .cf-switch__text { display: flex; flex-direction: column; gap: 2px; font-size: var(--fs-sm); color: var(--c-text); }
+    .cf-switch__text small { font-size: var(--fs-xs); color: var(--c-text-tertiary); }
+    .cf-assessment-fields { margin-top: var(--sp-4); }
+
+    /* 底部操作条 */
+    .cf-actions {
+        position: sticky;
+        bottom: 0;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--sp-4);
+        padding: var(--sp-3) var(--sp-4);
+        border: 1px solid var(--c-border);
+        border-radius: var(--r-lg);
+        background: color-mix(in srgb, var(--c-surface) 92%, transparent);
+        backdrop-filter: blur(8px);
+        box-shadow: 0 -6px 24px rgba(16, 24, 40, .08);
+    }
+    .cf-actions__hint { margin: 0; font-size: var(--fs-xs); color: var(--c-text-tertiary); }
+    .cf-actions__buttons { display: flex; gap: var(--sp-2); }
+    .cf-actions .btn { min-width: 112px; }
+
+    @media (max-width: 1000px) {
+        .cf-hero__meta { display: none; }
+        .cf-grid--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .cf-grid--3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 720px) {
+        .cf-page { padding-left: 0; padding-right: 0; }
+        .cf-card { padding: var(--sp-4); }
+        .cf-grid--2, .cf-grid--3, .cf-grid--4 { grid-template-columns: 1fr; }
+        .cf-field--wide { grid-column: auto; }
+        .cf-actions { flex-direction: column; align-items: stretch; }
+        .cf-actions__buttons { justify-content: flex-end; }
     }
 </style>
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/pages/records/customer_credit_form.js' %}?v=20261102" defer></script>
+<script src="{% static 'js/pages/records/customer_credit_form.js' %}?v=20261104" defer></script>
 <script src="{% static 'js/customer-roster.js' %}?v=20261104" defer></script>
 {% endblock %}

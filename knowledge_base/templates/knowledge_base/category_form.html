@@ -1,50 +1,51 @@
 {% extends 'knowledge_base/base.html' %}
 
 {% block knowledge_content %}
-<div class="card">
-    <div class="card-header bg-primary text-white">
-        <h1 class="h4">{{ title }}</h1>
+<div class="form-container">
+    <div class="form-head">
+        <div>
+            <h1 class="form-title">{{ title }}</h1>
+            <p class="form-subtitle">分类用于组织文档目录，排序值越小越靠前。</p>
+        </div>
+        <a class="form-back" href="{% url 'knowledge_base:category_list' %}">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+            返回
+        </a>
     </div>
-    <div class="card-body">
-        <form method="post">
-            {% csrf_token %}
+
+    <form method="post" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+        <div class="form-alert">{{ form.non_field_errors|join:'；' }}</div>
+        {% endif %}
+
+        <div class="form-grid">
             <div class="form-group">
-                <label>{{ form.name.label }}</label>
+                <label class="form-label" for="{{ form.name.id_for_label }}">{{ form.name.label }}{% if form.name.field.required %} <span class="u-text-danger">*</span>{% endif %}</label>
                 {{ form.name }}
-                {% if form.name.errors %}
-                <div class="text-danger">{{ form.name.errors }}</div>
-                {% endif %}
+                {% for error in form.name.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
             </div>
-            
             <div class="form-group">
-                <label>{{ form.parent.label }}</label>
+                <label class="form-label" for="{{ form.parent.id_for_label }}">{{ form.parent.label }}</label>
                 {{ form.parent }}
-                {% if form.parent.errors %}
-                <div class="text-danger">{{ form.parent.errors }}</div>
-                {% endif %}
+                {% for error in form.parent.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
             </div>
-            
             <div class="form-group">
-                <label>{{ form.description.label }}</label>
-                {{ form.description }}
-                {% if form.description.errors %}
-                <div class="text-danger">{{ form.description.errors }}</div>
-                {% endif %}
-            </div>
-            
-            <div class="form-group">
-                <label>{{ form.sort_order.label }}</label>
+                <label class="form-label" for="{{ form.sort_order.id_for_label }}">{{ form.sort_order.label }}</label>
                 {{ form.sort_order }}
-                {% if form.sort_order.errors %}
-                <div class="text-danger">{{ form.sort_order.errors }}</div>
-                {% endif %}
+                {% for error in form.sort_order.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
             </div>
-            
-            <div class="form-group d-flex gap-2">
-                <button type="submit" class="btn btn-primary">保存</button>
-                <a href="{% url 'knowledge_base:category_list' %}" class="btn btn-secondary">取消</a>
+            <div class="form-group">
+                <label class="form-label" for="{{ form.description.id_for_label }}">{{ form.description.label }}</label>
+                {{ form.description }}
+                {% for error in form.description.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
             </div>
-        </form>
-    </div>
+        </div>
+
+        <div class="form-actions">
+            <a class="btn-transparent" href="{% url 'knowledge_base:category_list' %}">取消</a>
+            <button type="submit" class="btn-primary">保存</button>
+        </div>
+    </form>
 </div>
 {% endblock %}

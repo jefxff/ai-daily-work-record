@@ -10,6 +10,7 @@ from django.core.paginator import Paginator
 from django.db.models import Count
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 
 from accounts.decorators import perm_required
 from records.crud import _per_page
@@ -51,7 +52,10 @@ def category_create(request):
     if _is_ajax(request):
         html = render(request, "archive/_category_form_modal.html", {"form": form, "mode": "create"}).content.decode()
         return JsonResponse({"ok": True, "html": html})
-    return render(request, "archive/category_form.html", {"form": form, "mode": "create"})
+    return render(
+        request, "archive/category_form.html",
+        {"form": form, "mode": "create", "cancel_url": reverse("archive:category_list")},
+    )
 
 
 @perm_required("archive", "update")
@@ -70,7 +74,11 @@ def category_edit(request, pk):
     if _is_ajax(request):
         html = render(request, "archive/_category_form_modal.html", {"form": form, "mode": "edit", "category": cat}).content.decode()
         return JsonResponse({"ok": True, "html": html})
-    return render(request, "archive/category_form.html", {"form": form, "mode": "edit", "category": cat})
+    return render(
+        request, "archive/category_form.html",
+        {"form": form, "mode": "edit", "category": cat,
+         "cancel_url": reverse("archive:category_list")},
+    )
 
 
 @perm_required("archive", "delete")

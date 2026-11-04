@@ -11,34 +11,50 @@
     {# 首屏只留「时间范围 + 严重度」；5 个季度级低频参数折进「预警参数 ⚙」 #}
     <form class="table-container expiry-filter" method="GET">
         <div class="expiry-filter-row">
-            <label class="expiry-horizon">展望窗口（天）
-                <input type="number" name="days" min="30" max="365" value="{{ days }}" data-auto-submit>
-            </label>
+            <div class="expiry-horizon">
+                <label for="expiryDays">展望窗口</label>
+                <div class="expiry-horizon-control">
+                    <input id="expiryDays" type="number" name="days" min="30" max="365" value="{{ days }}" data-auto-submit>
+                    <span>天</span>
+                </div>
+            </div>
             <details class="expiry-params" {% if params_open %}open{% endif %}>
-                <summary class="btn-transparent">
-                    预警参数
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                <summary class="expiry-params-trigger">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    <span>预警参数</span>
+                    <svg class="expiry-params-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
                 </summary>
-                <div class="expiry-params-panel">
-                    <label>保险提前（天）
+            </details>
+            <a href="{% url 'expiry_export' %}" class="btn-transparent expiry-export">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>
+                导出本月到期清单
+            </a>
+            <div class="expiry-params-panel">
+                <div class="expiry-params-head">
+                    <span class="expiry-params-title">各级到期提前量</span>
+                    <span class="expiry-params-hint">应用后立即参与状态分级，取值 1–180 天</span>
+                </div>
+                <div class="expiry-params-grid">
+                    <label>保险
                         <input type="number" name="lead_insurance" min="1" max="180" value="{{ lead_form.lead_insurance }}">
                     </label>
-                    <label>合同提前（天）
+                    <label>合同
                         <input type="number" name="lead_contract" min="1" max="180" value="{{ lead_form.lead_contract }}">
                     </label>
-                    <label>证照有效期提前（天）
+                    <label>证照有效期
                         <input type="number" name="lead_license" min="1" max="180" value="{{ lead_form.lead_license }}">
                     </label>
-                    <label>证照年审提前（天）
+                    <label>证照年审
                         <input type="number" name="lead_review" min="1" max="180" value="{{ lead_form.lead_review }}">
                     </label>
-                    <label>借阅应还提前（天）
+                    <label>借阅应还
                         <input type="number" name="lead_borrow" min="1" max="180" value="{{ lead_form.lead_borrow }}">
                     </label>
-                    <button type="submit" class="btn-primary">应用</button>
                 </div>
-            </details>
-            <a href="{% url 'expiry_export' %}" class="btn-transparent expiry-export">导出本月到期清单</a>
+                <div class="expiry-params-foot">
+                    <button type="submit" class="btn-primary btn-sm">应用参数</button>
+                </div>
+            </div>
         </div>
     </form>
 
@@ -180,29 +196,56 @@
     .expiry-filter-row {
         display: flex;
         flex-wrap: wrap;
-        gap: 12px;
-        align-items: flex-end;
+        gap: 10px;
+        align-items: center;
     }
-    .expiry-filter-row label {
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-        font-size: 12px;
+    /* 时间窗口：标签与输入框同一行，右侧带「天」单位后缀 */
+    .expiry-horizon {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12.5px;
         color: var(--c-text-secondary);
         white-space: nowrap;
     }
-    .expiry-filter-row input {
-        width: 96px;
+    .expiry-horizon-control {
+        display: inline-flex;
+        align-items: center;
         height: 34px;
-        padding: 0 10px;
         border: 1px solid var(--c-border-strong);
         border-radius: 6px;
         background: var(--c-surface);
+        overflow: hidden;
+        transition: border-color .15s ease, box-shadow .15s ease;
+    }
+    .expiry-horizon-control:focus-within {
+        border-color: var(--c-primary);
+        box-shadow: 0 0 0 3px var(--c-primary-ring);
+    }
+    .expiry-horizon-control input {
+        width: 68px;
+        height: 100%;
+        padding: 0 6px 0 10px;
+        border: none;
+        background: transparent;
         color: var(--c-text);
         font-size: 13px;
+        font-variant-numeric: tabular-nums;
+        outline: none;
+    }
+    .expiry-horizon-control span {
+        padding-right: 10px;
+        font-size: 12px;
+        color: var(--c-text-tertiary);
     }
     /* 导出推到最右：左侧调参数、右侧执行动作，一行两端对齐 */
-    .expiry-export { margin-left: auto; }
+    .expiry-export {
+        margin-left: auto;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .expiry-export svg { flex: none; opacity: .75; }
     .expiry-summary {
         display: flex;
         flex-wrap: wrap;
@@ -340,9 +383,10 @@
         font-size: 13px;
         color: var(--c-text-secondary);
     }
-    /* 预警参数：季度级低频配置，默认收起 */
-    .expiry-params { position: relative; }
-    .expiry-params > summary {
+    /* 预警参数：季度级低频配置，默认收起。
+       展开面板与 <details> 平级，宽度占满整行，避免被 flex 行挤压成窄条。 */
+    .expiry-params { display: inline-flex; }
+    .expiry-params-trigger {
         list-style: none;
         cursor: pointer;
         display: inline-flex;
@@ -350,22 +394,102 @@
         gap: 6px;
         height: 34px;
         padding: 0 12px;
+        border: 1px solid var(--c-border-strong);
+        border-radius: 6px;
+        background: var(--c-surface);
+        color: var(--c-text-secondary);
+        font-size: 12.5px;
+        user-select: none;
+        transition: color .15s ease, border-color .15s ease, background .15s ease;
     }
-    .expiry-params > summary::-webkit-details-marker { display: none; }
-    .expiry-params > summary::marker { content: ""; }
-    .expiry-params[open] > summary { color: var(--c-primary); }
+    .expiry-params-trigger:hover { color: var(--c-primary); border-color: var(--c-primary); }
+    .expiry-params-trigger::-webkit-details-marker { display: none; }
+    .expiry-params-trigger::marker { content: ""; }
+    .expiry-params[open] .expiry-params-trigger {
+        color: var(--c-primary);
+        border-color: var(--c-primary);
+        background: var(--c-primary-subtle);
+    }
+    .expiry-params-chevron { transition: transform .18s ease; }
+    .expiry-params[open] .expiry-params-chevron { transform: rotate(180deg); }
     .expiry-params-panel {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
-        align-items: flex-end;
-        margin-top: 10px;
-        padding: 12px;
+        display: none;
+        flex: 0 0 100%;
+        margin-top: 2px;
+        padding: 14px 16px 12px;
         border: 1px solid var(--c-border);
-        border-radius: 8px;
+        border-radius: 10px;
         background: var(--c-surface-sunken);
     }
-    .expiry-horizon { flex-direction: row; align-items: center; gap: 8px; }
+    .expiry-params[open] ~ .expiry-params-panel {
+        display: block;
+        animation: expiry-panel-in .18s ease-out;
+    }
+    @keyframes expiry-panel-in {
+        from { opacity: 0; transform: translateY(-4px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    .expiry-params-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 10px;
+    }
+    .expiry-params-title {
+        font-size: 12.5px;
+        font-weight: 600;
+        color: var(--c-text);
+        letter-spacing: .02em;
+    }
+    .expiry-params-hint { font-size: 11.5px; color: var(--c-text-tertiary); }
+    .expiry-params-grid {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 10px 12px;
+    }
+    .expiry-params-grid label {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        font-size: 12px;
+        color: var(--c-text-secondary);
+        white-space: nowrap;
+    }
+    .expiry-params-grid input {
+        width: 100%;
+        height: 36px;
+        padding: 0 10px;
+        border: 1px solid var(--c-border-strong);
+        border-radius: 6px;
+        background: var(--c-surface);
+        color: var(--c-text);
+        font-size: 13px;
+        font-variant-numeric: tabular-nums;
+        transition: border-color .15s ease, box-shadow .15s ease;
+    }
+    .expiry-params-grid input:focus {
+        border-color: var(--c-primary);
+        box-shadow: 0 0 0 3px var(--c-primary-ring);
+        outline: none;
+    }
+    .expiry-params-foot {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 12px;
+        padding-top: 10px;
+        border-top: 1px dashed var(--c-border-strong);
+    }
+    @media (max-width: 900px) {
+        .expiry-params-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @media (max-width: 560px) {
+        .expiry-params-panel { padding: 12px; }
+        .expiry-params-head { flex-direction: column; gap: 2px; }
+        .expiry-params-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .expiry-export { margin-left: 0; }
+    }
     .expiry-cal-dots {
         display: flex;
         flex-wrap: wrap;

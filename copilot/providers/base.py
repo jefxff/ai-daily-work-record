@@ -10,9 +10,25 @@ import requests
 class ProviderError(Exception):
     """模型调用失败（网络 / 鉴权 / 响应格式 / 配置不合法）。"""
 
+    CONTEXT_OVERFLOW_HINTS = (
+        'context length',
+        'maximum context',
+        'context_window',
+        'token limit',
+        'input and output',
+        'prompt contains',
+        'total of at least',
+        'too many tokens',
+        'max_tokens',
+        "'max_tokens'",
+        '"max_tokens"',
+    )
+
     def __init__(self, message, code='PROVIDER_ERROR'):
         super().__init__(message)
         self.code = code
+        lower = (message or '').lower()
+        self.context_overflow = code == 'HTTP_ERROR' and any(h in lower for h in self.CONTEXT_OVERFLOW_HINTS)
 
 
 @dataclass

@@ -168,6 +168,27 @@ body.copilot-dragging {
 }
 .copilot-close { font-size: 18px; }
 
+/* 闲聊/业务模式按钮高亮 */
+.copilot-chatmode.is-free {
+    background: var(--c-success-bg, #f6ffed);
+    color: var(--c-success, #52c41a);
+}
+.copilot-chatmode.is-free:hover {
+    background: color-mix(in srgb, var(--c-success, #52c41a) 15%, transparent);
+}
+.copilot-chatmode.is-business {
+    background: var(--c-primary-subtle, #e6f7ff);
+    color: var(--c-primary-active, #0050b3);
+}
+.copilot-badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: var(--c-primary-subtle, #e6f7ff);
+    color: var(--c-primary, #1677ff);
+    line-height: 1.4;
+}
+
 .copilot-log {
     flex: 1;
     overflow-y: auto;

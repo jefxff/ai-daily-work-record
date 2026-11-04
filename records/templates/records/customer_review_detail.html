@@ -44,7 +44,7 @@
                         {% for doc in object.source_credit.docs.all %}
                         <tr>
                             <td>{{ doc.get_doc_type_display }}</td>
-                            <td>{{ doc.status }}</td>
+                            <td>{{ doc.get_status_display }}</td>
                             <td>{{ doc.collected_date|date:'Y-m-d'|default:"—" }}</td>
                             <td>
                                 {{ doc.note|default:"—" }}

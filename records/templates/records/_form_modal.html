@@ -1,5 +1,5 @@
 {% load static %}
-<form method="post" data-modal-form action="{{ request.path }}">
+<form method="post" action="{{ request.path }}">
     {% csrf_token %}
 
     {% if form.non_field_errors %}
@@ -17,8 +17,8 @@
     {% endif %}
 
     <div class="form-modal-actions">
-        <button type="button" class="btn-transparent" data-modal-close>取消</button>
-        <button type="submit" class="btn-transparent btn-delete" data-modal-save>{{ save_label|default:"保存" }}</button>
+        <button type="button" class="btn-transparent">取消</button>
+        <button type="submit" class="btn-transparent btn-delete">{{ save_label|default:"保存" }}</button>
     </div>
 </form>
 

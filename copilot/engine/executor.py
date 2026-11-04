@@ -152,6 +152,27 @@ def _execute(run):
         return _finish(run, prompt.NO_MODULE_TEMPLATE, [], [], 0, started,
                        config, error_code='NO_MODULE')
 
+    # ---------- 自由对话 / 强制业务 分支 ----------
+    # 会话模式决定这条 run 要不要走工具 Agent：
+    #   'free_chat' → 强制自由闲聊（不管有没有命中业务模块）
+    #   'business'  → 强制业务工具链（不管开关/自动判断）
+    #   'auto'      → 默认：开关开 且 不命中业务模块 → 自由对话；否则走工具链
+    mode = run.conversation.mode if run.conversation else 'auto'
+    hinted = planner.hinted_modules(question, modules)
+    should_free = (
+        mode == 'free_chat'
+        or (mode == 'auto' and policy.free_chat_enabled and not hinted)
+    )
+    if mode == 'business':
+        pass  # 强制走下面的工具链，哪怕开关开了也不拦
+    elif should_free:
+        answer, tokens = _free_chat(run, config, policy)
+        if answer is not None:
+            steps = [{'tool': 'free_chat', 'ok': True, 'rows': 0}]
+            return _finish(run, answer, [], steps, tokens, started,
+                           config, error_code='')
+        # 模型调用失败 → 继续走下面的工具链（它会降级到关键词检索，不会崩）
+
     # 计数/分组类问题（"月结60天有多少家""立案和结案各多少"）：答案是算出来的，
     # 本地直接算。交给模型它会把全表数字当成筛选后的结果（截图里问月结60天多少家，
     # 答"50 家，普通32+代加工18"——50 是全表，条件全是它自己加的）。
@@ -308,22 +329,38 @@ def _execute(run):
     answer, error_code = '', ''
 
     try:
+        round_max_tokens = config.max_tokens
         for _round in range(policy.max_tool_rounds + 1):
             _guard(run)
             if total_tokens > policy.max_total_tokens:
                 error_code = 'BUDGET'
                 break
 
-            result = router.chat_with(
-                config, messages,
-                temperature=0.2,
-                max_tokens=config.max_tokens,
-                tools=native_tools,
-                json_mode=not config.supports_tools,
-                # 逐字下发只在原生工具调用模式做：JSON 协议下模型先吐的是
-                # {"tool":...}，把决策过程直接显示给用户等于给界面添乱。
-                on_delta=_publisher(run) if native_tools else None,
-            )
+            # 上下文超限时自动降 max_tokens 重试，给提示能答完就行。
+            # 模型网关对总 token 很严：prompt 已经占了一大截，用户把 max_tokens
+            # 配得高（1500~4096）很容易触顶。这里先减半，再不行降到 256。
+            result = None
+            final_exc = None
+            for _attempt in range(2):
+                try:
+                    result = router.chat_with(
+                        config, messages,
+                        temperature=0.2,
+                        max_tokens=round_max_tokens,
+                        tools=native_tools,
+                        json_mode=not config.supports_tools,
+                        on_delta=_publisher(run) if native_tools else None,
+                    )
+                    break
+                except ProviderError as exc:
+                    if exc.context_overflow and round_max_tokens > 256:
+                        final_exc = exc
+                        round_max_tokens = max(256, round_max_tokens // 2)
+                        continue
+                    raise
+            if result is None:
+                raise final_exc  # 两次都超限，交给外层降级
+
             total_tokens += result.total_tokens
             prompt_tokens += result.prompt_tokens
             completion_tokens += result.completion_tokens
@@ -592,14 +629,20 @@ def _force_final(config, messages):
                     '用户最初的问题；数据不足就说明缺什么。不要输出 JSON，'
                     '不要重复刚才的查询。'),
     }]
-    try:
-        return router.chat_with(
-            config, follow, temperature=0.2,
-            max_tokens=config.max_tokens, tools=None, json_mode=False,
-        )
-    except ProviderError as exc:
-        logger.warning('Copilot 强制收尾失败：%s', exc)
-        return None
+    limit = config.max_tokens
+    for _ in range(2):
+        try:
+            return router.chat_with(
+                config, follow, temperature=0.2,
+                max_tokens=limit, tools=None, json_mode=False,
+            )
+        except ProviderError as exc:
+            if exc.context_overflow and limit > 256:
+                limit = max(256, limit // 2)
+                continue
+            logger.warning('Copilot 强制收尾失败：%s', exc)
+            return None
+    return None
 
 
 def _refs_digest(all_refs, lead=None):
@@ -627,6 +670,53 @@ def _empty_result_reply(steps, modules):
         return (f'没有查到符合条件的记录{scope}。\n'
                 '可以换个说法，或补充客户名、单号、日期区间后再问一次。')
     return _no_data_reply(modules)
+
+
+def _free_chat(run, config, policy):
+    """不走工具链，让模型直接回答。带最近几轮历史做多轮对话。"""
+    from . import prompt as prompt_mod
+    MAX_HISTORY = 6  # 最近 3 轮（user + assistant）
+
+    # 从 CopilotMessage 取历史，按顺序拼成 messages（不含当前 question，下面追加）
+    history_msgs = list(CopilotMessage.objects.filter(
+        conversation=run.conversation,
+        role__in=[CopilotMessage.Role.USER, CopilotMessage.Role.ASSISTANT],
+    ).order_by('-pk')[:MAX_HISTORY])
+    history_msgs.reverse()
+
+    messages = [{'role': 'system', 'content': prompt_mod.FREE_CHAT_TEMPLATE}]
+    for msg in history_msgs:
+        role = 'user' if msg.role == CopilotMessage.Role.USER else 'assistant'
+        messages.append({'role': role, 'content': msg.content or ''})
+    # 当前 question
+    messages.append({'role': 'user', 'content': run.question})
+
+    limit = policy.free_chat_max_tokens or config.max_tokens or 512
+    if limit > config.max_tokens:
+        limit = config.max_tokens
+
+    for _ in range(2):
+        try:
+            result = router.chat_with(
+                config, messages, temperature=0.7,
+                max_tokens=limit, tools=None, json_mode=False,
+            )
+            content = (result.content or '').strip()
+            if content.startswith('```'):
+                content = content.split('\n', 1)[-1].rsplit('```', 1)[0].strip()
+            return content or '嗯？我在听，接着说。', result.total_tokens
+        except ProviderError as exc:
+            if exc.context_overflow and limit > 128:
+                limit = max(128, limit // 2)
+                # 同时丢最早的一条历史给 prompt 腾空间
+                if len(messages) > 3:
+                    messages.pop(1)
+                    if len(messages) > 3:
+                        messages.pop(1)
+                continue
+            logger.warning('Copilot 自由对话失败：%s', exc)
+            return None, 0
+    return None, 0
 
 
 def _no_data_reply(modules):

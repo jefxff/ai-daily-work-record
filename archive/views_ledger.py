@@ -15,6 +15,7 @@ from django.db.models import Count, Exists, F, OuterRef, Q, Window
 from django.db.models.functions import RowNumber
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 
 from accounts.decorators import perm_required
@@ -308,7 +309,10 @@ def ledger_create(request):
     if _is_ajax(request):
         html = render(request, "archive/_ledger_form_modal.html", {"form": form, "mode": "create"}).content.decode()
         return JsonResponse({"ok": True, "html": html})
-    return redirect("archive:overview")
+    return render(
+        request, "archive/ledger_form.html",
+        {"form": form, "mode": "create", "cancel_url": reverse("archive:overview")},
+    )
 
 
 @perm_required("archive", "update")
@@ -327,7 +331,10 @@ def ledger_edit(request, pk):
     if _is_ajax(request):
         html = render(request, "archive/_ledger_form_modal.html", {"form": form, "mode": "edit", "ledger": lg}).content.decode()
         return JsonResponse({"ok": True, "html": html})
-    return redirect("archive:overview")
+    return render(
+        request, "archive/ledger_form.html",
+        {"form": form, "mode": "edit", "ledger": lg, "cancel_url": reverse("archive:overview")},
+    )
 
 
 @perm_required("archive", "update")

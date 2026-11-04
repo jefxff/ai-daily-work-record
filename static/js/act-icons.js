@@ -77,7 +77,6 @@
         if (text.indexOf('时间线') > -1) return 'timeline';
         if (text.indexOf('当前保单') > -1) return 'policy';
         if (/详情|详细|查看|档案|明细/.test(text)) return 'detail';
-        if (el.matches('[data-modal-detail]')) return 'detail';
         /* href 兜底放在语义文字之后：/insurance/subjects/detail/ 的「时间线」
            已在上面命中 timeline，不会被这条统归成 detail。 */
         if (el.matches('a[href*="detail"]')) return 'detail';

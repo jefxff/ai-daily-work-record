@@ -7,7 +7,8 @@ from .models import (CopilotConversation, CopilotEgressLog, CopilotEvalCase,
 
 @admin.register(CopilotPolicy)
 class CopilotPolicyAdmin(admin.ModelAdmin):
-    list_display = ('id', 'mask_enabled', 'rate_limit_per_10min',
+    list_display = ('id', 'mask_enabled', 'free_chat_enabled',
+                    'free_chat_max_tokens', 'rate_limit_per_10min',
                     'rate_limit_per_day', 'max_tool_rounds', 'updated_at')
     readonly_fields = ('updated_at',)
 

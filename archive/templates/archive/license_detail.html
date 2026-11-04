@@ -29,12 +29,12 @@
             <h1 class="h4 mb-0">{{ license.code }} - {{ license.name }}</h1>
             <div class="d-flex gap-2">
                 {% can "archive" "update" %}
-                <a href="{% url 'archive:license_edit' license.pk %}" class="btn btn-sm btn-primary" data-modal-edit data-modal-title="编辑证照">编辑</a>
+                <a href="{% url 'archive:license_edit' license.pk %}" class="btn btn-sm btn-primary">编辑</a>
                 {% endcan %}
                 {% can "archive" "create" %}
-                <a href="{% url 'archive:annual_review_create' license.pk %}" class="btn btn-sm btn-outline-success" data-modal-add data-modal-title="年审登记 - {{ license.code }}">年审登记</a>
+                <a href="{% url 'archive:annual_review_create' license.pk %}" class="btn btn-sm btn-outline-success">年审登记</a>
                 {% if not license.is_borrowed %}
-                <a href="{% url 'archive:license_borrow_create' license.pk %}" class="btn btn-sm btn-outline-warning" data-modal-add data-modal-title="借阅登记 - {{ license.code }}">借阅</a>
+                <a href="{% url 'archive:license_borrow_create' license.pk %}" class="btn btn-sm btn-outline-warning">借阅</a>
                 {% endif %}
                 {% endcan %}
                 {% can "archive" "delete" %}

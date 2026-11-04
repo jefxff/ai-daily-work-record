@@ -1,0 +1,17 @@
+{% extends "records/base.html" %}
+{% block page_title %}{% if mode == 'edit' %}编辑台账{% else %}新建台账{% endif %}{% endblock %}
+{% block content %}
+<div class="form-container">
+    <div class="form-head">
+        <div>
+            <h1 class="form-title">{% if mode == 'edit' %}编辑台账{% else %}新建台账{% endif %}</h1>
+            <p class="form-subtitle">台账用于按客户或项目归集档案，保存后可继续在总览中补充档案明细。</p>
+        </div>
+        <a class="form-back" href="{{ cancel_url }}">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+            返回
+        </a>
+    </div>
+    {% include "archive/_ledger_form_modal.html" %}
+</div>
+{% endblock %}

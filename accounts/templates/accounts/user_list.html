@@ -27,7 +27,7 @@
             <a class="btn-transparent" href="{% url 'accounts:user_list' %}" style="text-decoration:none; display:inline-flex; align-items:center;" data-col-settings-anchor data-col-settings-position="after">重置</a>
         </form>
         {% can "system" "create" %}
-        <a class="btn-primary" href="{% url 'accounts:user_create' %}" data-modal-add data-modal-title="新建用户">+ 新建用户</a>
+        <a class="btn-primary" href="{% url 'accounts:user_create' %}">+ 新建用户</a>
         {% endcan %}
     </div>
 </div>
@@ -82,7 +82,7 @@
                         <button type="submit" class="btn-transparent btn-sm u-field-success">通过</button>
                     </form>
                     {% endif %}
-                    <a class="btn-transparent btn-sm" href="{% url 'accounts:user_edit' u.id %}" data-modal-edit data-modal-title="编辑用户：{{ u.username }}">编辑/角色</a>
+                    <a class="btn-transparent btn-sm" href="{% url 'accounts:user_edit' u.id %}">编辑/角色</a>
                     <a class="btn-transparent btn-sm" href="{% url 'accounts:user_reset_password' u.id %}">重置密码</a>
                     {% if u.id != request.user.id %}
                         {% if u.is_active %}

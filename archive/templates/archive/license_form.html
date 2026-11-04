@@ -1,14 +1,17 @@
 {% extends "records/base.html" %}
 {% block page_title %}{% if mode == 'edit' %}编辑{% else %}录入{% endif %}证照{% endblock %}
 {% block content %}
-<div class="container u-max-600">
-    <h1 class="page-title mb-4">{% if mode == 'edit' %}编辑{% else %}录入{% endif %}证照</h1>
-    {% if mode == 'edit' and license %}
-    <p class="text-muted mb-3">正在编辑：{{ license.code }} - {{ license.name }}</p>
-    {% endif %}
+<div class="form-container">
+    <div class="form-head">
+        <div>
+            <h1 class="form-title">{% if mode == 'edit' %}编辑{% else %}录入{% endif %}证照</h1>
+            <p class="form-subtitle">证照到期与年审时间会进入到期预警，请按实际有效期填写。</p>
+        </div>
+        <a class="form-back" href="{{ cancel_url }}">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+            返回证照列表
+        </a>
+    </div>
     {% include "archive/_license_form_modal.html" %}
-    <p class="mt-4">
-        <a class="btn-transparent" href="{% url 'archive:license_list' %}">返回证照列表</a>
-    </p>
 </div>
 {% endblock %}

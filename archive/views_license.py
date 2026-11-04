@@ -17,6 +17,7 @@ from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
+from django.urls import reverse
 from django.utils import timezone
 
 from accounts.decorators import perm_required
@@ -147,7 +148,10 @@ def license_create(request):
     if _is_ajax(request):
         html = render(request, "archive/_license_form_modal.html", {"form": form, "mode": "create"}).content.decode()
         return JsonResponse({"ok": True, "html": html})
-    return render(request, "archive/license_form.html", {"form": form, "mode": "create"})
+    return render(
+        request, "archive/license_form.html",
+        {"form": form, "mode": "create", "cancel_url": reverse("archive:license_list")},
+    )
 
 
 @perm_required("archive", "update")
@@ -167,7 +171,11 @@ def license_edit(request, pk):
     if _is_ajax(request):
         html = render(request, "archive/_license_form_modal.html", {"form": form, "mode": "edit", "license": lic}).content.decode()
         return JsonResponse({"ok": True, "html": html})
-    return render(request, "archive/license_form.html", {"form": form, "mode": "edit", "license": lic})
+    return render(
+        request, "archive/license_form.html",
+        {"form": form, "mode": "edit", "license": lic,
+         "cancel_url": reverse("archive:license_detail", kwargs={"pk": lic.pk})},
+    )
 
 
 @perm_required("archive", "delete")
@@ -233,7 +241,11 @@ def annual_review_create(request, license_pk):
         if request.method == "POST":
             return JsonResponse({"ok": False, "html": html}, status=422)
         return JsonResponse({"ok": True, "html": html})
-    return render(request, "archive/license_review_form.html", {"form": form, "license": lic})
+    return render(
+        request, "archive/license_review_form.html",
+        {"form": form, "license": lic,
+         "cancel_url": reverse("archive:license_detail", kwargs={"pk": lic.pk})},
+    )
 
 
 @perm_required("archive", "read")
@@ -288,7 +300,11 @@ def license_borrow_create(request, license_pk):
         if request.method == "POST":
             return JsonResponse({"ok": False, "html": html}, status=422)
         return JsonResponse({"ok": True, "html": html})
-    return render(request, "archive/license_borrow_form.html", {"form": form, "license": lic})
+    return render(
+        request, "archive/license_borrow_form.html",
+        {"form": form, "license": lic,
+         "cancel_url": reverse("archive:license_detail", kwargs={"pk": lic.pk})},
+    )
 
 
 @perm_required("archive", "update")

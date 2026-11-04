@@ -14,7 +14,7 @@
             <a href="{% url 'archive:table_import' 'cabinets' %}" class="btn btn-outline-secondary btn-sm">导入/更新</a>
             {% endcan %}
             {% can "archive" "create" %}
-            <a href="{% url 'archive:cabinet_create' %}" class="btn btn-primary" data-modal-add data-modal-title="新建档案柜">＋ 新建档案柜</a>
+            <a href="{% url 'archive:cabinet_create' %}" class="btn btn-primary">＋ 新建档案柜</a>
             {% endcan %}
     </div>
 
@@ -33,7 +33,7 @@
                 <td data-label="存放档案数">{{ row.archive_count }}</td>
                 <td data-label="操作">
                     {% can "archive" "update" %}
-                    <a href="{% url 'archive:cabinet_edit' row.cab.pk %}" class="btn btn-sm btn-outline-secondary" data-modal-edit data-modal-title="编辑档案柜">编辑</a>
+                    <a href="{% url 'archive:cabinet_edit' row.cab.pk %}" class="btn btn-sm btn-outline-secondary">编辑</a>
                     {% endcan %}
                     {% can "archive" "delete" %}
                     <a href="{% url 'archive:cabinet_delete' row.cab.pk %}" class="btn btn-sm btn-outline-danger">删除</a>

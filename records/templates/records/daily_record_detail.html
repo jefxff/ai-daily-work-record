@@ -7,7 +7,7 @@
 {% block top_nav_actions %}
     <a href="{% url 'daily_record_list' %}" class="btn-transparent">返回列表</a>
     {% can "daily_record" "update" %}
-    <a href="{% url 'daily_record_edit' record.id %}" class="btn-transparent" data-modal-edit data-modal-title="编辑每日记录">编辑记录</a>
+    <a href="{% url 'daily_record_edit' record.id %}" class="btn-transparent">编辑记录</a>
     {% endcan %}
     {% can "daily_record" "delete" %}
     <form class="u-inline" method="post" action="{% url 'daily_record_delete' record.id %}"  data-confirm="确定要删除这条记录吗？">{% csrf_token %}<button type="submit" class="btn-transparent btn-delete">删除记录</button></form>
@@ -27,5 +27,5 @@
 {% endblock %}
 
 {% block extra_css %}
-<link href="{% static 'css/daily-record.css' %}?v=20261104a" rel="stylesheet">
+<link href="{% static 'css/daily-record.css' %}?v=20261104b" rel="stylesheet">
 {% endblock %}

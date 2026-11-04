@@ -1,87 +1,87 @@
 {% extends 'knowledge_base/base.html' %}
 
 {% block knowledge_content %}
-<div class="card">
-    <div class="card-header bg-primary text-white">
-        <h1 class="h4">{{ title }}</h1>
+<div class="form-container">
+    <div class="form-head">
+        <div>
+            <h1 class="form-title">{{ title }}</h1>
+            <p class="form-subtitle">文档正文支持富文本粘贴；可见性设置为「全员」后，团队其他人可在知识库检索到。</p>
+        </div>
+        <a class="form-back" href="{% if document %}{% url 'knowledge_base:document_detail' document.pk %}{% else %}{% url 'knowledge_base:document_list' %}{% endif %}">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+            返回
+        </a>
     </div>
-    <div class="card-body">
-        <form method="post">
-            {% csrf_token %}
+
+    <form method="post" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+        <div class="form-alert">{{ form.non_field_errors|join:'；' }}</div>
+        {% endif %}
+
+        <div class="form-group">
+            <label class="form-label" for="{{ form.title.id_for_label }}">{{ form.title.label }}{% if form.title.field.required %} <span class="u-text-danger">*</span>{% endif %}</label>
+            {{ form.title }}
+            {% for error in form.title.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+        </div>
+
+        <div class="form-grid">
             <div class="form-group">
-                <label>{{ form.title.label }}</label>
-                {{ form.title }}
-                {% if form.title.errors %}
-                <div class="text-danger">{{ form.title.errors }}</div>
-                {% endif %}
-            </div>
-            
-            <div class="form-group">
-                <label>{{ form.category.label }}</label>
+                <label class="form-label" for="{{ form.category.id_for_label }}">{{ form.category.label }}</label>
                 {{ form.category }}
-                {% if form.category.errors %}
-                <div class="text-danger">{{ form.category.errors }}</div>
-                {% endif %}
+                {% for error in form.category.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
             </div>
-            
             <div class="form-group">
-                <label>{{ form.summary.label }}</label>
-                {{ form.summary }}
-                {% if form.summary.errors %}
-                <div class="text-danger">{{ form.summary.errors }}</div>
-                {% endif %}
-            </div>
-            
-            <div class="form-group">
-                <label>{{ form.content.label }}</label>
-                {{ form.content }}
-                {% if form.content.errors %}
-                <div class="text-danger">{{ form.content.errors }}</div>
-                {% endif %}
-            </div>
-            
-            <div class="form-group">
-                <label>{{ form.tags.label }}</label>
-                {{ form.tags }}
-                {% if form.tags.errors %}
-                <div class="text-danger">{{ form.tags.errors }}</div>
-                {% endif %}
-            </div>
-            
-            <div class="form-group">
-                <label>{{ form.status.label }}</label>
+                <label class="form-label" for="{{ form.status.id_for_label }}">{{ form.status.label }}</label>
                 {{ form.status }}
-                {% if form.status.errors %}
-                <div class="text-danger">{{ form.status.errors }}</div>
-                {% endif %}
+                {% for error in form.status.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
             </div>
+        </div>
 
-            <div class="form-group">
-                <label>可见性</label>
-                <div class="kb-vis-options" role="radiogroup" aria-label="可见性">
-                    {% for value, label in visibility_choices %}
-                    <label class="kb-vis-option">
-                        <input type="radio" name="visibility" value="{{ value }}"
-                               {% if current_visibility == value %}checked{% endif %}>
-                        <span>{{ label }}</span>
-                    </label>
-                    {% endfor %}
-                </div>
-                <p class="kb-vis-hint">新文档默认仅自己可见；设为全员可见后可随时收回，收回立即生效。</p>
-            </div>
+        <div class="form-group">
+            <label class="form-label" for="{{ form.summary.id_for_label }}">{{ form.summary.label }}</label>
+            {{ form.summary }}
+            {% for error in form.summary.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+        </div>
 
-            <div class="form-group d-flex gap-2">
-                <button type="submit" class="btn btn-primary">保存</button>
-                <a href="{% if document %}{% url 'knowledge_base:document_detail' document.pk %}{% else %}{% url 'knowledge_base:document_list' %}{% endif %}" class="btn btn-secondary">取消</a>
+        <div class="form-group">
+            <label class="form-label" for="{{ form.content.id_for_label }}">{{ form.content.label }}{% if form.content.field.required %} <span class="u-text-danger">*</span>{% endif %}</label>
+            {{ form.content }}
+            {% for error in form.content.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="{{ form.tags.id_for_label }}">{{ form.tags.label }}</label>
+            {{ form.tags }}
+            <div class="form-hint">多个标签用英文逗号分隔，便于检索。</div>
+            {% for error in form.tags.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">可见性</label>
+            <div class="kb-vis-options" role="radiogroup" aria-label="可见性">
+                {% for value, label in visibility_choices %}
+                <label class="kb-vis-option">
+                    <input type="radio" name="visibility" value="{{ value }}"
+                           {% if current_visibility == value %}checked{% endif %}>
+                    <span>{{ label }}</span>
+                </label>
+                {% endfor %}
             </div>
-        </form>
-    </div>
+            <p class="kb-vis-hint">新文档默认仅自己可见；设为全员可见后可随时收回，收回立即生效。</p>
+        </div>
+
+        <div class="form-actions">
+            <a class="btn-transparent" href="{% if document %}{% url 'knowledge_base:document_detail' document.pk %}{% else %}{% url 'knowledge_base:document_list' %}{% endif %}">取消</a>
+            <button type="submit" class="btn-primary">保存</button>
+        </div>
+    </form>
 </div>
 <style>
-    .card-body .kb-vis-options { display: flex; gap: 0.6rem; flex-wrap: wrap; }
-    .card-body .kb-vis-option { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.75rem; border: 1px solid var(--c-border); border-radius: 6px; cursor: pointer; font-size: 0.875rem; color: var(--c-text); background: var(--c-surface); }
-    .card-body .kb-vis-option:has(input:checked) { border-color: var(--c-primary); background: var(--c-primary-subtle); color: var(--c-primary); font-weight: 500; }
-    .card-body .kb-vis-option input { accent-color: var(--c-primary); margin: 0; }
-    .card-body .kb-vis-hint { font-size: 0.78rem; color: var(--c-text-tertiary); margin: 0.35rem 0 0; }
+    .kb-vis-options { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+    .kb-vis-option { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.75rem; border: 1px solid var(--c-border); border-radius: var(--r-sm); cursor: pointer; font-size: 0.875rem; color: var(--c-text); background: var(--c-surface); }
+    .kb-vis-option:has(input:checked) { border-color: var(--c-primary); background: var(--c-primary-subtle); color: var(--c-primary); font-weight: 500; }
+    .kb-vis-option input { accent-color: var(--c-primary); margin: 0; }
+    .kb-vis-hint { font-size: 0.78rem; color: var(--c-text-tertiary); margin: 0.35rem 0 0; }
 </style>
 {% endblock %}

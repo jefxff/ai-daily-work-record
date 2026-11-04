@@ -1,14 +1,14 @@
 {% load static %}
 {# 弹窗自带的样式引用：无论从哪一页注入都能拿到同一份（文件已缓存，重复引用不产生新请求） #}
 <link href="{% static 'css/daily-record.css' %}?v=20261104a" rel="stylesheet">
-<form class="dr-form" data-validate="1" novalidate method="post" data-modal-form action="{% if record %}{% url 'daily_record_edit' record.id %}{% else %}{% url 'daily_record_add' %}{% endif %}">
+<form class="dr-form" data-validate="1" novalidate method="post" action="{% if record %}{% url 'daily_record_edit' record.id %}{% else %}{% url 'daily_record_add' %}{% endif %}">
     {% csrf_token %}
     {% include 'records/_daily_record_form_fields.html' %}
 
     {# 弹窗底部操作：取消靠左、保存靠右；保存用主色实心（原为 .btn-delete 的危险红，语义相反） #}
     <div class="form-modal-actions">
-        <button type="button" class="btn-transparent" data-modal-close>取消</button>
-        <button type="submit" class="btn-primary" data-modal-save>{% if record %}保存修改{% else %}保存记录{% endif %}</button>
+        <button type="button" class="btn-transparent">取消</button>
+        <button type="submit" class="btn-primary">{% if record %}保存修改{% else %}保存记录{% endif %}</button>
     </div>
 </form>
 

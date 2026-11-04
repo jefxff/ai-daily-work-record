@@ -214,7 +214,7 @@
         </form>
         <div class="ms-auto lg-actions">
             {% can "archive" "create" %}
-            <a href="{% url 'archive:ledger_create' %}" class="btn btn-primary btn-sm" data-modal-add data-modal-title="新建台账">＋ 新建台账</a>
+            <a href="{% url 'archive:ledger_create' %}" class="btn btn-primary btn-sm">＋ 新建台账</a>
             {% endcan %}
             <details class="tb-more" id="archiveMore">
                 <summary class="btn btn-outline-secondary btn-sm" role="button" aria-controls="archiveMoreMenu">
@@ -223,7 +223,7 @@
                 </summary>
                 <div class="tb-more-menu" id="archiveMoreMenu">
                     {% can "archive" "create" %}
-                    <a href="{% url 'archive:archive_create' %}" data-modal-add data-modal-title="录入档案">录入档案</a>
+                    <a href="{% url 'archive:archive_create' %}">录入档案</a>
                     {% endcan %}
                     {% can "archive" "read" %}
                     <button type="button" id="btnBatchExport" title="勾选台账后批量导出（每个台账一个工作表）；未勾选时请先勾选">导出所选台账</button>
@@ -314,7 +314,7 @@
                             <div class="lg-row-actions">
                                 <a class="btn btn-sm btn-outline-primary" href="{% url 'archive:archive_detail' a.pk %}">详情</a>
                                 {% can "archive" "update" %}
-                                <a class="btn btn-sm btn-outline-secondary" href="{% url 'archive:archive_edit' a.pk %}" data-modal-edit data-modal-title="编辑档案">编辑</a>
+                                <a class="btn btn-sm btn-outline-secondary" href="{% url 'archive:archive_edit' a.pk %}">编辑</a>
                                 {% endcan %}
                             </div>
                         </td>
@@ -331,7 +331,7 @@
     </div>
     {% empty %}
     <div class="lg-card text-center text-muted py-5">
-        暂无台账。{% can "archive" "create" %}<a href="{% url 'archive:ledger_create' %}" data-modal-add data-modal-title="新建台账">立即新建</a>
+        暂无台账。{% can "archive" "create" %}<a href="{% url 'archive:ledger_create' %}">立即新建</a>
         或 <a href="{% url 'archive:ledger_batch_import' %}">批量导入</a>（Excel 工作表名 = 台账名，自动建台账）{% endcan %}
     </div>
     {% endfor %}
@@ -415,7 +415,7 @@
                             <div class="lg-row-actions">
                                 <a class="btn btn-sm btn-outline-primary" href="{% url 'archive:archive_detail' a.pk %}">详情</a>
                                 {% can "archive" "update" %}
-                                <a class="btn btn-sm btn-outline-secondary" href="{% url 'archive:archive_edit' a.pk %}" data-modal-edit data-modal-title="编辑档案">编辑</a>
+                                <a class="btn btn-sm btn-outline-secondary" href="{% url 'archive:archive_edit' a.pk %}">编辑</a>
                                 {% endcan %}
                             </div>
                         </td>

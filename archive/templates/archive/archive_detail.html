@@ -36,6 +36,10 @@
 
     /* 电子档案面板 */
     .arc-file-panel { border: 1px solid var(--c-border); border-radius: 10px; padding: 1rem 1.25rem; background: var(--c-surface-sunken); }
+    /* 上传条：文件框可收缩，上传按钮不换行 */
+    .arc-upload-bar { flex-wrap: nowrap; }
+    .arc-upload-input { flex: 1 1 200px; min-width: 0; max-width: 320px; }
+    .arc-upload-btn { flex: none; white-space: nowrap; }
     .arc-file-name { font-weight: 600; color: var(--c-text); word-break: break-all; }
     .arc-file-badge { background: var(--c-primary-subtle) !important; color: var(--c-primary-active) !important; font-weight: 500; }
     /* 附件行：缩略图 + 信息 + 操作 */
@@ -86,7 +90,7 @@
                     </form>
                     {% endif %}
                 {% endif %}
-                <a href="{% url 'archive:archive_edit' archive.pk %}" class="btn btn-sm btn-primary" data-modal-edit data-modal-title="编辑档案">编辑</a>
+                <a href="{% url 'archive:archive_edit' archive.pk %}" class="btn btn-sm btn-primary">编辑</a>
                 <a href="{% url 'archive:archive_move' archive.pk %}" class="btn btn-sm btn-outline-primary">移动位置</a>
                 {% endcan %}
                 {% can "archive" "delete" %}
@@ -221,11 +225,10 @@
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
                     <h6 class="arc-sec-title mb-0">电子档案 <span class="badge arc-file-badge">{{ files|length }}</span></h6>
                     {% can "archive" "update" %}
-                    <div class="d-flex gap-2 align-items-center">
-                        <input type="file" id="arcUploadInput" multiple class="form-control form-control-sm"
-                               accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.7z,.txt"
-                               style="max-width: 320px;">
-                        <button type="button" class="btn btn-sm btn-primary" id="btnUploadFiles">上传附件</button>
+                    <div class="d-flex gap-2 align-items-center arc-upload-bar">
+                        <input type="file" id="arcUploadInput" multiple class="form-control form-control-sm arc-upload-input"
+                               accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.7z,.txt">
+                        <button type="button" class="btn btn-sm btn-primary arc-upload-btn" id="btnUploadFiles">上传附件</button>
                     </div>
                     {% endcan %}
                 </div>
@@ -275,7 +278,7 @@
     <div class="card mb-4">
         <div class="card-header"><h5 class="mb-0">借阅登记</h5></div>
         <div class="card-body">
-            <a href="{% url 'archive:borrow_create' archive.pk %}" class="btn btn-primary" data-modal-add data-modal-title="借阅登记 - {{ archive.code }}">借阅此档案</a>
+            <a href="{% url 'archive:borrow_create' archive.pk %}" class="btn btn-primary d-inline-flex align-items-center align-self-start">借阅此档案</a>
             {% if free_cells is not None %}<small class="text-muted ms-2">当前空位：{{ free_cells }}</small>{% endif %}
         </div>
     </div>

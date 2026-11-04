@@ -656,6 +656,7 @@ decoration_delete = make_delete_view(
 customer_credit_delete = make_delete_view(
     model=CustomerCredit, perm_module='customer_credit', label='客户账期',
     display_field='customer_name', redirect_name='customer_credit_list',
+    after_delete=lambda obj, obj_id: attachment_services.delete_for_object(obj, obj_id),
 )
 
 customer_complaint_delete = make_delete_view(
@@ -947,10 +948,13 @@ def customer_credit_detail(request, pk):
     credit = get_object_or_404(CustomerCredit, pk=pk)
     linked_reviews = credit.reviews.order_by('-id')
     _ensure_credit_docs(credit)
+    docs = list(credit.docs.all())
     return render(request, 'records/customer_credit_detail.html', {
         'credit': credit,
         'linked_reviews': linked_reviews,
-        'docs': credit.docs.all(),
+        'docs': docs,
+        'provided_doc_count': sum(1 for d in docs if d.status == '已收集'),
+        **attachment_services.panel_context(request, credit),
     })
 
 
@@ -971,7 +975,8 @@ def customer_credit_docs_save(request, pk):
         doc.status = status
         doc.note = (request.POST.get(prefix + 'note') or '')[:300]
         collected = parse_date(request.POST.get(prefix + 'date') or '')
-        doc.collected_date = collected
+        # 只有「已提供」才保留收集日期；待处理 / 不适用 一律清空，与前端联动一致
+        doc.collected_date = collected if status == '已收集' else None
         upload = request.FILES.get(prefix + 'file')
         if upload:
             if doc.attachment:

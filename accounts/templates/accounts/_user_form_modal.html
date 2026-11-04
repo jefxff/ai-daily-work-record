@@ -1,4 +1,4 @@
-<form data-validate="1" novalidate method="post" data-modal-form action="{{ request.path }}" autocomplete="off">
+<form data-validate="1" novalidate method="post" action="{{ request.path }}" autocomplete="off">
     {% csrf_token %}
 
     {% if form.non_field_errors %}
@@ -67,8 +67,8 @@
     </div>
 
     <div class="form-modal-actions">
-        <button type="button" class="btn-transparent" data-modal-close>取消</button>
-        <button type="submit" class="btn-transparent btn-delete" data-modal-save>{% if mode == 'create' %}创建用户{% else %}保存修改{% endif %}</button>
+        <button type="button" class="btn-transparent">取消</button>
+        <button type="submit" class="btn-transparent btn-delete">{% if mode == 'create' %}创建用户{% else %}保存修改{% endif %}</button>
     </div>
 </form>
 

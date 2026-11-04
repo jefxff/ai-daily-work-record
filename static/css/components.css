@@ -358,8 +358,7 @@ body.sidebar-open .sidebar-scrim { display: block; }
      ① 三个动作统一成同一规格的微按钮：常态无底色无边框、文字走次级色；
         悬停 / 键盘聚焦才浮出浅底，视觉重量大幅下降。
      ② 图标用 mask-image 注入，以 [data-act]（base.html 从按钮文字推导）为主，
-        模板里已有的 [data-modal-detail] / [data-modal-edit] / .btn-delete /
-        href 关键字为辅；未命中钩子的动作（归还 / 恢复 / 下载 / 撤销…）不出
+        .btn-delete / href 关键字为辅；未命中钩子的动作（归还 / 恢复 / 下载 / 撤销…）不出
         图标，但仍自动获得同一套安静的微按钮观感。
      ③ 删除常态不"喊"，只在「行悬停 / 键盘聚焦 / 触屏设备」时转危险红。
      ④ 桌面端只留图标，鼠标移入 / 键盘聚焦时浮出文字气泡（§6b）；
@@ -462,18 +461,17 @@ html.act-icons td[data-label="操作"] [data-act="detail"]::before {
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1.8 12S5.4 5.6 12 5.6 22.2 12 22.2 12 18.6 18.4 12 18.4 1.8 12 1.8 12z'/%3E%3Ccircle cx='12' cy='12' r='3.1'/%3E%3C/svg%3E");
   mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1.8 12S5.4 5.6 12 5.6 22.2 12 22.2 12 18.6 18.4 12 18.4 1.8 12 1.8 12z'/%3E%3Ccircle cx='12' cy='12' r='3.1'/%3E%3C/svg%3E");
 }
-/* 兜底：模板里已有 [data-modal-detail] / href 含 detail、但脚本没能从文字推导出
-   data-act 的按钮，同样给眼睛图标。
+/* 兜底：href 含 detail、但脚本没能从文字推导出 data-act 的按钮，同样给眼睛图标。
    这里用 :where() 把特异度压到 0 —— 若写成 :is(...)，其中 a[href*="detail"]
    会把整条规则抬到 (0,4,3)，压过上面按文字推导的 [data-act="timeline"] /
    [data-act="policy"]，保险续保视图的两枚图标就会被强制回眼睛。 */
-html.act-icons td[data-label="操作"] :where([data-modal-detail], a[href*="detail"])::before {
+html.act-icons td[data-label="操作"] :where(a[href*="detail"])::before {
   width: 15px;
   margin-right: 5px;
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1.8 12S5.4 5.6 12 5.6 22.2 12 22.2 12 18.6 18.4 12 18.4 1.8 12 1.8 12z'/%3E%3Ccircle cx='12' cy='12' r='3.1'/%3E%3C/svg%3E");
   mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1.8 12S5.4 5.6 12 5.6 22.2 12 22.2 12 18.6 18.4 12 18.4 1.8 12 1.8 12z'/%3E%3Ccircle cx='12' cy='12' r='3.1'/%3E%3C/svg%3E");
 }
-html.act-icons td[data-label="操作"] :is([data-act="edit"], [data-modal-edit])::before {
+html.act-icons td[data-label="操作"] :is([data-act="edit"], a[href*="/edit"])::before {
   width: 15px;
   margin-right: 5px;
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 20.2h4.2L20.6 7.8a2.9 2.9 0 0 0-4.1-4.1L4 16.1v4.1z'/%3E%3Cpath d='M14.8 5.4l3.8 3.8'/%3E%3C/svg%3E");

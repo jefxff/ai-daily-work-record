@@ -4,10 +4,10 @@
 <li class="home-rows__item">
     {% if request.user|can_do:'daily_record.update' %}
     <a class="home-row{% if record.is_overdue %} home-row--danger{% elif record.due_date and record.days_left <= 3 %} home-row--warning{% endif %}"
-       href="{% url 'daily_record_edit' record.pk %}" data-modal-edit data-modal-title="编辑每日记录">
+       href="{% url 'daily_record_edit' record.pk %}">
     {% else %}
     <a class="home-row{% if record.is_overdue %} home-row--danger{% elif record.due_date and record.days_left <= 3 %} home-row--warning{% endif %}"
-       href="{% url 'daily_record_detail' record.pk %}" data-modal-detail data-modal-title="每日记录详情">
+       href="{% url 'daily_record_detail' record.pk %}">
     {% endif %}
         <span class="home-row__flag" aria-hidden="true"></span>
         <div class="home-row__main">

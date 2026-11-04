@@ -1,8 +1,17 @@
 {% extends "records/base.html" %}
-{% block page_title %}{% if mode == 'edit' %}编辑{% else %}新建{% endif %}类别{% endblock %}
+{% block page_title %}{% if mode == 'edit' %}编辑{% else %}新建{% endif %}档案分类{% endblock %}
 {% block content %}
-<div class="container u-max-600">
-    <h1 class="page-title mb-4">{% if mode == 'edit' %}编辑{% else %}新建{% endif %}类别</h1>
+<div class="form-container">
+    <div class="form-head">
+        <div>
+            <h1 class="form-title">{% if mode == 'edit' %}编辑{% else %}新建{% endif %}档案分类</h1>
+            <p class="form-subtitle">分类会参与档案编号与保管期限规则，修改后立即生效。</p>
+        </div>
+        <a class="form-back" href="{{ cancel_url }}">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+            返回
+        </a>
+    </div>
     {% include "archive/_category_form_modal.html" %}
 </div>
 {% endblock %}

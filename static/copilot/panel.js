@@ -25,7 +25,13 @@
     var state = {
         conversationId: null, busy: false, pos: null, pinned: false, size: null,
         examples: [],          // 首屏示例，历史/新对话之间来回切时复用
-        lastRun: null          // 当前 run 的 id，流式/轮询共用
+        lastRun: null,         // 当前 run 的 id，流式/轮询共用
+        mode: 'auto'           // auto | business | free_chat
+    };
+    var MODE_LABELS = {
+        auto:      { short: '自动', hint: '自动模式：闲聊自由回答，业务查询走工具链' },
+        business:  { short: '业务', hint: '业务模式：所有问题走业务查询（不开闲聊）' },
+        free_chat: { short: '闲聊', hint: '闲聊模式：自由对话，不走业务查询' }
     };
     // 点踩原因：和服务端 CopilotFeedback.Reason 的取值一一对应（前端只发 code）
     var FEEDBACK_REASONS = [
@@ -35,6 +41,7 @@
         { code: 'slow', label: '太慢' }
     ];
     var pinBtn = document.getElementById('copilotPin');
+    var chatModeBtn = document.getElementById('copilotChatMode');
     var draftAllowed = false;   // bootstrap 回传：无知识库新建权限时不显示「存草稿」
     var examplesCache = [];
     var moduleLabels = {};      // 步骤行里显示"查询列表 · 试样试产"，用户才知道查的是哪块
@@ -514,7 +521,8 @@
 
         request('/copilot/ask/', {
             method: 'POST',
-            body: { question: text, conversation_id: state.conversationId }
+            body: { question: text, conversation_id: state.conversationId,
+                    mode: state.mode }
         }).then(function (data) {
             if (data.conversation_id) state.conversationId = data.conversation_id;
             if (data.sync && data.finished) {
@@ -967,6 +975,32 @@
             setPinned(!state.pinned);
         });
     }
+
+    if (chatModeBtn) {
+        chatModeBtn.addEventListener('click', function () {
+            // auto → free_chat → business → auto 三态循环
+            var next = { auto: 'free_chat', free_chat: 'business', business: 'auto' };
+            setMode(next[state.mode]);
+        });
+    }
+
+    function setMode(mode) {
+        state.mode = mode;
+        var labels = MODE_LABELS[mode] || MODE_LABELS.auto;
+        if (chatModeBtn) {
+            chatModeBtn.setAttribute('aria-pressed', mode === 'free_chat' ? 'true' : 'false');
+            chatModeBtn.title = labels.hint;
+            chatModeBtn.classList.toggle('is-free', mode === 'free_chat');
+            chatModeBtn.classList.toggle('is-business', mode === 'business');
+        }
+        // 给用户一个可见反馈
+        badge.textContent = '模式：' + labels.short;
+        badge.hidden = false;
+        clearTimeout(setMode._t);
+        setMode._t = setTimeout(function () { badge.hidden = true; }, 2000);
+    }
+    // 初始化按钮状态
+    setMode(state.mode);
 
     window.addEventListener('resize', function () {
         if (panel.hidden) return;

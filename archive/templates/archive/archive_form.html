@@ -1,8 +1,17 @@
 {% extends "records/base.html" %}
 {% block page_title %}{% if mode == 'edit' %}编辑{% else %}录入{% endif %}档案{% endblock %}
 {% block content %}
-<div class="container" style="max-width:700px">
-    <h1 class="page-title mb-4">{% if mode == 'edit' %}编辑{% else %}录入{% endif %}档案</h1>
+<div class="form-container">
+    <div class="form-head">
+        <div>
+            <h1 class="form-title">{% if mode == 'edit' %}编辑{% else %}录入{% endif %}档案</h1>
+            <p class="form-subtitle">维护档案编号、归属分类与存放位置；带 * 的字段为必填项。</p>
+        </div>
+        <a class="form-back" href="{{ cancel_url }}">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+            返回
+        </a>
+    </div>
     {% include "archive/_archive_form_modal.html" %}
 </div>
 {% endblock %}

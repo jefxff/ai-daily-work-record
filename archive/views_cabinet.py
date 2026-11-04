@@ -14,6 +14,7 @@ from django.db import transaction
 from django.db.models import Count
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 
 from accounts.decorators import perm_required
 from records.crud import _per_page
@@ -68,12 +69,15 @@ def _parse_layer_cells(post, layers, instance=None):
     return [post.get(f"layer_cell_{i}") or existing.get(i, 10) for i in range(1, layers + 1)]
 
 
-def _cabinet_modal_ctx(form, mode, cabinet=None):
-    """弹窗/整页柜子表单渲染 context：带上现有各层格数供 JS 预填。"""
+def _cabinet_form_ctx(form, mode, cabinet=None):
+    """柜子表单渲染 context：带上现有各层格数供 JS 预填。"""
     cells = []
     if cabinet is not None and cabinet.pk:
         cells = list(cabinet.layer_configs.order_by("layer_no").values_list("cells", flat=True))
-    ctx = {"form": form, "mode": mode, "layer_cells_json": json.dumps(cells)}
+    ctx = {
+        "form": form, "mode": mode, "layer_cells_json": json.dumps(cells),
+        "cancel_url": reverse("archive:cabinet_list"),
+    }
     if cabinet is not None:
         ctx["cabinet"] = cabinet
     return ctx
@@ -103,12 +107,12 @@ def cabinet_create(request):
                 return JsonResponse({"ok": True, "message": f"档案柜 {cab.code} 已创建"})
             return redirect("archive:overview")
     if _is_ajax(request) and request.method == "POST":
-        html = render(request, "archive/_cabinet_form_modal.html", _cabinet_modal_ctx(form, "create")).content.decode()
+        html = render(request, "archive/_cabinet_form_modal.html", _cabinet_form_ctx(form, "create")).content.decode()
         return JsonResponse({"ok": False, "html": html}, status=422)
     if _is_ajax(request):
-        html = render(request, "archive/_cabinet_form_modal.html", _cabinet_modal_ctx(form, "create")).content.decode()
+        html = render(request, "archive/_cabinet_form_modal.html", _cabinet_form_ctx(form, "create")).content.decode()
         return JsonResponse({"ok": True, "html": html})
-    return render(request, "archive/cabinet_form.html", _cabinet_modal_ctx(form, "create"))
+    return render(request, "archive/cabinet_form.html", _cabinet_form_ctx(form, "create"))
 
 
 @perm_required("archive", "update")
@@ -122,12 +126,12 @@ def cabinet_edit(request, pk):
                 return JsonResponse({"ok": True, "message": "档案柜已更新"})
             return redirect("archive:overview")
     if _is_ajax(request) and request.method == "POST":
-        html = render(request, "archive/_cabinet_form_modal.html", _cabinet_modal_ctx(form, "edit", cab)).content.decode()
+        html = render(request, "archive/_cabinet_form_modal.html", _cabinet_form_ctx(form, "edit", cab)).content.decode()
         return JsonResponse({"ok": False, "html": html}, status=422)
     if _is_ajax(request):
-        html = render(request, "archive/_cabinet_form_modal.html", _cabinet_modal_ctx(form, "edit", cab)).content.decode()
+        html = render(request, "archive/_cabinet_form_modal.html", _cabinet_form_ctx(form, "edit", cab)).content.decode()
         return JsonResponse({"ok": True, "html": html})
-    return render(request, "archive/cabinet_form.html", _cabinet_modal_ctx(form, "edit", cab))
+    return render(request, "archive/cabinet_form.html", _cabinet_form_ctx(form, "edit", cab))
 
 
 @perm_required("archive", "delete")

@@ -178,7 +178,7 @@
             <a class="btn-secondary" href="{% if list_qs %}{% url 'samples:list' %}?{{ list_qs }}{% else %}{% url 'samples:list' %}{% endif %}">← 返回列表</a>
             {% if not sample.is_deleted %}
             {% can "samples" "update" %}
-            <a class="btn-transparent" href="{% url 'samples:edit' sample.pk %}" data-modal-edit data-modal-title="编辑样品">编辑</a>
+            <a class="btn-transparent" href="{% url 'samples:edit' sample.pk %}">编辑</a>
             {% if can_terminate %}<a class="btn-transparent" href="{% url 'samples:terminate' sample.pk %}" style="background:var(--c-warning-bg) !important; color:var(--c-warning) !important; border-color:var(--c-warning-line) !important;">终止</a>{% endif %}
             {% endcan %}
             {% can "samples" "delete" %}
@@ -191,7 +191,7 @@
         <div class="info-item"><div class="info-label">物料名称</div><div class="info-value">{{ sample.material_name }}</div></div>
         <div class="info-item"><div class="info-label">型号</div><div class="info-value">{{ sample.model }}</div></div>
         <div class="info-item"><div class="info-label">物料规格</div><div class="info-value">{{ sample.spec|default:'—' }}</div></div>
-        <div class="info-item"><div class="info-label">供应商</div><div class="info-value">{% if sample.supplier %}<a href="{% url 'samples:partner_detail' sample.supplier.pk %}" data-modal-detail data-modal-title="{{ sample.supplier.name }} 档案">{{ sample.supplier.name }}</a>{% else %}—{% endif %}</div></div>
+        <div class="info-item"><div class="info-label">供应商</div><div class="info-value">{% if sample.supplier %}<a href="{% url 'samples:partner_detail' sample.supplier.pk %}">{{ sample.supplier.name }}</a>{% else %}—{% endif %}</div></div>
         <div class="info-item">
             <div class="info-label">供应商类型</div>
             <div class="info-value">
@@ -285,7 +285,7 @@
         <div class="record-card">
             <div class="record-title">
                 <h3>🧪 试样记录（共 {{ test_records|length }} 轮）</h3>
-                {% if can_add_test and request.user|can_do:'samples.create' %}<a class="btn-primary btn-sm" href="{% url 'samples:test_create' sample.pk %}" data-modal-add data-modal-title="新增第{{ test_records|length|add:'1' }}轮试样记录">＋ 新增第{{ test_records|length|add:"1" }}轮</a>{% endif %}
+                {% if can_add_test and request.user|can_do:'samples.create' %}<a class="btn-primary btn-sm" href="{% url 'samples:test_create' sample.pk %}">＋ 新增第{{ test_records|length|add:"1" }}轮</a>{% endif %}
             </div>
             {% if test_records %}
             <div class="table-responsive">
@@ -307,7 +307,7 @@
                             <td data-label="操作">
                                 <div class="u-toolbar-inline">
                                     {% can "samples" "update" %}
-                                    <a href="{% url 'samples:test_edit' sample.pk record.pk %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑第{{ record.round_no }}轮试样记录">编辑</a>
+                                    <a href="{% url 'samples:test_edit' sample.pk record.pk %}" class="btn-transparent btn-sm">编辑</a>
                                     {% endcan %}
                                     {% can "samples" "delete" %}
                                     <a href="{% url 'samples:test_delete' sample.pk record.pk %}" class="btn-transparent btn-sm btn-delete">删除</a>
@@ -328,7 +328,7 @@
         <div class="record-card">
             <div class="record-title">
                 <h3>🏭 小批量验证记录（共 {{ batch_records|length }} 批）</h3>
-                {% if can_add_batch and request.user|can_do:'samples.create' %}<a class="btn-primary btn-sm" href="{% url 'samples:batch_create' sample.pk %}" data-modal-add data-modal-title="新增第{{ batch_records|length|add:'1' }}批小批量记录">＋ 新增第{{ batch_records|length|add:"1" }}批</a>{% endif %}
+                {% if can_add_batch and request.user|can_do:'samples.create' %}<a class="btn-primary btn-sm" href="{% url 'samples:batch_create' sample.pk %}">＋ 新增第{{ batch_records|length|add:"1" }}批</a>{% endif %}
             </div>
             {% if batch_records %}
             <div class="table-responsive">
@@ -349,7 +349,7 @@
                             <td data-label="操作">
                                 <div class="u-toolbar-inline">
                                     {% can "samples" "update" %}
-                                    <a href="{% url 'samples:batch_edit' sample.pk record.pk %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑第{{ record.round_no }}批小批量记录">编辑</a>
+                                    <a href="{% url 'samples:batch_edit' sample.pk record.pk %}" class="btn-transparent btn-sm">编辑</a>
                                     {% endcan %}
                                     {% can "samples" "delete" %}
                                     <a href="{% url 'samples:batch_delete' sample.pk record.pk %}" class="btn-transparent btn-sm btn-delete">删除</a>
@@ -371,10 +371,10 @@
         <div class="record-card">
             <div class="record-title">
                 <h3>📋 现场审核验证记录（共 {{ audit_records|length }} 轮）</h3>
-                {% if can_add_audit and sample.supplier and request.user|can_do:'samples.create' %}<a class="btn-transparent btn-sm" href="{% url 'samples:audit_create' sample.supplier.pk %}" data-modal-add data-modal-title="新增审厂记录">＋ 登记审厂</a>{% endif %}
+                {% if can_add_audit and sample.supplier and request.user|can_do:'samples.create' %}<a class="btn-transparent btn-sm" href="{% url 'samples:audit_create' sample.supplier.pk %}">＋ 登记审厂</a>{% endif %}
             </div>
             {% if sample.supplier %}
-            <div class="audit-hint">① 审厂记录按供应商管理，同一供应商的所有样品共享，删除操作请前往 <a href="{% url 'samples:partner_detail' sample.supplier.pk %}" data-modal-detail data-modal-title="{{ sample.supplier.name }} 档案">供应商档案</a>。</div>
+            <div class="audit-hint">① 审厂记录按供应商管理，同一供应商的所有样品共享，删除操作请前往 <a href="{% url 'samples:partner_detail' sample.supplier.pk %}">供应商档案</a>。</div>
             {% endif %}
             {% if audit_records %}
             <div class="table-responsive">
@@ -394,7 +394,7 @@
                             <td data-label="操作">
                                 <div class="u-toolbar-inline">
                                     {% can "samples" "update" %}
-                                    <a href="{% url 'samples:audit_edit' sample.supplier.pk record.pk %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑第{{ record.round_no }}轮审厂记录">编辑</a>
+                                    <a href="{% url 'samples:audit_edit' sample.supplier.pk record.pk %}" class="btn-transparent btn-sm">编辑</a>
                                     {% endcan %}
                                     {% can "samples" "delete" %}
                                     <a href="{% url 'samples:audit_delete' sample.supplier.pk record.pk %}" class="btn-transparent btn-sm btn-delete">删除</a>

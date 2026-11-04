@@ -7,53 +7,62 @@
 {% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>{% if mode == 'create' %}新建用户{% else %}编辑用户：{{ target.username }}{% endif %}</h1>
-</div>
-<div style="max-width:640px; background:var(--c-surface); border-radius:8px; box-shadow:var(--sh-card); padding:1.75rem;">
-    {% if form.non_field_errors %}
-    <div class="u-alert-danger">
-        {{ form.non_field_errors|join:'；' }}
+<div class="form-container">
+    <div class="form-head">
+        <div>
+            <h1 class="form-title">{% if mode == 'create' %}新建用户{% else %}编辑用户：{{ target.username }}{% endif %}</h1>
+            <p class="form-subtitle">账号权限由所分配的角色决定，多个角色取权限并集。</p>
+        </div>
+        <a class="form-back" href="{% url 'accounts:user_list' %}">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+            返回
+        </a>
     </div>
+
+    {% if form.non_field_errors %}
+    <div class="form-alert">{{ form.non_field_errors|join:'；' }}</div>
     {% endif %}
+
     <form data-validate="1" novalidate method="post">
         {% csrf_token %}
 
         {% if mode == 'create' %}
-        <div class="mb-3">
-            <label class="form-label u-form-label" for="id_username">用户名 <span class="u-text-danger">*</span></label>
+        <div class="form-group">
+            <label class="form-label" for="id_username">用户名 <span class="u-text-danger">*</span></label>
             <input type="text" id="id_username" name="username" class="form-control" value="{{ form.username.value|default:'' }}" maxlength="150" autocomplete="username" required>
-            {% if form.username.errors %}<div class="u-hint-danger">{{ form.username.errors|join:'；' }}</div>{% endif %}
+            {% if form.username.errors %}<div class="field-error">{{ form.username.errors|join:'；' }}</div>{% endif %}
         </div>
-        <div class="mb-3">
-            <label class="form-label u-form-label" for="id_password">初始密码 <span class="u-text-danger">*</span></label>
+        <div class="form-group">
+            <label class="form-label" for="id_password">初始密码 <span class="u-text-danger">*</span></label>
             <input type="password" id="id_password" name="password" class="form-control" autocomplete="new-password" required maxlength="128">
-            {% if form.password.errors %}<div class="u-hint-danger">{{ form.password.errors|join:'；' }}</div>{% endif %}
+            {% if form.password.errors %}<div class="field-error">{{ form.password.errors|join:'；' }}</div>{% endif %}
         </div>
         {% else %}
-        <div class="mb-3" style="font-size:0.85rem; color:var(--c-text-secondary);">
+        <div class="form-hint mb-3">
             用户名不可修改。如需重置登录密码，请使用「重置密码」功能。
         </div>
         {% endif %}
 
-        <div class="mb-3">
-            <label class="form-label u-form-label" for="id_real_name">姓名</label>
-            <input type="text" id="id_real_name" name="real_name" class="form-control" value="{{ form.real_name.value|default:'' }}" maxlength="50">
-            {% if form.real_name.errors %}<div class="u-hint-danger">{{ form.real_name.errors|join:'；' }}</div>{% endif %}
-        </div>
-        <div class="mb-3">
-            <label class="form-label u-form-label" for="id_department">部门</label>
-            <input type="text" id="id_department" name="department" class="form-control" value="{{ form.department.value|default:'' }}" maxlength="100">
-            {% if form.department.errors %}<div class="u-hint-danger">{{ form.department.errors|join:'；' }}</div>{% endif %}
-        </div>
-        <div class="mb-3">
-            <label class="form-label u-form-label" for="id_position">岗位</label>
-            <input type="text" id="id_position" name="position" class="form-control" value="{{ form.position.value|default:'' }}" maxlength="100">
-            {% if form.position.errors %}<div class="u-hint-danger">{{ form.position.errors|join:'；' }}</div>{% endif %}
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label" for="id_real_name">姓名</label>
+                <input type="text" id="id_real_name" name="real_name" class="form-control" value="{{ form.real_name.value|default:'' }}" maxlength="50">
+                {% if form.real_name.errors %}<div class="field-error">{{ form.real_name.errors|join:'；' }}</div>{% endif %}
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="id_department">部门</label>
+                <input type="text" id="id_department" name="department" class="form-control" value="{{ form.department.value|default:'' }}" maxlength="100">
+                {% if form.department.errors %}<div class="field-error">{{ form.department.errors|join:'；' }}</div>{% endif %}
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="id_position">岗位</label>
+                <input type="text" id="id_position" name="position" class="form-control" value="{{ form.position.value|default:'' }}" maxlength="100">
+                {% if form.position.errors %}<div class="field-error">{{ form.position.errors|join:'；' }}</div>{% endif %}
+            </div>
         </div>
 
-        <div class="mb-3">
-            <label class="form-label" style="font-size:0.875rem; color:var(--c-text-secondary); font-weight:600; display:block; margin-bottom:0.5rem;">分配角色（可多选，权限取并集）</label>
+        <div class="form-group">
+            <label class="form-label">分配角色（可多选，权限取并集）</label>
             <div class="u-stack-tight">
                 {% for r in roles %}
                 <label class="u-toolbar-sm">
@@ -63,11 +72,13 @@
                     {% if r.is_builtin %}<span class="status-badge default">内置</span>{% endif %}
                     <span class="u-hint-tertiary">{{ r.description }}</span>
                 </label>
+                {% empty %}
+                <span class="u-hint-tertiary">暂无可分配角色</span>
                 {% endfor %}
             </div>
         </div>
 
-        <div class="mb-3 u-stack-tight">
+        <div class="form-group u-stack-tight">
             <label class="u-toolbar-sm">
                 {{ form.is_active }} {{ form.is_active.label }}
             </label>
@@ -80,11 +91,11 @@
             </label>
         </div>
 
-        <div style="display:flex; gap:0.75rem; margin-top:1.25rem;">
-            <button type="submit" class="btn-primary btn-sm u-pad-btn">
+        <div class="form-actions">
+            <a class="btn-transparent" href="{% url 'accounts:user_list' %}">取消</a>
+            <button type="submit" class="btn-primary">
                 {% if mode == 'create' %}创建用户{% else %}保存修改{% endif %}
             </button>
-            <a href="{% url 'accounts:user_list' %}" class="btn-transparent btn-sm">返回列表</a>
         </div>
     </form>
 </div>

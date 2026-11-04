@@ -100,7 +100,7 @@
             <div class="chip-actions" data-col-settings-anchor data-col-settings-position="before">
                 <a class="btn-secondary" href="{% url 'samples:export' %}{% if query_string %}?{{ query_string }}{% endif %}">导出 Excel</a>
                 {% can "samples" "create" %}
-                <a class="btn-primary" href="{% url 'samples:create' %}" data-modal-add data-modal-title="送样登记">＋ 送样登记</a>
+                <a class="btn-primary" href="{% url 'samples:create' %}">＋ 送样登记</a>
                 {% endcan %}
             </div>
         </div>
@@ -190,7 +190,7 @@
                             {% endcan %}
                             {% else %}
                             {% can "samples" "update" %}
-                            <a href="{% url 'samples:edit' sample.pk %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑样品">编辑</a>
+                            <a href="{% url 'samples:edit' sample.pk %}" class="btn-transparent btn-sm">编辑</a>
                             {% endcan %}
                             {% can "samples" "delete" %}
                             <a href="{% url 'samples:delete' sample.pk %}" class="btn-transparent btn-sm btn-delete">删除</a>
