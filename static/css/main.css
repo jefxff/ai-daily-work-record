@@ -1,0 +1,160 @@
+/* ==========================================================================
+   全局布局模式 + 台账表格规范（main.css）
+   --------------------------------------------------------------------------
+   与既有样式表的分工（加载顺序见 base.html）：
+     tokens.css      设计令牌（颜色 / 间距 / 圆角 / 层级）
+     app.css         外壳与布局（侧栏、顶栏、page-actions、表格基线）
+     components.css  组件（按钮、面板、列设置齿轮、数值列）
+     page-shell.css  整页表单 / 详情外壳
+     main.css        本文件：**布局模式**（全宽 / 限宽居中）与
+                     **台账表格语义类**，只做增量声明，不重写页面级列预算。
+
+   设计原则：默认行为与改造前完全一致（全宽铺满）；
+   新增的类名都是「opt-in」——不加类，页面不受任何影响。
+   ========================================================================== */
+
+:root {
+    /* 限宽模式的轨道宽度。1440 是 27 寸（2560×1440）与 2K 屏上
+       表格列数与文本密度的平衡点：再宽则单行文字过长、眼球回扫距离过大。 */
+    --layout-max: 1440px;
+}
+
+/* ==========================================================================
+   1. 视图模式：全宽（full，默认） / 限宽居中（limited）
+   --------------------------------------------------------------------------
+   约束对象是「内容轨道」而不是整页：
+   - 侧栏（.sidebar，fixed）与顶栏（.top-nav，fixed）保持贴边，
+     切换视图时导航不跟着收缩，符合后台系统的心智模型；
+   - 只给 main#main 加 max-width 并水平居中。
+   注意不要再叠加左右 padding：外层 .main-content 已有 1.5rem 留白，
+   叠加会把 1440 的轨道再压掉 48px，实际只剩 1392。
+   ========================================================================== */
+
+html[data-view-mode="limited"] main#main,
+main#main.layout-limited {
+    width: 100%;
+    max-width: var(--layout-max);
+    margin-inline: auto;
+}
+
+/* 顶栏切换按钮：两枚图标互斥显示。
+   状态挂在 <html data-view-mode> 上，由 main.js 在 <head> 里同步写入，
+   因此不会出现「先按全宽画一帧再跳成限宽」的闪烁。 */
+.nav-viewmode-btn { flex-shrink: 0; }
+.nav-viewmode-btn .vm-icon { display: none; }
+html[data-view-mode="full"] .nav-viewmode-btn .vm-icon--contract,
+html:not([data-view-mode]) .nav-viewmode-btn .vm-icon--contract { display: block; }
+html[data-view-mode="limited"] .nav-viewmode-btn .vm-icon--expand { display: block; }
+
+/* ==========================================================================
+   2. 工具栏规范
+   --------------------------------------------------------------------------
+   列表页顶部「搜索 / 筛选 / 导出 / 新增」统一左对齐、同间距、可换行。
+   现有页面用 .page-actions 承担这个角色（定义在 app.css，取值与本类一致），
+   新页面或片段可直接用 .toolbar，两者可混用。
+   搜索框限宽 300px：输入框无限拉伸时会把右侧按钮推到行尾，
+   视觉上断开成「输入区 / 操作区」两组，读起来像两件事。
+   ========================================================================== */
+
+.toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+
+.toolbar__search,
+.page-actions .search-input {
+    max-width: 300px;
+}
+
+/* ==========================================================================
+   3. 台账表格规范（.table-ledger）
+   --------------------------------------------------------------------------
+   .table-ledger 是「这是一张台账表」的语义标记，配合下面三个列级类使用：
+
+     .col-num        金额 / 数量列 —— 右对齐 + 等宽数字
+     .col-truncate   长文本列     —— 单行截断 + 省略号（配合 title 看全文）
+     .col-fixed-sm   序号 / 日期 等短列 —— 固定小宽度，不参与剩余空间分配
+
+   它**刻意不声明内边距 / 字号 / 换行**：各模块的表格密度本来就不一样
+   （档案总览的 lg-table 是 9px/12px，records 各页是 12px/14px），
+   全局改写盒模型会让「只是加了个语义类」变成悄悄改版面——
+   实测档案总览行高会从 51px 被顶到 57px。规范只落在列语义上，
+   密度仍由各模块自己决定。宽表依旧靠 .table--fixed + 页面级列预算控制。
+   ========================================================================== */
+
+.table-ledger {
+    width: 100%;
+    margin: 0;
+}
+
+/* 只做「垂直居中」这一条与密度无关的对齐约束（浏览器默认值即 middle，
+   写上是为了在模块把 td 改成 top 时仍保持台账的行内对齐）。 */
+.table-ledger > :is(thead, tbody) > tr > :is(th, td) {
+    vertical-align: middle;
+}
+
+/* —— 3.1 数值列 ——
+   !important 是有意为之：基线 .table tbody td / thead th 是 text-align:center，
+   同为 0,2,1 权重，靠加载顺序取胜太脆弱（页面级 <style> 会抢先）。
+   不带这个类名时表格表现与改造前完全一致。
+   table-tools.js 会把表头上的 .col-num 自动透传到同列单元格，
+   模板只需在 <th> 上标一次。 */
+.table-ledger th.col-num,
+.table-ledger td.col-num,
+th.col-num,
+td.col-num {
+    text-align: right !important;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+/* —— 3.2 长文本列 ——
+   250px 是「两屏宽屏下仍能读到 20+ 汉字、又不把表格撑爆」的经验值。
+   title 属性由模板显式给出（{{ 变量 }}），或用 table-tools.js 的自动补全。 */
+.table-ledger td.col-truncate,
+td.col-truncate {
+    max-width: 250px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* —— 3.3 短列固定宽度 ——
+   纯类选择器（0,1,0），权重低于各页的 .table--fixed th:nth-child(n) 预算，
+   因此只对「还没做列预算」的表格生效，加在已有预算的页面上不会改变现状。 */
+.col-fixed-sm { width: 56px; min-width: 56px; }
+.col-fixed-date { width: 104px; min-width: 104px; }
+.col-fixed-actions { width: 136px; min-width: 136px; }
+
+/* 小屏卡片模式：单元格已拆成上下两行，截断会直接丢信息，一律还原 */
+@media (max-width: 768px) {
+    .table-ledger td.col-truncate,
+    td.col-truncate {
+        max-width: none;
+        overflow: visible;
+        text-overflow: clip;
+        white-space: normal;
+    }
+}
+
+/* 打印：台账要能完整落到纸上 */
+@media print {
+    html[data-view-mode="limited"] main#main,
+    main#main.layout-limited { max-width: none; }
+
+    .table-ledger td.col-truncate,
+    td.col-truncate {
+        max-width: none !important;
+        overflow: visible !important;
+        white-space: normal !important;
+    }
+}
+
+/* 用户开启「减少动态效果」时，不做任何过渡（当前未加过渡，留作后续扩展的护栏） */
+@media (prefers-reduced-motion: reduce) {
+    html[data-view-mode] main#main { transition: none !important; }
+}

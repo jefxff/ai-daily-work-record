@@ -57,6 +57,18 @@
                 </div>
             </div>
             {% endcan_view %}
+            {% comment %}
+            视图模式切换：在全宽（默认）与限宽居中之间切换，状态存 localStorage['viewMode']。
+            放在通知铃铛右侧、用户菜单左侧——同属「作用于当前视图」的全局开关，
+            但不收进用户下拉菜单：大屏用户切换频率不高，却需要一眼可见。
+            两枚图标由 main.css 按 <html data-view-mode> 互斥显示，
+            main.js 只切状态并同步 aria-label，不改 DOM 结构。
+            {% endcomment %}
+            <button type="button" class="nav-icon-btn nav-viewmode-btn" id="viewModeToggle"
+                    aria-pressed="false" aria-label="切换为限宽居中视图" title="切换为限宽居中视图">
+                <svg class="vm-icon vm-icon--contract" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                <svg class="vm-icon vm-icon--expand" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+            </button>
             <div class="nav-user-area" id="navUserArea">
                 <div class="nav-avatar">{{ request.user|display_name|slice:":1" }}</div>
                 <div class="nav-user-info">

@@ -266,7 +266,11 @@
             var text = (td.textContent || '').replace(/\s+/g, ' ').trim();
             if (text.length <= 24) return;
             td.title = text;
-            td.classList.add('is-clipped');
+            /* 同时落两个类名：
+               .is-clipped   历史样式（22em 截断 + 卡片模式还原），保持既有页面的观感；
+               .col-truncate 全局台账规范（250px 截断），供新页面按统一口径书写。
+               两者声明基本重合，重复加不改变渲染结果。 */
+            td.classList.add('is-clipped', 'col-truncate');
         });
     }
 
@@ -299,9 +303,14 @@
 
     /* ---------- 3.6 数值列右对齐 ----------
        金额与数量原先左对齐，千分位宽度不一时无法纵向比大小。
-       按表头文字识别数值列（而不是给 50 多个模板逐个加 class），
-       表头与单元格同时右对齐 + 等宽数字，避免只改一半造成错位。 */
-    var NUMERIC_KEYS = ['金额', '核减', '报价', '保费', '单价', '价格', '数量', '合计', '小计', '费用', '工资', '折扣'];
+       两条识别路径，模板与脚本各管一半：
+       1) 模板显式在 <th> 上写 .col-num —— 语义最准，脚本负责「透传」到同列 <td>，
+          否则表头右对齐、表体居中，比不改更难看；
+       2) 没写类名时按表头文字兜底识别（50 多个模板不必逐个改）。
+       两条路径都落到 .col-num / .is-num，样式只在 main.css 里定义一次。 */
+    var NUMERIC_KEYS = ['金额', '核减', '报价', '保费', '单价', '价格', '原价', '核后',
+        '数量', '合计', '小计', '费用', '工资', '折扣', '涉案', '额度', '税额',
+        '利息', '余额', '成本'];
 
     function isNumericLabel(text) {
         if (!text) return false;
@@ -319,17 +328,17 @@
             if (!headRow) return;
             var indexes = [];
             Array.prototype.forEach.call(headRow.cells, function (th, i) {
-                if (isNumericLabel((th.textContent || '').trim())) {
-                    indexes.push(i);
-                    th.classList.add('is-num');
-                }
+                var label = (th.textContent || '').trim();
+                if (!th.classList.contains('col-num') && !isNumericLabel(label)) return;
+                indexes.push(i);
+                th.classList.add('col-num', 'is-num');
             });
             if (!indexes.length) return;
             Array.prototype.forEach.call(table.tBodies, function (tbody) {
                 Array.prototype.forEach.call(tbody.rows, function (row) {
                     indexes.forEach(function (i) {
                         var cell = row.cells[i];
-                        if (cell) cell.classList.add('is-num');
+                        if (cell) cell.classList.add('col-num', 'is-num');
                     });
                 });
             });

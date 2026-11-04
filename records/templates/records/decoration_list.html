@@ -54,7 +54,7 @@
     </div>
     <div class="table-container">
         <div class="table-responsive">
-            <div class="hidden-cols-hint">窄屏已隐藏 1 个次要列；需要逐列比对时请横屏或改用桌面端。</div><table class="table--cards table table-sticky table--fixed">
+            <div class="hidden-cols-hint">窄屏已隐藏 1 个次要列；需要逐列比对时请横屏或改用桌面端。</div><table class="table-ledger table--cards table table-sticky table--fixed">
                 <thead>
                     <tr>
                         <th scope="col" class="col-optional">序号</th>
@@ -72,8 +72,8 @@
                     {% for decoration in decorations %}
                     <tr data-href="{% url 'decoration_detail' decoration.id %}">
                         <td data-label="序号" class="col-optional">{{ forloop.counter }}</td>
-                        <td data-label="项目名称" class="cell-ellipsis">{{ decoration.project_name }}</td>
-                        <td data-label="施工方" class="cell-ellipsis">{{ decoration.constructor }}</td>
+                        <td data-label="项目名称" class="cell-ellipsis col-truncate" title="{{ decoration.project_name }}">{{ decoration.project_name }}</td>
+                        <td data-label="施工方" class="cell-ellipsis col-truncate" title="{{ decoration.constructor }}">{{ decoration.constructor }}</td>
                         <td data-label="项目地址" class="cell-clamp" title="{{ decoration.project_address|default:'' }}"><span>{{ decoration.project_address|default:'' }}</span></td>
                         <td data-label="开工日期" class="cell-ellipsis">{{ decoration.start_date|date:'Y-m-d' }}</td>
                         <td data-label="原价" class="cell-ellipsis">¥{{ decoration.original_price|default:0|floatformat:2|intcomma }}</td>

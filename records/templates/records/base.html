@@ -1,7 +1,11 @@
 {% load static %}
 {% load accounts_tags %}
 <!DOCTYPE html>
-<html lang="zh-CN">
+{% comment %}
+data-view-mode 由 main.js 在 <head> 里同步改写；这里给出默认值，
+保证 JS 未执行时 CSS 也能匹配到 full，图标不会两个都显示或都不显示。
+{% endcomment %}
+<html lang="zh-CN" data-view-mode="full">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -13,6 +17,12 @@
     外置成独立文件是为了不留内联脚本（CSP enforce 的前提），代价是一次极小文件请求。
     {% endcomment %}
     <script src="{% static 'js/pages/records/base.js' %}?v=20261102"></script>
+    {% comment %}
+    视图模式（全宽 / 限宽居中）：同样**不能加 defer**。
+    它要抢在样式表生效前把 data-view-mode 写到 <html> 上，否则大屏用户
+    每次刷新都会先看到一帧全宽铺满、再跳成限宽居中。
+    {% endcomment %}
+    <script src="{% static 'js/main.js' %}?v=20261105a"></script>
     <!-- 共享 Cookie 工具：同步加载，保证后续内联脚本可直接调用 getCookie -->
     <script src="{% static 'js/csrf.js' %}?v=20261025c"></script>
     <!-- Bootstrap 5 CSS -->
@@ -21,9 +31,11 @@
     <link href="{% static 'css/tokens.css' %}?v=20261101f" rel="stylesheet">
     <link href="{% static 'css/app.css' %}?v=20261104f" rel="stylesheet">
     <link href="{% static 'css/components.css' %}?v=20261105a" rel="stylesheet">
+    <!-- 全局布局模式（全宽 / 限宽居中）+ 台账表格语义类；必须在 components.css 之后 -->
+    <link href="{% static 'css/main.css' %}?v=20261105a" rel="stylesheet">
     <link href="{% static 'copilot/panel.css' %}?v=20261101b" rel="stylesheet">
     <!-- 列表页通用表格工具（列设置 / 表头语义 / 操作列收纳），defer 不阻塞首屏 -->
-    <script src="{% static 'js/table-tools.js' %}?v=20261105a" defer></script>
+    <script src="{% static 'js/table-tools.js' %}?v=20261105b" defer></script>
     <!-- 表单校验与提交锁（仅 data-validate="1" 的录入表单生效） -->
     <script src="{% static 'js/form-guard.js' %}?v=20261101b" defer></script>
     <!-- 行点击进详情（仅 tr[data-href] 的行生效） -->
@@ -40,7 +52,15 @@
     {% include "records/_topnav.html" %}
     <div class="sidebar-scrim" id="sidebarScrim" hidden></div>
     <div class="main-content">
-        <main id="main" class="container" tabindex="-1">
+        {% comment %}
+        全局主内容轨道。三条约束叠加的结果：
+          .container      app.css 去盒化（padding/margin/max-width 归零，width:100%）
+          .content-wrapper/main.css 的落点，限宽模式下补 max-width:1440px + 居中
+          .w-100          Bootstrap 宽度兜底，避免 flex 子项被内容宽度带跑
+        注意 id 保持 #main：跳转链接 href="#main" 与全站焦点管理都指向它，
+        改名会同时破坏「跳到主内容」的可达性。
+        {% endcomment %}
+        <main id="main" class="container content-wrapper w-100" tabindex="-1">
             {% comment %}
             页面级操作区：原先挂在顶栏（33 个页面共用 top_nav_actions），导致顶栏
             既放全局导航又放页面按钮，宽度不够时把全站搜索挤掉。
