@@ -1624,6 +1624,24 @@ a.home-kpi:hover .home-kpi__value { color: var(--c-primary-active); }
 .table thead th.col-actions { z-index: var(--z-sticky-head); background: var(--c-surface-sunken); }
 .table tbody tr:hover td.col-actions { background: var(--c-surface-sunken); }
 
+/* 防回归：模板只给表头加 .col-actions、表体漏加时，表头吸附到容器右缘而表体
+   随表格滚走，整列错开（装修记录列表：错 58px，操作按钮被挤出视口）。
+   对「表头已标记」的表格按 data-label 补齐表体单元格；与上面的规则取值一致，
+   已正确加类名的页面不会有任何视觉变化。小屏卡片模式下 td 是块级，不吸附。 */
+@media (min-width: 961px) {
+  .table:has(thead th.col-actions) > tbody > tr > td[data-label="操作"] {
+    position: sticky;
+    right: 0;
+    z-index: var(--z-sticky);
+    background: var(--c-surface);
+    border-left: 1px solid var(--c-border);
+    box-shadow: -3px 0 5px rgba(0, 0, 0, 0.06);
+  }
+  .table:has(thead th.col-actions) tbody tr:hover td[data-label="操作"] {
+    background: var(--c-surface-sunken);
+  }
+}
+
 /* ============================================================================
    筛选下拉面板（全站共用）
    ----------------------------------------------------------------------------

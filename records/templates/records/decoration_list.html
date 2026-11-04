@@ -78,7 +78,7 @@
                         <td data-label="原价" class="cell-ellipsis">¥{{ decoration.original_price|default:0|floatformat:2|intcomma }}</td>
                         <td data-label="核后价" class="cell-ellipsis">¥{{ decoration.final_price|floatformat:2|intcomma }}</td>
                         <td data-label="核减金额" class="cell-ellipsis">¥{{ decoration.reduced_price|default:0|floatformat:2|intcomma }}</td>
-                        <td data-label="操作">
+                        <td data-label="操作" class="col-actions">
                             <div class="u-center-toolbar">
                                 <a href="{% url 'decoration_detail' decoration.id %}" class="btn-transparent btn-sm">详细</a>
                                 {% can "decoration" "update" %}
@@ -103,13 +103,15 @@
 
 {% block extra_css %}
 <style>
-    /* 列预算（合计 100%）：固定布局。
-       ②版调整：项目地址 18%→14%（两行截断足够）、操作 11%→10%（三个文字钮），
-       省下的宽度补给三个金额列（10%→11%），窄屏下「¥3,399,802.28」不再截尾。 */
-    .table { min-width: 1200px; }
-    .table--fixed th:nth-child(1) { width: 4.5%; }  /* 序号（min-width 1200 下 = 54px，正好放下表头） */
-    .table--fixed th:nth-child(2) { width: 18%; }   /* 项目名称 */
-    .table--fixed th:nth-child(3) { width: 12.5%; } /* 施工方 */
+    /* 列预算：固定布局。全站单轨整改后 main.container = 1142px，
+       原 min-width:1200px 让表格比容器宽 58px，操作列被推出视口；
+       且表头 .col-actions 吸附在容器右缘、表体不吸附，两者整整错开一列。
+       这里把整表下限对齐 1142px，1440 视口下零横向滚动，操作列自然落在视口内；
+       窄屏仍靠横向滚动保住各列下限。 */
+    .table { min-width: 1142px; }
+    .table--fixed th:nth-child(1) { width: 54px; }  /* 序号（表头两字 + 28px 内边距） */
+    .table--fixed th:nth-child(2) { width: 16%; }   /* 项目名称 */
+    .table--fixed th:nth-child(3) { width: 12%; }   /* 施工方 */
     /* 项目地址不设宽度（fixed 布局下的 auto 列）：所有列都声明宽度时 Chrome 会把
        px 定宽列也等比放大（104px 被放大到 141px），必须留一个 auto 列吸收富余，
        px 列才能锁定；宽屏下地址是内容最长的文本列，富余给它最合适。 */
@@ -119,7 +121,7 @@
     .table--fixed th:nth-child(6) { width: 124px; } /* 原价 */
     .table--fixed th:nth-child(7) { width: 124px; } /* 核后价 */
     .table--fixed th:nth-child(8) { width: 124px; } /* 核减金额 */
-    .table--fixed th:nth-child(9) { width: 10.2%; } /* 操作（三个图标按钮 121px，min-width 1200 下 = 122px） */
+    .table--fixed th:nth-child(9) { width: 136px; } /* 操作：固定 px 锁定，宽屏不被百分比撑大、窄屏不被压扁 */
     /* 金额列右对齐（表头与数据同侧），等宽数字按位对齐，符合财务数字阅读惯例 */
     .table--fixed thead th.col-num,
     .table--fixed tbody td[data-label="原价"],

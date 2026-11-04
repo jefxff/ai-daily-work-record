@@ -7,47 +7,37 @@
 <style>
     /* 知识库特有样式（继承 records/base.html 的 Ant Design 通用样式） */
 
-    /* 知识库主内容区 + 右侧栏布局 */
+    /* 知识库三列页面结构：左导航 / 主内容 / 右侧筛选栏。
+       右栏回到页面右侧竖排（统计 → 分类筛选 → 标签云），但放回流内作为
+       wrapper 的第二栏：外层仍是全站 1142px 单轨，不再用 position:fixed
+       脱离文档流（原版会压住顶栏下拉、小屏直接隐藏）。滚动时 sticky 保持可见。 */
     .knowledge-wrapper {
         display: flex;
-        gap: 1.5rem;
+        gap: var(--sp-6);
+        align-items: flex-start;
         margin-top: 1rem;
     }
     .knowledge-main-content {
         flex: 1;
         min-width: 0;
     }
-    /* 全站单轨整改（2026-11-04）：原右栏是 fixed 280px + 主内容让位 300px，
-       知识库两页的主内容只剩 842px，与其余 97 页的 1142px 不一致。
-       现改为内容区顶部的横向筛选带：三节并排、各自内部滚动，主内容不再让宽。 */
-    .fixed-right-sidebar {
+    .knowledge-wrapper.knowledge-main-with-right {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-        gap: 0 var(--sp-6);
-        align-items: start;
-        width: 100%;
-        margin-bottom: var(--sp-5);
+        grid-template-columns: minmax(0, 1fr) 280px;
+    }
+    /* 未声明右栏的页面（大纲编辑器等）不渲染空的筛选栏 */
+    .knowledge-wrapper:not(.knowledge-main-with-right) > .fixed-right-sidebar { display: none; }
+    .fixed-right-sidebar {
+        position: sticky;
+        top: calc(var(--h-topbar) + 1rem);
+        width: auto;
+        max-height: calc(100vh - 88px);
+        overflow-y: auto;
         background: var(--c-surface) !important;
         border: 1px solid var(--c-border) !important;
         border-radius: 8px !important;
         box-shadow: var(--sh-card) !important;
         padding: 0.9rem 1rem !important;
-    }
-    .fixed-right-sidebar > .kb-side-section {
-        min-width: 0;
-        max-height: 168px;
-        overflow-y: auto;
-        border-bottom: none !important;
-        border-left: 1px solid var(--c-border);
-        padding-left: var(--sp-4) !important;
-        padding-right: 0 !important;
-    }
-    .fixed-right-sidebar > .kb-side-section:first-child {
-        border-left: none;
-        padding-left: 0 !important;
-    }
-    .knowledge-main-with-right {
-        margin-right: 0;
     }
 
     /* 知识库卡片调整 */
@@ -375,27 +365,38 @@
         color: var(--c-success) !important;
     }
 
-    /* 响应式：小屏改为单列堆叠，筛选功能不丢失 */
+    /* 响应式：小屏右栏退到内容下方，三节改横向并排，筛选功能不丢失 */
     @media (max-width: 1200px) {
-        .fixed-right-sidebar { grid-template-columns: 1fr; gap: var(--sp-3) 0; }
-        .fixed-right-sidebar > .kb-side-section {
+        .knowledge-wrapper.knowledge-main-with-right { grid-template-columns: 1fr; }
+        .fixed-right-sidebar {
+            position: static;
             max-height: none;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 0 var(--sp-6);
+            align-items: start;
+        }
+        .fixed-right-sidebar > .kb-side-section {
+            min-width: 0;
+            border-bottom: none !important;
+            border-left: 1px solid var(--c-border);
+            padding-left: var(--sp-4) !important;
+        }
+        .fixed-right-sidebar > .kb-side-section:first-child {
             border-left: none;
-            border-bottom: 1px solid var(--c-border) !important;
             padding-left: 0 !important;
         }
-        .fixed-right-sidebar > .kb-side-section:last-child { border-bottom: none !important; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="fixed-right-sidebar">
-    {% block right_sidebar %}{% endblock %}
-</div>
 <div class="knowledge-wrapper {% block content_wrapper_class %}knowledge-main-with-right{% endblock %}">
     <div class="knowledge-main-content">
         {% block knowledge_content %}{% endblock %}
+    </div>
+    <div class="fixed-right-sidebar">
+        {% block right_sidebar %}{% endblock %}
     </div>
 </div>
 <script src="{% static 'js/pages/knowledge_base/base.js' %}?v=20261102" defer></script>

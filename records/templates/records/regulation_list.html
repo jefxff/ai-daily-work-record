@@ -42,7 +42,7 @@
                     <tr data-href="{% url 'regulation_detail' regulation.id %}">
                         <td data-label="序号" class="col-optional">{{ forloop.counter }}</td>
                         <td data-label="出文日期">{{ regulation.issue_date|date:'Y-m-d' }}</td>
-                        <td data-label="标题" class="title-cell" title="{{ regulation.title }}">{{ regulation.title }}</td>
+                        <td data-label="标题" class="title-cell" title="{{ regulation.title }}"><div class="clamp-2">{{ regulation.title }}</div></td>
                         <td data-label="主要内容" class="content-td"><div class="clamp-2" title="{{ regulation.content }}">{{ regulation.content|truncatechars:120 }}</div></td>
                         <td data-label="文件编号">{{ regulation.doc_no }}</td>
                         <td data-label="操作" class="col-actions">
@@ -82,11 +82,11 @@
     .table--fixed th:nth-child(5) { width: 13.8%; } /* 文件编号（最长「富字学[20262020号]」≈146px） */
     .table--fixed th:nth-child(6) { width: 11.4%; } /* 操作（三个图标按钮 121px，min-width 1064 下 = 121px） */
 
-    /* 标题两行截断：与主要内容列同节奏，单行省略会让 470px 的列右半长期空白 */
+    /* 标题两行截断：与主要内容列同节奏，单行省略会让 470px 的列右半长期空白。
+       截断交给内层 .clamp-2；td 本身若设 display:-webkit-box 会退出 table-cell
+       布局，单元格比表头窄 4px，列网格对不齐。 */
     .title-cell {
         font-weight: 500; color: var(--c-text);
-        display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-        overflow: hidden;
     }
     /* 不设宽度下限时窄屏会把「出文日期」挤成两行、操作列三个图标竖排（行高 125px）；
        日期/编号不换行，列放不下就交给表格横向滚动。 */

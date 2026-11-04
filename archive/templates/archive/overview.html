@@ -123,6 +123,22 @@
     /* 合同编号存在「一格多编号」的长值（实测最长约 375px），固定列宽下改为换行，
        既保证数据完整可见，又不会越出列边压到邻列 */
     .lg-table td[data-label="合同编号"] { white-space: normal; word-break: break-word; }
+    /* 操作列吸附在右侧：12 列宽表横向滚动 298px 时，末列原本整列落在视窗外。
+       表头与表体必须成对 sticky，只给表头加会出现「表头在右、表体在更右」的错列。 */
+    .lg-table th:nth-child(12),
+    .lg-table td[data-label="操作"] {
+        position: sticky;
+        right: 0;
+        z-index: var(--z-sticky);
+        background: var(--c-surface);
+        border-left: 1px solid var(--c-border);
+        box-shadow: -3px 0 5px rgba(0, 0, 0, 0.06);
+    }
+    .lg-table th:nth-child(12) {
+        z-index: var(--z-sticky-head);
+        background: var(--c-surface-sunken);
+    }
+    .lg-table tbody tr:hover td[data-label="操作"] { background: var(--c-surface-sunken); }
     .lg-table tbody tr:hover { background: var(--c-primary-subtle); }
     .lg-row-actions { display: flex; gap: 6px; flex-wrap: nowrap; }
     .lg-empty { text-align: center; color: var(--c-text-secondary); padding: 1.6rem 0; }
