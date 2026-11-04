@@ -10,7 +10,12 @@
 
 {% block content %}
     <div class="form-container">
-        <h1 class="form-title">{% if form.instance.id %}编辑装修记录{% else %}新增装修记录{% endif %}</h1>
+        <div class="form-head">
+            <div>
+                <h1 class="form-title" data-kicker="RECORD / 装修台账">{% if form.instance.id %}编辑装修记录{% else %}新增装修记录{% endif %}</h1>
+                <p class="form-subtitle">登记项目名称、施工方与合同金额；带 * 的字段为必填项。</p>
+            </div>
+        </div>
 
         <form method="post">
             {% csrf_token %}

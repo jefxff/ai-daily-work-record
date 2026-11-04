@@ -10,7 +10,7 @@
 <div class="form-container">
     <div class="form-head">
         <div>
-            <h1 class="form-title">{% if mode == 'create' %}新建用户{% else %}编辑用户：{{ target.username }}{% endif %}</h1>
+            <h1 class="form-title" data-kicker="SYSTEM / 用户与权限">{% if mode == 'create' %}新建用户{% else %}编辑用户：{{ target.username }}{% endif %}</h1>
             <p class="form-subtitle">账号权限由所分配的角色决定，多个角色取权限并集。</p>
         </div>
         <a class="form-back" href="{% url 'accounts:user_list' %}">

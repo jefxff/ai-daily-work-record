@@ -4,7 +4,7 @@
 <div class="form-container">
     <div class="form-head">
         <div>
-            <h1 class="form-title">{% if mode == 'edit' %}编辑台账{% else %}新建台账{% endif %}</h1>
+            <h1 class="form-title" data-kicker="ARCHIVE / 台账">{% if mode == 'edit' %}编辑台账{% else %}新建台账{% endif %}</h1>
             <p class="form-subtitle">台账用于按客户或项目归集档案，保存后可继续在总览中补充档案明细。</p>
         </div>
         <a class="form-back" href="{{ cancel_url }}">

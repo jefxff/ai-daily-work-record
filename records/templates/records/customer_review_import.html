@@ -10,7 +10,7 @@
 
 {% block content %}
     <div class="form-container">
-        <h1 class="form-title">导入{{ kind }}</h1>
+        <h1 class="form-title" data-kicker="IMPORT / 评审资料">导入{{ kind }}</h1>
         <p class="form-text">
             仅支持 Excel（.xlsx / .xls），单次最多 {{ max_rows }} 行。系统先解析并展示预览，
             确认后才会写库；合计得分、评定等级、测试结论等结果列由系统重算，Excel 里填的值不生效。

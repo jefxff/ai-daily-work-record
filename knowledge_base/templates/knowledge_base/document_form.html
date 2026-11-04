@@ -4,7 +4,7 @@
 <div class="form-container">
     <div class="form-head">
         <div>
-            <h1 class="form-title">{{ title }}</h1>
+            <h1 class="form-title" data-kicker="KB / 文档维护">{{ title }}</h1>
             <p class="form-subtitle">文档正文支持富文本粘贴；可见性设置为「全员」后，团队其他人可在知识库检索到。</p>
         </div>
         <a class="form-back" href="{% if document %}{% url 'knowledge_base:document_detail' document.pk %}{% else %}{% url 'knowledge_base:document_list' %}{% endif %}">

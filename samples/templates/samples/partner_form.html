@@ -9,8 +9,8 @@
 {% endblock %}
 
 {% block content %}
-<div class="form-container" style="max-width:640px;">
-    <h1 class="form-title">{{ title }}</h1>
+<div class="form-container form-container--narrow">
+    <h1 class="form-title" data-kicker="SAMPLE / 供应商档案">{{ title }}</h1>
     <form method="POST" novalidate>
         {% csrf_token %}
         {% for field in form.visible_fields %}

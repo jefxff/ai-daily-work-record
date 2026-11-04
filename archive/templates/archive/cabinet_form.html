@@ -4,7 +4,7 @@
 <div class="form-container">
     <div class="form-head">
         <div>
-            <h1 class="form-title">{% if mode == 'edit' %}编辑{% else %}新建{% endif %}档案柜</h1>
+            <h1 class="form-title" data-kicker="ARCHIVE / 档案柜">{% if mode == 'edit' %}编辑{% else %}新建{% endif %}档案柜</h1>
             <p class="form-subtitle">设置柜体位置与各层格数，层格变动会同步到存放视图。</p>
         </div>
         <a class="form-back" href="{{ cancel_url }}">

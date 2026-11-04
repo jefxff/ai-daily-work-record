@@ -3,12 +3,17 @@
 {% block page_title %}通知偏好 - 每日工作记录管理网站{% endblock %}
 
 {% block content %}
-<h1 class="form-title">通知偏好</h1>
-
 <div class="form-container">
-    <p class="text-muted mb-4">
-        站内通知为系统基础能力，始终开启；此处可按类别开关<strong>邮件提醒</strong>，并配置聚合降噪与免打扰时段。
-    </p>
+    <div class="form-head">
+        <div>
+            <h1 class="form-title" data-kicker="NOTICE / 通知偏好">通知偏好</h1>
+            <p class="form-subtitle">站内通知为系统基础能力，始终开启；此处可按类别开关<strong>邮件提醒</strong>，并配置聚合降噪与免打扰时段。</p>
+        </div>
+        <a class="form-back" href="{% url 'notifications:list' %}">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+            返回通知中心
+        </a>
+    </div>
     <form data-validate="1" novalidate method="post">
         {% csrf_token %}
 

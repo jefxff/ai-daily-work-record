@@ -5,7 +5,12 @@
 
 {% block content %}
     <div class="form-container">
-        <h1 class="form-title">{{ title }}</h1>
+        <div class="form-head">
+            <div>
+                <h1 class="form-title" data-kicker="RECORD / 保险台账">{{ title }}</h1>
+                <p class="form-subtitle">维护保单信息与续保时间线；保存后可在详情页查看聚合数据。</p>
+            </div>
+        </div>
 
         <form method="post">
             {% csrf_token %}

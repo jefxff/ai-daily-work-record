@@ -13,7 +13,7 @@
 
 {% block content %}
 <div class="form-container">
-    <h1 class="form-title">{{ title }}</h1>
+    <h1 class="form-title" data-kicker="SAMPLE / 样品台账">{{ title }}</h1>
     <form method="POST" novalidate>
         {% csrf_token %}
         <div class="form-grid">

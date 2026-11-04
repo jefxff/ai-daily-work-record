@@ -11,7 +11,7 @@
 
 {% block content %}
 <div class="form-container">
-    <h1 class="form-title">终止样品 {{ sample.sample_no }}</h1>
+    <h1 class="form-title" data-kicker="SAMPLE / 终止操作">终止样品 {{ sample.sample_no }}</h1>
     <div class="terminate-warn">
         ⚠️ 终止为终态操作：样品将转为「已终止」状态，且不再参与状态机重算。请务必填写终止原因。
     </div>

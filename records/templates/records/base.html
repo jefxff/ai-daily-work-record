@@ -29,6 +29,10 @@
     <!-- 行点击进详情（仅 tr[data-href] 的行生效） -->
     <script src="{% static 'js/row-click.js' %}?v=20261101b" defer></script>
     {% block extra_css %}{% endblock %}
+    <!-- 整页「新增 / 编辑 / 详情」统一外壳：放在 extra_css 之后，
+         使页面级 <style> 无法覆盖全局规格；选择器带 main.container 前缀，
+         压过档案片段里散落在 body 的内联 <style>。 -->
+    <link href="{% static 'css/page-shell.css' %}?v=20261104a" rel="stylesheet">
 </head>
 <body data-url-notifications="{% url 'notifications:list' %}">
     <a href="#main" class="skip-link">跳到主内容</a>

@@ -10,7 +10,12 @@
 
 {% block content %}
     <div class="form-container">
-        <h1 class="form-title">{% if form.instance.id %}编辑制度及处罚{% else %}新增制度及处罚{% endif %}</h1>
+        <div class="form-head">
+            <div>
+                <h1 class="form-title" data-kicker="RECORD / 制度台账">{% if form.instance.id %}编辑制度及处罚{% else %}新增制度及处罚{% endif %}</h1>
+                <p class="form-subtitle">登记出文日期、文件编号与主要内容，供全站检索与到期提醒。</p>
+            </div>
+        </div>
 
         <form method="post">
             {% csrf_token %}

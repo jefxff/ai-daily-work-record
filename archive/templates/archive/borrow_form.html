@@ -4,7 +4,7 @@
 <div class="form-container">
     <div class="form-head">
         <div>
-            <h1 class="form-title">借阅登记</h1>
+            <h1 class="form-title" data-kicker="ARCHIVE / 借阅登记">借阅登记</h1>
             <p class="form-subtitle">{{ archive.code }} · {{ archive.title }}，登记借阅人与预计归还日期。</p>
         </div>
         <a class="form-back" href="{% url 'archive:archive_detail' archive.pk %}">

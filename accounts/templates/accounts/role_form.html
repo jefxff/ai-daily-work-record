@@ -4,7 +4,7 @@
 {% block page_title %}{% if mode == 'create' %}新建角色{% else %}编辑角色{% endif %} - 每日工作记录{% endblock %}
 
 {% block content %}
-<div class="page-header">
+<div class="page-header" data-kicker="SYSTEM / 角色与权限">
     <h1>{% if mode == 'create' %}新建角色{% else %}编辑角色：{{ role.name }}{% endif %}</h1>
 </div>
 <form data-validate="1" novalidate method="post">

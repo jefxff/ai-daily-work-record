@@ -1,0 +1,984 @@
+/* ============================================================================
+   page-shell.css · 整页「新增 / 编辑 / 详情」统一外壳
+   ----------------------------------------------------------------------------
+   背景：2.5.4 把 AJAX 弹窗入口全部改成普通路由整页，但弹窗片段的私有栅格、
+   内联 <style> 与旧页面外壳一并被搬进了整页，导致同一系统里并存三套表单外壳、
+   五套栅格、六套错误提示。本文件只做「表现层收敛」，不改任何模板变量、
+   表单字段、name / id / action、URL 与脚本。
+
+   设计方向：工业实用 / 卷宗式秩序（Industrial–Dossier）
+     · 目的   高频填单与查档的内部台账系统，字段要好找、层级要清楚、久看不累
+     · 调性   发丝规则线 + 等宽编号 + 宋体标题 + 白纸面；不用渐变营销版式
+     · 字体   Noto Serif SC（标题）/ Noto Sans SC（正文）/ JetBrains Mono（编号）
+              全部取自 tokens.css，离线内网可用，无外链、无 font-display 抖动
+     · 配色   完全沿用 tokens.css 现有色系，本文件不定义任何字面色值：
+             --c-primary 承担「可交互」，--c-danger 承担「必填 / 错误」，
+             暗色主题由 [data-theme="dark"] 的语义令牌自动继承
+     · 记忆点 卡片顶部 3px 书脊、等宽 kicker、自动 01/02 编号分区、
+              标题下方「主色段首 + 发丝线」的卷宗规则线
+
+   加载位置：records/base.html 中放在 {% block extra_css %} 之后，
+              保证页面级 <style> 不会覆盖这套统一规格；选择器统一带
+              `main.container` 前缀，压过档案片段里散落在 body 的内联 <style>。
+   ========================================================================== */
+
+/* ---------------------------------------------------------------------------
+   0 · 设计令牌（只扩展，不改写 tokens.css 的语义变量）
+   --------------------------------------------------------------------------- */
+:root {
+  --ps-spine:        3px;                 /* 卡片书脊厚度 */
+  --ps-rule-head:    56px;                /* 规则线主色段长度 */
+  --ps-kicker:       11px;                /* 等宽眉标字号 */
+  --ps-control-h:    40px;                /* 输入框 / 按钮统一触达高度 */
+  --ps-card-w:       1040px;              /* 整页表单 / 详情最大宽度 */
+  --ps-col-gap:      var(--sp-6);         /* 字段列间距 */
+  --ps-label-w:      148px;               /* 详情键值对的标签列宽 */
+  --ps-enter:        460ms;               /* 入场序列时长 */
+  --ps-grain:        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --ps-grain-alpha:  .038;
+}
+
+[data-theme="dark"] {
+  --ps-grain-alpha:  .022;
+}
+
+/* ---------------------------------------------------------------------------
+   1 · 卡片基座：书脊 / 纸面 / 颗粒 / 三级阴影
+   --------------------------------------------------------------------------- */
+main.container .form-container,
+main.container .detail-card {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  max-width: var(--ps-card-w);
+  margin: 0 auto var(--sp-5);
+  padding: var(--sp-7) var(--sp-8) var(--sp-6);
+  /* 底色沿用原有纯白卡面（--c-surface），不叠加任何着色层 */
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-1), var(--sh-2);
+}
+
+/* 书脊：左段主色、余下细线，和标题下的规则线同一套语言 */
+main.container .form-container::before,
+main.container .detail-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: var(--ps-spine);
+  z-index: 2;
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  background: linear-gradient(90deg,
+    var(--c-primary) 0 var(--ps-rule-head),
+    var(--c-border) var(--ps-rule-head) 100%);
+}
+
+/* 纸面颗粒：叠加层不吃指针事件，暗色主题下自动降透明度 */
+main.container .form-container::after,
+main.container .detail-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: var(--ps-grain-alpha);
+  background-image: var(--ps-grain);
+  mix-blend-mode: multiply;
+}
+[data-theme="dark"] main.container .form-container::after,
+[data-theme="dark"] main.container .detail-card::after { mix-blend-mode: screen; }
+
+/* 短表单（供应商档案等）用窄版卡，宽度仍走令牌，不写内联 max-width */
+main.container .form-container.form-container--narrow { max-width: 720px; }
+
+/* 所有直接子元素抬到颗粒层之上；操作条另给更高层级以便吸底 */
+main.container .form-container > *,
+main.container .detail-card > * { position: relative; z-index: 1; }
+
+/* 自动分区计数：整页 01 / 02 / 03 连续编号。
+   详情页常有多张卡（案件进程 / 案件信息 / 关键日期…），计数器挂在
+   main.container 上让编号跨卡续排；表单页仍按自身卡片独立起号。 */
+main.container { counter-reset: ps-sec; }
+main.container .form-container { counter-reset: ps-sec; }
+
+/* ---------------------------------------------------------------------------
+   2 · 卷宗页眉：kicker → 宋体标题 → 副标题 → 规则线
+   --------------------------------------------------------------------------- */
+main.container .form-container .form-title,
+main.container .detail-card .detail-title {
+  margin: 0;
+  padding: 0;
+  color: var(--c-text);
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: var(--ls-tight);
+  text-align: left;
+}
+
+/* 等宽眉标：模板可用 data-kicker 覆盖，未标注的页面落到通用文案。
+   详情页只给 h1 主标题加眉标；div / h2 形态的 detail-title 是分区标题，
+   由第 3 节的自动编号接管，避免「案件进程」这类区块顶着「记录详情」眉标。 */
+main.container .form-container .form-title::before,
+main.container .detail-card > h1.detail-title::before {
+  content: "FORM / 记录录入";
+  display: block;
+  margin-bottom: var(--sp-2);
+  font-family: var(--font-mono);
+  font-size: var(--ps-kicker);
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: .12em;
+  color: var(--c-primary);
+}
+main.container .form-container .form-title[data-kicker]::before,
+main.container .detail-card > h1.detail-title[data-kicker]::before { content: attr(data-kicker); }
+main.container .detail-card > h1.detail-title::before { content: "RECORD / 记录详情"; }
+main.container .detail-card > h1.detail-title[data-kicker]::before { content: attr(data-kicker); }
+
+/* 主色段首 + 发丝线：替换原来每页重复的 48px 蓝短杠 */
+main.container .form-container > .form-title::after,
+main.container .detail-card > h1.detail-title::after {
+  content: "";
+  display: block;
+  height: 1px;
+  margin-top: var(--sp-4);
+  background: linear-gradient(90deg,
+    var(--c-primary) 0 var(--ps-rule-head),
+    var(--c-border) var(--ps-rule-head) 100%);
+}
+main.container .form-container > .form-title { margin-bottom: var(--sp-6); }
+main.container .detail-card > h1.detail-title { margin-bottom: var(--sp-5); }
+
+main.container .form-container .form-head {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-6);
+  padding-bottom: var(--sp-5);
+  border-bottom: 1px solid var(--c-border);
+}
+main.container .form-container .form-head .form-title { margin-bottom: 0; }
+main.container .form-container .form-head .form-title::after { display: none; }
+/* 页眉规则线的主色段首，与裸标题版保持同一视觉 */
+main.container .form-container .form-head::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: var(--ps-rule-head);
+  height: 2px;
+  background: var(--c-primary);
+}
+main.container .form-container .form-subtitle {
+  margin: var(--sp-2) 0 0;
+  max-width: 62ch;
+  color: var(--c-text-secondary);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-loose);
+}
+
+/* 返回链接：右 alignment，箭头在悬停时左移 2px */
+main.container .form-container .form-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--c-border-strong);
+  border-radius: var(--r-sm);
+  background: var(--c-surface);
+  color: var(--c-text-secondary);
+  font-size: var(--fs-sm);
+  text-decoration: none;
+  transition: color var(--dur-fast) ease,
+              border-color var(--dur-fast) ease,
+              background-color var(--dur-fast) ease;
+}
+main.container .form-container .form-back svg {
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+main.container .form-container .form-back:hover,
+main.container .form-container .form-back:focus-visible {
+  background: var(--c-primary-subtle);
+  border-color: var(--c-primary);
+  color: var(--c-primary);
+  text-decoration: none;
+}
+main.container .form-container .form-back:hover svg { transform: translateX(-2px); }
+
+/* 通知页等把标题写在卡片外的情况：收进统一规格，避免与卡片割裂 */
+main.container > h1.form-title {
+  max-width: var(--ps-card-w);
+  margin: 0 auto var(--sp-4);
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
+  font-weight: 700;
+  letter-spacing: var(--ls-tight);
+  color: var(--c-text);
+}
+
+/* 表单页工具条与卡片同宽：保留原有「返回列表 / 返回首页 / 取消」全部入口 */
+main.container:has(> .form-container) > .page-actions {
+  max-width: var(--ps-card-w);
+  margin: 0 auto var(--sp-3);
+}
+
+/* ---------------------------------------------------------------------------
+   3 · 分区标题：等宽序号 01 / 02 / 03 + 延伸到卡片边缘的发丝线
+   --------------------------------------------------------------------------- */
+main.container .form-container .form-section-title,
+main.container .form-container .content-section > h4,
+main.container .detail-card .content-section > h4,
+main.container .detail-card :is(div.detail-title, h2.detail-title),
+main.container .detail-card .record-title h3,
+main.container .detail-card .arc-sec-title {
+  counter-increment: ps-sec;
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+  margin: var(--sp-6) 0 var(--sp-4);
+  padding-bottom: var(--sp-2);
+  border-bottom: 1px solid var(--c-border);
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  letter-spacing: var(--ls-tight);
+  color: var(--c-text);
+}
+main.container .form-container .form-section-title::before,
+main.container .form-container .content-section > h4::before,
+main.container .detail-card .content-section > h4::before,
+main.container .detail-card :is(div.detail-title, h2.detail-title)::before,
+main.container .detail-card .record-title h3::before,
+main.container .detail-card .arc-sec-title::before {
+  content: counter(ps-sec, decimal-leading-zero);
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  letter-spacing: .06em;
+  color: var(--c-primary);
+}
+/* 分区里的 detail-title 不再重复整页 kicker 的大字号 */
+main.container .detail-card :is(div.detail-title, h2.detail-title) { font-size: var(--fs-lg); }
+/* 分区标题不再叠加 app.css 的 48px 蓝短杠：装饰统一交给底部发丝线 */
+main.container .detail-card :is(div.detail-title, h2.detail-title)::after { display: none; }
+
+/* 长文内容块：纸质底 + 主色左线，与卷宗语汇一致 */
+main.container .detail-card .content-section {
+  padding: var(--sp-5);
+  border: 1px solid var(--c-border);
+  border-left: var(--ps-spine) solid var(--c-primary);
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+  background: var(--c-surface-sunken);
+}
+main.container .detail-card .content-section p {
+  margin: 0;
+  max-width: var(--w-prose);
+  line-height: var(--lh-loose);
+  color: var(--c-text-secondary);
+}
+
+/* ---------------------------------------------------------------------------
+   4 · 字段栅格：把五套私有栅格收敛为同一套双列响应式
+   --------------------------------------------------------------------------- */
+main.container .form-container .form-grid,
+main.container .form-container .arc-form-grid,
+main.container .form-container .lic-form-grid,
+main.container .form-container .brr-grid,
+main.container .form-container .rev-grid,
+main.container .form-container .lbr-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 var(--ps-col-gap);
+  align-items: start;
+}
+
+/* 文本域 / 文件 / 说明类字段独占整行（各家私有类名一并收编） */
+main.container .form-container .form-grid > :has(textarea),
+main.container .form-container .form-grid > :has(input[type="file"]),
+main.container .form-container .arc-form-grid > .arc-field-full,
+main.container .form-container .arc-form-grid > :has(textarea),
+main.container .form-container .arc-form-grid > :has(input[type="file"]),
+main.container .form-container .lic-form-grid > .lic-field-full,
+main.container .form-container .lic-form-grid > :has(textarea),
+main.container .form-container .lic-form-grid > :has(input[type="file"]),
+main.container .form-container .brr-grid > .brr-field-full,
+main.container .form-container .rev-grid > .rev-field-full,
+main.container .form-container .lbr-grid > .lbr-field-full,
+main.container .form-container .arc-form-grid > .arc-field-wide {
+  grid-column: 1 / -1;
+}
+
+/* Bootstrap 旧栅格：只统一水槽间距，不动列宽比例，避免破坏原有排布意图 */
+main.container .form-container .row {
+  --bs-gutter-x: var(--ps-col-gap);
+  --bs-gutter-y: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   5 · 字段与控件：统一 40px 触达高度、6px 圆角、3px 焦点圈
+   --------------------------------------------------------------------------- */
+main.container .form-container .form-group,
+main.container .form-container .arc-field,
+main.container .form-container .lic-field,
+main.container .form-container .brr-field,
+main.container .form-container .rev-field,
+main.container .form-container .lbr-field {
+  min-width: 0;
+  margin-bottom: var(--sp-5);
+}
+
+main.container .form-container :is(.form-group, .arc-field, .lic-field,
+  .brr-field, .rev-field, .lbr-field) > .form-label,
+main.container .form-container :is(.arc-field, .lic-field, .brr-field,
+  .rev-field, .lbr-field) > label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--c-text-secondary);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  letter-spacing: .02em;
+  line-height: 1.5;
+}
+
+/* 必填标记：沿用模板原有的 .text-danger 红色（--c-danger），不改色系。
+   只统一字形与尺寸，并保留 * 符号本体作为非颜色的第二重表意。 */
+main.container .form-container .form-label :is(.text-danger, .u-text-danger),
+main.container .form-container :is(label, .form-label) > :is(.text-danger, .u-text-danger) {
+  color: var(--c-danger);
+  font-family: var(--font-mono);
+  font-size: var(--fs-md);
+  font-weight: 700;
+  vertical-align: -1px;
+}
+
+main.container .form-container :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]),
+  select,
+  textarea
+) {
+  width: 100%;
+  min-height: var(--ps-control-h);
+  padding: 9px 12px;
+  border: 1px solid var(--c-border-strong);
+  border-radius: var(--r-sm);
+  background: var(--c-surface);
+  color: var(--c-text);
+  font-size: var(--fs-base);
+  line-height: 1.5;
+  transition: border-color var(--dur-fast) ease,
+              box-shadow var(--dur-fast) ease,
+              background-color var(--dur-fast) ease;
+}
+main.container .form-container textarea { min-height: 96px; resize: vertical; }
+main.container .form-container :is(input, select, textarea):hover:not(:disabled) {
+  border-color: var(--c-border-hover);
+}
+main.container .form-container :is(input, select, textarea):focus,
+main.container .form-container :is(input, select, textarea):focus-visible {
+  outline: none;
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 3px var(--c-primary-ring);
+  background: var(--c-surface);
+}
+main.container .form-container :is(input, select, textarea):disabled,
+main.container .form-container :is(input, select, textarea)[readonly] {
+  background: var(--c-surface-sunken);
+  color: var(--c-text-disabled);
+  cursor: not-allowed;
+}
+main.container .form-container :is(input, select)::placeholder,
+main.container .form-container textarea::placeholder { color: var(--c-text-tertiary); }
+
+/* 文件选择按钮：原生控件也纳入同一套规格 */
+main.container .form-container input[type="file"] {
+  width: 100%;
+  font-size: var(--fs-sm);
+  color: var(--c-text-secondary);
+}
+main.container .form-container input[type="file"]::file-selector-button {
+  min-height: 32px;
+  margin-right: var(--sp-3);
+  padding: 0 12px;
+  border: 1px solid var(--c-border-strong);
+  border-radius: var(--r-sm);
+  background: var(--c-surface-sunken);
+  color: var(--c-text-secondary);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  transition: border-color var(--dur-fast) ease, color var(--dur-fast) ease;
+}
+main.container .form-container input[type="file"]::file-selector-button:hover {
+  border-color: var(--c-primary);
+  color: var(--c-primary);
+}
+
+/* 复选 / 单选：统一强调色与 18px 尺寸 */
+main.container .form-container input[type="checkbox"],
+main.container .form-container input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  accent-color: var(--c-primary);
+  cursor: pointer;
+}
+
+/* 提示与错误：六套别名收敛为「说明 12px 次级 / 错误 12px 危险 / 汇总错误块」 */
+main.container .form-container :is(.form-hint, .arc-hint, .lic-hint, .rev-hint, .form-text) {
+  margin-top: 5px;
+  color: var(--c-text-tertiary);
+  font-size: var(--fs-xs);
+  line-height: 1.6;
+}
+main.container .form-container :is(.field-error, .arc-error, .lic-error,
+  .brr-error, .rev-error, .lbr-error, .text-danger:not(span)) {
+  margin-top: 5px;
+  color: var(--c-danger);
+  font-size: var(--fs-xs);
+  line-height: 1.6;
+}
+main.container .form-container :is(.form-alert, .alert-danger) {
+  margin-bottom: var(--sp-5);
+  padding: 12px 14px;
+  border: 1px solid var(--c-danger-line);
+  border-left: var(--ps-spine) solid var(--c-danger);
+  border-radius: var(--r-sm);
+  background: var(--c-danger-bg);
+  color: var(--c-danger);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-base);
+}
+main.container .form-container :is(.form-alert, .alert-danger) ul {
+  margin: 6px 0 0;
+  padding-left: 1.25em;
+}
+
+/* ---------------------------------------------------------------------------
+   6 · 操作条：吸底、右主左次、统一按钮规格
+   --------------------------------------------------------------------------- */
+main.container .form-container .form-actions:not(.dr-form-actions),
+main.container .detail-card .form-actions {
+  position: sticky;
+  bottom: var(--sp-3);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-top: var(--sp-6);
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--c-border);
+  border-top: 2px solid var(--c-border);
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--c-surface) 94%, transparent);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--sh-card);
+}
+
+main.container .form-container .form-actions :is(a, button),
+main.container .detail-card .form-actions :is(a, button) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: var(--ps-control-h);
+  min-width: 104px;
+  padding: 0 16px;
+  border: 1px solid var(--c-border-strong);
+  border-radius: var(--r-sm);
+  background: var(--c-surface);
+  color: var(--c-text-secondary);
+  font-size: var(--fs-base);
+  font-weight: 500;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) ease,
+              border-color var(--dur-fast) ease,
+              color var(--dur-fast) ease,
+              transform var(--dur-fast) var(--ease-out);
+}
+
+/* 主操作恒在最右：模板里按钮顺序不统一，靠 order 收敛 */
+main.container .form-container .form-actions .btn-primary,
+main.container .detail-card .form-actions .btn-primary,
+main.container .form-container .form-actions button[type="submit"],
+main.container .detail-card .form-actions button[type="submit"] {
+  order: 2;
+  background: var(--c-primary);
+  border-color: var(--c-primary);
+  color: var(--c-surface);
+}
+main.container .form-container .form-actions .btn-primary:hover,
+main.container .form-container .form-actions button[type="submit"]:hover,
+main.container .detail-card .form-actions .btn-primary:hover,
+main.container .detail-card .form-actions button[type="submit"]:hover {
+  background: var(--c-primary-active);
+  border-color: var(--c-primary-active);
+  color: var(--c-surface);
+}
+main.container .form-container .form-actions :is(.btn-transparent, .btn-secondary,
+  .btn-outline-secondary, .btn-outline-dark):hover,
+main.container .detail-card .form-actions :is(.btn-transparent, .btn-secondary,
+  .btn-outline-secondary, .btn-outline-dark):hover {
+  background: var(--c-primary-subtle);
+  border-color: var(--c-primary);
+  color: var(--c-primary);
+}
+main.container .form-container .form-actions :is(a, button):active,
+main.container .detail-card .form-actions :is(a, button):active { transform: translateY(1px); }
+main.container .form-container .form-actions :is(.btn-delete, .u-btn-danger),
+main.container .detail-card .form-actions :is(.btn-delete, .u-btn-danger) {
+  order: 2;
+  background: var(--c-danger);
+  border-color: var(--c-danger);
+  color: var(--c-surface);
+}
+
+/* 取消 / 返回类按钮统一退到最左，给主操作让出视觉焦点 */
+main.container .form-container .form-actions > a:not(.btn-primary):not(.btn-delete),
+main.container .detail-card .form-actions > a:not(.btn-primary):not(.btn-delete) { order: 0; }
+
+/* 键盘焦点：2px 主色描边 + 2px 偏移，所有交互元素可见 */
+main.container .form-container :is(a, button, input, select, textarea):focus-visible,
+main.container .detail-card :is(a, button, input, select, textarea):focus-visible {
+  outline: 2px solid var(--c-primary);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+   7 · 详情页：键值对双列账页 + 卷宗页头
+   --------------------------------------------------------------------------- */
+main.container .detail-card:has(> .detail-row),
+main.container .detail-card:has(> .detail-title + .detail-row) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: var(--sp-8);
+  align-content: start;
+}
+/* 非键值对内容（标题、分区、表格、长文、操作条）独占整行 */
+main.container .detail-card:has(> .detail-row) > :not(.detail-row) { grid-column: 1 / -1; }
+
+main.container .detail-card .detail-row {
+  display: grid;
+  grid-template-columns: var(--ps-label-w) minmax(0, 1fr);
+  gap: var(--sp-3);
+  align-items: baseline;
+  min-width: 0;
+  margin: 0;
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--c-border);
+}
+main.container .detail-card .detail-label {
+  width: auto;
+  flex: none;
+  color: var(--c-text-secondary);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  line-height: 1.6;
+}
+main.container .detail-card .detail-value {
+  min-width: 0;
+  color: var(--c-text);
+  font-size: var(--fs-base);
+  line-height: var(--lh-base);
+  word-break: break-word;
+}
+main.container .detail-card .detail-value a {
+  color: var(--c-primary);
+  text-decoration: none;
+  background-image: linear-gradient(var(--c-link-underline), var(--c-link-underline));
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  background-size: 0 1px;
+  transition: background-size var(--dur-base) var(--ease-out);
+}
+main.container .detail-card .detail-value a:hover { background-size: 100% 1px; }
+
+/* 保险 / 客户账期等页面自建的字段栅格：对齐到同一列距 */
+main.container .detail-card .ins-fields-grid,
+main.container .detail-card .credit-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: var(--sp-8);
+}
+main.container .detail-card .ins-fields-grid .ins-row-full { grid-column: 1 / -1; }
+
+/* 详情页标题行（page-header）：并入卷宗页眉语言。
+   page-actions--inline 的页面把操作按钮并进标题行，已是 flex 项，
+   不能再给 auto 外边距，否则会把按钮挤出一行。 */
+main.container:has(> .detail-card, > .record-card) > .page-header {
+  position: relative;
+  padding-bottom: var(--sp-3);
+  border-bottom: 1px solid var(--c-border);
+}
+main.container:has(> .detail-card, > .record-card):not(:has(> .page-actions--inline)) > .page-header {
+  max-width: var(--ps-card-w);
+  margin: 0 auto var(--sp-4);
+}
+main.container:has(> .detail-card, > .record-card) > .page-header::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: var(--ps-rule-head);
+  height: 2px;
+  background: var(--c-primary);
+}
+main.container:has(> .detail-card, > .record-card) > .page-header :is(h1, h2) {
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
+  font-weight: 700;
+  letter-spacing: var(--ls-tight);
+  color: var(--c-text);
+}
+main.container:has(> .detail-card, > .record-card) > .page-header .total-hint {
+  margin-left: var(--sp-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 400;
+  color: var(--c-text-tertiary);
+}
+
+/* 带业务眉标的详情页页眉：等宽 kicker + 宋体标题 + 主色段首发丝线。
+   ::before / ::after 全部绝对定位，不生成 flex 项，保留 page-header 原有
+   「标题左、操作右」的排布；data-kicker 是纯表现属性，不参与任何数据逻辑。 */
+main.container > .page-header[data-kicker] {
+  position: relative;
+  padding-top: var(--sp-5);
+  padding-bottom: var(--sp-3);
+  border-bottom: 1px solid var(--c-border);
+}
+main.container > .page-header[data-kicker]::before {
+  content: attr(data-kicker);
+  position: absolute;
+  top: 0;
+  left: 0;
+  font-family: var(--font-mono);
+  font-size: var(--ps-kicker);
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: .12em;
+  color: var(--c-primary);
+}
+main.container > .page-header[data-kicker]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: var(--ps-rule-head);
+  height: 2px;
+  background: var(--c-primary);
+}
+main.container > .page-header[data-kicker] :is(h1, h2) {
+  font-family: var(--font-display);
+  letter-spacing: var(--ls-tight);
+}
+main.container > .page-header[data-kicker] .total-hint {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 400;
+}
+
+/* 档案 / 试样模块私有信息卡：沿用同一套发丝线与等宽标签 */
+main.container .detail-card .arc-info-grid,
+main.container .detail-card .info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-2) var(--sp-4);
+}
+main.container .detail-card :is(.arc-info-label, .info-label) {
+  color: var(--c-text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+}
+main.container .detail-card :is(.arc-info-value, .info-value) {
+  color: var(--c-text);
+  font-size: var(--fs-base);
+}
+
+/* ---------------------------------------------------------------------------
+   8 · 模块私有页眉的字形对齐（不改其布局，只统一语汇）
+   --------------------------------------------------------------------------- */
+main.container :is(.cf-eyebrow, .dc-overline, .cf-card__num, .dr-page-head__meta .mono,
+  .dc-case-no, .cf-hero__step, .cf-hero__caption) {
+  font-family: var(--font-mono);
+  letter-spacing: .08em;
+}
+main.container :is(.cf-title, .dc-hero-title, .kb-doc-title-serif) {
+  font-family: var(--font-display);
+  letter-spacing: var(--ls-tight);
+}
+/* 每日记录表单已有专属三列栅格与吸底条：只补书脊与 kicker，不覆盖布局 */
+main.container .form-container.dr-page-form .dr-page-head .form-title { margin-bottom: var(--sp-2); }
+main.container .form-container.dr-page-form .dr-page-head .form-title::before {
+  content: "FORM / 每日记录";
+  display: block;
+  margin-bottom: var(--sp-2);
+  font-family: var(--font-mono);
+  font-size: var(--ps-kicker);
+  font-weight: 500;
+  letter-spacing: .12em;
+  color: var(--c-primary);
+}
+main.container .form-container.dr-page-form .dr-page-head .form-title::after { display: none; }
+
+/* ---------------------------------------------------------------------------
+   9 · 动效：一次编排好的入场序列（页眉 → 字段 → 操作条），60–120ms 错峰
+   --------------------------------------------------------------------------- */
+@keyframes ps-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  main.container .form-container > :is(.form-head, .form-title, .dr-page-head),
+  main.container .detail-card > :is(.detail-title, .page-header),
+  main.container > .page-header { animation: ps-rise var(--ps-enter) var(--ease-out) both; }
+
+  main.container .form-container > form,
+  main.container .detail-card > :is(.detail-row, .content-section, .arc-info-grid, .info-grid) {
+    animation: ps-rise var(--ps-enter) var(--ease-out) 80ms both;
+  }
+  main.container .form-container .form-actions,
+  main.container .detail-card .form-actions {
+    animation: ps-rise var(--ps-enter) var(--ease-out) 160ms both;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  main.container .form-container *,
+  main.container .detail-card *,
+  main.container > .page-header * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   10 · 响应式：1440 双列 / 768 单列 / 375 操作条铺满
+   --------------------------------------------------------------------------- */
+@media (max-width: 960px) {
+  main.container .form-container,
+  main.container .detail-card { padding: var(--sp-6) var(--sp-5) var(--sp-5); }
+  main.container .detail-card:has(> .detail-row) { grid-template-columns: minmax(0, 1fr); }
+  main.container .detail-card .ins-fields-grid,
+  main.container .detail-card .credit-detail-grid { grid-template-columns: minmax(0, 1fr); }
+  main.container .detail-card .arc-info-grid,
+  main.container .detail-card .info-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 768px) {
+  main.container .form-container .form-grid,
+  main.container .form-container .arc-form-grid,
+  main.container .form-container .lic-form-grid,
+  main.container .form-container .brr-grid,
+  main.container .form-container .rev-grid,
+  main.container .form-container .lbr-grid { grid-template-columns: minmax(0, 1fr); }
+
+  main.container .form-container .form-head { flex-direction: column; gap: var(--sp-3); }
+  main.container .form-container .form-back { align-self: flex-start; }
+  main.container .form-container .form-title,
+  main.container .detail-card .detail-title,
+  main.container:has(.detail-card) > .page-header :is(h1, h2) { font-size: var(--fs-xl); }
+
+  main.container .detail-card .detail-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+  main.container .detail-card .detail-label { font-size: var(--fs-xs); }
+}
+@media (max-width: 480px) {
+  main.container .form-container,
+  main.container .detail-card { padding: var(--sp-5) var(--sp-4) var(--sp-4); }
+  main.container .form-container .form-actions:not(.dr-form-actions),
+  main.container .detail-card .form-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+  main.container .form-container .form-actions :is(a, button),
+  main.container .detail-card .form-actions :is(a, button) { width: 100%; }
+  main.container .form-container .form-head::after { width: 40px; }
+}
+
+/* ---------------------------------------------------------------------------
+   11 · 模块私有详情页：语汇对齐
+   ---------------------------------------------------------------------------
+   客诉 / 客户台账 / 评审 / 穿行测试 / 知识库 / 供应商 / 试样 / 档案 / 证照
+   等详情页已有各自打磨过的 hero 与栅格。这里只收敛三类表现：卡片规格、
+   标题字形、眉标字形；不改 width / max-width / display / padding / margin /
+   grid，也不定义任何新色值，暗色主题仍由 tokens.css 自动继承。
+   --------------------------------------------------------------------------- */
+/* 卡片：各模块本就取自 --c-surface / --c-border，只把圆角与边框补齐到同一规格 */
+main.container :is(.cr-card, .lgd-card, .dc-card, .kb-detail-card,
+  .record-card, .role-form-card) {
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  box-shadow: var(--sh-1);
+}
+
+/* 主标题：与 .form-title / .detail-title 共用宋体，不改字号与颜色 */
+main.container :is(.dc-hero-title, .lgd-name, .lgd-title, .kb-doc-title-serif,
+  .cf-title, .mp-hero-title) {
+  font-family: var(--font-display);
+  letter-spacing: var(--ls-tight);
+}
+
+/* 眉标 / 编号：统一等宽，颜色沿用各模块原有的业务语义色 */
+main.container :is(.dc-overline, .dc-case-no, .lgd-eyebrow) {
+  font-family: var(--font-mono);
+  letter-spacing: .08em;
+}
+
+/* 分区标题：宋体 + 统一字距，不覆盖各模块原有的主色左线或底部分隔线 */
+main.container :is(.cr-card__head h2, .lgd-card-head h3, .dc-card h2,
+  .record-card-header h5, .mp-section__title, .arc-sec-title, .lic-sec-title) {
+  font-family: var(--font-display);
+  letter-spacing: var(--ls-tight);
+}
+
+/* ---------------------------------------------------------------------------
+   12 · 详情页专项：多列分栏 / 长文本 / 聚合卡 / 页眉对齐
+   只作用于含 .detail-card / .ins-card 的详情页，模块私有 hero 布局不受影响。
+   --------------------------------------------------------------------------- */
+
+/* 12.1 诉讼详情：模板用 Bootstrap row > col-lg-7 + col-lg-5 分栏，共享卡片
+   在列内被截成 656 / 462px，值列只剩 107px，右列留下 530px 空白；CSS counter
+   按 DOM 编号又与两列视觉顺序错开（04 排在 03 上面）。收敛成单列通栏：
+   卡片同为 1040px、左边缘一致，编号 01→04 与阅读顺序一致。 */
+main.container:has(.case-flow) > .row.g-4 { display: block; margin: 0; }
+main.container:has(.case-flow) > .row.g-4 > [class*="col-"] {
+  width: 100%;
+  max-width: 100%;
+  flex: none;
+  padding: 0;
+  margin: 0;
+}
+main.container:has(.case-flow) > .row.g-4 > [class*="col-"] > .detail-card {
+  max-width: var(--ps-card-w);
+  margin: 0 auto var(--sp-5);
+}
+
+/* 12.2 长文本：备注独占整行，避免整段尽调摘要挤在 299px 窄栏里撑出 978px 卡片 */
+main.container .credit-detail-grid > .detail-row:last-child { grid-column: 1 / -1; }
+main.container .credit-detail-grid > .detail-row:last-child .detail-value {
+  max-width: var(--w-prose);
+  line-height: 1.8;
+}
+
+/* 12.3 保险聚合卡：与主卡片同宽、同圆角、同阴影 */
+main.container:has(> .detail-card) > .ins-card {
+  max-width: var(--ps-card-w);
+  margin-left: auto;
+  margin-right: auto;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-1);
+}
+
+/* 12.4 续保时间线表格：日期 / 保司保持原列宽不被挤断，末列换行但收紧字形；
+   保费列减内边距让「金额（N 条）」落在同一行 */
+main.container .ins-card .ins-timeline-table :is(th, td):nth-child(1) { width: 9%; }
+main.container .ins-card .ins-timeline-table :is(th, td):nth-child(2) { width: 19%; }
+main.container .ins-card .ins-timeline-table :is(th, td):nth-child(3) { width: 15%; }
+main.container .ins-card .ins-timeline-table :is(th, td):nth-child(4) {
+  width: 14%;
+  padding-left: 6px !important;
+  padding-right: 6px !important;
+  white-space: nowrap;
+}
+main.container .ins-card .ins-timeline-table td:nth-child(4) .ins-muted { font-size: 11px; }
+main.container .ins-card .ins-timeline-table :is(th, td):nth-child(5) { width: 8%; }
+main.container .ins-card .ins-timeline-table :is(th, td):nth-child(6) { width: 11%; }
+main.container .ins-card .ins-timeline-table :is(th, td):nth-child(7) { width: 8%; }
+main.container .ins-card .ins-timeline-table :is(th, td):nth-child(8) {
+  width: 16%;
+  white-space: normal;
+  overflow: hidden;
+}
+main.container .ins-card .ins-timeline-table td:last-child a {
+  font-size: 12px;
+  line-height: 1.55;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+main.container .ins-card .ins-timeline-table td:last-child a:hover {
+  text-decoration: underline;
+}
+
+/* 12.5 页眉：左起点 / 按钮右端与 1040px 卡片同一基线 */
+main.container:has(> .detail-card, > .ins-card) > :is(.page-header, .app-breadcrumb) {
+  padding-left: max(0px, calc((100% - var(--ps-card-w)) / 2));
+}
+main.container:has(> .detail-card) > .page-actions.page-actions--inline {
+  padding-right: max(0px, calc((100% - var(--ps-card-w)) / 2));
+}
+
+/* 12.6 主色段整页只出现一次：铺满页眉底边，卡片书脊退为纯发丝线 */
+main.container > .page-header[data-kicker]::after,
+main.container:has(> .detail-card, > .ins-card) > .page-header::after {
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg,
+    var(--c-primary) 0 var(--ps-rule-head),
+    var(--c-border) var(--ps-rule-head) 100%);
+}
+main.container:has(> .detail-card, > .ins-card) .detail-card::before {
+  height: 1px;
+  background: var(--c-border);
+}
+
+/* 12.7 状态标签固定到标题右侧同一行，不再换到第二行与规则线挤在一起 */
+main.container > .page-header[data-kicker] {
+  flex-wrap: nowrap;
+  align-items: center;
+}
+main.container > .page-header[data-kicker] > :is(h1, h2) {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+main.container > .page-header[data-kicker] > .status-badge {
+  flex: 0 0 auto;
+  align-self: center;
+  margin-left: auto;
+}
+
+/* 12.8 附件面板：与 1040px 卡片同宽、同圆角、同阴影，底部不再外扩 51px */
+main.container .att-panel {
+  max-width: var(--ps-card-w);
+  margin-left: auto;
+  margin-right: auto;
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-1);
+}
+
+/* 12.9 长企业名页：标题降一档，编号 / 细分信息退到第二行做副标题，
+   避免「标题 + 辅助信息 + 状态」挤在同一行折出孤字 */
+main.container:has(.credit-detail-grid) > .page-header[data-kicker] > :is(h1, h2) {
+  font-size: var(--fs-xl);
+  flex-wrap: wrap;
+}
+main.container:has(.credit-detail-grid) > .page-header[data-kicker] .total-hint {
+  flex: 0 0 100%;
+  margin: 2px 0 0;
+  white-space: nowrap;
+  font-size: var(--fs-xs);
+}
+
+/* 打印视图：撤掉屏幕态阴影与眉标，保留各模块已有的打印样式优先级 */
+@media print {
+  main.container :is(.cr-card, .lgd-card, .dc-card, .kb-detail-card,
+    .record-card, .role-form-card) {
+    box-shadow: none;
+  }
+  main.container:has(> .detail-card) > .ins-card { box-shadow: none; }
+  main.container > .page-header[data-kicker] { padding-top: 0; }
+  main.container > .page-header[data-kicker]::before { display: none; }
+}

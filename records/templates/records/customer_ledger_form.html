@@ -10,7 +10,12 @@
 
 {% block content %}
     <div class="form-container">
-        <h1 class="form-title">{% if form.instance.pk %}编辑客户台账{% else %}新增客户台账{% endif %}</h1>
+        <div class="form-head">
+            <div>
+                <h1 class="form-title" data-kicker="RECORD / 客户台账">{% if form.instance.pk %}编辑客户台账{% else %}新增客户台账{% endif %}</h1>
+                <p class="form-subtitle">维护客户基础资料与附件，保存后可在列表与详情中继续补充。</p>
+            </div>
+        </div>
 
         <form method="post" enctype="multipart/form-data">
             {% csrf_token %}

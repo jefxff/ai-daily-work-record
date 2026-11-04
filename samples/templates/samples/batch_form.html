@@ -15,7 +15,7 @@
 
 {% block content %}
 <div class="form-container">
-    <h1 class="form-title">{% if record %}编辑第 {{ record.round_no }} 批小批量记录{% else %}新增第 {{ next_round }} 批小批量记录{% endif %}</h1>
+    <h1 class="form-title" data-kicker="SAMPLE / 小批量记录">{% if record %}编辑第 {{ record.round_no }} 批小批量记录{% else %}新增第 {{ next_round }} 批小批量记录{% endif %}</h1>
     <p class="u-form-help">
         样品：<a href="{% url 'samples:detail' sample.pk %}">{{ sample.sample_no }}</a> · {{ sample.material_name }} / {{ sample.model }} · 当前状态：<span class="status-badge {{ sample.status_badge_class }}">{{ sample.get_status_display }}</span>
     </p>

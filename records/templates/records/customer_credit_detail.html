@@ -18,7 +18,7 @@
 {% endblock %}
 
 {% block content %}
-    <div class="page-header credit-detail-header">
+    <div class="page-header credit-detail-header" data-kicker="REVIEW / 账期评审">
         <h1>客户账期详情 · {{ credit.customer_name }}<span class="total-hint">{{ credit.credit_no|default:"未编号" }} · {{ credit.customer_segment|default:"未细分" }}</span></h1>
         <span class="status-badge {% if credit.result == '不同意' %}danger{% elif credit.result == '待定' %}warning{% elif credit.result == '同意' %}success{% else %}default{% endif %}">{{ credit.result }}</span>
     </div>

@@ -3,12 +3,17 @@
 {% block page_title %}推送系统公告 - 每日工作记录管理网站{% endblock %}
 
 {% block content %}
-<h1 class="form-title">推送系统公告</h1>
-
 <div class="form-container">
-    <p class="text-muted mb-4">
-        公告将推送给<strong>全部启用用户</strong>的站内收件箱，发送状态由通知队列异步处理。
-    </p>
+    <div class="form-head">
+        <div>
+            <h1 class="form-title" data-kicker="NOTICE / 系统公告">推送系统公告</h1>
+            <p class="form-subtitle">公告将推送给<strong>全部启用用户</strong>的站内收件箱，发送状态由通知队列异步处理。</p>
+        </div>
+        <a class="form-back" href="{% url 'notifications:list' %}">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+            返回通知中心
+        </a>
+    </div>
     <form data-validate="1" novalidate method="post">
         {% csrf_token %}
         {% if errors %}

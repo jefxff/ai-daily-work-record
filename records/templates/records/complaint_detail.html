@@ -15,7 +15,7 @@
 {% endblock %}
 
 {% block content %}
-    <div class="page-header">
+    <div class="page-header" data-kicker="RECORD / 诉讼案件">
         <h1>诉讼详情 · {{ complaint.defendant }}<span class="total-hint">{% if complaint.filed_at %}立案于 {{ complaint.filed_at|date:'Y-m-d' }}{% endif %}</span></h1>
         <span class="status-badge {% if complaint.progress == '结案' %}success{% elif complaint.progress == '审理中' %}warning{% else %}info{% endif %}">{{ complaint.progress }}</span>
     </div>

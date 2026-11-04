@@ -10,7 +10,12 @@
 
 {% block content %}
     <div class="form-container">
-        <h1 class="form-title">{% if form.instance.id %}编辑客户客诉{% else %}新增客户客诉{% endif %}</h1>
+        <div class="form-head">
+            <div>
+                <h1 class="form-title" data-kicker="RECORD / 客诉台账">{% if form.instance.id %}编辑客户客诉{% else %}新增客户客诉{% endif %}</h1>
+                <p class="form-subtitle">登记客户诉求、责任业务员与闭环结论；带 * 的字段为必填项。</p>
+            </div>
+        </div>
 
         <form method="post">
             {% csrf_token %}
