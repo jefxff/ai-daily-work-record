@@ -939,10 +939,12 @@ def _ensure_credit_docs(credit):
 
 @perm_required("customer_credit", "read")
 def customer_credit_detail(request, pk):
-    """客户账期详情视图"""
+    """客户账期详情视图（已取消 AJAX 弹窗，一律整页渲染）。
+
+    详情承载前期资料清单、关联评审、批准账期等区块，精简弹窗无法呈现这些
+    内容；列表「详细」与行点击都走整页，避免同一入口出现两套信息量不同的详情。
+    """
     credit = get_object_or_404(CustomerCredit, pk=pk)
-    if _is_ajax(request):
-        return _modal_detail(request, 'records/_customer_credit_detail_modal.html', {'credit': credit})
     linked_reviews = credit.reviews.order_by('-id')
     _ensure_credit_docs(credit)
     return render(request, 'records/customer_credit_detail.html', {

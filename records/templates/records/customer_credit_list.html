@@ -170,7 +170,7 @@
                         </td>
                         <td data-label="操作" class="col-actions">
                     <div class="u-toolbar-inline">
-                        <a href="{% url 'customer_credit_detail' credit.id %}" class="btn-transparent btn-sm" data-modal-detail data-modal-title="客户账期详情">详细</a>
+                        <a href="{% url 'customer_credit_detail' credit.id %}" class="btn-transparent btn-sm">详情</a>
                         {% can "customer_credit" "update" %}
                         <a href="{% url 'customer_credit_edit' credit.id %}" class="btn-transparent btn-sm" data-modal-edit data-modal-title="编辑客户账期">编辑</a>
                         {% endcan %}

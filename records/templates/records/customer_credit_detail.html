@@ -18,10 +18,15 @@
 {% endblock %}
 
 {% block content %}
-    <!-- 详情卡片 -->
-    <div class="detail-card">
-        <h1 class="detail-title">客户账期详细信息</h1>
+    <div class="page-header">
+        <h1>客户账期详情 · {{ credit.customer_name }}<span class="total-hint">{{ credit.credit_no|default:"未编号" }} · {{ credit.customer_segment|default:"未细分" }}</span></h1>
+        <span class="status-badge {% if credit.result == '不同意' %}danger{% elif credit.result == '待定' %}warning{% elif credit.result == '同意' %}success{% else %}default{% endif %}">{{ credit.result }}</span>
+    </div>
 
+    <!-- 基本信息 -->
+    <div class="detail-card">
+        <h2 class="detail-title">基本信息</h2>
+        <div class="credit-detail-grid">
         <div class="detail-row">
             <div class="detail-label">提出日期：</div>
             <div class="detail-value">{{ credit.proposal_date|date:'Y-m-d'|default:"无" }}</div>
@@ -96,6 +101,7 @@
             <div class="detail-label">备注：</div>
             <div class="detail-value">{{ credit.remarks|default:"无" }}</div>
         </div>
+        </div>
     </div>
 
     <!-- 前期资料清单（现场前收集，单一数据源；评审单详情页只读引用） -->
@@ -117,9 +123,6 @@
                             <td>{{ doc.get_doc_type_display }}</td>
                             <td>
                                 <select name="doc_{{ doc.id }}_status" class="form-select form-select-sm">
-                                    {% for v, label in doc.status_choices_display %}
-                                    {% endfor %}
-                                    {% for v, label in doc.STATUS %}{% endfor %}
                                     <option value="未收集" {% if doc.status == '未收集' %}selected{% endif %}>未收集</option>
                                     <option value="已收集" {% if doc.status == '已收集' %}selected{% endif %}>已收集</option>
                                     <option value="不适用" {% if doc.status == '不适用' %}selected{% endif %}>不适用</option>
@@ -207,6 +210,19 @@
 
 {% block extra_css %}
 <style>
+    /* 整页详情：宽屏两列读字段，窄屏退回单列（与列表页窄屏策略一致） */
+    .credit-detail-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        column-gap: 2rem;
+    }
+    .credit-detail-grid .detail-row { margin-bottom: 0; align-self: start; }
+    .credit-detail-grid .detail-label { width: 120px; }
+    @media (max-width: 1000px) {
+        .credit-detail-grid { grid-template-columns: 1fr; }
+        /* 前期资料 5 列含日期与附件控件，窄屏靠 .table-responsive 横滚，不压列 */
+        .docs-table { min-width: 900px; }
+    }
     .docs-table select, .docs-table input[type="date"], .docs-table input[type="text"],
     .docs-table input[type="file"] { min-width: 0; }
     .docs-att__remove { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; font-size: 0.8rem; color: var(--c-text-secondary); }

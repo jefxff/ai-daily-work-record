@@ -581,3 +581,60 @@ class ApprovalTermsTests(ReviewIoTestBase):
         row = [r for r in ws.iter_rows(min_row=2, values_only=True) if r[0] == 'T-AP-E'][0]
         self.assertEqual(row[idx['批准账期天数(账期单)']], 60)
         self.assertEqual(float(row[idx['批准额度万元(账期单)']]), 150.0)
+
+
+class CreditDetailPageTests(ReviewIoTestBase):
+    """账期详情整页化（2.5.1）：列表入口与 AJAX 头请求都不再回精简弹窗。"""
+
+    def setUp(self):
+        super().setUp()
+        from .models import CustomerCredit
+
+        extra = Role.objects.create(code=f'credit-page-{self.user.username}', name='账期详情角色')
+        extra.permissions.set(Permission.objects.filter(
+            code__in=['customer_credit.read', 'customer_credit.update']))
+        extra.users.add(self.user)
+        cache.clear()
+        self.credit = CustomerCredit.objects.create(
+            proposal_date='2026-11-01', customer_name='整页详情客户',
+            customer_type='普通客户', customer_segment='经销商',
+            salesperson='张三', result='进行中', credit_no='KQ-202611-001',
+        )
+
+    def test_list_detail_link_opens_page(self):
+        resp = self.client.get(reverse('customer_credit_list'))
+        self.assertEqual(resp.status_code, 200)
+        html = resp.content.decode()
+        link = re.search(r'<a[^>]+href="[^"]*customer_credit/detail/\d+/"[^>]*>', html)
+        self.assertIsNotNone(link)
+        self.assertNotIn('data-modal-detail', link.group(0))
+        self.assertNotIn('data-modal-title="客户账期详情"', html)
+        # 新增 / 编辑表单弹窗是另一套机制，不受本次改动影响
+        self.assertIn('data-modal-edit', html)
+
+    def test_ajax_header_returns_full_detail(self):
+        resp = self.client.get(
+            reverse('customer_credit_detail', args=[self.credit.pk]),
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertTemplateUsed(resp, 'records/customer_credit_detail.html')
+        self.assertTemplateNotUsed(resp, 'records/_customer_credit_detail_modal.html')
+        html = resp.content.decode()
+        self.assertIn('<html', html)
+        self.assertIn('客户账期详情 · 整页详情客户', html)
+        self.assertIn('KQ-202611-001', html)
+        self.assertIn('前期资料', html)
+        self.assertIn('关联评审', html)
+        # 精简弹窗不执行 _ensure_credit_docs，整页路径必须补齐 6 项资料
+        self.assertEqual(self.credit.docs.count(), 6)
+
+    def test_detail_page_has_actions_and_blocks(self):
+        resp = self.client.get(reverse('customer_credit_detail', args=[self.credit.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, '基本信息')
+        self.assertContains(resp, '发起评审')
+        self.assertContains(resp, '保存前期资料')
+        self.assertContains(resp, '尚未发起评审')
+        self.assertContains(resp, 'data-modal-edit')
+        self.assertContains(resp, 'credit-detail-grid')
