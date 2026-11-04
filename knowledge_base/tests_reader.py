@@ -101,9 +101,11 @@ class ReaderShellTests(TestCase):
     def test_base_layout_css_inherited(self):
         """防回归：详情页 extra_css 必须 {{ block.super }}。基座同名 block 里
         有右栏布局（.fixed-right-sidebar / .knowledge-main-with-right）与侧栏
-        样式，整块覆盖会让右栏掉到文档流下方（2026-10-22 用户截图 2 事故）。"""
+        样式，整块覆盖会让右栏掉到文档流下方（2026-10-22 用户截图 2 事故）。
+        2026-11-04 全站单轨整改后右栏由 fixed 侧栏改为横向筛选带，
+        故改用基座独有的 .fixed-right-sidebar > .kb-side-section 作为继承标记。"""
         self.assertIn(".fixed-right-sidebar", self.html)
-        self.assertIn("position: fixed", self.html)
+        self.assertIn(".fixed-right-sidebar > .kb-side-section", self.html)
         self.assertIn(".knowledge-main-with-right", self.html)
         self.assertIn(".kb-cat-doc", self.html)   # 侧栏文档行样式同样来自基座
 

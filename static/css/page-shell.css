@@ -30,7 +30,7 @@
   --ps-rule-head:    56px;                /* 规则线主色段长度 */
   --ps-kicker:       11px;                /* 等宽眉标字号 */
   --ps-control-h:    40px;                /* 输入框 / 按钮统一触达高度 */
-  --ps-card-w:       1040px;              /* 整页表单 / 详情最大宽度 */
+  --ps-card-w:       100%;                /* 全站唯一轨道：跟随 main.container，不另设上限 */
   --ps-col-gap:      var(--sp-6);         /* 字段列间距 */
   --ps-label-w:      148px;               /* 详情键值对的标签列宽 */
   --ps-enter:        460ms;               /* 入场序列时长 */
@@ -90,8 +90,38 @@ main.container .detail-card::after {
 [data-theme="dark"] main.container .form-container::after,
 [data-theme="dark"] main.container .detail-card::after { mix-blend-mode: screen; }
 
-/* 短表单（供应商档案等）用窄版卡，宽度仍走令牌，不写内联 max-width */
-main.container .form-container.form-container--narrow { max-width: 720px; }
+/* 短表单（供应商档案等）：卡片外框仍走全站 1142 轨道，字段改双栏栅格
+   铺满卡片内宽。不再整张内缩 211px，也不会出现「卡片通栏、字段挤在窄栏、
+   标题与字段起点错开」的半吊子布局。 */
+main.container .form-container.form-container--narrow { max-width: 100%; }
+main.container .form-container--narrow > form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-4) var(--sp-6);
+  align-items: start;
+}
+main.container .form-container--narrow > form > :is(.form-actions, .form-group:has(textarea)) {
+  grid-column: 1 / -1;
+}
+@media (max-width: 768px) {
+  main.container .form-container--narrow > form { grid-template-columns: 1fr; }
+}
+
+/* 账户页等「裸卡」：外框统一到全站轨道，内部短表单居中限宽保持行长可读。
+   原模板写死 520px 整卡内缩，是 1440 视口下最窄的一档规格。 */
+main.container > .ps-panel {
+  width: 100%;
+  padding: var(--sp-7) var(--ps-rail) var(--sp-6);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-1), var(--sh-2);
+}
+main.container > .ps-panel > :is(form, .u-alert-success, .u-alert-danger, .u-alert-warning) {
+  max-width: 520px;
+  margin-left: auto;
+  margin-right: auto;
+}
 
 /* 所有直接子元素抬到颗粒层之上；操作条另给更高层级以便吸底 */
 main.container .form-container > *,
@@ -866,11 +896,51 @@ main.container:has(.case-flow) > .row.g-4 > [class*="col-"] > .detail-card {
   margin: 0 auto var(--sp-5);
 }
 
-/* 12.2 长文本：备注独占整行，避免整段尽调摘要挤在 299px 窄栏里撑出 978px 卡片 */
-main.container .credit-detail-grid > .detail-row:last-child { grid-column: 1 / -1; }
+/* 12.2 长文本备注：从「标签列 + 限宽值列」改成独立的卷宗注记块。
+   旧版标签占 148px、正文限宽 558px，右侧空出 240px；整段文字又和上方字段行
+   共用一条分隔线，像一堵没有层级的墙。现在标签升为等宽眉标 + 发丝线，
+   正文分两栏（每栏约 33 个汉字，符合中文最佳行长），左右边界与字段栅格
+   的 366 / 1324 内容轨完全重合。 */
+main.container .credit-detail-grid > .detail-row:last-child {
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-3);
+  margin-top: var(--sp-2);
+  padding: var(--sp-5) 0 var(--sp-3);
+  border-bottom: 0;
+  border-top: 1px solid var(--c-border);
+}
+main.container .credit-detail-grid > .detail-row:last-child .detail-label {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  letter-spacing: var(--ls-wide);
+  color: var(--c-text-tertiary);
+}
+main.container .credit-detail-grid > .detail-row:last-child .detail-label::after {
+  content: "";
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--c-border);
+}
 main.container .credit-detail-grid > .detail-row:last-child .detail-value {
-  max-width: var(--w-prose);
-  line-height: 1.8;
+  max-width: none;
+  column-count: 2;
+  column-gap: var(--sp-8);
+  column-rule: 1px solid var(--c-border);
+  line-height: 1.95;
+  text-align: justify;
+  text-justify: inter-ideograph;
+  color: var(--c-text-secondary);
+}
+@media (max-width: 960px) {
+  main.container .credit-detail-grid > .detail-row:last-child .detail-value {
+    column-count: 1;
+    column-rule: none;
+  }
 }
 
 /* 12.3 保险聚合卡：与主卡片同宽、同圆角、同阴影 */
@@ -883,10 +953,11 @@ main.container:has(> .detail-card) > .ins-card {
   box-shadow: var(--sh-1);
 }
 
-/* 12.4 续保时间线表格：日期 / 保司保持原列宽不被挤断，末列换行但收紧字形；
-   保费列减内边距让「金额（N 条）」落在同一行 */
+/* 12.4 续保时间线表格：卡片收敛到 1040px 后表格净宽 960px，原先按 1142px
+   调的列宽会把「保障期间」「与上期衔接」「状态」压成省略号。列宽重新分配
+   （合计 100%）：日期区间给足 22%，衔接 / 状态列允许徽章折行，末列链接换行。 */
 main.container .ins-card .ins-timeline-table :is(th, td):nth-child(1) { width: 9%; }
-main.container .ins-card .ins-timeline-table :is(th, td):nth-child(2) { width: 19%; }
+main.container .ins-card .ins-timeline-table :is(th, td):nth-child(2) { width: 22%; }
 main.container .ins-card .ins-timeline-table :is(th, td):nth-child(3) { width: 15%; }
 main.container .ins-card .ins-timeline-table :is(th, td):nth-child(4) {
   width: 14%;
@@ -895,13 +966,32 @@ main.container .ins-card .ins-timeline-table :is(th, td):nth-child(4) {
   white-space: nowrap;
 }
 main.container .ins-card .ins-timeline-table td:nth-child(4) .ins-muted { font-size: 11px; }
-main.container .ins-card .ins-timeline-table :is(th, td):nth-child(5) { width: 8%; }
+main.container .ins-card .ins-timeline-table :is(th, td):nth-child(5) {
+  width: 7%;
+  padding-left: 4px !important;
+  padding-right: 4px !important;
+}
 main.container .ins-card .ins-timeline-table :is(th, td):nth-child(6) { width: 11%; }
-main.container .ins-card .ins-timeline-table :is(th, td):nth-child(7) { width: 8%; }
+main.container .ins-card .ins-timeline-table :is(th, td):nth-child(7) { width: 9%; }
 main.container .ins-card .ins-timeline-table :is(th, td):nth-child(8) {
-  width: 16%;
+  width: 13%;
   white-space: normal;
   overflow: hidden;
+}
+/* 模板给 td 设了 nowrap + ellipsis；衔接 / 状态列放开折行，徽章收紧内边距，
+   避免「与上期重叠 270 天」「已过期」被截成半截 */
+main.container .ins-card .ins-timeline-table :is(td:nth-child(6), td:nth-child(7)) {
+  white-space: normal;
+}
+main.container .ins-card .ins-timeline-table :is(td:nth-child(6), td:nth-child(7))
+  :is(.ins-cont, .status-badge, .ins-muted) {
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+main.container .ins-card .ins-timeline-table td:nth-child(7) .status-badge {
+  padding: 1px 5px;
 }
 main.container .ins-card .ins-timeline-table td:last-child a {
   font-size: 12px;
@@ -970,6 +1060,78 @@ main.container:has(.credit-detail-grid) > .page-header[data-kicker] .total-hint 
   margin: 2px 0 0;
   white-space: nowrap;
   font-size: var(--fs-xs);
+}
+
+/* ---------------------------------------------------------------------------
+   13 · 全站对齐收敛：一条内容轨贯穿所有详情页
+   ---------------------------------------------------------------------------
+   诊断（1440px 视口实测）：共享外壳的卡片是 1040px / L325–R1365，私有 hero 页
+   （保险标的、客户台账、档案、证照、供应商）却是 1142px / L274–R1416，两套几何
+   并存；同一页内各卡内边距又分别是 40 / 18 / 0 / 24 / 20px，导致「卡片外框
+   看着对齐、里面的文字却是阶梯」。本节把宽度、内边距、页眉基线一次收敛。
+
+   二次整改：--ps-card-w 已从 1040px 改为 100%，卡片外框跟随 main.container
+   （1440 视口下 1142px / L274–R1416），与列表页、首页共用同一条轨道，
+   距左侧导航恒 24px。下面的 max-width / calc 规则因此自动归零，保留原写法
+   是为了将来若重新设定轨道上限，页眉仍能自动跟随，不必再改一遍。
+   --------------------------------------------------------------------------- */
+:root { --ps-rail: var(--sp-8); }   /* 40px：卡片内边距，即内容轨缩进 */
+
+/* 13.1 顶层块统一 1040px 并居中 */
+main.container > :is(.ins-card, .ins-detail-head, .ins-detail-grid, .lgd,
+  .record-card, .cr-card, .dc-card, .kb-detail-card, .card),
+main.container > .container > .card {
+  max-width: var(--ps-card-w);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* 13.2 内容轨：所有顶层卡片的标题 / 字段 / 表格 / 附件都从卡片左缘 +40px 起笔 */
+main.container > :is(.ins-card, .att-panel, .record-card, .cr-card,
+  .dc-card, .kb-detail-card, .card),
+main.container > .container > .card,
+main.container > .lgd > .lgd-card:not(.lgd-kpi) {
+  padding-left: var(--ps-rail) !important;
+  padding-right: var(--ps-rail) !important;
+}
+main.container > .ins-detail-head { padding: var(--sp-5) var(--ps-rail) !important; }
+main.container > .ins-detail-grid {
+  padding-left: var(--ps-rail);
+  padding-right: var(--ps-rail);
+}
+
+/* 内部块自带横向 padding，与外层 40px 叠加会把文字推到 385px；归零后
+   所有文字锚点落在同一条 366px 垂直线上。 */
+main.container > .att-panel > :is(.att-panel-head, .att-panel-body),
+main.container > .container > .card > :is(.card-header, .card-body, .card-footer),
+main.container > .lgd > .lgd-card > :is(.lgd-card-head, .lgd-card-body) {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* 13.3 页眉 / 面包屑 / 操作按钮与 1040 卡片共用左右基线。
+   私有 hero 页原先面包屑贴 274px、按钮贴 1416px，与卡片错开 51px。 */
+main.container > .app-breadcrumb {
+  padding-left: max(0px, calc((100% - var(--ps-card-w)) / 2));
+}
+main.container > .page-actions.page-actions--inline {
+  padding-right: max(0px, calc((100% - var(--ps-card-w)) / 2));
+}
+
+/* 13.4 窄屏降级：40px 内边距过宽，收回 20px；指标网格取消外缩避免小卡被挤窄 */
+@media (max-width: 960px) {
+  main.container > :is(.ins-card, .att-panel, .record-card, .cr-card,
+    .dc-card, .kb-detail-card, .card),
+  main.container > .container > .card,
+  main.container > .lgd > .lgd-card:not(.lgd-kpi) {
+    padding-left: var(--sp-5) !important;
+    padding-right: var(--sp-5) !important;
+  }
+  main.container > .ins-detail-head {
+    padding-left: var(--sp-5) !important;
+    padding-right: var(--sp-5) !important;
+  }
+  main.container > .ins-detail-grid { padding-left: 0; padding-right: 0; }
 }
 
 /* 打印视图：撤掉屏幕态阴影与眉标，保留各模块已有的打印样式优先级 */

@@ -17,22 +17,37 @@
         flex: 1;
         min-width: 0;
     }
+    /* 全站单轨整改（2026-11-04）：原右栏是 fixed 280px + 主内容让位 300px，
+       知识库两页的主内容只剩 842px，与其余 97 页的 1142px 不一致。
+       现改为内容区顶部的横向筛选带：三节并排、各自内部滚动，主内容不再让宽。 */
     .fixed-right-sidebar {
-        position: fixed;
-        top: 72px;
-        right: 1.5rem;
-        width: 280px;
-        max-height: calc(100vh - 88px);
-        overflow-y: auto;
-        z-index: 30; /* 低于 --z-dropdown(50)：顶栏用户/通知下拉必须压在侧栏之上（UI 反馈 #1） */
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 0 var(--sp-6);
+        align-items: start;
+        width: 100%;
+        margin-bottom: var(--sp-5);
         background: var(--c-surface) !important;
         border: 1px solid var(--c-border) !important;
         border-radius: 8px !important;
         box-shadow: var(--sh-card) !important;
         padding: 0.9rem 1rem !important;
     }
+    .fixed-right-sidebar > .kb-side-section {
+        min-width: 0;
+        max-height: 168px;
+        overflow-y: auto;
+        border-bottom: none !important;
+        border-left: 1px solid var(--c-border);
+        padding-left: var(--sp-4) !important;
+        padding-right: 0 !important;
+    }
+    .fixed-right-sidebar > .kb-side-section:first-child {
+        border-left: none;
+        padding-left: 0 !important;
+    }
     .knowledge-main-with-right {
-        margin-right: 300px;
+        margin-right: 0;
     }
 
     /* 知识库卡片调整 */
@@ -360,22 +375,28 @@
         color: var(--c-success) !important;
     }
 
-    /* 响应式：小屏隐藏右侧栏 */
+    /* 响应式：小屏改为单列堆叠，筛选功能不丢失 */
     @media (max-width: 1200px) {
-        .fixed-right-sidebar { display: none !important; }
-        .knowledge-main-with-right { margin-right: 0; }
+        .fixed-right-sidebar { grid-template-columns: 1fr; gap: var(--sp-3) 0; }
+        .fixed-right-sidebar > .kb-side-section {
+            max-height: none;
+            border-left: none;
+            border-bottom: 1px solid var(--c-border) !important;
+            padding-left: 0 !important;
+        }
+        .fixed-right-sidebar > .kb-side-section:last-child { border-bottom: none !important; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
+<div class="fixed-right-sidebar">
+    {% block right_sidebar %}{% endblock %}
+</div>
 <div class="knowledge-wrapper {% block content_wrapper_class %}knowledge-main-with-right{% endblock %}">
     <div class="knowledge-main-content">
         {% block knowledge_content %}{% endblock %}
     </div>
-</div>
-<div class="fixed-right-sidebar">
-    {% block right_sidebar %}{% endblock %}
 </div>
 <script src="{% static 'js/pages/knowledge_base/base.js' %}?v=20261102" defer></script>
 {% endblock %}
