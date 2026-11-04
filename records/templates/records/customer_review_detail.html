@@ -26,6 +26,38 @@
 <div class="cr-page">
     <div class="cr-main">
 
+        {% if object.source_credit %}
+        <div class="cr-sourcebar cr-sourcebar--static">
+            <span>由账期单 <b>{{ object.source_credit.credit_no|default:object.source_credit.id }}</b> 发起 ·
+            客户全称、客户类型以账期单为准{% if object.source_credit.credit_no %} · 对应申请编号 {{ object.source_credit.credit_no }}{% endif %}</span>
+        </div>
+
+        <!-- 前期资料（挂在来源账期单上，此处只读引用） -->
+        <section class="cr-card">
+            <div class="cr-card__head">
+                <h2>前期资料<span class="cr-note">来自账期单 {{ object.source_credit.credit_no|default:object.source_credit.id }}，如需修改请在客户账期模块编辑</span></h2>
+            </div>
+            <div class="cr-card__body">
+                <table class="rv-table cr-docs-read">
+                    <thead><tr><th style="width:22%">资料类型</th><th style="width:14%">状态</th><th style="width:18%">收集日期</th><th>备注 / 附件</th></tr></thead>
+                    <tbody>
+                        {% for doc in object.source_credit.docs.all %}
+                        <tr>
+                            <td>{{ doc.get_doc_type_display }}</td>
+                            <td>{{ doc.status }}</td>
+                            <td>{{ doc.collected_date|date:'Y-m-d'|default:"—" }}</td>
+                            <td>
+                                {{ doc.note|default:"—" }}
+                                {% if doc.attachment %} · <a href="{{ doc.attachment.url }}" target="_blank" rel="noopener noreferrer">查看附件</a>{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        {% endif %}
+
         <!-- 结论横幅 -->
         <section class="cr-card">
             <div class="cr-banner">

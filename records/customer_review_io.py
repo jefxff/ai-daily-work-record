@@ -33,7 +33,7 @@ from django.utils import timezone
 from work_record.export_utils import content_disposition, sanitize_xlsx_formulas
 
 from . import credit_spec as spec
-from .models import CustomerReview, PaymentWalkthrough
+from .models import CustomerCredit, CustomerReview, PaymentWalkthrough
 
 MAX_IMPORT_ROWS = 2000
 IMPORT_MAX_SIZE = 10 * 1024 * 1024
@@ -899,6 +899,27 @@ def _fill_ratios(obj, review_type):
 # ---------------------------------------------------------------------------
 # 付款穿行测试：列定义
 # ---------------------------------------------------------------------------
+def _credit_approval(obj, which):
+    """穿行测试对象的批准账期 / 额度（P3）：取最近一张填了批准账期的客户账期单。
+
+    仅 payee_type='客户' 适用（实现细节约束 4）；供应商或查不到返回 ''，
+    导出显示空白，不误导。导入时列 kind='ro' 直接忽略。
+    """
+    if obj.payee_type != '客户' or not obj.payee_name:
+        return ''
+    cc = (
+        CustomerCredit.objects
+        .filter(customer_name=obj.payee_name, approved_terms_days__isnull=False)
+        .order_by('-id')
+        .first()
+    )
+    if cc is None:
+        return ''
+    if which == 'days':
+        return cc.approved_terms_days
+    return cc.approved_limit
+
+
 WT_MAIN_COLUMNS = [
     ('测试编号', 'test_no', 'text'),
     ('被测试对象', 'payee_name', 'text'),
@@ -912,6 +933,8 @@ WT_MAIN_COLUMNS = [
     ('账期约定', 'terms_text', 'text'),
     ('约定账期天数', 'terms_days', 'int'),
     ('账期起算口径', 'terms_base', 'text'),
+    ('批准账期天数(账期单)', 'credit_approval_days', 'ro'),
+    ('批准额度万元(账期单)', 'credit_approval_limit', 'ro'),
     ('测试人', 'tester', 'text'),
     ('复核人', 'reviewer', 'text'),
     ('测试结论', 'conclusion', 'ro'),
@@ -1008,6 +1031,7 @@ def walkthrough_export_response(queryset, filename_prefix='付款穿行测试'):
             _display(obj.period_start), _display(obj.period_end), _display(obj.test_date),
             obj.sample_method, obj.population_size, obj.sample_size,
             obj.terms_text, obj.terms_days, obj.terms_base,
+            _credit_approval(obj, 'days'), _credit_approval(obj, 'limit'),
             obj.tester, obj.reviewer, obj.conclusion,
             terms_sum['on_time_rate'] if terms_sum['on_time_rate'] is not None else '',
             terms_sum['overdue'],

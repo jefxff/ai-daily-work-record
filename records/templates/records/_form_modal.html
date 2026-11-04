@@ -8,6 +8,14 @@
 
     {{ form.as_p }}
 
+    {% if customer_roster %}
+        {{ customer_roster|json_script:"customer-roster-data" }}
+        <datalist id="customer-roster">
+            {% for r in customer_roster %}<option value="{{ r.customer_name }}" label="{{ r.salesperson }}{% if r.customer_segment %} · {{ r.customer_segment }}{% endif %}"></option>{% endfor %}
+        </datalist>
+        <script src="{% static 'js/customer-roster.js' %}?v=20261104" defer></script>
+    {% endif %}
+
     <div class="form-modal-actions">
         <button type="button" class="btn-transparent" data-modal-close>取消</button>
         <button type="submit" class="btn-transparent btn-delete" data-modal-save>{{ save_label|default:"保存" }}</button>

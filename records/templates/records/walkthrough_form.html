@@ -55,6 +55,13 @@
                     {% include 'records/_cr_field.html' with f=form.sample_size label="抽样笔数" hint="留空时按实际录入样本数" %}
                     {% include 'records/_cr_field.html' with f=form.terms_text label="账期约定" hint="合同原文，如「月结 60 天」" %}
                     {% include 'records/_cr_field.html' with f=form.terms_days label="约定账期（天）" hint="样本未单独填时按此计算到期日" %}
+                    {% if approval %}
+                    <div class="cr-hint" style="grid-column:1/-1;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                        该客户在账期单 <b>{{ approval.no }}</b> 中批准账期 <b>{{ approval.days }} 天</b>{% if approval.limit %} · 批准额度 {{ approval.limit }} 万元{% endif %}
+                        <button type="button" class="btn-transparent btn-sm" data-apply-approval="{{ approval.days }}">带入到「约定账期」</button>
+                        <span style="color:var(--c-text-tertiary)">仅带入手填值，不强制</span>
+                    </div>
+                    {% endif %}
                     {% include 'records/_cr_field.html' with f=form.terms_base label="账期起算口径" hint="到期日从哪一天起算" %}
                     {% include 'records/_cr_field.html' with f=form.tester label="测试人" %}
                     {% include 'records/_cr_field.html' with f=form.reviewer label="复核人" hint="不得与测试人同一人" %}

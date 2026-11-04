@@ -33,6 +33,14 @@
         </div>
         {% endif %}
 
+        {% if instance.source_credit %}
+        <div class="cr-sourcebar">
+            <span>由账期单 <b>{{ instance.source_credit.credit_no|default:instance.source_credit.id }}</b> 发起 ·
+            客户全称、客户类型以账期单为准{% if instance.source_credit.credit_no %} · 对应申请编号 {{ instance.source_credit.credit_no }}{% endif %}</span>
+            <label><input type="checkbox" name="manual_name" value="1" data-source-unlock> 手动修改客户全称</label>
+        </div>
+        {% endif %}
+
         <!-- ① 表头信息 -->
         <section class="cr-card">
             <div class="cr-card__head">

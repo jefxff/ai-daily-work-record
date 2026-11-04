@@ -7,6 +7,7 @@
 """
 
 import io
+import os
 import re
 
 from django.contrib.auth import get_user_model
@@ -22,7 +23,7 @@ from attachments.models import Attachment
 
 from . import credit_spec as spec
 from . import customer_review_io as rio
-from .models import CustomerReview, PaymentWalkthrough
+from .models import CustomerCreditDoc, CustomerReview, PaymentWalkthrough
 
 User = get_user_model()
 
@@ -380,3 +381,203 @@ class WalkthroughTermsTests(ReviewIoTestBase):
         self.assertEqual(first['到期日'], '2026-01-31')
         self.assertEqual(first['偏差天数'], 43)
         self.assertEqual(first['账期执行'], '逾期')
+
+
+class CreditLinkTests(ReviewIoTestBase):
+    """客户账期 ↔ 客户评审打通（P1）：单号、发起评审、快照兜底、SET_NULL。
+
+    这里最容易回归的是「只读状态被前端绕过」与「删除悬空」，
+    因此服务端覆盖与删除语义都落在视图级测试上。
+    """
+
+    def setUp(self):
+        super().setUp()
+        from .models import CustomerCredit
+
+        self.CustomerCredit = CustomerCredit
+        # 评审 create 等权限已在基类授予；账期模块单独授予
+        credit_perms = Permission.objects.filter(code__in=['customer_credit.read', 'customer_credit.create', 'customer_credit.update', 'customer_credit.delete'])
+        extra = Role.objects.create(code=f'credit-{self.user.username}', name='账期测试角色')
+        extra.permissions.set(credit_perms)
+        extra.users.add(self.user)
+        cache.clear()
+        # 单号由 after_save 钩子生成，必须走 UI 保存路径才能覆盖
+        resp = self.client.post(reverse('customer_credit_add'), {
+            'proposal_date': '2026-11-01', 'customer_name': '打通测试客户',
+            'customer_type': '普通客户', 'customer_segment': '经销商',
+            'salesperson': '张伟', 'work_content': '客户账期审核',
+            'specific_content': '新客户账期', 'work_method': '现场审核',
+            'result': '同意 60 天',
+        })
+        self.assertEqual(resp.status_code, 302)
+        self.credit = CustomerCredit.objects.get(customer_name='打通测试客户')
+
+    def test_credit_no_generated_and_reused_on_edit(self):
+        self.assertIsNotNone(self.credit.credit_no)
+        self.assertTrue(self.credit.credit_no.startswith('KQ-'))
+        head = self.credit.credit_no.rsplit('-', 1)[0]
+        resp = self.client.post(reverse('customer_credit_edit', args=[self.credit.pk]), {
+            'proposal_date': '2026-11-01', 'customer_name': '打通测试客户',
+            'customer_type': '普通客户', 'customer_segment': '经销商',
+            'salesperson': '张伟', 'work_method': '现场审核', 'result': '同意 60 天',
+        })
+        self.assertEqual(resp.status_code, 302)
+        self.credit.refresh_from_db()
+        self.assertTrue(self.credit.credit_no.startswith(head))
+
+    def test_launch_review_generates_snapshots(self):
+        resp = self.client.post(
+            reverse('customer_credit_launch_review', args=[self.credit.pk]),
+            {'review_types': ['audit', 'credit']},
+        )
+        self.assertEqual(resp.status_code, 302)
+        reviews = list(self.credit.reviews.order_by('id'))
+        self.assertEqual(len(reviews), 2)
+        audit, credit = reviews
+        for obj in reviews:
+            self.assertTrue(obj.review_no.startswith('CR-'))
+            self.assertEqual(obj.customer_name, '打通测试客户')
+            self.assertEqual(obj.customer_type, '经销商')
+            self.assertEqual(obj.apply_no, self.credit.credit_no)
+        self.assertTrue(audit.audit_address == '' and audit.companion == '张伟')
+
+    def test_launch_review_rejected_without_create_perm(self):
+        other = User.objects.create_user('reviewer-link', password='x')
+        grant(other, 'read')
+        self.client.force_login(other)
+        resp = self.client.post(
+            reverse('customer_credit_launch_review', args=[self.credit.pk]),
+            {'review_types': ['credit']},
+        )
+        self.assertEqual(resp.status_code, 403)
+        self.assertEqual(self.credit.reviews.count(), 0)
+
+    def test_snapshot_enforced_on_edit(self):
+        rv = self.credit.reviews.create(
+            review_type='audit', customer_name='打通测试客户', customer_type='经销商',
+            review_date='2026-11-04', source_credit=self.credit,
+        )
+        # 篡改客户名（不带 manual_name）
+        resp = self.client.post(reverse('customer_review_edit', args=[rv.pk]), {
+            'review_no': '', 'customer_name': '被篡改', 'customer_type': '终端客户',
+            'review_date': '2026-11-04',
+        })
+        rv.refresh_from_db()
+        self.assertEqual(rv.customer_name, '打通测试客户')
+        self.assertEqual(rv.customer_type, '经销商')
+        self.assertTrue(rv.review_no.startswith('CR-'))
+
+    def test_manual_name_unlocks_customer_name(self):
+        rv = self.credit.reviews.create(
+            review_type='audit', customer_name='打通测试客户', customer_type='经销商',
+            review_date='2026-11-04', source_credit=self.credit,
+        )
+        self.client.post(reverse('customer_review_edit', args=[rv.pk]), {
+            'review_no': rv.review_no, 'customer_name': '打通测试客户（曾用名）',
+            'customer_type': '经销商', 'review_date': '2026-11-04', 'manual_name': '1',
+        })
+        rv.refresh_from_db()
+        self.assertEqual(rv.customer_name, '打通测试客户（曾用名）')
+        self.assertEqual(rv.customer_type, '经销商')
+
+    def test_delete_credit_sets_review_source_null(self):
+        rv = self.credit.reviews.create(
+            review_type='credit', customer_name='打通测试客户', review_date='2026-11-04',
+            source_credit=self.credit,
+        )
+        self.client.post(reverse('customer_credit_delete', args=[self.credit.pk]))
+        rv.refresh_from_db()
+        self.assertIsNone(rv.source_credit)
+        self.assertEqual(rv.customer_name, '打通测试客户')
+
+
+class CreditDocsTests(ReviewIoTestBase):
+    """前期资料清单（P2）：get_or_create、保存、附件级联清理。"""
+
+    def setUp(self):
+        super().setUp()
+        from .models import CustomerCredit
+
+        self.CustomerCredit = CustomerCredit
+        extra = Role.objects.create(code=f'credit-docs-{self.user.username}', name='账期资料角色')
+        extra.permissions.set(Permission.objects.filter(
+            code__in=['customer_credit.read', 'customer_credit.create', 'customer_credit.update', 'customer_credit.delete']))
+        extra.users.add(self.user)
+        cache.clear()
+        self.credit = CustomerCredit.objects.create(
+            proposal_date='2026-11-01', customer_name='资料清单客户',
+            customer_type='代加工客户', customer_segment='代加工客户',
+            salesperson='李四', work_method='内部流程', result='进行中',
+        )
+
+    def test_detail_creates_six_docs(self):
+        resp = self.client.get(reverse('customer_credit_detail', args=[self.credit.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(self.credit.docs.count(), 6)
+
+    def test_save_status_and_attachment_cleanup_on_delete(self):
+        self.client.get(reverse('customer_credit_detail', args=[self.credit.pk]))
+        doc = self.credit.docs.get(doc_type='营业执照')
+        resp = self.client.post(reverse('customer_credit_docs_save', args=[self.credit.pk]), {
+            f'doc_{doc.id}_status': '已收集', f'doc_{doc.id}_date': '2026-11-03',
+            f'doc_{doc.id}_note': '原件已核',
+            f'doc_{doc.id}_file': SimpleUploadedFile('license.png', b'\x89PNG', content_type='image/png'),
+        })
+        self.assertEqual(resp.status_code, 302)
+        doc.refresh_from_db()
+        self.assertEqual(doc.status, '已收集')
+        path = doc.attachment.path
+        self.assertTrue(os.path.exists(path))
+        credit_id = self.credit.pk
+        self.credit.delete()
+        self.assertFalse(os.path.exists(path))
+        self.assertEqual(CustomerCreditDoc.objects.filter(credit_id=credit_id).count(), 0)
+
+
+class ApprovalTermsTests(ReviewIoTestBase):
+    """批准账期带出与三方比对（P3）：仅客户对象、导出列、表单建议。"""
+
+    def setUp(self):
+        super().setUp()
+        from .models import CustomerCredit
+
+        self.credit = CustomerCredit.objects.create(
+            proposal_date='2026-10-01', customer_name='批准账期客户',
+            customer_type='普通客户', customer_segment='经销商',
+            salesperson='张伟', work_method='现场审核', result='同意',
+            credit_no='KQ-202610-001', approved_terms_days=60, approved_limit=150,
+        )
+
+    def test_walkthrough_form_suggests_approved_terms_for_customer(self):
+        obj = PaymentWalkthrough.objects.create(
+            test_no='T-AP-C', payee_name='批准账期客户', payee_type='客户',
+            period_start='2026-01-01', period_end='2026-06-30', test_date='2026-11-01',
+            terms_days=90,
+        )
+        resp = self.client.get(reverse('walkthrough_edit', args=[obj.pk]))
+        self.assertContains(resp, 'data-apply-approval="60"')
+        resp = self.client.get(reverse('walkthrough_detail', args=[obj.pk]))
+        self.assertContains(resp, '宽于账期单批准')
+
+    def test_supplier_gets_no_suggestion(self):
+        obj = PaymentWalkthrough.objects.create(
+            test_no='T-AP-S', payee_name='批准账期客户', payee_type='供应商',
+            period_start='2026-01-01', period_end='2026-06-30', test_date='2026-11-01',
+        )
+        resp = self.client.get(reverse('walkthrough_edit', args=[obj.pk]))
+        self.assertNotContains(resp, 'data-apply-approval')
+
+    def test_export_has_approval_columns(self):
+        PaymentWalkthrough.objects.create(
+            test_no='T-AP-E', payee_name='批准账期客户', payee_type='客户',
+            period_start='2026-01-01', period_end='2026-06-30', test_date='2026-11-01',
+        )
+        resp = self.client.get(reverse('walkthrough_export'))
+        wb = load_workbook(io.BytesIO(resp.content))
+        ws = wb['测试清单']
+        headers = [cell.value for cell in ws[1]]
+        idx = {h: i for i, h in enumerate(headers)}
+        self.assertIn('批准账期天数(账期单)', idx)
+        row = [r for r in ws.iter_rows(min_row=2, values_only=True) if r[0] == 'T-AP-E'][0]
+        self.assertEqual(row[idx['批准账期天数(账期单)']], 60)
+        self.assertEqual(float(row[idx['批准额度万元(账期单)']]), 150.0)

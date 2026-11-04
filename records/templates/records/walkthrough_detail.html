@@ -82,6 +82,17 @@
                 <span class="cr-note">实际付款日 vs 合同约定到期日；到期后 {{ terms_grace|default:3 }} 天内计为按期</span>
             </div>
             <div class="cr-card__body">
+                {% if approval %}
+                <div class="wt-termsum__grid wt-termsum__grid--wide" style="margin-bottom:var(--sp-3)">
+                    <div><span>合同约定账期</span><b>{{ object.terms_days|default:"未填" }}{% if object.terms_days %} 天{% endif %}</b></div>
+                    <div><span>批准账期（{{ approval.no }}）</span><b>{{ approval.days }} 天</b></div>
+                    <div><span>批准额度</span><b>{% if approval.limit %}{{ approval.limit }} 万元{% else %}未填{% endif %}</b></div>
+                    <div><span>实际执行</span><b class="{% if stats.terms.checked and stats.terms.overdue %}is-bad{% endif %}">{% if stats.terms.checked %}按期率 {{ stats.terms.on_time_rate }}%{% else %}暂无样本{% endif %}</b></div>
+                </div>
+                {% if object.terms_days and object.terms_days > approval.days %}
+                <p class="cr-hint" style="color:var(--c-warning)">注意：测试表头填写的约定账期（{{ object.terms_days }} 天）宽于账期单批准的 {{ approval.days }} 天。</p>
+                {% endif %}
+                {% endif %}
                 {% if stats.terms.checked %}
                 <div class="wt-termsum__grid wt-termsum__grid--wide">
                     <div><span>核对笔数</span><b>{{ stats.terms.checked }}</b></div>

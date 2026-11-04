@@ -1,3 +1,4 @@
+from django.contrib import messages
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
 from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest, Http404
@@ -7,7 +8,7 @@ from django.db.models import Count, F, Q
 from django.db.models.functions import TruncDate
 from datetime import date, datetime, timedelta
 import json
-from .models import Decoration, CustomerCredit, CustomerComplaint, CustomerLedger, Regulation, PriceEvaluation, DailyRecord, MetalPrice, Insurance, Complaint, OperationLog
+from .models import Decoration, CustomerCredit, CustomerComplaint, CustomerCreditDoc, CustomerLedger, Regulation, PriceEvaluation, DailyRecord, MetalPrice, Insurance, Complaint, OperationLog
 from .forms import DecorationForm, CustomerCreditForm, CustomerComplaintForm, CustomerComplaintClosureForm, CustomerLedgerForm, RegulationForm, PriceEvaluationForm, InsuranceForm, ComplaintForm
 from . import audit_vocab
 from .audit import log_operation, snapshot
@@ -82,11 +83,43 @@ customer_credit_list = make_list_view(
     },
 )
 
+def _credit_roster(request):
+    """历史客户名册（账期表单 datalist）：名称 + 细分 + 业务员，按名称去重。"""
+    rows = (
+        CustomerCredit.objects.exclude(customer_name='')
+        .order_by('customer_name', '-id')
+        .values('customer_name', 'customer_segment', 'salesperson')
+    )
+    seen, roster = set(), []
+    for row in rows:
+        if row['customer_name'] in seen:
+            continue
+        seen.add(row['customer_name'])
+        roster.append(row)
+    return {'customer_roster': roster}
+
+
+def _credit_after_save(obj, created):
+    """新增时生成 KQ- 单号；credit_no 空串统一转 NULL（archive_no 先例）。"""
+    from .serials import next_serial, clean_blank
+
+    changed = []
+    if created and not obj.credit_no:
+        obj.credit_no = next_serial(CustomerCredit, 'credit_no', 'KQ')
+        changed.append('credit_no')
+    elif obj.credit_no == '':
+        obj.credit_no = None
+        changed.append('credit_no')
+    if changed:
+        obj.save(update_fields=changed)
+
+
 customer_credit_add, customer_credit_edit = make_form_view(
     model=CustomerCredit, form_class=CustomerCreditForm, perm_module='customer_credit',
     log_label='客户账期', display_field='customer_name',
     redirect_name='customer_credit_list', template_name='records/customer_credit_form.html',
     title_add='新增客户账期', title_edit='编辑客户账期',
+    after_save=_credit_after_save, extra_context=_credit_roster,
 )
 
 customer_credit_export = make_export_view(
@@ -896,13 +929,68 @@ def decoration_detail(request, pk):
     return render(request, 'records/decoration_detail.html', {'decoration': decoration})
 
 
+def _ensure_credit_docs(credit):
+    """前期资料 6 项 get_or_create：详情页总是有完整的清单可填（含历史单）。"""
+    existing = set(credit.docs.values_list('doc_type', flat=True))
+    for doc_type, _label in CustomerCreditDoc.DOC_TYPES:
+        if doc_type not in existing:
+            CustomerCreditDoc.objects.create(credit=credit, doc_type=doc_type)
+
+
 @perm_required("customer_credit", "read")
 def customer_credit_detail(request, pk):
     """客户账期详情视图"""
     credit = get_object_or_404(CustomerCredit, pk=pk)
     if _is_ajax(request):
         return _modal_detail(request, 'records/_customer_credit_detail_modal.html', {'credit': credit})
-    return render(request, 'records/customer_credit_detail.html', {'credit': credit})
+    linked_reviews = credit.reviews.order_by('-id')
+    _ensure_credit_docs(credit)
+    return render(request, 'records/customer_credit_detail.html', {
+        'credit': credit,
+        'linked_reviews': linked_reviews,
+        'docs': credit.docs.all(),
+    })
+
+
+@perm_required('customer_credit', 'update')
+def customer_credit_docs_save(request, pk):
+    """保存前期资料清单：状态 / 收集日期 / 备注 / 附件，整块一次提交。"""
+    credit = get_object_or_404(CustomerCredit, pk=pk)
+    if request.method != 'POST':
+        return redirect('customer_credit_detail', pk=pk)
+
+    from django.utils.dateparse import parse_date
+
+    for doc in credit.docs.all():
+        prefix = f'doc_{doc.id}_'
+        status = request.POST.get(prefix + 'status')
+        if status not in dict(CustomerCreditDoc.STATUS):
+            continue
+        doc.status = status
+        doc.note = (request.POST.get(prefix + 'note') or '')[:300]
+        collected = parse_date(request.POST.get(prefix + 'date') or '')
+        doc.collected_date = collected
+        upload = request.FILES.get(prefix + 'file')
+        if upload:
+            if doc.attachment:
+                doc.attachment.delete(save=False)
+            doc.attachment = upload
+        doc.save()
+
+    for doc_id in request.POST.getlist('remove_file'):
+        try:
+            doc = credit.docs.get(pk=int(doc_id))
+        except (ValueError, CustomerCreditDoc.DoesNotExist):
+            continue
+        if doc.attachment:
+            doc.attachment.delete(save=False)
+            doc.attachment = None
+            doc.save(update_fields=['attachment'])
+
+    log_operation(request, '客户账期', '更新', f'[客户账期]下的记录#{credit.id}',
+                  f'更新前期资料: {credit.customer_name}', after=snapshot(credit))
+    messages.success(request, '前期资料已保存')
+    return redirect('customer_credit_detail', pk=pk)
 
 
 @perm_required("complaint", "read")

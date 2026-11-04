@@ -9,6 +9,9 @@
     {% can "customer_credit" "update" %}
     <a href="{% url 'customer_credit_edit' credit.id %}" class="btn-transparent" data-modal-edit data-modal-title="编辑客户账期">编辑记录</a>
     {% endcan %}
+    {% can "customer_review" "create" %}
+    <a href="{% url 'customer_credit_launch_review' credit.id %}" class="btn-primary">发起评审</a>
+    {% endcan %}
     {% can "customer_credit" "delete" %}
     <form class="u-inline" method="post" action="{% url 'customer_credit_delete' credit.id %}"  data-confirm="确定要删除这条记录吗？">{% csrf_token %}<button type="submit" class="btn-transparent btn-delete">删除记录</button></form>
     {% endcan %}
@@ -30,6 +33,11 @@
         </div>
 
         <div class="detail-row">
+            <div class="detail-label">单号：</div>
+            <div class="detail-value">{{ credit.credit_no|default:"无" }}</div>
+        </div>
+
+        <div class="detail-row">
             <div class="detail-label">客户名称：</div>
             <div class="detail-value">{{ credit.customer_name }}</div>
         </div>
@@ -37,6 +45,11 @@
         <div class="detail-row">
             <div class="detail-label">客户类型：</div>
             <div class="detail-value">{{ credit.customer_type }}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">客户细分：</div>
+            <div class="detail-value">{{ credit.customer_segment|default:"未细分" }}</div>
         </div>
 
         <div class="detail-row">
@@ -70,8 +83,133 @@
         </div>
 
         <div class="detail-row">
+            <div class="detail-label">批准账期：</div>
+            <div class="detail-value">{% if credit.approved_terms_days is not None %}{{ credit.approved_terms_days }} 天{% else %}未填写{% endif %}</div>
+        </div>
+
+        <div class="detail-row">
+            <div class="detail-label">批准额度：</div>
+            <div class="detail-value">{% if credit.approved_limit is not None %}{{ credit.approved_limit }} 万元{% else %}未填写{% endif %}</div>
+        </div>
+
+        <div class="detail-row">
             <div class="detail-label">备注：</div>
             <div class="detail-value">{{ credit.remarks|default:"无" }}</div>
         </div>
     </div>
+
+    <!-- 前期资料清单（现场前收集，单一数据源；评审单详情页只读引用） -->
+    <div class="detail-card mt-3">
+        <h2 class="detail-title" style="font-size:1.1rem;">前期资料</h2>
+        <p class="text-muted small mb-2">现场审核前要收集的 6 项材料，逐项登记状态与附件；客户评审单详情页会只读展示这份清单。</p>
+        {% can "customer_credit" "update" %}
+        <form method="post" enctype="multipart/form-data" action="{% url 'customer_credit_docs_save' credit.id %}">
+            {% csrf_token %}
+            <div class="table-responsive">
+                <table class="table table--fixed docs-table">
+                    <thead>
+                        <tr><th style="width:18%">资料类型</th><th style="width:14%">状态</th><th style="width:16%">收集日期</th>
+                            <th style="width:26%">备注</th><th>附件</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for doc in docs %}
+                        <tr>
+                            <td>{{ doc.get_doc_type_display }}</td>
+                            <td>
+                                <select name="doc_{{ doc.id }}_status" class="form-select form-select-sm">
+                                    {% for v, label in doc.status_choices_display %}
+                                    {% endfor %}
+                                    {% for v, label in doc.STATUS %}{% endfor %}
+                                    <option value="未收集" {% if doc.status == '未收集' %}selected{% endif %}>未收集</option>
+                                    <option value="已收集" {% if doc.status == '已收集' %}selected{% endif %}>已收集</option>
+                                    <option value="不适用" {% if doc.status == '不适用' %}selected{% endif %}>不适用</option>
+                                </select>
+                            </td>
+                            <td><input type="date" name="doc_{{ doc.id }}_date" value="{{ doc.collected_date|date:'Y-m-d' }}" class="form-control form-control-sm"></td>
+                            <td><input type="text" name="doc_{{ doc.id }}_note" value="{{ doc.note }}" maxlength="300" class="form-control form-control-sm"></td>
+                            <td class="docs-att">
+                                {% if doc.attachment %}
+                                    <a href="{{ doc.attachment.url }}" target="_blank" rel="noopener noreferrer" class="btn-transparent btn-sm">查看</a>
+                                    <label class="docs-att__remove"><input type="checkbox" name="remove_file" value="{{ doc.id }}"> 删除</label>
+                                {% else %}
+                                    <input type="file" name="doc_{{ doc.id }}_file" class="form-control form-control-sm">
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="form-actions mt-2">
+                <button type="submit" class="btn btn-primary">保存前期资料</button>
+            </div>
+        </form>
+        {% endcan %}
+        {% if not perms.customer_credit.update %}
+        <div class="table-responsive">
+            <table class="table table--fixed">
+                <thead><tr><th>资料类型</th><th>状态</th><th>收集日期</th><th>备注</th><th>附件</th></tr></thead>
+                <tbody>
+                    {% for doc in docs %}
+                    <tr>
+                        <td>{{ doc.get_doc_type_display }}</td>
+                        <td>{{ doc.get_status_display }}</td>
+                        <td>{{ doc.collected_date|date:'Y-m-d'|default:"—" }}</td>
+                        <td>{{ doc.note|default:"—" }}</td>
+                        <td>{% if doc.attachment %}<a href="{{ doc.attachment.url }}" target="_blank" rel="noopener noreferrer">查看</a>{% else %}—{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- 关联评审（发起评审生成的评审单回读，只读展示） -->
+    <div class="detail-card mt-3">
+        <h2 class="detail-title" style="font-size:1.1rem;">关联评审</h2>
+        {% if linked_reviews %}
+        <div class="table-responsive">
+            <table class="table table--fixed">
+                <thead>
+                    <tr>
+                        <th>表单类型</th><th>表单编号</th><th>日期</th><th>得分 / 结论</th>
+                        <th>等级</th><th>建议额度</th><th>状态</th><th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in linked_reviews %}
+                    <tr>
+                        <td>{{ r.get_review_type_display }}</td>
+                        <td>{{ r.review_no|default:"—" }}</td>
+                        <td>{{ r.review_date|date:'Y-m-d' }}</td>
+                        <td>
+                            {% if r.review_type == 'audit' %}
+                                {{ r.audit_conclusion|default:"—" }}
+                            {% else %}
+                                {{ r.total_score|default_if_none:"—" }}{% if r.total_score is not None %} 分{% endif %}
+                            {% endif %}
+                        </td>
+                        <td>{{ r.grade|default:"—" }}</td>
+                        <td>{{ r.credit_limit|default_if_none:"—" }}{% if r.credit_limit is not None %} 万{% endif %}</td>
+                        <td>{% if r.is_scored or r.audit_conclusion %}已出结论{% else %}待填写{% endif %}</td>
+                        <td><a href="{% url 'customer_review_detail' r.id %}" class="btn-transparent btn-sm">查看</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">尚未发起评审。点击顶部「发起评审」按工作方式生成现场审核表 / 信用评价表。</p>
+        {% endif %}
+    </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .docs-table select, .docs-table input[type="date"], .docs-table input[type="text"],
+    .docs-table input[type="file"] { min-width: 0; }
+    .docs-att__remove { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; font-size: 0.8rem; color: var(--c-text-secondary); }
+    .docs-att__remove input { margin: 0; }
+</style>
 {% endblock %}

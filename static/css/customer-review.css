@@ -678,6 +678,7 @@
 
 /* ---------- 9. 打印 ---------- */
 @media print {
+  .cr-sourcebar { display: none; }
   @page { size: A4 portrait; margin: 12mm; }
   .sidebar, .topnav, .app-breadcrumb, .page-actions, .cr-side,
   .wt-add, .wt-remove, .skip-link, .copilot-launcher, .sidebar-scrim { display: none !important; }
@@ -835,6 +836,30 @@
   min-height: 0;
 }
 .rv-score__desc:empty { display: none; }
+
+/* 来源账期单灰条：表单页带解锁勾选，详情页静态展示 */
+.cr-sourcebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  padding: var(--sp-2) var(--sp-3);
+  margin-bottom: var(--sp-3);
+  font-size: 0.82rem;
+  color: var(--c-text-secondary);
+  background: var(--c-surface-2, var(--c-surface));
+  border: 1px dashed var(--c-border-strong, var(--c-border));
+  border-radius: 8px;
+}
+.cr-sourcebar b { color: var(--c-text); }
+.cr-sourcebar label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
 
 /* 只读表：已选档位的条件回显，打印出来能自证「为什么给这个分」 */
 .rv-cond {

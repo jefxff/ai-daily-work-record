@@ -41,6 +41,17 @@ class CustomerCredit(models.Model):
     pre_survey = models.CharField(max_length=10, verbose_name='前期调查表', null=True, blank=True, choices=[('有', '有'), ('无', '无')])
     work_method = models.CharField(max_length=20, verbose_name='工作方式', null=True, blank=True, choices=[('刘总特批', '刘总特批'), ('现场审核', '现场审核'), ('内部流程', '内部流程')])
     result = models.CharField(max_length=100, verbose_name='结果', null=False, blank=False)
+    # 单号 KQ-YYYYMM-序号，新增时由 after_save 钩子生成；历史单留空（NULL）。
+    # 空值必须落 NULL 而不是空串：未来加唯一约束时历史空值不会互相撞（archive_no 先例）。
+    credit_no = models.CharField('单号', max_length=20, null=True, blank=True, db_index=True)
+    # 客户细分与客户评审的 customer_type 同档位，直通取值（方案定稿修正 2）；
+    # 原两档 customer_type 保持不变，继续用于判断要不要去现场。表单层必填，历史单编辑时补选。
+    customer_segment = models.CharField('客户细分', max_length=20, blank=True, default='')
+    # 账期批准结果的结构化数值（P3）：穿行测试的「约定账期」建议值从这里取，
+    # 实现 合同账期 vs 批准账期 vs 实际付款 三方比对。
+    approved_terms_days = models.IntegerField('批准账期（天）', null=True, blank=True)
+    approved_limit = models.DecimalField('批准额度（万元）', max_digits=14, decimal_places=2,
+                                         null=True, blank=True)
     remarks = models.TextField(max_length=500, verbose_name='备注', null=True, blank=True)
     has_assessment_period = models.BooleanField(default=False, verbose_name='是否有业绩考核期')
     assessment_start_date = models.DateField(verbose_name='考核期开始日期', null=True, blank=True)
@@ -51,6 +62,76 @@ class CustomerCredit(models.Model):
         verbose_name = '客户账期'
         verbose_name_plural = '客户账期'
         ordering = ['-id']
+
+    def delete(self, *args, **kwargs):
+        """删除账期单时一并清理前期资料的物理文件（方案实现细节约束 7）。
+
+        级联删除发生在 super().delete() 内部，届时拿不到文件路径，
+        所以先取出再删。单条删除走 collector 不会调用本方法，
+        但本系统的删除全部经 make_delete_view（单对象），覆盖即生效。
+        """
+        from django.db import transaction
+
+        with transaction.atomic():
+            for doc in self.docs.all():
+                if doc.attachment:
+                    doc.attachment.delete(save=False)
+            return super().delete(*args, **kwargs)
+
+
+def customer_credit_doc_upload_to(instance, filename):
+    """前期资料附件上传路径：media/customer_credit_docs/<账期id>/<uuid>_<文件名>。"""
+    import uuid
+    from django.utils.text import get_valid_filename
+
+    safe = get_valid_filename(filename)
+    return f'customer_credit_docs/{instance.credit_id or 0}/{uuid.uuid4().hex[:8]}_{safe}'
+
+
+class CustomerCreditDoc(models.Model):
+    """客户账期·前期资料清单：现场前要收集的 6 项材料，逐项记状态与附件。
+
+    单一数据源挂在账期单上（方案决策 3）：客户评审单经 source_credit 反查
+    同一批记录做只读展示，账期与评审两处只是编辑入口不同，数据天然一致。
+    """
+
+    DOC_TYPES = [
+        ('营业执照', '营业执照'),
+        ('法人身份证', '法人身份证'),
+        ('近两年财务报表', '近两年财务报表'),
+        ('征信涉诉查询', '征信/涉诉查询'),
+        ('担保资料', '担保资料'),
+        ('其他', '其他'),
+    ]
+    STATUS = [
+        ('未收集', '未收集'),
+        ('已收集', '已收集'),
+        ('不适用', '不适用'),
+    ]
+
+    credit = models.ForeignKey(
+        CustomerCredit, verbose_name='客户账期单',
+        on_delete=models.CASCADE, related_name='docs',
+    )
+    doc_type = models.CharField('资料类型', max_length=20, choices=DOC_TYPES)
+    status = models.CharField('状态', max_length=10, choices=STATUS, default='未收集')
+    collected_date = models.DateField('收集日期', null=True, blank=True)
+    note = models.CharField('备注', max_length=300, blank=True, default='')
+    attachment = models.FileField(
+        '附件', upload_to=customer_credit_doc_upload_to, null=True, blank=True,
+    )
+    updated_at = models.DateTimeField('更新时间', auto_now=True)
+
+    class Meta:
+        verbose_name = '前期资料'
+        verbose_name_plural = '前期资料'
+        ordering = ['id']
+        constraints = [
+            models.UniqueConstraint(fields=['credit', 'doc_type'], name='uniq_credit_doc_type'),
+        ]
+
+    def __str__(self):
+        return f'{self.credit_id} {self.doc_type}: {self.status}'
 
 
 class CustomerComplaint(models.Model):
@@ -769,6 +850,12 @@ class CustomerReview(models.Model):
     prev_limit = models.DecimalField('原授信额度（万元）', max_digits=14, decimal_places=2,
                                      null=True, blank=True)
     apply_no = models.CharField('对应申请编号', max_length=50, blank=True, default='')
+    # 来源账期单（发起评审）：SET_NULL——评审单是审计凭证，账期单删除后凭快照独立存活，
+    # 仅失去「关联评审」反查入口（方案定稿修正 3）。快照字段（customer_name 等）在本表自持。
+    source_credit = models.ForeignKey(
+        'CustomerCredit', verbose_name='来源账期单',
+        null=True, blank=True, on_delete=models.SET_NULL, related_name='reviews',
+    )
     audit_address = models.CharField('审核地址', max_length=200, blank=True, default='')
     companion = models.CharField('陪同人员', max_length=100, blank=True, default='')
 

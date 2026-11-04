@@ -718,10 +718,43 @@
     refreshStats();
   }
 
+  /* 来源账期单只读锁：灰条存在时锁定客户全称 / 客户类型，
+     勾「手动修改」解锁客户全称；disabled 字段不随 POST 提交，
+     服务端 _enforce_source_snapshot 会按账期单快照强制覆盖。 */
+  function initSourceLock() {
+    var bar = document.querySelector('.cr-sourcebar');
+    if (!bar) return;
+    var name = document.getElementById('id_customer_name');
+    var type = document.getElementById('id_customer_type');
+    if (name) name.disabled = true;
+    if (type) type.disabled = true;
+    var unlock = bar.querySelector('[data-source-unlock]');
+    if (unlock && name) {
+      unlock.addEventListener('change', function () {
+        name.disabled = !unlock.checked;
+      });
+    }
+  }
+
+  /* 批准账期一键带入：data-apply-approval="60" → 填表头「约定账期」，
+     派发 input 事件让已登记的样本到期日联动重算。 */
+  function initApprovalApply() {
+    var btn = document.querySelector('[data-apply-approval]');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+      var input = document.getElementById('id_terms_days');
+      if (!input) return;
+      input.value = btn.getAttribute('data-apply-approval');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+  }
+
   /* ------------------------------------------------------------------ */
   document.addEventListener('DOMContentLoaded', function () {
     initScoreForm();
     initAuditForm();
     initWalkthrough();
+    initSourceLock();
+    initApprovalApply();
   });
 })();

@@ -68,6 +68,7 @@ SEGMENT_LABELS = {
     'export': '导出',
     'import': '导入',
     'template': '导入模板',
+    'launch_review': '发起评审',
     'delete': '删除',
     'incomplete': '待补录',
     'subjects': '保险标的',

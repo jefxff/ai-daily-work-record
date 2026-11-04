@@ -31,7 +31,7 @@ from .audit import log_operation, snapshot
 def make_form_view(*, model, form_class, perm_module, log_label, display_field,
                    redirect_name, template_name, title_add, title_edit,
                    summary_label=None, modal_template='records/_form_modal.html',
-                   after_save=None):
+                   after_save=None, extra_context=None):
     """生成一对同构新增/编辑视图（整页表单 + AJAX 弹窗双模式，保存成功即留痕）。
 
     - model/form_class:    目标模型与其 ModelForm；
@@ -45,7 +45,9 @@ def make_form_view(*, model, form_class, perm_module, log_label, display_field,
     - title_add/title_edit: 整页表单标题（如「新增核价」「编辑核价」）；
     - modal_template:      AJAX 弹窗局部模板（records 各模块统一为 _form_modal.html）；
     - after_save:          可选保存后钩子 after_save(obj, created)，在留痕前调用
-                           （如保险保存后自动挂接标的/保单年度），默认 None 零影响。
+                           （如保险保存后自动挂接标的/保单年度），默认 None 零影响；
+    - extra_context:       额外模板变量，dict 或 (request) -> dict。整页表单与 AJAX 弹窗
+                           两条渲染路径同传（如账期表单的历史客户 datalist），默认 None。
 
     AJAX 语义：GET 返回 {'ok': True, 'html': 弹窗}；校验失败返回
     {'ok': False, 'html': 弹窗} 且状态码 422；成功返回 {'ok': True, 'message': ...}。
@@ -53,9 +55,16 @@ def make_form_view(*, model, form_class, perm_module, log_label, display_field,
     """
     label = summary_label or log_label
 
+    def _context(request, base):
+        if extra_context is None:
+            return base
+        extra = extra_context(request) if callable(extra_context) else dict(extra_context)
+        base.update(extra)
+        return base
+
     def _modal(request, form, save_label, ok):
-        html = render_to_string(modal_template, {'form': form, 'save_label': save_label},
-                                request=request)
+        ctx = _context(request, {'form': form, 'save_label': save_label})
+        html = render_to_string(modal_template, ctx, request=request)
         return JsonResponse({'ok': ok, 'html': html}, status=200 if ok else 422)
 
     @perm_required(perm_module, "create")
@@ -79,7 +88,7 @@ def make_form_view(*, model, form_class, perm_module, log_label, display_field,
             form = form_class()
         if is_ajax:
             return _modal(request, form, '保存记录', True)
-        return render(request, template_name, {'form': form, 'title': title_add})
+        return render(request, template_name, _context(request, {'form': form, 'title': title_add}))
 
     @perm_required(perm_module, "update")
     def _edit_view(request, pk):
@@ -105,7 +114,7 @@ def make_form_view(*, model, form_class, perm_module, log_label, display_field,
             form = form_class(instance=obj)
         if is_ajax:
             return _modal(request, form, '保存修改', True)
-        return render(request, template_name, {'form': form, 'title': title_edit})
+        return render(request, template_name, _context(request, {'form': form, 'title': title_edit}))
 
     return _add_view, _edit_view
 

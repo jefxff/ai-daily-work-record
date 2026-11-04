@@ -57,13 +57,21 @@ class DecorationForm(forms.ModelForm):
 
 class CustomerCreditForm(forms.ModelForm):
     """客户账期表单"""
+    # 客户细分：与客户评审单 customer_type 同档位，直通取值（方案定稿修正 2）。
+    # 模型层 blank=True 兼容历史 70 张；表单层必填，历史单编辑时补选。
+    customer_segment = forms.ChoiceField(
+        label='客户细分', required=True,
+        choices=[('', '请选择')] + list(CustomerReview.CUSTOMER_TYPES),
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+
     class Meta:
         model = CustomerCredit
-        fields = ['proposal_date', 'site_date', 'customer_name', 'customer_type', 'salesperson', 'work_content', 'specific_content', 'pre_survey', 'work_method', 'result', 'remarks', 'has_assessment_period', 'assessment_start_date', 'assessment_end_date', 'assessment_content']
+        fields = ['proposal_date', 'site_date', 'customer_name', 'customer_type', 'customer_segment', 'approved_terms_days', 'approved_limit', 'salesperson', 'work_content', 'specific_content', 'pre_survey', 'work_method', 'result', 'remarks', 'has_assessment_period', 'assessment_start_date', 'assessment_end_date', 'assessment_content']
         widgets = {
             'proposal_date': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
             'site_date': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
-            'customer_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '请输入客户名称'}),
+            'customer_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '请输入客户名称', 'list': 'customer-roster'}),
             'customer_type': forms.Select(attrs={'class': 'form-select'}),
             'salesperson': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '请输入业务员'}),
             'work_content': forms.Select(attrs={'class': 'form-select'}),
@@ -76,14 +84,17 @@ class CustomerCreditForm(forms.ModelForm):
             'assessment_start_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}, format='%Y-%m-%d'),
             'assessment_end_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}, format='%Y-%m-%d'),
             'assessment_content': forms.Textarea(attrs={'class': 'form-control', 'placeholder': '请输入考核内容描述', 'rows': 2, 'maxlength': 500}),
+            'approved_terms_days': forms.NumberInput(attrs={'class': 'form-control', 'min': 0, 'max': 3650, 'step': 1, 'placeholder': '如 60'}),
+            'approved_limit': forms.NumberInput(attrs={'class': 'form-control', 'min': 0, 'step': '0.01', 'placeholder': '单位：万元'}),
         }
         labels = {
+            'approved_terms_days': '批准账期（天）',
+            'approved_limit': '批准额度（万元）',
             'proposal_date': '提出日期',
             'site_date': '现场日期',
             'customer_name': '客户名称',
             'customer_type': '客户类型',
-            'salesperson': '业务员',
-            'work_content': '工作内容',
+            'salesperson': '业务员',            'work_content': '工作内容',
             'specific_content': '具体内容',
             'pre_survey': '前期调查表',
             'work_method': '工作方式',
@@ -106,6 +117,18 @@ class CustomerCreditForm(forms.ModelForm):
             raise forms.ValidationError('客户名称不能为空')
         return customer_name
     
+    def clean_approved_terms_days(self):
+        days = self.cleaned_data.get('approved_terms_days')
+        if days is not None and (days < 0 or days > 3650):
+            raise forms.ValidationError('批准账期须在 0～3650 天之间')
+        return days
+
+    def clean_approved_limit(self):
+        limit = self.cleaned_data.get('approved_limit')
+        if limit is not None and limit < 0:
+            raise forms.ValidationError('批准额度不能为负数')
+        return limit
+
     def clean_salesperson(self):
         salesperson = self.cleaned_data.get('salesperson')
         if not salesperson:

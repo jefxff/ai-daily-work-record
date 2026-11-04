@@ -16,6 +16,7 @@ from django.views.decorators.http import require_POST
 
 from accounts.decorators import perm_required
 from attachments.services import delete_for_object, inject_counts, panel_context
+from django.db import transaction
 from work_record.export_guard import (
     export_too_large_response, guarded_export, max_export_rows,
 )
@@ -25,7 +26,8 @@ from . import customer_review_io as review_io
 from .audit import log_operation, snapshot
 from .crud import make_delete_view, make_list_view
 from .forms import CustomerReviewForm, PaymentWalkthroughForm
-from .models import CustomerReview, PaymentWalkthrough
+from .models import CustomerCredit, CustomerLedger, CustomerReview, PaymentWalkthrough
+from .serials import next_serial
 
 MODULE = 'customer_review'
 
@@ -209,6 +211,121 @@ def _review_form_context(review_type, instance, form, scores=None, verdicts=None
     }
 
 
+def _enforce_source_snapshot(obj, request, original=None):
+    """来源账期单存在时，服务端强制回写快照字段（实现细节约束 1）。
+
+    前端 disabled 字段不随 POST 提交，只读状态不可信：
+    - customer_name 仅在 POST 带 manual_name=1（勾选「手动修改」）时放开；
+    - customer_type：账期单已细分 → 以账期单为准；未细分（历史单）→ 保留原值；
+    - apply_no 一律以账期单当前 credit_no 为准（账期单补录单号后同步过来）。
+
+    original：绑定表单前拍下的原值（ModelForm.is_valid() 的 _post_clean 会就地
+    改写实例），账期单未细分时用它恢复，避免表单 POST 缺字段把值冲成空串。
+    """
+    source = obj.source_credit
+    if source is None:
+        return
+    original = original or {}
+    changed = []
+    if request.POST.get('manual_name') != '1' and obj.customer_name != source.customer_name:
+        obj.customer_name = source.customer_name
+        changed.append('customer_name')
+    expected_type = source.customer_segment or original.get('customer_type')
+    if expected_type and obj.customer_type != expected_type:
+        obj.customer_type = expected_type
+        changed.append('customer_type')
+    apply_no = source.credit_no or ''
+    if obj.apply_no != apply_no:
+        obj.apply_no = apply_no
+        changed.append('apply_no')
+    if changed:
+        obj.save(update_fields=changed)
+
+
+@perm_required(MODULE, 'create')
+def credit_launch_review(request, pk):
+    """从客户账期单发起评审（方案定稿第七节 B）。
+
+    GET  渲染确认页：按工作方式给出默认勾选，列出每张单的预填值。
+    POST 事务内一次生成勾选的评审单，全部写 source_credit 与快照，逐单留痕。
+    权限挂 customer_review.create：账期读权限不等于评审创建权（实现细节约束 3）。
+    """
+    credit = get_object_or_404(CustomerCredit, pk=pk)
+    ledger = CustomerLedger.objects.filter(customer_name=credit.customer_name).first()
+    review_date = credit.site_date or credit.proposal_date
+    existing = {r.review_type: r for r in credit.reviews.all()}
+
+    if request.method == 'POST':
+        chosen = [t for t in request.POST.getlist('review_types') if t in (CustomerReview.TYPE_AUDIT, CustomerReview.TYPE_CREDIT)]
+        if not chosen:
+            messages.error(request, '请至少勾选一张要生成的评审表')
+            return redirect('customer_credit_launch_review', pk=pk)
+        created = []
+        with transaction.atomic():
+            for review_type in chosen:
+                obj = CustomerReview(
+                    review_type=review_type,
+                    review_no=next_serial(CustomerReview, 'review_no', 'CR'),
+                    customer_name=credit.customer_name,
+                    customer_type=credit.customer_segment or '',
+                    review_date=review_date,
+                    apply_no=credit.credit_no or '',
+                    source_credit=credit,
+                    created_by=request.user if request.user.is_authenticated else None,
+                )
+                if review_type == CustomerReview.TYPE_AUDIT:
+                    obj.audit_address = (ledger.address if ledger else '') or ''
+                    obj.companion = credit.salesperson or ''
+                else:
+                    obj.settle_method = (ledger.payment_terms if ledger else '') or ''
+                obj.save()
+                created.append(obj)
+                log_operation(
+                    request, '客户评审', '新增',
+                    f'[客户评审]下的记录#{obj.id}',
+                    f'发起评审生成{obj.get_review_type_display()}：{obj.customer_name}'
+                    f'（来源账期 {credit.credit_no or f"#{credit.id}"}）',
+                    after=snapshot(obj),
+                )
+        messages.success(
+            request, '已生成：' + '、'.join(obj.get_review_type_display() for obj in created)
+        )
+        return redirect('customer_review_detail', pk=created[0].id)
+
+    plan = []
+    for review_type, title in (
+        (CustomerReview.TYPE_AUDIT, '客户现场审核表'),
+        (CustomerReview.TYPE_CREDIT, '客户信用评价表'),
+    ):
+        is_audit = review_type == CustomerReview.TYPE_AUDIT
+        plan.append({
+            'type': review_type,
+            'title': title,
+            # 默认勾选跟随工作方式：现场审核 → 两张全勾；内部流程 → 只勾信用评价；
+            # 刘总特批 → 全不勾，由人工判断（特批通常无评审依据）
+            'default': (credit.work_method == '现场审核') if is_audit else (
+                credit.work_method in ('现场审核', '内部流程')),
+            'existing': existing.get(review_type),
+            'fields': [
+                ('客户全称', credit.customer_name),
+                ('客户类型', credit.customer_segment or '（未细分，由填表人自选）'),
+                ('表单日期', review_date.strftime('%Y-%m-%d') if review_date else '—'),
+                ('对应申请编号', credit.credit_no or f'账期 #{credit.id}（历史单无单号）'),
+            ] + ([
+                ('审核地址', (ledger.address if ledger and ledger.address else '') or '（台账无同名客户）'),
+                ('陪同人员', credit.salesperson or '—'),
+            ] if is_audit else [
+                ('结算方式', (ledger.payment_terms if ledger and ledger.payment_terms else '') or '（台账无同名客户）'),
+            ]),
+        })
+    context = {
+        'credit': credit,
+        'plan': plan,
+        'has_ledger': bool(ledger),
+    }
+    return render(request, 'records/customer_credit_launch_review.html', context)
+
+
 @perm_required(MODULE, 'create')
 def review_add(request, review_type):
     if review_type not in dict(CustomerReview.REVIEW_TYPES):
@@ -240,6 +357,11 @@ def review_add(request, review_type):
                 obj.total_score = 0
 
             obj.save()
+            if not obj.review_no:
+                # 表单编号留空 → 自动生成 CR-YYYYMM-序号（方案定稿第六节）；
+                # 手填过的不覆盖，Excel 导入按表单编号匹配因此不受影响。
+                obj.review_no = next_serial(CustomerReview, 'review_no', 'CR')
+                obj.save(update_fields=['review_no'])
             log_operation(
                 request, '客户评审', '新增',
                 f'[客户评审]下的记录#{obj.id}',
@@ -261,6 +383,8 @@ def review_edit(request, pk):
     review_type = obj.review_type
 
     if request.method == 'POST':
+        # original 须在绑定表单前拍：is_valid() 的 _post_clean 会就地改写实例
+        original = {'customer_type': obj.customer_type}
         form = CustomerReviewForm(request.POST, instance=obj)
         if form.is_valid():
             before = snapshot(obj)
@@ -282,6 +406,10 @@ def review_edit(request, pk):
                 obj.audit_conclusion = conclusion
 
             obj.save()
+            if not obj.review_no:
+                obj.review_no = next_serial(CustomerReview, 'review_no', 'CR')
+                obj.save(update_fields=['review_no'])
+            _enforce_source_snapshot(obj, request, original)
             log_operation(
                 request, '客户评审', '编辑',
                 f'[客户评审]下的记录#{obj.id}',
@@ -439,11 +567,32 @@ def _parse_samples(request):
     return clean
 
 
+def _approved_terms_for(payee_type, payee_name):
+    """按客户名取最近一张填了批准账期的账期单（P3 实现细节约束 4）。
+
+    仅客户对象适用；供应商或查不到时返回 None，表单回退现有手填行为。
+    """
+    if payee_type != '客户' or not payee_name:
+        return None
+    credit = (
+        CustomerCredit.objects
+        .filter(customer_name=payee_name, approved_terms_days__isnull=False)
+        .order_by('-id')
+        .first()
+    )
+    if credit is None:
+        return None
+    return {'days': credit.approved_terms_days,
+            'no': credit.credit_no or f'#{credit.id}',
+            'limit': credit.approved_limit}
+
+
 def _walkthrough_context(instance, form, samples=None):
     samples = samples if samples is not None else (
         instance.samples if isinstance(instance.samples, list) else []
     )
     stats = spec.walkthrough_stats(samples, instance.terms_days)
+    approval = _approved_terms_for(instance.payee_type, instance.payee_name)
     return {
         'form': form,
         'instance': instance,
@@ -452,6 +601,7 @@ def _walkthrough_context(instance, form, samples=None):
         'defect_types': spec.DEFECT_TYPES,
         'samples': samples,
         'stats': stats,
+        'approval': approval,
         'conclusions': spec.WALKTHROUGH_CONCLUSIONS,
         'sample_methods': spec.SAMPLE_METHODS,
         'terms_bases': spec.TERMS_BASE_CHOICES,
@@ -568,6 +718,7 @@ def walkthrough_detail(request, pk):
         'stats': spec.walkthrough_stats(samples, obj.terms_days),
         'key_steps': spec.WALKTHROUGH_KEY_STEPS,
         'terms_grace': spec.TERMS_GRACE_DAYS,
+        'approval': _approved_terms_for(obj.payee_type, obj.payee_name),
         'att_obj': obj,
     }
     context.update(panel_context(request, obj))
@@ -586,6 +737,7 @@ def walkthrough_print(request, pk):
         'stats': spec.walkthrough_stats(samples, obj.terms_days),
         'key_steps': spec.WALKTHROUGH_KEY_STEPS,
         'terms_grace': spec.TERMS_GRACE_DAYS,
+        'approval': _approved_terms_for(obj.payee_type, obj.payee_name),
         'print_mode': True,
     }
     return render(request, 'records/walkthrough_print.html', context)

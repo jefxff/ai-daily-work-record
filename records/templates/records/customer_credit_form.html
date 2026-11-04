@@ -46,25 +46,42 @@
             </div>
 
             <div class="row">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="form-group">
                         <label for="id_customer_name" class="form-label">客户名称 *</label>
                         {{ form.customer_name }}
+                        <small class="form-text">输入几个字可从历史客户中选择，选中后自动带出细分与业务员</small>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="form-group">
                         <label for="id_customer_type" class="form-label">客户类型 *</label>
                         {{ form.customer_type }}
+                        <small class="form-text">普通客户建议现场审核，代加工客户建议内部流程</small>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label for="id_customer_segment" class="form-label">客户细分 *</label>
+                        {{ form.customer_segment }}
+                        <small class="form-text">与客户评审单的「客户类型」一致，发起评审时直接带入</small>
+                        {{ form.customer_segment.errors }}
+                    </div>
+                </div>
+                <div class="col-md-3">
                     <div class="form-group">
                         <label for="id_salesperson" class="form-label">业务员 *</label>
                         {{ form.salesperson }}
                     </div>
                 </div>
             </div>
+
+            {% if customer_roster %}
+                {{ customer_roster|json_script:"customer-roster-data" }}
+                <datalist id="customer-roster">
+                    {% for r in customer_roster %}<option value="{{ r.customer_name }}" label="{{ r.salesperson }}{% if r.customer_segment %} · {{ r.customer_segment }}{% endif %}"></option>{% endfor %}
+                </datalist>
+            {% endif %}
 
             <div class="form-group">
                 <label for="id_work_content" class="form-label">工作内容</label>
@@ -93,6 +110,23 @@
                     <div class="form-group">
                         <label for="id_result" class="form-label">结果 *</label>
                         {{ form.result }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="id_approved_terms_days" class="form-label">批准账期（天）</label>
+                        {{ form.approved_terms_days }}
+                        <small class="form-text">结论批准后的账期天数；填写后穿行测试的「约定账期」可一键带入</small>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="id_approved_limit" class="form-label">批准额度（万元）</label>
+                        {{ form.approved_limit }}
+                        <small class="form-text">结论批准后的信用额度</small>
                     </div>
                 </div>
             </div>
@@ -172,4 +206,5 @@
 
 {% block extra_js %}
 <script src="{% static 'js/pages/records/customer_credit_form.js' %}?v=20261102" defer></script>
+<script src="{% static 'js/customer-roster.js' %}?v=20261104" defer></script>
 {% endblock %}

@@ -1,0 +1,66 @@
+{% extends 'records/base.html' %}
+{% load static %}
+{% load accounts_tags %}
+
+{% block page_title %}发起评审 - 每日工作记录管理网站{% endblock %}
+
+{% block top_nav_actions %}
+    <a href="{% url 'customer_credit_detail' credit.id %}" class="btn-transparent">返回账期详情</a>
+    <a href="{% url 'customer_credit_list' %}" class="btn-transparent">账期列表</a>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <h1 class="form-title">发起评审</h1>
+
+    <div class="detail-row">
+        <div class="detail-label">来源账期单：</div>
+        <div class="detail-value">{{ credit.credit_no|default:credit.id }} · {{ credit.customer_name }}（{{ credit.customer_type }}{% if credit.customer_segment %} · {{ credit.customer_segment }}{% endif %}）</div>
+    </div>
+    <div class="detail-row">
+        <div class="detail-label">工作方式：</div>
+        <div class="detail-value">{{ credit.work_method|default:"未填写" }}
+            {% if credit.work_method == '现场审核' %}<span class="text-muted">建议生成以下两张表</span>
+            {% elif credit.work_method == '内部流程' %}<span class="text-muted">免现场审核，建议只生成信用评价表</span>
+            {% elif credit.work_method == '刘总特批' %}<span class="text-muted">特批通常无评审依据，请按需勾选</span>{% endif %}
+        </div>
+    </div>
+
+    <form method="post" class="mt-3">
+        {% csrf_token %}
+
+        {% for p in plan %}
+        <div class="card mb-3">
+            <div class="card-header d-flex align-items-center">
+                <div class="form-check mb-0">
+                    <input type="checkbox" class="form-check-input" id="type-{{ p.type }}" name="review_types"
+                           value="{{ p.type }}" {% if p.default %}checked{% endif %}>
+                    <label class="form-check-label font-weight-bold" for="type-{{ p.type }}">{{ p.title }}</label>
+                </div>
+                {% if p.existing %}
+                    <small class="text-muted ml-2">已有 {{ p.existing.review_no|default:p.existing.id }}（{{ p.existing.review_date }}），可再发起（如复审）</small>
+                {% endif %}
+            </div>
+            <div class="card-body py-2">
+                <dl class="row mb-0">
+                    {% for k, v in p.fields %}
+                    <dt class="col-sm-3 text-muted font-weight-normal">{{ k }}</dt>
+                    <dd class="col-sm-9 mb-1">{{ v }}</dd>
+                    {% endfor %}
+                </dl>
+            </div>
+        </div>
+        {% endfor %}
+
+        <p class="text-muted small">
+            客户名称、客户类型、申请编号等以账期单为准：生成后在评审单里默认只读，
+            勾选「手动修改」才能改；两张单一次生成，评审得分与结论在提交时由系统重算。
+        </p>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">生成评审表</button>
+            <a href="{% url 'customer_credit_detail' credit.id %}" class="btn btn-outline-secondary">取消</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
