@@ -33,6 +33,9 @@ NAV_MAP = [
     ('/customer_complaint/', 'customer_complaint', '客户客诉', 'customer_complaint_list'),
     ('/customer_ledger/', 'customer_ledger', '客户台账', 'customer_ledger_list'),
     ('/complaint/', 'complaint', '诉讼', 'complaint_list'),
+    # 制度详情用的是 /regulation_detail/<pk>/（不以 /regulation/ 开头），
+    # 不单独登记就查不到层级，页面会缺面包屑、侧栏也不再高亮。
+    ('/regulation_detail/', 'regulation', '制度及处罚', 'regulation_list'),
     ('/regulation/', 'regulation', '制度及处罚', 'regulation_list'),
     ('/price_evaluation/', 'price_evaluation', '核价', 'price_evaluation_list'),
     ('/insurance/subjects/', 'insurance', '保险标的', 'insurance_subject_list'),

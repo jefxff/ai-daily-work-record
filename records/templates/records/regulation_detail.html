@@ -3,6 +3,11 @@
 
 {% block page_title %}制度详情 - {{ regulation.title }} - 每日工作记录管理网站{% endblock %}
 
+{% block top_nav_actions %}
+    <a href="{% url 'regulation_list' %}" class="btn-transparent">返回列表</a>
+    <a href="{% url 'home' %}" class="btn-transparent">返回首页</a>
+{% endblock %}
+
 {% block content %}
     <!-- 制度基本信息 -->
     <div class="detail-card">

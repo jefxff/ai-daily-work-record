@@ -1668,19 +1668,24 @@ tr[data-href]:has(td .act-more[open]) > td { background: transparent; }
   gap: 6px;
   padding: 0 0 6px;
 }
+/* 列设置齿轮：自带边框 + 浅底，不依赖父容器（.page-actions / .filter-form 等）的
+   .btn-transparent 规则，保证在任意列表页外观完全一致（此前用户管理页因位于
+   .page-actions 内被加了可见边框，而筛选栏内的页却无边框，造成「图标样式不一致」）。 */
 .col-settings-gear {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
   width: 32px;
   height: 32px;
   padding: 0;
-  border: 1px solid transparent;
+  border: 1px solid var(--c-border-strong);
   border-radius: var(--r-sm);
-  color: var(--c-text-tertiary);
-  background: none;
+  color: var(--c-text-secondary);
+  background: var(--c-surface);
+  cursor: pointer;
 }
-.col-settings-gear:hover { color: var(--c-primary); border-color: var(--c-border-strong); background: var(--c-surface); }
+.col-settings-gear:hover { color: var(--c-primary); border-color: var(--c-primary); background: var(--c-primary-subtle); }
 .col-settings-gear[aria-expanded="true"] { color: var(--c-primary); border-color: var(--c-primary); background: var(--c-primary-subtle); }
 
 /* —— 9.8 分段视图切换（同一主题下的互斥子页）——

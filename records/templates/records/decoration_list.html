@@ -38,6 +38,7 @@
     <a href="{% url 'decoration_add' %}" class="btn-primary">新增装修</a>
     {% endcan %}
     <a href="{% url 'decoration_export' %}" class="btn-transparent">下载Excel</a>
+    <span data-col-settings-anchor data-col-settings-position="after"></span>
 {% endblock %}
 
 {% block content %}
@@ -109,19 +110,17 @@
        这里把整表下限对齐 1142px，1440 视口下零横向滚动，操作列自然落在视口内；
        窄屏仍靠横向滚动保住各列下限。 */
     .table { min-width: 1142px; }
-    .table--fixed th:nth-child(1) { width: 54px; }  /* 序号（表头两字 + 28px 内边距） */
-    .table--fixed th:nth-child(2) { width: 16%; }   /* 项目名称 */
-    .table--fixed th:nth-child(3) { width: 12%; }   /* 施工方 */
-    /* 项目地址不设宽度（fixed 布局下的 auto 列）：所有列都声明宽度时 Chrome 会把
-       px 定宽列也等比放大（104px 被放大到 141px），必须留一个 auto 列吸收富余，
-       px 列才能锁定；宽屏下地址是内容最长的文本列，富余给它最合适。 */
-    /* 短内容列 px 定宽，宽屏不再膨胀（开工日期内容 72px + 内边距 32px = 104px；
-       金额实测 86px + 32px = 118px，留 6px 余量） */
+    /* 固定列：序号 / 开工日期 / 三项价格 / 操作 宽度确定，px 定宽避免宽屏膨胀 */
+    .table--fixed th:nth-child(1) { width: 54px; }  /* 序号 */
     .table--fixed th:nth-child(5) { width: 104px; } /* 开工日期 */
     .table--fixed th:nth-child(6) { width: 124px; } /* 原价 */
     .table--fixed th:nth-child(7) { width: 124px; } /* 核后价 */
     .table--fixed th:nth-child(8) { width: 124px; } /* 核减金额 */
-    .table--fixed th:nth-child(9) { width: 136px; } /* 操作：固定 px 锁定，宽屏不被百分比撑大、窄屏不被压扁 */
+    .table--fixed th:nth-child(9) { width: 136px; } /* 操作 */
+    /* 自动列：项目名称 / 施工方 / 项目地址 内容长度不确定，交给 fixed 布局按
+       内容瓜分剩余空间（不指定宽度即为 auto）。三者同为 auto 时按各自 min-content
+       比例分配，项目名称最长自然占大头，但施工方 / 地址也各得一份，
+       不再出现「单列独吞半张表」的空旷感。 */
     /* 金额列右对齐（表头与数据同侧），等宽数字按位对齐，符合财务数字阅读惯例 */
     .table--fixed thead th.col-num,
     .table--fixed tbody td[data-label="原价"],

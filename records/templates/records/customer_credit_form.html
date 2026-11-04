@@ -3,33 +3,26 @@
 
 {% block page_title %}{% if form.instance.pk %}编辑客户账期{% else %}新增客户账期{% endif %} - 每日工作记录管理网站{% endblock %}
 
-{% block top_nav_actions %}
-    <a href="{% url 'customer_credit_list' %}" class="btn-transparent">返回列表</a>
-    <a href="{% url 'home' %}" class="btn-transparent">返回首页</a>
+{% block breadcrumb %}
+<header class="cf-hero">
+    <div class="cf-hero__row">
+        <h1 class="cf-title">{% if form.instance.pk %}编辑客户账期{% else %}新增客户账期{% endif %}</h1>
+        <a href="{% url 'customer_credit_list' %}" class="btn-transparent">返回列表</a>
+    </div>
+    <nav class="app-breadcrumb app-breadcrumb--hero" aria-label="面包屑">
+        <ol>
+            <li><a href="{% url 'home' %}">首页</a></li>
+            <li><a href="{% url 'customer_credit_list' %}">客户账期</a></li>
+            <li><span aria-current="page">{% if form.instance.pk %}编辑{% else %}新增{% endif %}</span></li>
+        </ol>
+    </nav>
+</header>
 {% endblock %}
+
+{% block top_nav_actions %}{% endblock %}
 
 {% block content %}
 <div class="cf-page">
-    <header class="cf-hero">
-        <div class="cf-hero__main">
-            <p class="cf-eyebrow">客户管理 · 客户账期</p>
-            <h1 class="cf-title">{% if form.instance.id %}编辑客户账期{% else %}新增客户账期{% endif %}</h1>
-            <p class="cf-subtitle">
-                {% if form.instance.id %}
-                    调整客户账期申请信息。保存后可在详情页继续维护前期资料与附件。
-                {% else %}
-                    填写基础信息、业务内容与审核结论；创建后可在详情页继续维护前期资料与附件。
-                {% endif %}
-            </p>
-        </div>
-        <div class="cf-hero__meta" aria-hidden="true">
-            <span class="cf-hero__step">01</span>
-            <span class="cf-hero__line"></span>
-            <span class="cf-hero__step cf-hero__step--muted">02</span>
-            <span class="cf-hero__caption">填写 → 资料归档</span>
-        </div>
-    </header>
-
     <form method="post" class="cf-form">
         {% csrf_token %}
 
@@ -226,56 +219,29 @@
         padding-bottom: var(--sp-6);
     }
 
-    /* ---------- 页头 ---------- */
+    /* ---------- 页头：标题置顶 + 面包屑下置 + 返回内联 ---------- */
     .cf-hero {
-        display: flex;
-        align-items: flex-end;
-        justify-content: space-between;
-        gap: var(--sp-5);
-        padding: var(--sp-5) 0 var(--sp-5);
+        display: block;
+        padding: var(--sp-3) 0;
         border-bottom: 1px solid var(--c-border);
         margin-bottom: var(--sp-5);
     }
-    .cf-eyebrow {
-        margin: 0 0 var(--sp-2);
-        font-size: var(--fs-xs);
-        font-weight: 600;
-        letter-spacing: var(--ls-wide);
-        color: var(--c-text-secondary);
-        text-transform: uppercase;
+    .cf-hero__row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--sp-4);
     }
     .cf-title {
-        margin: 0 0 var(--sp-2);
+        margin: 0;
         font-family: var(--font-display);
-        font-size: var(--fs-2xl);
+        font-size: var(--fs-xl);
         font-weight: 600;
         letter-spacing: var(--ls-tight);
         color: var(--c-text);
     }
-    .cf-subtitle {
-        margin: 0;
-        max-width: 60ch;
-        font-size: var(--fs-sm);
-        line-height: var(--lh-base);
-        color: var(--c-text-secondary);
-    }
-    .cf-hero__meta {
-        display: flex;
-        align-items: center;
-        gap: var(--sp-2);
-        flex-shrink: 0;
-        padding-bottom: var(--sp-1);
-        color: var(--c-text-tertiary);
-    }
-    .cf-hero__step {
-        font-family: var(--font-mono);
-        font-size: var(--fs-xs);
-        font-weight: 600;
-        color: var(--c-primary);
-    }
-    .cf-hero__step--muted { color: var(--c-text-tertiary); }
-    .cf-hero__line { width: 28px; height: 1px; background: var(--c-border-strong); }
-    .cf-hero__caption { margin-left: var(--sp-2); font-size: var(--fs-xs); }
+    .app-breadcrumb--hero { margin: var(--sp-2) 0 0; }
+    .app-breadcrumb--hero ol { margin-bottom: 0; }
 
     /* ---------- 分区卡片 ---------- */
     .cf-form { display: flex; flex-direction: column; gap: var(--sp-4); }
@@ -470,7 +436,6 @@
     .cf-actions .btn { min-width: 112px; }
 
     @media (max-width: 1000px) {
-        .cf-hero__meta { display: none; }
         .cf-grid--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .cf-grid--3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }

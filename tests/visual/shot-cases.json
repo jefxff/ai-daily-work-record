@@ -1,0 +1,69 @@
+[
+  {
+    "name": "01_daily_record_detail",
+    "url": "/daily_record/",
+    "firstHref": "tr[data-href]",
+    "measure": "(()=>{const b=document.querySelector('.dr-body'),c=document.querySelector('.detail-card');const w=e=>e?Math.round(e.getBoundingClientRect().width):null;return {bodyWidth:w(b),cardWidth:w(c),fillRatio:b&&c?+(b.getBoundingClientRect().width/c.getBoundingClientRect().width).toFixed(3):null}})()"
+  },
+  {
+    "name": "02_knowledge_list",
+    "url": "/knowledge/",
+    "measure": "(()=>({statBlocks:document.querySelectorAll('.kb-doc-stats').length,statCards:document.querySelectorAll('.kb-doc-stat').length,docItems:document.querySelectorAll('.kb-doc-item').length}))()"
+  },
+  {
+    "name": "03_decoration_list",
+    "url": "/decoration/",
+    "measure": "(()=>{const th=document.querySelector('.table--fixed thead th:nth-child(4)'),t=document.querySelector('.table--fixed');const w=e=>e?Math.round(e.getBoundingClientRect().width):null;return {addressColWidth:w(th),tableWidth:w(t),addressPct:th&&t?+(th.getBoundingClientRect().width/t.getBoundingClientRect().width*100).toFixed(1):null}})()"
+  },
+  {
+    "name": "04_regulation_detail",
+    "url": "/regulation/",
+    "firstHref": "tr[data-href]",
+    "measure": "(()=>({breadcrumbs:document.querySelectorAll('nav.app-breadcrumb').length,crumbText:document.querySelector('nav.app-breadcrumb')?.innerText.replace(/\\s+/g,' ').trim()||'',backLinks:[...document.querySelectorAll('.page-actions a')].map(a=>a.textContent.trim())}))()"
+  },
+  {
+    "name": "05_insurance_renewal_more",
+    "url": "/insurance/renewal_report/",
+    "click": ".act-more__toggle",
+    "measure": "(()=>{const d=document.querySelector('.act-more[open]');const m=document.querySelector('body > .act-more__menu')||d?.querySelector('.act-more__menu');if(!m)return {open:false};const r=m.getBoundingClientRect(),cs=getComputedStyle(m);const hit=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);return {open:true,rect:{x:Math.round(r.x),y:Math.round(r.y),w:Math.round(r.width),h:Math.round(r.height)},position:cs.position,inViewport:r.top>=0&&r.bottom<=innerHeight&&r.left>=0&&r.right<=innerWidth,menuItems:m.children.length,menuOnTop:!!hit&&(m===hit||m.contains(hit)),hitText:hit?.textContent.trim().slice(0,20)||'',inBody:m.parentElement===document.body}})()"
+  },
+  {
+    "name": "06_customer_credit_form",
+    "url": "/customer_credit/add/",
+    "measure": "(()=>{const hero=document.querySelector('.cf-hero');const title=document.querySelector('.cf-hero .cf-title');const crumb=document.querySelector('.cf-hero .app-breadcrumb--hero');const back=document.querySelector('.cf-hero a.btn-transparent');const t=title?title.getBoundingClientRect().top:null;const c=crumb?crumb.getBoundingClientRect().top:null;return {heroHeight:hero?Math.round(hero.getBoundingClientRect().height):0,titleTop:Math.round(t),crumbTop:Math.round(c),titleAboveCrumb:(t!=null&&c!=null)?(t<c):null,backInsideHero:!!back,pageActionsLinks:document.querySelectorAll('.page-actions a').length,crumbText:crumb?crumb.innerText.replace(/\\s+/g,' ').trim():''}})()"
+  },
+  {
+    "name": "07_anomaly_tables",
+    "url": "/operation_log/anomalies/",
+    "measure": "(()=>{const els=[...document.querySelectorAll('.table-responsive,.table-container')];const bad=els.filter(el=>{const cs=getComputedStyle(el);return cs.maxHeight!=='none'||cs.overflowY==='auto'||cs.overflowY==='scroll'});return {containers:els.length,innerScrollable:bad.length,sample:bad.slice(0,4).map(el=>({cls:String(el.className).slice(0,50),maxHeight:getComputedStyle(el).maxHeight,overflowY:getComputedStyle(el).overflowY}))}})()"
+  },
+  {
+    "name": "08_daily_record_list",
+    "url": "/daily_record/",
+    "measure": "(()=>{const th=document.querySelector('.dr-table thead th:nth-child(5)'),t=document.querySelector('.dr-table');const w=e=>e?Math.round(e.getBoundingClientRect().width):null;return {workColWidth:w(th),tableWidth:w(t),workPct:th&&t?+(th.getBoundingClientRect().width/t.getBoundingClientRect().width*100).toFixed(1):null}})()"
+  },
+  {
+    "name": "09_colsettings_decoration",
+    "url": "/decoration/",
+    "click": ".col-settings-gear",
+    "measure": "(()=>{const gear=document.querySelector('.col-settings-gear');if(!gear)return {gear:false};const panel=document.getElementById('colSettingsPanel');const items=Array.from(document.querySelectorAll('#colSettingsPanel .col-settings-item')).map(function(l){return l.textContent.trim();});return {gear:true,gearInActions:!!document.querySelector('.page-actions .col-settings-gear'),panelVisible:!!(panel&&!panel.hidden),colCount:items.length,cols:items};})()"
+  },
+  {
+    "name": "10_colsettings_daily",
+    "url": "/daily_record/",
+    "click": ".col-settings-gear",
+    "measure": "(()=>{const gear=document.querySelector('.col-settings-gear');if(!gear)return {gear:false};const panel=document.getElementById('colSettingsPanel');const items=Array.from(document.querySelectorAll('#colSettingsPanel .col-settings-item')).map(function(l){return l.textContent.trim();});return {gear:true,gearInActions:!!document.querySelector('.page-actions .col-settings-gear'),panelVisible:!!(panel&&!panel.hidden),colCount:items.length,cols:items};})()"
+  },
+  {
+    "name": "11_colsettings_credit",
+    "url": "/customer_credit/",
+    "click": ".col-settings-gear",
+    "measure": "(()=>{const gear=document.querySelector('.col-settings-gear');if(!gear)return {gear:false};const panel=document.getElementById('colSettingsPanel');const items=Array.from(document.querySelectorAll('#colSettingsPanel .col-settings-item')).map(function(l){return l.textContent.trim();});return {gear:true,gearInActions:!!document.querySelector('.page-actions .col-settings-gear'),panelVisible:!!(panel&&!panel.hidden),colCount:items.length,cols:items};})()"
+  },
+  {
+    "name": "12_colsettings_regulation",
+    "url": "/regulation/",
+    "click": ".col-settings-gear",
+    "measure": "(()=>{const gear=document.querySelector('.col-settings-gear');if(!gear)return {gear:false};const panel=document.getElementById('colSettingsPanel');const items=Array.from(document.querySelectorAll('#colSettingsPanel .col-settings-item')).map(function(l){return l.textContent.trim();});return {gear:true,gearInActions:!!document.querySelector('.page-actions .col-settings-gear'),panelVisible:!!(panel&&!panel.hidden),colCount:items.length,cols:items};})()"
+  }
+]

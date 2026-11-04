@@ -1993,21 +1993,21 @@ a.home-kpi:hover .home-kpi__value { color: var(--c-primary-active); }
 /* ============================================================================
    冻结表头（宽表专用）
    ----------------------------------------------------------------------------
-   为什么必须给容器加高度上限：
-   `.table-responsive` 带 overflow-x:auto，按 CSS 规范另一轴会被计算成 auto，
-   该元素因此成为滚动容器。thead 的 sticky 只相对「最近的滚动容器」生效，
-   容器不滚动（高度自适应）时表头会跟着页面一起滚走 —— 写了等于没写。
-   所以先把容器变成有界滚动区，sticky 才有意义。
-   只作用于 .table-sticky（宽表）；普通短表保持原有页面滚动体验。
+   旧做法给容器加 max-height + overflow:auto 来制造「滚动上下文」，代价是全站
+   每张表格右侧都多出一条内嵌竖向滑块，页面里同时出现 N 条滚动条，且最后一行
+   与操作列下拉菜单会被滚动区裁掉。现改为：容器高度自然撑开、不设内嵌滚动，
+   表头直接相对页面视口吸附（top = 顶栏高度），整页只保留一条滚动条。
+   宽表列宽已收敛到 1142px 单轨容器；横向滚动只留给 <961px 窄屏的原有规则。
    ========================================================================== */
 @media (min-width: 961px) {
+  .table-container:has(.table-responsive) { overflow: visible; }
   .table-responsive:has(.table-sticky) {
-    max-height: calc(100vh - var(--h-topbar) - 200px);
-    overflow: auto;
+    max-height: none;
+    overflow: visible;
   }
   .table-sticky thead th {
     position: sticky;
-    top: 0;
+    top: var(--h-topbar);
     z-index: var(--z-sticky-head);
     background: var(--c-surface-sunken);
     box-shadow: inset 0 -1px 0 var(--c-border);
@@ -2028,16 +2028,16 @@ a.home-kpi:hover .home-kpi__value { color: var(--c-primary-active); }
    .table-sticky 只覆盖了 15/56 个表格页，其余页面滚动后列语义丢失。
    这里把「表头吸附」与「首列冻结」拆开：.table-head-sticky 由 table-tools.js
    自动加到每个带 thead 的数据表上，模板无需逐个改类名。
-   容器仍需要有界高度，否则 sticky 没有滚动上下文（原因同上）。
+   容器不再设高度上限：表头相对页面吸附，避免每张表格自带一条竖向滑块。
    ========================================================================== */
 @media (min-width: 961px) {
   .table-responsive:has(.table-head-sticky) {
-    max-height: calc(100vh - var(--h-topbar) - 200px);
-    overflow: auto;
+    max-height: none;
+    overflow: visible;
   }
   .table-head-sticky > thead > tr > th {
     position: sticky;
-    top: 0;
+    top: var(--h-topbar);
     z-index: var(--z-sticky-head);
     background: var(--c-surface-sunken);
     box-shadow: inset 0 -1px 0 var(--c-border);

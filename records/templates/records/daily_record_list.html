@@ -53,6 +53,7 @@
        title="{% if status_filter == '未完成' %}取消「未完成」筛选{% else %}只看未完成记录{% endif %}">未完成</a>
     {% can "daily_record" "create" %}
     <a href="{% url 'daily_record_add' %}" class="btn-primary">新增记录</a>
+    <span data-col-settings-anchor data-col-settings-position="after"></span>
     {% endcan %}
     {# 导出类（周报 / 年度总结）收进「导出 ▾」，主行只留一个主操作 #}
     <details class="tb-more">
@@ -197,7 +198,7 @@
 {% endblock %}
 
 {% block extra_css %}
-<link href="{% static 'css/daily-record.css' %}?v=20261104b" rel="stylesheet">
+<link href="{% static 'css/daily-record.css' %}?v=20261105a" rel="stylesheet">
 <style>
     /* 「未完成」快捷筛选：与筛选按钮同款，激活时高亮 */
     .quick-filter-btn.is-active {

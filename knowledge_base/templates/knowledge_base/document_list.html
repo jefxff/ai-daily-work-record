@@ -18,12 +18,11 @@
             {% endcan %}
         </div>
     </div>
-    <div class="kb-doc-stats" role="status" aria-label="知识库统计">
-        <div class="kb-doc-stat"><b>{{ total_documents }}</b><span>文档</span></div>
-        <div class="kb-doc-stat"><b class="is-accent">{{ week_new }}</b><span>本周更新</span></div>
-        <div class="kb-doc-stat"><b>{{ total_categories }}</b><span>分类</span></div>
-        <div class="kb-doc-stat"><b>{{ total_views }}</b><span>总浏览</span></div>
-    </div>
+    {% comment %}
+    原先这里有一组四宫格统计（文档/本周更新/分类/总浏览），与右侧栏
+    「知识库统计」同源同值、重复占掉首屏一整行。中间文章区只承担阅读与检索，
+    统计信息统一收在右栏一处，文档列表因此上移、密度更连贯。
+    {% endcomment %}
     <div class="kb-doc-list">
         {% for document in documents %}
         <a href="{% url 'knowledge_base:document_detail' document.pk %}" class="kb-doc-item kb-pi-{{ document.cat_pi|default:'none' }}">

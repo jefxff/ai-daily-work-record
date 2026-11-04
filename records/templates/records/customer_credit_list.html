@@ -68,6 +68,7 @@
     {% can "customer_credit" "create" %}
     <a href="{% url 'customer_credit_add' %}" class="btn-primary">新增客户账期</a>
     {% endcan %}
+    <span data-col-settings-anchor data-col-settings-position="after"></span>
     <a href="{% url 'customer_credit_export' %}" class="btn-transparent">下载Excel</a>
 {% endblock %}
 

@@ -63,15 +63,17 @@
         return cols;
     }
 
-    function applyHidden(table, cols, hiddenNames) {
+    function applyHidden(tables, cols, hiddenNames) {
         cols.forEach(function (col) {
             var hide = !col.fixed && hiddenNames.indexOf(col.name) > -1;
-            var th = table.querySelector('thead tr > th:nth-child(' + col.index + ')');
-            if (th) th.classList.toggle('col-hidden', hide);
-            var cells = table.querySelectorAll(
-                'tbody tr:not(.row-detail) > td:nth-child(' + col.index + ')');
-            Array.prototype.forEach.call(cells, function (td) {
-                td.classList.toggle('col-hidden', hide);
+            tables.forEach(function (table) {
+                var th = table.querySelector('thead tr > th:nth-child(' + col.index + ')');
+                if (th) th.classList.toggle('col-hidden', hide);
+                var cells = table.querySelectorAll(
+                    'tbody tr:not(.row-detail) > td:nth-child(' + col.index + ')');
+                Array.prototype.forEach.call(cells, function (td) {
+                    td.classList.toggle('col-hidden', hide);
+                });
             });
         });
     }
@@ -81,20 +83,31 @@
         /* 原先限定在 .table-container 内，导致「证照管理 / 试样台账」这类
            用 .arc-page 自带容器包裹表格的页面拿不到按钮（用户反馈「列设置没看到」）。
            改为全页查找，仍以「全页只有一张列表表格」作为唯一性前提。 */
-        var tables = document.querySelectorAll(
-            'table.table--cards, table.table-sticky');
-        if (tables.length !== 1) return;          // 多表页（搜索/看板）不提供列设置，避免歧义
-        var table = tables[0];
+        var tableList = Array.prototype.slice.call(document.querySelectorAll(
+            'table.table--cards, table.table-sticky'));
+        if (!tableList.length) return;
+        // 多表页：档案总览等「每个台账一张表、列结构一致」的页面，把所有表视为一组
+        // 统一控制显隐；结构不一致的多表页（搜索结果等）仍不提供列设置，避免错位。
+        if (tableList.length > 1) {
+            var headCols = function (t) {
+                var r = t.querySelector('thead tr');
+                return r ? r.children.length : 0;
+            };
+            var n = headCols(tableList[0]);
+            var uniform = tableList.every(function (t) { return headCols(t) === n; });
+            if (!uniform) return;
+        }
+        var table = tableList[0];
         var cols = columnInfo(table);
         var optional = cols.filter(function (c) { return !c.fixed; });
         if (!optional.length) return;
 
         var hidden = readHidden();
-        applyHidden(table, cols, hidden);
+        applyHidden(tableList, cols, hidden);
 
         var btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'btn-transparent col-settings-toggle';
+        btn.className = 'col-settings-toggle';
         btn.textContent = '列设置';
         btn.setAttribute('aria-expanded', 'false');
         btn.setAttribute('aria-controls', 'colSettingsPanel');
@@ -170,14 +183,14 @@
                 hidden = hidden.filter(function (n) { return n !== cb.value; });
                 if (!cb.checked) hidden.push(cb.value);
                 saveHidden(hidden);
-                applyHidden(table, cols, hidden);
+                applyHidden(tableList, cols, hidden);
             });
         });
 
         reset.addEventListener('click', function () {
             hidden = [];
             saveHidden(hidden);
-            applyHidden(table, cols, hidden);
+            applyHidden(tableList, cols, hidden);
             boxes.forEach(function (cb) { cb.checked = true; });
         });
 
@@ -351,9 +364,20 @@
             items.slice(2).forEach(function (el) { menu.appendChild(el); });
             box.appendChild(details);
 
-            // 表格容器有 overflow，绝对定位的菜单会被裁切：展开时改为 fixed 定位
+            // 展开时把菜单挂到 body 上，再用 fixed 定位到按钮下方。
+            // 只改 position:fixed 不够：菜单仍留在 td.col-actions 这个 sticky
+            // 层叠上下文里，后续行的同层操作列会把它盖住（点开只见一条白边）；
+            // 表格容器的 overflow 也可能裁掉它。挂到 body 后两者都不再影响菜单。
+            details._actMenu = menu;
             details.addEventListener('toggle', function () {
-                if (!details.open) return;
+                if (!details.open) {
+                    if (menu.parentNode === document.body) {
+                        details.appendChild(menu);
+                        menu.removeAttribute('style');
+                    }
+                    return;
+                }
+                if (menu.parentNode !== document.body) document.body.appendChild(menu);
                 var r = summary.getBoundingClientRect();
                 var w = Math.max(132, menu.offsetWidth);
                 var left = Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8));
@@ -375,7 +399,12 @@
 
         document.addEventListener('click', function (e) {
             Array.prototype.forEach.call(document.querySelectorAll('.act-more[open]'), function (d) {
-                if (!d.contains(e.target)) d.removeAttribute('open');
+                var menu = d._actMenu;
+                // 菜单已挂到 body，contains 检查要连它一起算，否则点菜单里的
+                // 「续保 / 列为一次性」会被当成点外部而先收起，动作丢失。
+                if (!d.contains(e.target) && !(menu && menu.contains(e.target))) {
+                    d.removeAttribute('open');
+                }
             });
         });
         document.addEventListener('keydown', function (e) {

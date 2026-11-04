@@ -22,7 +22,7 @@
 /* ==========================================================================
    1. 列表页表格
    --------------------------------------------------------------------------
-   列宽策略（固定布局 + px 定宽，工作内容列 auto 吸收剩余）：
+   列宽策略（固定布局 + 全列定宽，总和贴合容器）：
    短内容列（选择/序号/日期/部门/截至/状态）内容宽度是常量，给 px 定宽后
    列间距在任何屏宽下恒定；百分比预算在 1920 宽屏会把 10% 膨胀到 190px，
    内容只有 ~110px，多余空白堆在列右侧，且各列膨胀量不同 ——
@@ -57,23 +57,26 @@
 .dr-batch-bar__info b { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--c-primary-active); }
 .dr-batch-bar__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
 
-/* 列宽预算：短内容列 px 定宽（列间距恒定），进度/操作保留百分比，
-   「工作内容」不设宽度、自动占剩余空间。
-   不用 colgroup：<col> 的宽度在某一列 display:none（col-optional / 移动端隐藏选择列）
+/* 列宽预算：九列中仅「工作内容」为 auto，其余列宽度确定、贴合 1142px 单轨。
+   选择 / 序号 / 日期 / 截至 / 状态为 px 定宽，进度 / 操作为百分比，
+   工作内容独占剩余空间；这样只有内容最长的列随视口伸缩、长记录读得完整，
+   其余列间距在任何屏宽下恒定。提出部门 / 提出人实际不超过 5 个汉字，压到 104px，
+   避免大片空白。
+   不用 colgroup：<col> 的宽度在某一列 display:none（移动端隐藏选择列）
    会被 Chrome 顺移套到下一可见列上，造成整行列宽错位一格。 */
 .dr-table th:nth-child(1) { width: 44px; }  /* 选择（15px 复选框 + 28px 内边距） */
 .dr-table th:nth-child(2) { width: 54px; text-align: center; }  /* 序号（与核价/制度页一致，数字居中） */
 .dr-table td:nth-child(2) { text-align: center; }
-.dr-table th:nth-child(3) { width: 118px; } /* 日期及时间（表头 5 字 + 排序箭头 = 107px；内容「11-02 18:35」= 109px） */
-/* 提出部门/提出人：内容多为 3~4 字部门名（实测最长 39px），137px = 表头 8 字
-   104px + 内边距 28px + 余量。
-   注意不能用 clamp()：Chrome 在 table-layout:fixed 下不解析 th 的 clamp 宽度，
-   声明失效后退化为 auto，会和工作内容列平分剩余（实测各 357px）。 */
-.dr-table th:nth-child(4) { width: 137px; } /* 提出部门/提出人 */
-.dr-table th:nth-child(6) { width: 118px; } /* 截至日期（等宽日期 78px + 内边距 28px，剩余天数注记更短） */
-.dr-table th:nth-child(7) { width: 100px; } /* 工作状态（状态胶囊 58px + 圆点 + 内边距 28px，表头 4 字 80px） */
-.dr-table th:nth-child(8) { width: 9.5%; text-align: left; }  /* 工作进度（条 max-width 120px 填满内容区，数据左对齐，表头同步） */
-.dr-table th:nth-child(9) { width: 9.9%; }  /* 操作（三个图标按钮需 110px） */
+.dr-table th:nth-child(3) { width: 130px; } /* 日期及时间 */
+/* 提出部门/提出人：实际内容不超过 5 个汉字，104px 足够（5×16 + 28 内边距），
+   不再用 160px 留出大片空白。 */
+.dr-table th:nth-child(4) { width: 104px; }
+/* 工作内容：改回 auto，吸收所有剩余宽度。其余列均为确定宽度，只有这一列随
+   视口伸缩，长内容读得完整（第 5 列不指定宽度 → fixed 布局下即为 auto）。 */
+.dr-table th:nth-child(6) { width: 130px; } /* 截至日期 */
+.dr-table th:nth-child(7) { width: 118px; } /* 工作状态 */
+.dr-table th:nth-child(8) { width: 12%; text-align: left; }  /* 工作进度 */
+.dr-table th:nth-child(9) { width: 11%; }   /* 操作 */
 
 /* 列头：排序箭头与文字之间留一点空隙，不让 ⇅ 贴着末字 */
 .dr-table thead th .sort-link { gap: 4px; }
@@ -382,9 +385,11 @@
 
 /* 2.2 正文：这一页的视觉重心
    工作内容上限 2000 字，是唯一需要"长阅读"的段落。原版 15px 正文挤在
-   34px 进度数字下面，读起来像附注。改为：18px / 1.9 行高 / 62ch 限宽，
-   独立浅底 + 主色左边线，让它成为打开页面第一眼落点；进度条降级成一行。
-   不抬高到标题字号 —— 长记录会把卡片撑爆，字重与留白比字号更稳。 */
+   34px 进度数字下面，读起来像附注。改为 18px / 1.9 行高、独立浅底 +
+   主色左边线，让它成为打开页面第一眼落点；进度条降级成一行。
+   原 62ch 限宽是为控制阅读行长，但在 1142px 单轨卡片里只占 54%，
+   右侧留白与下方通栏进度条、双列事实表完全对不上，看起来像内容被截断。
+   改为铺满卡片宽度；长文本仍由 word-break 保证不溢出。 */
 .dr-body__label {
     display: inline-flex;
     align-items: center;
@@ -405,7 +410,8 @@
 }
 
 .dr-body {
-    max-width: 62ch;
+    width: 100%;
+    box-sizing: border-box;
     margin-bottom: var(--sp-6);
     padding: var(--sp-4) var(--sp-5);
     background: var(--c-surface-sunken);
