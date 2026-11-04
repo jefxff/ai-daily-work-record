@@ -28,13 +28,13 @@
     <div class="table-container">
         <!-- 表格 -->
         <div class="table-responsive">
-            <div class="hidden-cols-hint">窄屏已隐藏 3 个次要列；需要逐列比对时请横屏或改用桌面端。</div><table class="table-ledger table--cards table table-sticky table--fixed">
+            <div class="hidden-cols-hint">当前宽度已隐藏部分次要列（如供应商3报价、内控审核供应商）；需要逐列比对时请横屏、改用全宽视图或展开窗口。</div><table class="table-ledger table--cards table table-sticky table--fixed">
                 {% comment %}
                 列宽按信息价值固定，不交给浏览器自动分配：
                 原先序号列只有 34px（显示成「1…」），而核价内容拿到 114px。
-                合计 1508px，窄屏由 .table-responsive 横向滚动承担。
+                现用 px 预算 + 核价内容吸收剩余空间，表格恒等于卡片宽度（不再溢出）。
                 列宽用 th:nth-child 声明而不是 colgroup：colgroup 的 <col> 宽度
-                在列被 .col-optional 隐藏（≤1280）后会被 Chrome 顺移套到相邻列上。
+                在列被隐藏后会被浏览器顺移套到相邻列上。
                 {% endcomment %}
                 <thead>
                     <tr>
@@ -56,9 +56,9 @@
                     {% for evaluation in evaluations %}
                     <tr data-href="{% url 'price_evaluation_detail' evaluation.id %}">
                         <td data-label="序号" class="col-optional">{{ forloop.counter }}</td>
-                        <td data-label="项目分类">{{ evaluation.project_category }}</td>
-                        <td data-label="项目提出部门">{{ evaluation.proposing_department }}</td>
-                        <td data-label="提出人">{{ evaluation.proposer }}</td>
+                        <td data-label="项目分类" title="{{ evaluation.project_category|default:'' }}">{{ evaluation.project_category }}</td>
+                        <td data-label="项目提出部门" title="{{ evaluation.proposing_department|default:'' }}">{{ evaluation.proposing_department }}</td>
+                        <td data-label="提出人" title="{{ evaluation.proposer|default:'' }}">{{ evaluation.proposer }}</td>
                         <td data-label="核价内容" class="cell-clamp" title="{{ evaluation.evaluation_content|default:'' }}"><span>{{ evaluation.evaluation_content|default:'' }}</span></td>
                         <td data-label="供应商1报价">
                             <div class="supplier-cell">
@@ -107,24 +107,70 @@
 
 {% block extra_css %}
 <style>
-    /* 列宽策略：th:nth-child 百分比预算（其余列合计 80.9%，「核价内容」占剩余 19.1%），
-       所有列随容器等比缩放 —— 旧版 12 列 px 定宽（合计 1508px），宽屏富余被
-       按比例摊平后「核价内容」只有 215px、金额块却占 645px，主次倒挂。
-       下限按 min-width 1508px 校验：内控审核供应商表头 7 字 132px → 9.2%。
-       不用 colgroup：<col> 宽度在列被 .col-optional 隐藏（≤1280）后会错位套到相邻列。 */
-    .table { min-width: 1508px; table-layout: fixed; }
-    .table th:nth-child(1)  { width: 3.4%; }   /* 序号 */
-    .table th:nth-child(2)  { width: 10.8%; }  /* 项目分类 */
-    .table th:nth-child(3)  { width: 8.2%; }   /* 项目提出部门 */
-    .table th:nth-child(4)  { width: 6%; }     /* 提出人 */
-    .table th:nth-child(6)  { width: 7.9%; }   /* 供应商1报价（表头 6 字 + 排序箭头需 117px） */
-    .table th:nth-child(7)  { width: 7.9%; }   /* 供应商2报价 */
-    .table th:nth-child(8)  { width: 7.9%; }   /* 供应商3报价 */
-    .table th:nth-child(9)  { width: 8.8%; }   /* 内控审核供应商（表头 7 字需 132px） */
-    .table th:nth-child(10) { width: 7.5%; }   /* 内控审核价 */
-    .table th:nth-child(11) { width: 7.5%; }   /* 核减金额 */
-    .table th:nth-child(12) { width: 7.5%; }   /* 操作（三个图标按钮 104px） */
+    /* ===== 列宽策略：以「表格可用宽度」为准，而不是视口宽度 =====
+       旧版写死 min-width: 1508px。限宽模式（1440 轨道）下内容区实际只有 1142px，
+       而 .table-responsive 因为要贴视口吸附表头是 overflow: visible（见 app.css
+       「表头吸附」段），超出的 366px 直接溢出卡片、被视口裁掉 —— 表现为右侧
+       内控审核价 / 核减金额 / 操作 三列被切、整页出现横向滚动条。
+       现改为：表格恒为 100% 宽（不再撑破卡片），列宽用 px 预算锁定内容所需，
+       「核价内容」占剩下的全部空间；宽度不够时按容器查询隐藏次要列（见下），
+       而不是让表格溢出。
+       不用 colgroup：<col> 宽度在列被隐藏后会错位套到相邻列。 */
+    .table { width: 100%; min-width: 0; table-layout: fixed; }
+    .table th:nth-child(1)  { width: 54px; }   /* 序号（表头 2 字 + 内边距） */
+    .table th:nth-child(2)  { width: 130px; }  /* 项目分类（超出省略，悬停看全称） */
+    .table th:nth-child(3)  { width: 108px; }  /* 项目提出部门（表头 6 字 78px） */
+    .table th:nth-child(4)  { width: 68px; }   /* 提出人 */
+    /* 第 5 列「核价内容」不设宽度：吸收全部剩余空间 */
+    .table th:nth-child(6)  { width: 116px; }  /* 供应商1报价（表头 6 字 + 金额 ¥101,760.00） */
+    .table th:nth-child(7)  { width: 116px; }  /* 供应商2报价 */
+    .table th:nth-child(8)  { width: 116px; }  /* 供应商3报价 */
+    .table th:nth-child(9)  { width: 120px; }  /* 内控审核供应商（表头 7 字 91px） */
+    .table th:nth-child(10) { width: 106px; }  /* 内控审核价（表头 5 字 + 排序箭头） */
+    .table th:nth-child(11) { width: 104px; }  /* 核减金额（金额 78px + 内边距） */
+    .table th:nth-child(12) { width: 130px; }  /* 操作（详细 / 编辑 / 删除 三个按钮） */
+
+    /* 宽度不够时优先隐藏「信息价值最低」的列，而不是把表格挤出卡片。
+       容器查询读的是 .table-container 的实际宽度：限宽模式与侧栏展开都会让
+       内容区远窄于视口，媒体查询（按视口）在这种场景下会误判为「还有空间」。 */
+    .table-container { container-type: inline-size; }
+
+    /* 12 列全展示需要约 1176 + 核价内容 180 = 1356px。
+       只隐藏两个次要列；序号虽然也带 .col-optional（≤1280 视口会整列隐藏），
+       但在桌面宽度下它是行定位锚点，值得保留 —— 用 :not(:first-child) 排除。 */
+    @container (max-width: 1355px) {
+        .table th.col-optional:not(:first-child),
+        .table td.col-optional:not(:first-child) { display: none; }   /* 供应商3报价 / 内控审核供应商 */
+        .hidden-cols-hint { display: block; }
+    }
+
+    /* 再窄就守不住「核价内容」了：固定列合计 932px，容器 < 1132 时它只剩不足
+       200px（再窄会压成 0，数据整列消失）。此时给表格一个 1132 的最小宽度、
+       在卡片内部横向滚动 —— 卡片仍然完整，列不再被视口裁掉。
+       选择器必须写到 .table-container .table-responsive：app.css 里
+       .table-responsive:has(.table-head-sticky){overflow:visible} 权重更高，
+       只写单类会被它压回去，表格又会溢出卡片。 */
+    @container (max-width: 1131px) {
+        .table { min-width: 1132px; }
+        .table-container .table-responsive { overflow-x: auto; }
+    }
+
+    /* 核价内容是「两行截断」列：components.css 的宽表单行截断规则（.table-sticky）
+       权重更高且后加载，会把 .cell-clamp 压回单行、并在字符中间硬裁。
+       这里显式抬回两行，超出才用省略号收尾。 */
+    .table-sticky tbody td.cell-clamp,
+    .table-sticky tbody td.cell-clamp > span {
+        white-space: normal !important;
+        word-break: break-word;
+    }
+
     .table td { font-variant-numeric: tabular-nums; }
+    /* 文本列统一单行省略 + 悬停看全文，避免长短不一时列宽参差或文字压到下一列 */
+    .table td:nth-child(2), .table td:nth-child(3), .table td:nth-child(4) {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
     /* 金额列：右对齐 + 等宽数字，核价的核心动作是纵向比较三家报价 */
     .table th:nth-child(6), .table th:nth-child(7), .table th:nth-child(8),
     .table th:nth-child(10), .table th:nth-child(11) { text-align: right; }
@@ -134,7 +180,7 @@
     .supplier-name { overflow: hidden; font-size: 12px; color: var(--c-text-secondary); text-overflow: ellipsis; white-space: nowrap; text-align: right; }
     /* 金额超列宽时按…截断，不能溢出到旁边的供应商列（溢出会让整列看起来错位） */
     .supplier-price { align-self: stretch; overflow: hidden; max-width: 100%; font-size: 13px; font-weight: 600; color: var(--c-text); font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
-    /* 操作列三个按钮并列：给足 120px 并保持不换行 */
+    /* 操作列三个按钮并列：给足 130px 并保持不换行 */
     .table td.col-actions { white-space: nowrap; }
 </style>
 {% endblock %}

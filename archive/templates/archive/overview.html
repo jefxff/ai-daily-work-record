@@ -251,7 +251,6 @@
                     <a href="{% url 'archive:overview' %}" title="清空搜索与筛选条件">重置筛选</a>
                 </div>
             </details>
-            <span data-col-settings-anchor data-col-settings-position="after"></span>
         </div>
     </div>
 
@@ -270,7 +269,7 @@
     <!-- 台账卡片列表 -->
     {# 按台账分组分页：页面高度从 21271px 收到 2500px 左右；ledger_data 仍保留全量，供统计与分页信息使用 #}
     {% for item in ledger_page %}
-    <div class="lg-card" data-ledger-id="{{ item.ledger.pk }}">
+    <div class="lg-card" data-ledger-id="{{ item.ledger.pk }}" data-col-settings-scope data-col-settings-key="ledger-{{ item.ledger.pk }}">
         <div class="lg-card-header">
             <div>
                 <div class="lg-card-title">
@@ -284,7 +283,9 @@
                 </div>
                 {% if item.ledger.description %}<div class="lg-card-meta">{{ item.ledger.description }}</div>{% endif %}
             </div>
-            <div class="d-flex gap-1">
+            <div class="d-flex gap-1 align-items-center">
+                {# 列设置按台账各管一张表：锚点必须留在本卡片内，齿轮才会落在本卡片的表旁 #}
+                <span data-col-settings-anchor data-col-settings-position="after"></span>
                 <a href="{% url 'archive:ledger_detail' item.ledger.pk %}" class="btn btn-sm btn-primary">查看全部 {{ item.total }} 条</a>
             </div>
         </div>
@@ -385,9 +386,12 @@
 
     <!-- 未分配台账的档案 -->
     {% if unassigned_total and show_unassigned %}
-    <div class="lg-card">
+    <div class="lg-card" data-col-settings-scope data-col-settings-key="unassigned">
         <div class="lg-card-header">
             <div class="lg-card-title">未分配台账 <span class="text-muted small">共 {{ unassigned_total }} 条</span></div>
+            <div class="d-flex gap-1 align-items-center">
+                <span data-col-settings-anchor data-col-settings-position="after"></span>
+            </div>
         </div>
         <div class="lg-table-wrap table-responsive">
             <table class="table-ledger table--cards lg-table">

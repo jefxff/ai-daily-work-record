@@ -24,9 +24,9 @@
         return STORE_PREFIX + window.location.pathname;
     }
 
-    function readHidden() {
+    function readHidden(key) {
         try {
-            var raw = localStorage.getItem(pageKey());
+            var raw = localStorage.getItem(key);
             var arr = raw ? JSON.parse(raw) : [];
             return Array.isArray(arr) ? arr : [];
         } catch (e) {
@@ -34,8 +34,8 @@
         }
     }
 
-    function saveHidden(arr) {
-        try { localStorage.setItem(pageKey(), JSON.stringify(arr)); } catch (e) {}
+    function saveHidden(key, arr) {
+        try { localStorage.setItem(key, JSON.stringify(arr)); } catch (e) {}
     }
 
     /* ---------- 1. 表头列信息 ---------- */
@@ -72,56 +72,55 @@
                 var cells = table.querySelectorAll(
                     'tbody tr:not(.row-detail) > td:nth-child(' + col.index + ')');
                 Array.prototype.forEach.call(cells, function (td) {
+                    /* 空状态行是 colspan 合并单元格，按 nth-child 命中会把它一起隐藏，
+                       整表会出现「一行空白」。跨列单元格不参与列显隐。 */
+                    if (td.colSpan > 1) return;
                     td.classList.toggle('col-hidden', hide);
                 });
             });
         });
     }
 
-    /* ---------- 2. 列设置面板 ---------- */
-    function initColumnSettings() {
-        /* 原先限定在 .table-container 内，导致「证照管理 / 试样台账」这类
-           用 .arc-page 自带容器包裹表格的页面拿不到按钮（用户反馈「列设置没看到」）。
-           改为全页查找，仍以「全页只有一张列表表格」作为唯一性前提。 */
-        var tableList = Array.prototype.slice.call(document.querySelectorAll(
-            'table.table--cards, table.table-sticky'));
-        if (!tableList.length) return;
-        // 多表页：档案总览等「每个台账一张表、列结构一致」的页面，把所有表视为一组
-        // 统一控制显隐；结构不一致的多表页（搜索结果等）仍不提供列设置，避免错位。
-        if (tableList.length > 1) {
-            var headCols = function (t) {
-                var r = t.querySelector('thead tr');
-                return r ? r.children.length : 0;
-            };
-            var n = headCols(tableList[0]);
-            var uniform = tableList.every(function (t) { return headCols(t) === n; });
-            if (!uniform) return;
-        }
-        var table = tableList[0];
+    /* ---------- 2. 列设置面板 ----------
+       一个面板 = 一张表。
+       单表页：按钮挂模板锚点（没有锚点时落到表格上方的自动工具条）。
+       多表页：模板用 [data-col-settings-scope] 圈住「表格 + 它自己的锚点」，
+               每张表各拿一个按钮、各自记忆显隐（档案总览：一张台账一个按钮）。
+               没圈作用域的多表页（异常检测那 4 张分组表）不生成按钮——
+               一个不知道该管哪张表的齿轮比没有更糟。
+       ------------------------------------------------------------------ */
+
+    /* 同页可能有多个面板：打开一个就收起其余的，避免两个浮层叠在一起 */
+    var panelClosers = [];
+
+    function gearIcon() {
+        return '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
+    }
+
+    function createColumnSettings(table, anchor, storageKey, serial) {
         var cols = columnInfo(table);
         var optional = cols.filter(function (c) { return !c.fixed; });
         if (!optional.length) return;
 
-        var hidden = readHidden();
-        applyHidden(tableList, cols, hidden);
+        var hidden = readHidden(storageKey);
+        applyHidden([table], cols, hidden);
+
+        var panelId = serial ? 'colSettingsPanel-' + serial : 'colSettingsPanel';
 
         var btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'col-settings-toggle';
-        btn.textContent = '列设置';
+        btn.className = 'col-settings-gear';
         btn.setAttribute('aria-expanded', 'false');
-        btn.setAttribute('aria-controls', 'colSettingsPanel');
+        btn.setAttribute('aria-controls', panelId);
+        btn.setAttribute('aria-label', '列设置');
+        btn.title = '列设置';
+        btn.innerHTML = gearIcon();
 
         /* 插入位置：
            1) 模板用 data-col-settings-anchor 声明锚点，按 data-col-settings-position
               插到它前/后；
-           2) 默认挂在表格正上方右侧的工具条里（齿轮图标）——列设置作用于「这张表」，
-              放在页面工具栏会被当成又一个页面级动作，也是工具栏控件数下不来的原因之一。 */
-        btn.classList.add('col-settings-gear');
-        btn.setAttribute('aria-label', '列设置');
-        btn.title = '列设置';
-        btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
-        var anchor = document.querySelector('[data-col-settings-anchor]');
+           2) 没有锚点时挂在表格正上方右侧的自动工具条里（齿轮图标）——列设置作用于
+              「这张表」，放在页面工具栏会被当成又一个页面级动作。 */
         if (anchor) {
             anchor.insertAdjacentElement(
                 anchor.getAttribute('data-col-settings-position') === 'before'
@@ -139,7 +138,7 @@
 
         var panel = document.createElement('div');
         panel.className = 'col-settings-panel';
-        panel.id = 'colSettingsPanel';
+        panel.id = panelId;
         panel.hidden = true;
         panel.setAttribute('role', 'dialog');
         panel.setAttribute('aria-label', '显示列设置');
@@ -182,29 +181,32 @@
                 }
                 hidden = hidden.filter(function (n) { return n !== cb.value; });
                 if (!cb.checked) hidden.push(cb.value);
-                saveHidden(hidden);
-                applyHidden(tableList, cols, hidden);
+                saveHidden(storageKey, hidden);
+                applyHidden([table], cols, hidden);
             });
         });
 
         reset.addEventListener('click', function () {
             hidden = [];
-            saveHidden(hidden);
-            applyHidden(tableList, cols, hidden);
+            saveHidden(storageKey, hidden);
+            applyHidden([table], cols, hidden);
             boxes.forEach(function (cb) { cb.checked = true; });
         });
 
         function setOpen(open) {
             panel.hidden = !open;
             btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-            if (open) {
-                var r = btn.getBoundingClientRect();
-                var width = Math.min(260, window.innerWidth - 24);
-                panel.style.width = width + 'px';
-                panel.style.top = (r.bottom + 6) + 'px';
-                panel.style.left = Math.max(12, Math.min(r.right - width, window.innerWidth - width - 12)) + 'px';
-            }
+            if (!open) return;
+            panelClosers.forEach(function (close) { if (close !== closeSelf) close(); });
+            var r = btn.getBoundingClientRect();
+            var width = Math.min(260, window.innerWidth - 24);
+            panel.style.width = width + 'px';
+            panel.style.top = (r.bottom + 6) + 'px';
+            panel.style.left = Math.max(12, Math.min(r.right - width, window.innerWidth - width - 12)) + 'px';
         }
+
+        function closeSelf() { setOpen(false); }
+        panelClosers.push(closeSelf);
 
         btn.addEventListener('click', function (e) {
             e.stopPropagation();
@@ -217,6 +219,34 @@
                 setOpen(false);
                 btn.focus();
             }
+        });
+    }
+
+    function initColumnSettings() {
+        /* 原先限定在 .table-container 内，导致「证照管理 / 试样台账」这类
+           用 .arc-page 自带容器包裹表格的页面拿不到按钮（用户反馈「列设置没看到」）。
+           改为全页查找。 */
+        var tables = Array.prototype.slice.call(document.querySelectorAll(
+            'table.table--cards, table.table-sticky'));
+        if (!tables.length) return;
+
+        /* 单表页：全页唯一一张列表表格，锚点可以放在页面操作区任意位置 */
+        if (tables.length === 1) {
+            createColumnSettings(
+                tables[0], document.querySelector('[data-col-settings-anchor]'), pageKey(), 0);
+            return;
+        }
+
+        /* 多表页：只认「显式声明了作用域」的表。
+           作用域内再找锚点，保证按钮落在这张表自己的卡片头里；localStorage
+           按「页面 + 作用域 key」分开存，各表互不影响。 */
+        tables.forEach(function (table, i) {
+            var scope = table.closest('[data-col-settings-scope]');
+            if (!scope) return;
+            var anchor = scope.querySelector('[data-col-settings-anchor]');
+            if (!anchor) return;
+            var key = pageKey() + '#' + (scope.getAttribute('data-col-settings-key') || i);
+            createColumnSettings(table, anchor, key, i);
         });
     }
 
