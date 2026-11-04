@@ -3,6 +3,15 @@
 
 {% block page_title %}知识库阅读报告 - 每日工作记录管理网站{% endblock %}
 
+{% comment %}
+本页整体覆盖 content 块、不走 knowledge-wrapper，所以自己补回面包屑：
+模块基类把全局面包屑关掉、改为在内容列内渲染（见 knowledge_base/base.html），
+这里引用同一个片段。块必须声明在顶层——嵌在 content 块里不会覆盖父模板的
+顶层同名块。DOM 顺序上它排在 .page-header 之前，靠 main 的 flex order
+（标题 1 / 面包屑 2）落回标题下方，外观与其它页面一致。
+{% endcomment %}
+{% block breadcrumb %}{% include 'knowledge_base/_crumb.html' %}{% endblock %}
+
 {% block top_nav_actions %}
     {# 统计窗口与返回按钮同处一条操作栏，不再单独占一张筛选卡 #}
     <form class="report-toolbar" method="GET">

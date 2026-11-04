@@ -1,0 +1,29 @@
+{% comment %}
+知识库模块的面包屑片段（2026-11-05）。
+
+与 records/base.html 里的全局面包屑是同一套标记、同一份数据源
+（records/nav.py 注入的 nav_crumb_mid / nav_crumb_tail），
+区别只在渲染位置：这里画在 .knowledge-main-content 内部，
+好让「标题 / 面包屑 / 文档列表」共用一条左缘，右侧栏再与面包屑顶线齐平。
+
+末级文案直接取 nav_crumb_tail，不再留 {% block crumb_tail %}：
+本模块的子模板没有覆盖末级的需求（详情页的分类路径属于卡片内导航，
+由 document_detail.html 自己的 .kb-crumb 渲染），保持片段无参数更省心。
+{% endcomment %}
+{% if nav_crumb_mid or nav_crumb_tail %}
+<nav class="app-breadcrumb" aria-label="面包屑">
+    <ol>
+        <li><a href="{% url 'home' %}">首页</a></li>
+        {% if nav_crumb_mid and nav_crumb_mid.label != nav_crumb_tail %}
+        <li>
+            {% if nav_crumb_mid.url %}
+            <a href="{{ nav_crumb_mid.url }}">{{ nav_crumb_mid.label }}</a>
+            {% else %}
+            <span>{{ nav_crumb_mid.label }}</span>
+            {% endif %}
+        </li>
+        {% endif %}
+        <li><span aria-current="page">{{ nav_crumb_tail }}</span></li>
+    </ol>
+</nav>
+{% endif %}

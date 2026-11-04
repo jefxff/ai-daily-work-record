@@ -7,15 +7,24 @@
 <style>
     /* 知识库特有样式（继承 records/base.html 的 Ant Design 通用样式） */
 
-    /* 知识库三列页面结构：左导航 / 主内容 / 右侧筛选栏。
-       右栏回到页面右侧竖排（统计 → 分类筛选 → 标签云），但放回流内作为
-       wrapper 的第二栏：外层仍是全站 1142px 单轨，不再用 position:fixed
-       脱离文档流（原版会压住顶栏下拉、小屏直接隐藏）。滚动时 sticky 保持可见。 */
+    /* ===== 知识库三列页面结构：左导航 / 中间阅读列 / 右侧筛选栏 =====
+       三条定稿约束（2026-11-05）：
+         1) 页面标题「知识库」+ 面包屑搬进中间阅读列，右栏才能与面包屑顶线齐平；
+         2) 右栏贴**窗口**右缘（不跟随 1440 限宽轨）并吸顶；
+         3) 中间文档列表限宽 1200，在「左导航—右栏」之间水平居中，
+            标题 / 面包屑 / 列表共用同一条左缘。
+
+       为什么不用全站 main 直属的 .page-header + .app-breadcrumb：
+       那套排序（标题 1 / 面包屑 2 / 内容 4）只决定纵向顺序；右侧栏是网格
+       第二列，它的纵向起点只能由同一列内的兄弟元素决定。三者放进同一列后，
+       「标题行占位」就是唯一基准，不必用负外边距去凑齐平线。 */
     .knowledge-wrapper {
+        /* 标题行占位 = 36px 行高 + 10px 下外边距；右栏上抬量直接引用它，
+           两边共用同一个数，改标题字号时只需改这一处。 */
+        --kb-head-block: 46px;
         display: flex;
         gap: var(--sp-6);
         align-items: flex-start;
-        margin-top: 1rem;
     }
     .knowledge-main-content {
         flex: 1;
@@ -25,11 +34,37 @@
         display: grid;
         grid-template-columns: minmax(0, 1fr) 280px;
     }
+    /* 中间阅读列：限宽 1200 居中。宽屏下两侧留白对称，卡片不再被拉到 1300+ */
+    .knowledge-main-with-right > .knowledge-main-content {
+        width: 100%;
+        max-width: 1200px;
+        margin-inline: auto;
+    }
+    /* 页标题：与全站列表页 .page-header h1 同一套字阶（22px / 600 / 衬线）
+       和同一行高节奏（36 + 10）。右栏的齐平基准就由这两条决定。 */
+    .kb-page-head {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 36px;
+        margin: 0 0 10px;
+    }
+    .kb-page-head h1 {
+        margin: 0;
+        font-size: 1.375rem;
+        font-weight: 600;
+        line-height: 1.2;
+        letter-spacing: -0.01em;
+        color: var(--c-text);
+    }
+    @media (max-width: 1280px) { .kb-page-head h1 { font-size: 1.25rem; } }
     /* 未声明右栏的页面（大纲编辑器等）不渲染空的筛选栏 */
     .knowledge-wrapper:not(.knowledge-main-with-right) > .fixed-right-sidebar { display: none; }
     .fixed-right-sidebar {
         position: sticky;
         top: calc(var(--h-topbar) + 1rem);
+        /* 顶边与面包屑顶线齐平：上抬量 = 标题行占位 */
+        margin-top: var(--kb-head-block, 46px);
         width: auto;
         max-height: calc(100vh - 88px);
         overflow-y: auto;
@@ -39,6 +74,9 @@
         box-shadow: var(--sh-card) !important;
         padding: 0.9rem 1rem !important;
     }
+    /* 限宽模式下本页也不套 1440 轨道：右栏要贴窗口右缘，中间列另有 1200 限宽。
+       若随轨道收窄，1920 屏下右栏会离右缘 115px，与「贴右侧」直接冲突。 */
+    html[data-view-mode="limited"] main#main:has(> .knowledge-wrapper) { max-width: none; }
 
     /* 知识库卡片调整 */
     .knowledge-main-content .card { margin-bottom: 1.5rem; }
@@ -370,6 +408,8 @@
         .knowledge-wrapper.knowledge-main-with-right { grid-template-columns: 1fr; }
         .fixed-right-sidebar {
             position: static;
+            /* 单列后右栏在下方自成一区，不再需要与面包屑齐平的上抬量 */
+            margin-top: 0;
             max-height: none;
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -387,12 +427,39 @@
             padding-left: 0 !important;
         }
     }
+
+    /* 打印：单列、取消限宽与吸顶。右栏不再并排（纸质版没有滚动交互），
+       顺排到正文之后即可，避免绝对/粘性定位把内容压到纸张外。 */
+    @media print {
+        html[data-view-mode="limited"] main#main:has(> .knowledge-wrapper) { max-width: none; }
+        .knowledge-wrapper.knowledge-main-with-right { display: block; }
+        .knowledge-main-with-right > .knowledge-main-content { max-width: none; }
+        .fixed-right-sidebar {
+            position: static;
+            margin-top: 12px;
+            max-height: none;
+            overflow: visible;
+            box-shadow: none !important;
+        }
+    }
 </style>
 {% endblock %}
+
+{% comment %}
+面包屑与标题搬进内容列（2026-11-05）：
+records/base.html 的 {% block breadcrumb %} 把面包屑渲染成 <main> 的直属子级，
+位置在标题之下、内容之上。本模块要把「标题 / 面包屑 / 文档列表」放进同一条
+居中列、同时让右栏与面包屑顶线齐平，只能把它们挪进 .knowledge-main-content。
+因此这里关闭全局块，改用 knowledge_base/_crumb.html 渲染同一套标记
+（nav.app-breadcrumb 的样式在 components.css，位置变化不影响外观）。
+{% endcomment %}
+{% block breadcrumb %}{% endblock %}
 
 {% block content %}
 <div class="knowledge-wrapper {% block content_wrapper_class %}knowledge-main-with-right{% endblock %}">
     <div class="knowledge-main-content">
+        <div class="kb-page-head"><h1>知识库</h1></div>
+        {% include 'knowledge_base/_crumb.html' %}
         {% block knowledge_content %}{% endblock %}
     </div>
     <div class="fixed-right-sidebar">
