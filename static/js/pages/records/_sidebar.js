@@ -65,6 +65,15 @@
     if (anyMatch) { writeStored(LAST_KEY, path); }
     var fallbackPath = anyMatch ? null : readStored(LAST_KEY);
 
+    function setOpen(cfg, open) {
+        var btn = document.getElementById(cfg.btn);
+        var menu = document.getElementById(cfg.menu);
+        if (!btn || !menu) { return; }
+        menu.classList.toggle('show', open);
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        writeStored(cfg.storage, open ? 'open' : 'closed');
+    }
+
     function initCollapse(cfg) {
         var btn = document.getElementById(cfg.btn);
         var menu = document.getElementById(cfg.menu);
@@ -85,11 +94,31 @@
         btn.setAttribute('aria-expanded', open ? 'true' : 'false');
         btn.addEventListener('click', function () {
             var willOpen = !menu.classList.contains('show');
-            menu.classList.toggle('show', willOpen);
-            btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
-            writeStored(cfg.storage, willOpen ? 'open' : 'closed');
+            // 手风琴互斥：展开本组时收起其他组 —— 全部展开约 40 行远超一屏，
+            // 侧栏退化成滚动列表；任意时刻只留一组展开，导航保持一屏可见
+            if (willOpen) {
+                SECTIONS.forEach(function (other) {
+                    if (other !== cfg) { setOpen(other, false); }
+                });
+            }
+            setOpen(cfg, willOpen);
         });
     }
 
     SECTIONS.forEach(initCollapse);
+
+    // 历史状态叠加可能残留多组同时展开（互斥前的旧存储）：
+    // 只保留「当前路径所属组」，都不含当前路径时保留声明顺序最前的一个
+    var openCfgs = SECTIONS.filter(function (c) {
+        var m = document.getElementById(c.menu);
+        return m && m.classList.contains('show');
+    });
+    if (openCfgs.length > 1) {
+        var keep = null;
+        for (var i = 0; i < openCfgs.length; i++) {
+            if (matches(path, openCfgs[i].prefixes)) { keep = openCfgs[i]; break; }
+        }
+        if (!keep) { keep = openCfgs[0]; }
+        openCfgs.forEach(function (c) { if (c !== keep) { setOpen(c, false); } });
+    }
 })();

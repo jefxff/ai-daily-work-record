@@ -181,7 +181,6 @@
                 <div class="home-module__sub"><span>同意</span><b>{{ agree_count }}</b></div>
                 <div class="home-module__sub"><span>不同意</span><b>{{ disagree_count }}</b></div>
             </div>
-            <div class="home-module__foot"><span class="home-module__delta is-empty">—</span></div>
         </a>
         {% endcan_view %}
 
@@ -196,7 +195,6 @@
                 <div class="home-module__sub"><span>未闭环</span><b>{{ incomplete_complaints }}</b></div>
                 <div class="home-module__sub"><span>已闭环</span><b>{{ complaints_closed }}</b></div>
             </div>
-            <div class="home-module__foot"><span class="home-module__delta is-empty">—</span></div>
         </a>
         {% endcan_view %}
 
@@ -211,7 +209,6 @@
                 <div class="home-module__sub"><span>含附件</span><b>{{ customer_ledgers_with_attachment }}</b></div>
                 <div class="home-module__sub"><span>待补附件</span><b>{{ customer_ledgers_missing_attachment }}</b></div>
             </div>
-            <div class="home-module__foot"><span class="home-module__delta is-empty">—</span></div>
         </a>
         {% endcan_view %}
 
@@ -226,7 +223,6 @@
                 <div class="home-module__sub"><span>本月新增</span><b>{{ regulation_month_count }}</b></div>
                 <div class="home-module__sub"><span>本年新增</span><b>{{ regulation_year_count }}</b></div>
             </div>
-            <div class="home-module__foot"><span class="home-module__delta is-empty">—</span></div>
         </a>
         {% endcan_view %}
 
@@ -241,7 +237,6 @@
                 <div class="home-module__sub"><span>核减金额</span><b>¥{{ total_price_reduction|floatformat:2 }}</b></div>
                 <div class="home-module__sub"><span>有核减项目</span><b>{{ price_reduced_projects }}</b></div>
             </div>
-            <div class="home-module__foot"><span class="home-module__delta is-empty">—</span></div>
         </a>
         {% endcan_view %}
 
@@ -256,7 +251,6 @@
                 <div class="home-module__sub"><span>核减金额</span><b>¥{{ decoration_reduced_total|default:0|floatformat:2 }}</b></div>
                 <div class="home-module__sub"><span>本月开工</span><b>{{ decoration_month_new }}</b></div>
             </div>
-            <div class="home-module__foot"><span class="home-module__delta is-empty">—</span></div>
         </a>
         {% endcan_view %}
 
@@ -271,7 +265,6 @@
                 <div class="home-module__sub"><span>30 天内到期</span><b>{{ insurance_due_soon_count }}</b></div>
                 <div class="home-module__sub"><span>应续未续</span><b>{{ insurance_expired_count }}</b></div>
             </div>
-            <div class="home-module__foot"><span class="home-module__delta is-empty">—</span></div>
         </a>
         {% endcan_view %}
 
@@ -286,7 +279,6 @@
                 <div class="home-module__sub"><span>未完结</span><b>{{ incomplete_litigations_total }}</b></div>
                 <div class="home-module__sub"><span>答辩临期</span><b>{{ litigation_answer_soon_count }}</b></div>
             </div>
-            <div class="home-module__foot"><span class="home-module__delta is-empty">—</span></div>
         </a>
         {% endcan_view %}
 
@@ -301,7 +293,6 @@
                 <div class="home-module__sub"><span>进行中</span><b>{{ samples_in_progress }}</b></div>
                 <div class="home-module__sub"><span>已终止</span><b>{{ samples_terminated }}</b></div>
             </div>
-            <div class="home-module__foot"><span class="home-module__delta is-empty">—</span></div>
         </a>
         {% endcan_view %}
 
@@ -316,7 +307,6 @@
                 <div class="home-module__sub"><span>借出中</span><b>{{ archives_borrowed }}</b></div>
                 <div class="home-module__sub"><span>证照临期</span><b>{{ licenses_expiring }}</b></div>
             </div>
-            <div class="home-module__foot"><span class="home-module__delta is-empty">—</span></div>
         </a>
         {% endcan_view %}
     </div>

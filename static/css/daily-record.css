@@ -23,13 +23,13 @@
 /* ==========================================================================
    1. 列表页表格
    --------------------------------------------------------------------------
-   列宽策略（固定布局 + 百分比预算，合计 100%，与装修/制度/核价页同一套）：
-   所有列随容器等比缩放，比例在任何宽度下恒定 —— 旧版 8 列 px 定宽、
-   「工作内容」吃剩余空间，1920 宽屏下内容列独占 854px（52%），
-   短文本行右侧一片空白、右侧四列挤成一撮，宽屏观感失衡。
-   下限按 min-width 1110px 校验（fs-sm 13px 表头 + 9px 排序箭头 + 24px 内边距）：
-     日期及时间 110px → 10%；提出部门/提出人 132px → 12.1%。
-   「工作内容」不设宽度，自动占剩余 32.7%。
+   列宽策略（固定布局 + px 定宽，工作内容列 auto 吸收剩余）：
+   短内容列（选择/序号/日期/部门/截至/状态）内容宽度是常量，给 px 定宽后
+   列间距在任何屏宽下恒定；百分比预算在 1920 宽屏会把 10% 膨胀到 190px，
+   内容只有 ~110px，多余空白堆在列右侧，且各列膨胀量不同 ——
+   「日期→部门」「截至→状态」「状态→进度」三处留白各不相等，列表显得参差。
+   进度条与操作列保留百分比：进度条（max-width 120px）始终填满内容区，
+   操作列贴右缘，二者不产生悬空留白。
    ========================================================================== */
 .dr-table {
     min-width: 1110px;
@@ -58,22 +58,22 @@
 .dr-batch-bar__info b { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--c-primary-active); }
 .dr-batch-bar__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
 
-/* 列宽按百分比预算（合计 100%，工作内容列不设宽度占剩余 32.7%）：
+/* 列宽预算：短内容列 px 定宽（列间距恒定），进度/操作保留百分比，
+   「工作内容」不设宽度、自动占剩余空间。
    不用 colgroup：<col> 的宽度在某一列 display:none（col-optional / 移动端隐藏选择列）
    会被 Chrome 顺移套到下一可见列上，造成整行列宽错位一格。 */
-.dr-table th:nth-child(1) { width: 3.9%; }  /* 选择 */
-.dr-table th:nth-child(2) { width: 3.9%; text-align: center; }  /* 序号（与核价/制度页一致，数字居中） */
+.dr-table th:nth-child(1) { width: 44px; }  /* 选择（15px 复选框 + 28px 内边距） */
+.dr-table th:nth-child(2) { width: 54px; text-align: center; }  /* 序号（与核价/制度页一致，数字居中） */
 .dr-table td:nth-child(2) { text-align: center; }
-.dr-table th:nth-child(3) { width: 10%; }   /* 日期及时间 */
-/* 提出部门/提出人：内容多为 3~4 字部门名（实测最长 39px），% 预算在 1920 下
-   膨胀到 196px、右侧空 143px。改 px 定宽（137px = 表头 8 字 104px + 内边距
-   28px + 余量），任何屏宽不再膨胀；省出的空间由「工作内容」列（auto）接收。
+.dr-table th:nth-child(3) { width: 118px; } /* 日期及时间（表头 5 字 + 排序箭头 = 107px；内容「11-02 18:35」= 109px） */
+/* 提出部门/提出人：内容多为 3~4 字部门名（实测最长 39px），137px = 表头 8 字
+   104px + 内边距 28px + 余量。
    注意不能用 clamp()：Chrome 在 table-layout:fixed 下不解析 th 的 clamp 宽度，
    声明失效后退化为 auto，会和工作内容列平分剩余（实测各 357px）。 */
 .dr-table th:nth-child(4) { width: 137px; } /* 提出部门/提出人 */
-.dr-table th:nth-child(6) { width: 10%; }   /* 截至日期 */
-.dr-table th:nth-child(7) { width: 8.8%; }  /* 工作状态（状态胶囊需 97px，min-width 1110 下 = 97.7px） */
-.dr-table th:nth-child(8) { width: 9.5%; text-align: left; }  /* 工作进度（数据左对齐，表头同步） */
+.dr-table th:nth-child(6) { width: 118px; } /* 截至日期（等宽日期 78px + 内边距 28px，剩余天数注记更短） */
+.dr-table th:nth-child(7) { width: 100px; } /* 工作状态（状态胶囊 58px + 圆点 + 内边距 28px，表头 4 字 80px） */
+.dr-table th:nth-child(8) { width: 9.5%; text-align: left; }  /* 工作进度（条 max-width 120px 填满内容区，数据左对齐，表头同步） */
 .dr-table th:nth-child(9) { width: 9.9%; }  /* 操作（三个图标按钮需 110px） */
 
 /* 列头：排序箭头与文字之间留一点空隙，不让 ⇅ 贴着末字 */
@@ -194,7 +194,7 @@
     align-items: center;
     justify-content: center;
     gap: 4px;
-    /* 状态列内容区宽 60px（列 9% 减左右 padding）：
+    /* 状态列内容区宽 72px（列 100px 减左右 padding 28px）：
        三个汉字 36px + 圆点 5px + 间距 4px + 内边距 12px = 57px，留 3px 余量。
        定宽的用意是一列徽章左右边缘齐，但不能定到把文字挤成省略号。 */
     min-width: 58px;

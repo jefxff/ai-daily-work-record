@@ -103,9 +103,9 @@
         <div class="table-responsive">
             <div class="hidden-cols-hint">窄屏已隐藏 1 个次要列；需要逐列比对时请横屏或改用桌面端。</div><table class="dr-table table--cards table table-sticky table--fixed">
                 {% comment %}
-                列宽由 daily-record.css 的 th:nth-child 百分比预算（合计 100%），
-                所有列随容器等比缩放；「工作内容」不设宽度、自动占剩余 32.7%，
-                短文本列不会被宽屏撑出大片空白。
+                列宽由 daily-record.css 的 th:nth-child 预算：短内容列 px 定宽
+                （列间距在任何屏宽下恒定），进度/操作保留百分比，
+                「工作内容」不设宽度、自动占剩余空间。
                 {% endcomment %}
                 <thead>
                     <tr>
@@ -197,7 +197,7 @@
 {% endblock %}
 
 {% block extra_css %}
-<link href="{% static 'css/daily-record.css' %}?v=20261103j" rel="stylesheet">
+<link href="{% static 'css/daily-record.css' %}?v=20261104a" rel="stylesheet">
 <style>
     /* 「未完成」快捷筛选：与筛选按钮同款，激活时高亮 */
     .quick-filter-btn.is-active {
