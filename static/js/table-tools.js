@@ -109,7 +109,9 @@
 
         var btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'col-settings-gear';
+        /* col-settings-toggle 不是样式冗余：components.css 用它做「打印时隐藏」
+           与「移动端 44px 热区」，两个都按类名命中，漏了会打印出齿轮。 */
+        btn.className = 'col-settings-toggle col-settings-gear';
         btn.setAttribute('aria-expanded', 'false');
         btn.setAttribute('aria-controls', panelId);
         btn.setAttribute('aria-label', '列设置');

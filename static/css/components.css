@@ -1264,9 +1264,12 @@ th[aria-sort="descending"] .th-sort__ind::before { display: none; }
 
 /* 列设置与「更多」在打印与卡片模式下不参与布局 */
 @media print {
+  /* !important：.col-settings-gear 的定义在本文件更靠后（同权重后加载者胜），
+     不加会在纸上打印出一枚没用的齿轮按钮。 */
   .col-settings-panel,
   .col-settings-toggle,
-  .act-more__menu { display: none; }
+  .col-settings-gear,
+  .act-more__menu { display: none !important; }
 }
 
 
