@@ -1,0 +1,248 @@
+{% extends 'records/base.html' %}
+{% load static %}
+{% load accounts_tags %}
+
+{% block page_title %}{% if is_edit %}编辑{% else %}新增{% endif %}付款穿行测试 - 每日工作记录管理网站{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/customer-review.css' %}?v=20261104a" rel="stylesheet">
+{% endblock %}
+
+{% block top_nav_actions %}
+    <a href="{% url 'walkthrough_list' %}" class="btn-transparent">返回列表</a>
+    {% if is_edit %}
+    <a href="{% url 'walkthrough_detail' instance.id %}" class="btn-transparent">查看详情</a>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<form method="post" id="walkthrough-form" class="cr-page"
+      data-key-steps="{% for k in key_steps %}{{ k }}{% if not forloop.last %},{% endif %}{% endfor %}"
+      data-default-terms="{{ instance.terms_days|default_if_none:'' }}"
+      data-grace="{{ terms_grace }}">
+    {% csrf_token %}
+    <input type="hidden" name="samples_json" data-samples-json value="">
+
+    <div class="cr-main">
+        {% if form.errors %}
+        <div class="alert alert-danger" role="alert">
+            <strong>有 {{ form.errors|length }} 处需要修正：</strong>
+            <ul>
+                {% for field in form %}
+                    {% for error in field.errors %}<li>{{ field.label }}：{{ error }}</li>{% endfor %}
+                {% endfor %}
+                {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <!-- ① 测试基本信息 -->
+        <section class="cr-card">
+            <div class="cr-card__head">
+                <h2>测试基本信息</h2>
+                <span class="cr-note">一笔付款从申请到入账，逐环节确认控制点是否执行</span>
+            </div>
+            <div class="cr-card__body">
+                <div class="cr-meta">
+                    {% include 'records/_cr_field.html' with f=form.test_no label="测试编号" hint="格式建议 WT-年份-序号" %}
+                    {% include 'records/_cr_field.html' with f=form.payee_name label="被测试对象" required=1 hint="客户或供应商全称" %}
+                    {% include 'records/_cr_field.html' with f=form.payee_type label="对象类型" %}
+                    {% include 'records/_cr_field.html' with f=form.period_start label="测试期间（起）" required=1 %}
+                    {% include 'records/_cr_field.html' with f=form.period_end label="测试期间（止）" required=1 %}
+                    {% include 'records/_cr_field.html' with f=form.test_date label="测试执行日期" required=1 %}
+                    {% include 'records/_cr_field.html' with f=form.sample_method label="抽样方法" hint="随机 / 等距 / 大额重点 / 异常定向" %}
+                    {% include 'records/_cr_field.html' with f=form.population_size label="总体笔数" hint="该期间付款总笔数" %}
+                    {% include 'records/_cr_field.html' with f=form.sample_size label="抽样笔数" hint="留空时按实际录入样本数" %}
+                    {% include 'records/_cr_field.html' with f=form.terms_text label="账期约定" hint="合同原文，如「月结 60 天」" %}
+                    {% include 'records/_cr_field.html' with f=form.terms_days label="约定账期（天）" hint="样本未单独填时按此计算到期日" %}
+                    {% include 'records/_cr_field.html' with f=form.terms_base label="账期起算口径" hint="到期日从哪一天起算" %}
+                    {% include 'records/_cr_field.html' with f=form.tester label="测试人" %}
+                    {% include 'records/_cr_field.html' with f=form.reviewer label="复核人" hint="不得与测试人同一人" %}
+                </div>
+                <datalist id="sample-method-list">
+                    {% for m in sample_methods %}<option value="{{ m }}"></option>{% endfor %}
+                </datalist>
+                <datalist id="terms-base-list">
+                    {% for b in terms_bases %}<option value="{{ b }}"></option>{% endfor %}
+                </datalist>
+            </div>
+        </section>
+
+        <!-- ② 样本与控制点 -->
+        <section class="cr-card">
+            <div class="cr-card__head">
+                <h2>样本与控制点检查</h2>
+                <span class="cr-note">每个控制点须留下可复核的证据编号</span>
+            </div>
+            <div class="cr-card__body">
+                <div data-samples></div>
+                <button type="button" class="wt-add" data-add-sample>＋ 增加一笔样本</button>
+                <p class="cr-hint" style="margin-top:8px">
+                    判定口径：「执行」= 控制点已执行且有证据；「部分执行」= 执行但不完整或证据缺失；
+                    「未执行」= 未执行或无法提供任何证据；「不适用」= 该笔业务不涉及此控制点。
+                    标「关键」的 4 个控制点（供应商主数据、三单匹配、付款审批、付款执行）任一未执行，
+                    整体结论不得高于「部分有效」。
+                </p>
+                <p class="cr-hint">
+                    账期核对：填「起算日 + 约定账期天数」自动算出到期日（也可直接改到期日），
+                    再填「实际付款日」即得出偏差天数。到期后 {{ terms_grace }} 天内付款仍计为按期；
+                    逾期笔数占比达一半、或单笔逾期超过 30 天，视为账期控制失效，结论不高于「部分有效」。
+                </p>
+            </div>
+        </section>
+
+        <!-- ③ 缺陷与建议 -->
+        <section class="cr-card">
+            <div class="cr-card__head"><h2>缺陷汇总与整改建议</h2></div>
+            <div class="cr-card__body">
+                <div class="cr-field" style="margin-bottom:var(--sp-3)">
+                    <label for="{{ form.defect_summary.id_for_label }}">缺陷汇总</label>
+                    {{ form.defect_summary }}
+                    <span class="cr-hint">逐条写明：控制点 → 样本单号 → 具体表现 → 对财务报表的影响（如有）。</span>
+                </div>
+                <div class="cr-field">
+                    <label for="{{ form.suggestion.id_for_label }}">整改建议</label>
+                    {{ form.suggestion }}
+                    <span class="cr-hint">写明整改措施、责任人、完成时限；涉及制度缺陷的另附修订建议。</span>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <aside class="cr-side">
+        <div class="cr-sum">
+            <div class="cr-card__head"><h2>控制点执行情况</h2></div>
+            <div class="cr-sum__body">
+                <div class="cr-grade" data-wt-conclusion>—</div>
+                <p class="cr-grade__advice" data-wt-reason>尚未录入样本</p>
+
+                <div class="wt-stats" style="margin-top:var(--sp-3)">
+                    {% for s in steps %}
+                    <div class="wt-stat" data-stat="{{ s.key }}">
+                        <span class="wt-stat__name" title="{{ s.name }}">{{ forloop.counter }}. {{ s.name }}</span>
+                        <span class="wt-stat__val">—</span>
+                        <div class="wt-stat__bar"><i style="width:0%"></i></div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="cr-ratios__foot" style="margin-top:var(--sp-3)">
+                    样本 <b data-wt-count>0</b> 笔　·　缺陷 <b data-wt-defects>0</b> 项
+                </div>
+
+                <div class="wt-termsum">
+                    <div class="wt-termsum__head">账期执行核对</div>
+                    <div class="wt-termsum__grid">
+                        <div><span>按期率</span><b data-ts-rate>—</b></div>
+                        <div><span>逾期笔数</span><b data-ts-overdue>0</b></div>
+                        <div><span>平均偏差</span><b data-ts-avg>—</b></div>
+                        <div><span>最长逾期</span><b data-ts-max>—</b></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="cr-card">
+            <div class="cr-card__body">
+                <div class="cr-field" style="margin-bottom:var(--sp-3)">
+                    <label for="{{ form.conclusion.id_for_label }}">测试结论</label>
+                    {{ form.conclusion }}
+                    <span class="cr-hint">按控制点执行情况自动判定，保存时服务端复核。</span>
+                </div>
+                <div class="cr-actions">
+                    <button type="submit" class="btn-primary">保存</button>
+                    <a href="{% url 'walkthrough_list' %}" class="btn-transparent">取消</a>
+                </div>
+                <p class="cr-submit-note">
+                    结论判定：关键控制点未执行 → 部分有效；账期执行失效 → 部分有效；
+                    否则有缺陷 → 基本有效；无缺陷 → 有效。
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    {{ steps|json_script:"step-spec" }}
+</form>
+
+{% comment %}
+样本卡片模板：由 JS 克隆。用 <template> 而不是拼字符串，
+一是模板里的 Django 循环（8 个控制点）不必在 JS 里重复一遍，
+二是新增控制点时只改 credit_spec.py，前端自动跟着变。
+__IDX__ 在克隆时替换为样本序号，保证每笔样本的 radio name 唯一。
+{% endcomment %}
+<template id="sample-template">
+    <div class="wt-sample">
+        <div class="wt-sample__head">
+            <span class="wt-sample__no">1</span>
+            <div class="wt-sample__meta">
+                <input class="form-control f-no" data-f="voucher_no" placeholder="付款单号 / 凭证号" maxlength="100">
+                <input class="form-control f-amount" data-f="amount" placeholder="金额（元）" maxlength="50">
+                <input class="form-control f-payee" data-f="payee" placeholder="收款方" maxlength="100">
+            </div>
+            <button type="button" class="wt-remove" aria-label="删除这笔样本">删除</button>
+        </div>
+        <div class="wt-terms">
+            <label class="wt-terms__f">
+                <span>约定账期（天）</span>
+                <input class="form-control" data-f="terms_days" inputmode="numeric"
+                       placeholder="{{ instance.terms_days|default_if_none:'继承主表' }}">
+            </label>
+            <label class="wt-terms__f">
+                <span>起算日</span>
+                <input class="form-control" type="date" data-f="base_date">
+            </label>
+            <label class="wt-terms__f">
+                <span>到期日</span>
+                <input class="form-control" type="date" data-f="due_date">
+            </label>
+            <label class="wt-terms__f">
+                <span>实际付款日</span>
+                <input class="form-control" type="date" data-f="pay_date">
+            </label>
+            <span class="wt-terms__delta" data-terms-delta>—</span>
+        </div>
+        {% for step in steps %}
+        <div class="wt-step" data-step="{{ step.key }}">
+            <div class="wt-step__name">
+                <span class="idx">{{ forloop.counter }}</span>
+                {{ step.name }}
+                <span class="wt-stage">{{ step.stage }}</span>
+                {% if step.key in key_steps %}<span class="wt-step__key">关键</span>{% endif %}
+            </div>
+            <div class="wt-step__control">
+                {{ step.control }}
+                <ul>
+                    {% for check in step.checks %}<li>{{ check }}</li>{% endfor %}
+                </ul>
+            </div>
+            <div class="wt-step__right">
+                <div class="wt-seg" role="group" aria-label="{{ step.name }} 判定">
+                    {% for r in step_results %}
+                    <input type="radio" name="wt___IDX___{{ step.key }}"
+                           id="wt___IDX___{{ step.key }}_{{ forloop.counter }}" value="{{ r.0 }}"
+                           title="{{ r.1 }}">
+                    <label for="wt___IDX___{{ step.key }}_{{ forloop.counter }}">{{ r.0 }}</label>
+                    {% endfor %}
+                </div>
+                <div class="wt-step__row">
+                    <input class="form-control ev" data-f="doc_no" placeholder="{{ step.evidence }}" maxlength="100">
+                    <input class="form-control" type="date" data-f="doc_date" aria-label="单据日期" style="width:132px">
+                </div>
+                <div class="wt-step__row">
+                    <select class="form-select" data-f="defect" aria-label="缺陷类型" style="width:104px">
+                        {% for d in defect_types %}<option value="{{ d }}">{{ d }}</option>{% endfor %}
+                    </select>
+                    <input class="form-control ev" data-f="note" placeholder="情况说明" maxlength="500">
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</template>
+
+{{ samples|json_script:"initial-samples" }}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/customer-review.js' %}?v=20261104a" defer></script>
+{% endblock %}

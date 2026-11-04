@@ -1,0 +1,61 @@
+{% extends 'records/base.html' %}
+{% load static %}
+
+{% block page_title %}导入{{ kind }} - 每日工作记录管理网站{% endblock %}
+
+{% block top_nav_actions %}
+    <a href="{% url list_url %}" class="btn-transparent">返回列表</a>
+    <a href="{% url template_url %}" class="btn-transparent">下载导入模板</a>
+{% endblock %}
+
+{% block content %}
+    <div class="form-container">
+        <h1 class="form-title">导入{{ kind }}</h1>
+        <p class="form-text">
+            仅支持 Excel（.xlsx / .xls），单次最多 {{ max_rows }} 行。系统先解析并展示预览，
+            确认后才会写库；合计得分、评定等级、测试结论等结果列由系统重算，Excel 里填的值不生效。
+        </p>
+
+        {% if error %}
+        <div class="alert alert-danger" role="alert">{{ error }}</div>
+        {% endif %}
+
+        <form data-validate="1" novalidate method="post" enctype="multipart/form-data"
+              action="{% url action_url %}">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="id_file" class="form-label">选择 Excel 文件 *</label>
+                <input type="file" name="file" id="id_file" class="form-control"
+                       accept=".xlsx,.xls" required>
+            </div>
+            <div class="form-group">
+                <label class="form-check-label">
+                    <input type="checkbox" name="overwrite" value="1" class="form-check-input">
+                    覆盖已有记录的非空字段（默认仅补空）
+                </label>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">解析并预览</button>
+                <a href="{% url list_url %}" class="btn btn-outline-secondary">取消</a>
+            </div>
+        </form>
+
+        <div class="import-notes">
+            <h3>导入规则</h3>
+            <ul>
+                <li>工作表名：{% for name in sheet_names %}「{{ name }}」{% if not forloop.last %}、{% endif %}{% endfor %}；名称被改动时，按表头「{{ name_hint }}」列识别。</li>
+                {% for note in notes %}<li>{{ note }}</li>{% endfor %}
+                <li>Excel 只承载结构化数据；证照、报表、现场照片、测试底稿等请在记录详情页上传附件。</li>
+                <li>建议流程：先「下载导入模板」→ 填写 → 上传预览 → 确认导入。</li>
+            </ul>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .import-notes { margin-top: 2rem; padding: 1rem 1.25rem; background: var(--c-surface-sunken); border-radius: 8px; }
+    .import-notes h3 { margin: 0 0 0.75rem; font-size: 1rem; font-weight: 600; }
+    .import-notes ul { margin: 0; padding-left: 1.25rem; color: var(--c-text-secondary); font-size: 0.875rem; line-height: 1.8; }
+</style>
+{% endblock %}

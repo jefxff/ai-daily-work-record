@@ -32,6 +32,10 @@ MODEL_MODULE_MAP = {
     ("records", "customercomplaint"): "customer_complaint",
     ("records", "complaint"): "complaint",
     ("records", "insurance"): "insurance",
+    # 客户评审三张表与付款穿行测试同属「客户评审」模块（侧栏同一分组）：
+    # 三类评审共用一套证据口径，穿行测试的底稿也挂在同一权限下。
+    ("records", "customerreview"): "customer_review",
+    ("records", "paymentwalkthrough"): "customer_review",
 }
 
 # 各模块的业务分类（上传时可选，列表里显示为徽标）；空列表 = 不显示分类选择。
@@ -52,6 +56,15 @@ ATTACHMENT_CATEGORIES = {
         ("endorsement", "批单"),
         ("receipt", "缴费凭证"),
         ("claim", "理赔材料"),
+    ],
+    # 客户评审 / 付款穿行测试：一份评审单对应一套证据链
+    "customer_review": [
+        ("cert", "证照资质"),
+        ("finance", "财务报表"),
+        ("site", "现场照片"),
+        ("working", "测试底稿"),
+        ("voucher", "凭证影像"),
+        ("other", "其他"),
     ],
 }
 

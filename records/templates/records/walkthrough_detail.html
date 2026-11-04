@@ -1,0 +1,266 @@
+{% extends 'records/base.html' %}
+{% load static %}
+{% load accounts_tags %}
+
+{% block page_title %}付款穿行测试 - {{ object.payee_name }}{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/customer-review.css' %}?v=20261104a" rel="stylesheet">
+{% endblock %}
+
+{% block top_nav_actions %}
+    <a href="{% url 'walkthrough_list' %}" class="btn-transparent">返回列表</a>
+    {% if not print_mode %}
+    <a href="{% url 'walkthrough_export_one' object.id %}" class="btn-transparent">导出Excel</a>
+    <a href="{% url 'walkthrough_print' object.id %}" class="btn-transparent" target="_blank" rel="noopener noreferrer">打印 / 导出 PDF</a>
+    {% can "customer_review" "update" %}
+    <a href="{% url 'walkthrough_edit' object.id %}" class="btn-primary">编辑</a>
+    {% endcan %}
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+{% block print_title %}{% endblock %}
+
+<div class="cr-page">
+    <div class="cr-main">
+
+        <section class="cr-card">
+            <div class="cr-banner">
+                <div class="cr-banner__score" style="font-size:1.5rem;{% if object.conclusion == '有效' %}color:var(--c-success){% elif object.conclusion == '基本有效' %}color:var(--c-info){% elif object.conclusion == '部分有效' %}color:var(--c-warning){% elif object.conclusion == '无效' %}color:var(--c-danger){% endif %}">{{ object.conclusion|default:"未判定" }}</div>
+                <div class="cr-banner__meta">
+                    <strong>{{ object.payee_name }}</strong>
+                    <span class="cr-hint">{{ object.payee_type }}　·　{{ object.period_start|date:'Y-m-d' }} 至 {{ object.period_end|date:'Y-m-d' }}</span>
+                </div>
+                <div class="cr-grade" style="margin-left:auto">
+                    <b>{{ stats.sample_count }}</b><span>笔样本 · {{ stats.total_defects }} 项缺陷{% if stats.terms.overdue %} · <b style="color:var(--c-danger)">{{ stats.terms.overdue }}</b> 笔逾期{% endif %}</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="cr-card">
+            <div class="cr-card__head"><h2>测试基本信息</h2></div>
+            <div class="cr-card__body">
+                <div class="cr-kv">
+                    <div class="cr-kv__item"><div class="cr-kv__k">测试编号</div><div class="cr-kv__v">{{ object.test_no|default:"—" }}</div></div>
+                    <div class="cr-kv__item"><div class="cr-kv__k">对象类型</div><div class="cr-kv__v">{{ object.payee_type }}</div></div>
+                    <div class="cr-kv__item"><div class="cr-kv__k">测试执行日期</div><div class="cr-kv__v">{{ object.test_date|date:'Y-m-d' }}</div></div>
+                    <div class="cr-kv__item"><div class="cr-kv__k">抽样方法</div><div class="cr-kv__v">{{ object.sample_method|default:"—" }}</div></div>
+                    <div class="cr-kv__item"><div class="cr-kv__k">总体笔数</div><div class="cr-kv__v">{{ object.population_size|default_if_none:"—" }}</div></div>
+                    <div class="cr-kv__item"><div class="cr-kv__k">抽样笔数</div><div class="cr-kv__v">{{ object.sample_size|default_if_none:"—" }}</div></div>
+                    <div class="cr-kv__item"><div class="cr-kv__k">测试人</div><div class="cr-kv__v">{{ object.tester|default:"—" }}</div></div>
+                    <div class="cr-kv__item"><div class="cr-kv__k">复核人</div><div class="cr-kv__v">{{ object.reviewer|default:"—" }}</div></div>
+                    <div class="cr-kv__item"><div class="cr-kv__k">账期约定</div><div class="cr-kv__v">{{ object.terms_text|default:"—" }}</div></div>
+                    <div class="cr-kv__item"><div class="cr-kv__k">约定账期</div><div class="cr-kv__v">{% if object.terms_days %}{{ object.terms_days }} 天{% else %}—{% endif %}</div></div>
+                    <div class="cr-kv__item"><div class="cr-kv__k">账期起算口径</div><div class="cr-kv__v">{{ object.terms_base|default:"—" }}</div></div>
+                    <div class="cr-kv__item"><div class="cr-kv__k">控制点有效执行</div><div class="cr-kv__v">{{ stats.effective_steps }} / {{ steps|length }}</div></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="cr-card">
+            <div class="cr-card__head">
+                <h2>控制点执行情况</h2>
+                <span class="cr-note">执行率＝（执行＋部分执行）÷（执行＋部分执行＋未执行）</span>
+            </div>
+            <div class="cr-card__body">
+                <div class="wt-stats">
+                    {% for s in stats.steps %}
+                    <div class="wt-stat{% if s.not_executed %} is-bad{% elif s.partial %} is-warn{% endif %}">
+                        <span class="wt-stat__name" title="{{ s.name }}">{{ forloop.counter }}. {{ s.name }}</span>
+                        <span class="wt-stat__val">{{ s.rate }}%</span>
+                        <div class="wt-stat__bar"><i style="width:{{ s.rate }}%"></i></div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <section class="cr-card">
+            <div class="cr-card__head">
+                <h2>账期执行核对</h2>
+                <span class="cr-note">实际付款日 vs 合同约定到期日；到期后 {{ terms_grace|default:3 }} 天内计为按期</span>
+            </div>
+            <div class="cr-card__body">
+                {% if stats.terms.checked %}
+                <div class="wt-termsum__grid wt-termsum__grid--wide">
+                    <div><span>核对笔数</span><b>{{ stats.terms.checked }}</b></div>
+                    <div><span>按期率</span><b>{{ stats.terms.on_time_rate }}%</b></div>
+                    <div><span>逾期笔数</span><b class="{% if stats.terms.overdue %}is-bad{% endif %}">{{ stats.terms.overdue }}</b></div>
+                    <div><span>平均偏差</span><b>{{ stats.terms.avg_delay }} 天</b></div>
+                    <div><span>最长逾期</span><b class="{% if stats.terms.max_delay > 0 %}is-bad{% endif %}">{% if stats.terms.max_delay > 0 %}{{ stats.terms.max_delay }} 天{% else %}无{% endif %}</b></div>
+                </div>
+                {% if stats.terms.major %}
+                <p class="cr-hint" style="color:var(--c-danger)">
+                    存在 {{ stats.terms.major }} 笔逾期超过 30 天，账期约束未有效执行。
+                </p>
+                {% elif stats.terms.bad_ratio %}
+                <p class="cr-hint" style="color:var(--c-warning)">
+                    逾期笔数占比已达 {{ stats.terms.overdue }}/{{ stats.terms.checked }}，账期控制视为失效。
+                </p>
+                {% endif %}
+                <div class="u-table-wrap">
+                    <table class="table table--fixed wt-terms-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">序号</th>
+                                <th scope="col">付款单号</th>
+                                <th scope="col">约定账期</th>
+                                <th scope="col">起算日</th>
+                                <th scope="col">到期日</th>
+                                <th scope="col">实际付款日</th>
+                                <th scope="col">偏差</th>
+                                <th scope="col">判定</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sample in sample_rows %}
+                            {% if sample.terms.status %}
+                            <tr>
+                                <td data-label="序号">{{ sample.seq }}</td>
+                                <td data-label="付款单号">{{ sample.voucher_no|default:"—" }}</td>
+                                <td data-label="约定账期">{% if sample.terms.terms_days %}{{ sample.terms.terms_days }} 天{% else %}—{% endif %}</td>
+                                <td data-label="起算日">{{ sample.terms.base_date|default:"—" }}</td>
+                                <td data-label="到期日">{{ sample.terms.due_date|default:"—" }}</td>
+                                <td data-label="实际付款日">{{ sample.terms.pay_date|default:"—" }}</td>
+                                <td data-label="偏差">{% if sample.terms.delay_days is None %}—{% elif sample.terms.delay_days > 0 %}+{{ sample.terms.delay_days }} 天{% else %}{{ sample.terms.delay_days }} 天{% endif %}</td>
+                                <td data-label="判定"><span class="wt-tag wt-tag--{{ sample.terms.tone }}">{{ sample.terms.status }}</span></td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                {% include 'records/_empty_block.html' with empty_title="尚未核对账期" compact=1 %}
+                {% endif %}
+            </div>
+        </section>
+
+        <section class="cr-card">
+            <div class="cr-card__head">
+                <h2>样本明细</h2>
+                <span class="cr-note">共 {{ stats.sample_count }} 笔</span>
+            </div>
+            <div class="cr-card__body">
+                {% for sample in sample_rows %}
+                <div class="wt-sample">
+                    <div class="wt-sample__title">
+                        <span class="wt-sample__no">{{ sample.seq }}</span>
+                        <b>{{ sample.voucher_no|default:"未填单号" }}</b>
+                        {% if sample.pay_date %}<span class="sep">|</span><span>{{ sample.pay_date }}</span>{% endif %}
+                        {% if sample.amount %}<span class="sep">|</span><span>{{ sample.amount }} 元</span>{% endif %}
+                        {% if sample.payee %}<span class="sep">|</span><span>{{ sample.payee }}</span>{% endif %}
+                    </div>
+                    <table class="rv-table rv-read wt-read">
+                        <thead>
+                            <tr>
+                                <th scope="col">控制点</th>
+                                <th scope="col">判定</th>
+                                <th scope="col">证据 / 单据</th>
+                                <th scope="col">缺陷</th>
+                                <th scope="col">说明</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in sample.steps %}
+                            <tr>
+                                <td>
+                                    <div class="wt-read__step">{{ item.meta.name }}<span class="wt-read__stage">{{ item.meta.stage }}</span></div>
+                                </td>
+                                <td>
+                                    {% if item.result == '执行' %}
+                                    <span class="status-badge success">执行</span>
+                                    {% elif item.result == '部分执行' %}
+                                    <span class="status-badge warning">部分执行</span>
+                                    {% elif item.result == '未执行' %}
+                                    <span class="status-badge danger">未执行</span>
+                                    {% elif item.result == '不适用' %}
+                                    <span class="status-badge default">不适用</span>
+                                    {% else %}
+                                    <span class="status-badge default">未判定</span>
+                                    {% endif %}
+                                </td>
+                                <td class="wt-read__ev">
+                                    {{ item.cell.doc_no|default:"—" }}
+                                    {% if item.cell.doc_date %}<br><span class="cr-hint">{{ item.cell.doc_date }}</span>{% endif %}
+                                </td>
+                                <td>
+                                    {% if item.defect == '无' %}
+                                    <span class="cr-hint">—</span>
+                                    {% else %}
+                                    <span class="status-badge danger">{{ item.defect }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="cr-hint">{{ item.cell.note|default:"—" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% empty %}
+                {% include 'records/_empty_block.html' with empty_title="尚未录入样本" compact=1 %}
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="cr-card">
+            <div class="cr-card__head"><h2>缺陷汇总与整改建议</h2></div>
+            <div class="cr-card__body">
+                <div class="cr-kv">
+                    <div class="cr-kv__item" style="grid-column:span 3">
+                        <div class="cr-kv__k">缺陷汇总</div>
+                        <div class="cr-kv__v" style="white-space:pre-wrap">{{ object.defect_summary|default:"—" }}</div>
+                    </div>
+                    <div class="cr-kv__item" style="grid-column:span 3">
+                        <div class="cr-kv__k">整改建议</div>
+                        <div class="cr-kv__v" style="white-space:pre-wrap">{{ object.suggestion|default:"—" }}</div>
+                    </div>
+                </div>
+                {% if stats.reason %}
+                <p class="cr-hint" style="margin-top:var(--sp-3)">结论依据：{{ stats.reason }}</p>
+                {% endif %}
+            </div>
+        </section>
+    </div>
+
+    {% if not print_mode %}
+    <aside class="cr-side">
+        <div class="cr-sum">
+            <div class="cr-card__head"><h2>操作</h2></div>
+            <div class="cr-sum__body">
+                {% can "customer_review" "update" %}
+                <a href="{% url 'walkthrough_edit' object.id %}" class="btn-primary" style="display:block;text-align:center">编辑这份测试</a>
+                {% endcan %}
+                <a href="{% url 'walkthrough_print' object.id %}" class="btn-transparent" target="_blank" rel="noopener noreferrer"
+                   style="display:block;text-align:center;margin-top:8px">打印 / 导出 PDF</a>
+                <a href="{% url 'walkthrough_export_one' object.id %}"
+                   style="display:block;text-align:center;margin-top:8px" class="btn-transparent">导出 Excel</a>
+                {% can "customer_review" "delete" %}
+                <form method="post" action="{% url 'walkthrough_delete' object.id %}" data-confirm="确定要删除这份穿行测试吗？删除后不可恢复。" style="margin-top:8px">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-transparent btn-delete" style="display:block;width:100%">删除</button>
+                </form>
+                {% endcan %}
+            </div>
+        </div>
+        <div class="cr-card">
+            <div class="cr-sum__body">
+                <div class="cr-hint">
+                    创建：{{ object.created_at|date:'Y-m-d H:i' }}<br>
+                    更新：{{ object.updated_at|date:'Y-m-d H:i' }}
+                    {% if object.created_by %}<br>录入人：{{ object.created_by }}{% endif %}
+                </div>
+            </div>
+        </div>
+    </aside>
+    {% endif %}
+</div>
+
+{% if not print_mode %}
+<div class="cr-att-wrap">
+    {% include 'attachments/_panel.html' with att_obj=att_obj %}
+</div>
+{% endif %}
+{% block print_foot %}{% endblock %}
+{% endblock %}

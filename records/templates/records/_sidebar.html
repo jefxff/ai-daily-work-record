@@ -63,10 +63,10 @@
     {% endcan_view_any %}
 
     <!-- 分组：客户管理（折叠逻辑与试样管理完全一致） -->
-    {% can_view_any "customer_credit" "customer_complaint" "customer_ledger" "complaint" %}
+    {% can_view_any "customer_credit" "customer_review" "customer_complaint" "customer_ledger" "complaint" %}
     <ul class="sidebar-menu-item">
         <li>
-            {% nav_active '/customer_credit/' '/customer_complaint/' '/customer_ledger/' '/complaint/' as curCustomers %}
+            {% nav_active '/customer_credit/' '/customer_review/' '/customer_complaint/' '/customer_ledger/' '/complaint/' as curCustomers %}
             <button type="button" class="dropdown-toggle{% if curCustomers %} active{% endif %}" id="customersDropdown" aria-expanded="{% if curCustomers %}true{% else %}false{% endif %}" aria-controls="customersDropdownMenu">
                 <span class="hm-ic hm-ic--indigo" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
                 <span>客户管理</span>
@@ -81,6 +81,11 @@
                 {% endcan_view %}
                 {% can_view "customer_ledger" %}
                 <a href="{% url 'customer_ledger_list' %}" {% nav_class '/customer_ledger/' %}>客户台账</a>
+                {% endcan_view %}
+                {% can_view "customer_review" %}
+                {# 列表页用精确匹配、子页用前缀：避免 /customer_review/walkthrough/ 也点亮「客户评审」 #}
+                <a href="{% url 'customer_review_list' %}" {% nav_class '=/customer_review/' '/customer_review/add/' '/customer_review/detail/' '/customer_review/edit/' '/customer_review/print/' %}>客户评审</a>
+                <a href="{% url 'walkthrough_list' %}" {% nav_class '/customer_review/walkthrough/' %}>付款穿行测试</a>
                 {% endcan_view %}
                 {% can_view "complaint" %}
                 <a href="{% url 'complaint_list' %}" {% nav_class '/complaint/' %}>诉讼</a>

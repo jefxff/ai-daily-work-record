@@ -1,0 +1,58 @@
+{% extends 'records/base.html' %}
+{% load static %}
+
+{% block page_title %}导入完成 - {{ kind }}{% endblock %}
+
+{% block top_nav_actions %}
+    <a href="{% url list_url %}" class="btn-transparent">返回列表</a>
+{% endblock %}
+
+{% block content %}
+    <div class="form-container">
+        <h1 class="form-title">导入完成</h1>
+        <p class="form-text">{{ kind }}导入已执行完毕，结果如下。</p>
+
+        <div class="result-grid">
+            <div class="result-card">
+                <span class="result-num">{{ result.created }}</span>
+                <span class="result-label">新增</span>
+            </div>
+            <div class="result-card">
+                <span class="result-num">{{ result.updated }}</span>
+                <span class="result-label">更新</span>
+            </div>
+            <div class="result-card">
+                <span class="result-num">{{ result.skipped }}</span>
+                <span class="result-label">跳过（无变化）</span>
+            </div>
+        </div>
+
+        {% if result.warnings %}
+        <div class="alert alert-warning" role="alert">
+            <strong>处理过程中的提示：</strong>
+            <ul>
+                {% for warning in result.warnings|slice:":30" %}<li>{{ warning }}</li>{% endfor %}
+                {% if result.warnings|length > 30 %}<li>……另有 {{ result.warnings|length|add:"-30" }} 条。</li>{% endif %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <div class="form-actions">
+            <a href="{% url list_url %}" class="btn btn-primary">查看列表</a>
+            <a href="{% url 'customer_review_import' %}" class="btn btn-outline-secondary">继续导入</a>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .result-grid { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.25rem 0 1.5rem; }
+    .result-card {
+        flex: 1 1 160px; padding: 1rem 1.25rem; border: 1px solid var(--c-border);
+        border-radius: var(--r-md); background: var(--c-surface);
+        display: flex; flex-direction: column; gap: 0.25rem;
+    }
+    .result-num { font-size: 1.75rem; font-weight: 700; color: var(--c-primary); font-variant-numeric: tabular-nums; }
+    .result-label { font-size: 0.85rem; color: var(--c-text-secondary); }
+</style>
+{% endblock %}

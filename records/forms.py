@@ -3,7 +3,9 @@ from django.core.files.storage import default_storage
 
 from work_record.file_validation import content_matches, normalize_ext, read_head
 
-from .models import CustomerComplaint, CustomerCredit, CustomerLedger, Decoration, Insurance, Complaint, PriceEvaluation, Regulation
+from .models import (CustomerComplaint, CustomerCredit, CustomerLedger, CustomerReview,
+                     Decoration, Insurance, Complaint, PaymentWalkthrough,
+                     PriceEvaluation, Regulation)
 
 
 class DecorationForm(forms.ModelForm):
@@ -612,3 +614,200 @@ class CustomerLedgerForm(forms.ModelForm):
         if commit and old_name and old_name != new_name:
             default_storage.delete(old_name)
         return obj
+
+# ============================================================================
+# 客户评审 / 付款穿行测试
+# ============================================================================
+
+_DATE = {'type': 'date'}
+_TEXT = {'class': 'form-control'}
+_NUM = {'class': 'form-control', 'step': '0.01', 'inputmode': 'decimal'}
+
+
+class CustomerReviewForm(forms.ModelForm):
+    """客户评审主表表单。
+
+    只承载「表头 + 财务基础数据 + 结论」；评分项不走 Django 字段 ——
+    25 个评分项的档位是动态的，硬编码成 ChoiceField 会让新增/调整档位必改两处。
+    评分在视图里按 records/credit_spec.py 的规则解析并收敛。
+    """
+
+    class Meta:
+        model = CustomerReview
+        fields = [
+            'review_no', 'customer_name', 'customer_code', 'customer_type', 'review_date',
+            'period', 'settle_method', 'region', 'prev_grade', 'prev_limit',
+            'apply_no', 'audit_address', 'companion',
+            'total_assets', 'total_liabilities', 'current_assets', 'current_liabilities',
+            'inventory', 'accounts_receivable', 'cash', 'interest_debt',
+            'revenue', 'prev_revenue', 'net_profit', 'operating_cash_flow',
+            'conclusion', 'credit_limit', 'credit_days', 'reviewer', 'approver',
+        ]
+        widgets = {
+            'review_no': forms.TextInput(attrs={**_TEXT, 'placeholder': '如 XY-2026-001'}),
+            'customer_name': forms.TextInput(attrs={**_TEXT, 'placeholder': '与营业执照一致的全称'}),
+            'customer_code': forms.TextInput(attrs={**_TEXT, 'placeholder': 'ERP 客户编码'}),
+            'customer_type': forms.Select(attrs={'class': 'form-select'}),
+            'review_date': forms.DateInput(attrs={**_TEXT, **_DATE}, format='%Y-%m-%d'),
+            'period': forms.TextInput(attrs={**_TEXT, 'placeholder': '如 2026 年度 / 2026 年第 3 季度'}),
+            'settle_method': forms.TextInput(attrs={**_TEXT, 'placeholder': '如 月结 60 天'}),
+            'region': forms.TextInput(attrs={**_TEXT, 'placeholder': '如 华东-江苏'}),
+            'prev_grade': forms.TextInput(attrs={**_TEXT, 'placeholder': '如 B 级'}),
+            'prev_limit': forms.NumberInput(attrs={**_NUM, 'placeholder': '万元'}),
+            'apply_no': forms.TextInput(attrs={**_TEXT, 'placeholder': '对应的准入申请编号'}),
+            'audit_address': forms.TextInput(attrs={**_TEXT, 'placeholder': '实际经营地址'}),
+            'companion': forms.TextInput(attrs={**_TEXT, 'placeholder': '客户方陪同人员'}),
+            'total_assets': forms.NumberInput(attrs={**_NUM, 'placeholder': '万元'}),
+            'total_liabilities': forms.NumberInput(attrs={**_NUM, 'placeholder': '万元'}),
+            'current_assets': forms.NumberInput(attrs={**_NUM, 'placeholder': '万元'}),
+            'current_liabilities': forms.NumberInput(attrs={**_NUM, 'placeholder': '万元'}),
+            'inventory': forms.NumberInput(attrs={**_NUM, 'placeholder': '万元'}),
+            'accounts_receivable': forms.NumberInput(attrs={**_NUM, 'placeholder': '万元'}),
+            'cash': forms.NumberInput(attrs={**_NUM, 'placeholder': '万元'}),
+            'interest_debt': forms.NumberInput(attrs={**_NUM, 'placeholder': '万元'}),
+            'revenue': forms.NumberInput(attrs={**_NUM, 'placeholder': '万元'}),
+            'prev_revenue': forms.NumberInput(attrs={**_NUM, 'placeholder': '万元'}),
+            'net_profit': forms.NumberInput(attrs={**_NUM, 'placeholder': '亏损填负数'}),
+            'operating_cash_flow': forms.NumberInput(attrs={**_NUM, 'placeholder': '可为负数'}),
+            'conclusion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3,
+                                                'placeholder': '结论、授信意见与整改要求'}),
+            'credit_limit': forms.NumberInput(attrs={**_NUM, 'placeholder': '万元'}),
+            'credit_days': forms.NumberInput(attrs={'class': 'form-control', 'min': 0, 'step': 1,
+                                                    'placeholder': '天'}),
+            'reviewer': forms.TextInput(attrs={**_TEXT, 'placeholder': '编制人姓名'}),
+            'approver': forms.TextInput(attrs={**_TEXT, 'placeholder': '审批人姓名'}),
+        }
+        labels = {
+            'review_no': '表单编号',
+            'customer_name': '客户全称',
+            'customer_code': '客户编码',
+            'customer_type': '客户类型',
+            'review_date': '表单日期',
+            'period': '考评周期',
+            'settle_method': '结算方式',
+            'region': '合作区域',
+            'prev_grade': '原信用等级',
+            'prev_limit': '原授信额度',
+            'apply_no': '对应申请编号',
+            'audit_address': '审核地址',
+            'companion': '陪同人员',
+            'total_assets': '资产总额',
+            'total_liabilities': '负债总额',
+            'current_assets': '流动资产',
+            'current_liabilities': '流动负债',
+            'inventory': '存货',
+            'accounts_receivable': '应收账款',
+            'cash': '货币资金',
+            'interest_debt': '有息负债',
+            'revenue': '营业收入（本期）',
+            'prev_revenue': '营业收入（上期）',
+            'net_profit': '净利润',
+            'operating_cash_flow': '经营活动现金流量净额',
+            'conclusion': '结论与整改要求',
+            'credit_limit': '建议信用额度',
+            'credit_days': '建议信用期限',
+            'reviewer': '编制人',
+            'approver': '审批人',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # 财务字段打上 data-fin，前端据此实时算比率；属性写在这里而不是模板，
+        # 保证「字段名 → data 属性」只有一处定义。
+        from .credit_spec import FIN_FIELDS
+        for item in FIN_FIELDS:
+            field = self.fields.get(item['key'])
+            if field is not None:
+                field.widget.attrs['data-fin'] = item['key']
+        # 客户全称、日期是硬性必填，前端也标 *
+        self.fields['customer_name'].required = True
+        self.fields['review_date'].required = True
+        for name in ('customer_code', 'period', 'settle_method', 'region', 'prev_grade',
+                     'apply_no', 'audit_address', 'companion', 'conclusion',
+                     'reviewer', 'approver', 'review_no'):
+            self.fields[name].required = False
+        for name in ('total_assets', 'total_liabilities', 'current_assets', 'current_liabilities',
+                     'inventory', 'accounts_receivable', 'cash', 'interest_debt',
+                     'revenue', 'prev_revenue', 'net_profit', 'operating_cash_flow',
+                     'prev_limit', 'credit_limit', 'credit_days'):
+            self.fields[name].required = False
+
+    def clean(self):
+        data = super().clean()
+        # 资产/负债同时填了才校验勾稽关系；只填一个时交给模板标「数据不完整」
+        ta, tl = data.get('total_assets'), data.get('total_liabilities')
+        if ta is not None and tl is not None and ta > 0 and tl > ta * 3:
+            self.add_error('total_liabilities', '负债总额超过资产总额 3 倍，请核对是否填错单位（万元）')
+        ca = data.get('current_assets')
+        # 用整数倍比较，避免 Decimal 与 float 混算抛 TypeError
+        if ta and ca is not None and ca * 2 > ta * 3:
+            self.add_error('current_assets', '流动资产超过资产总额，请核对是否填错单位（万元）')
+        return data
+
+
+class PaymentWalkthroughForm(forms.ModelForm):
+    """付款穿行测试表单。样本明细由视图单独解析（JSON 字段）。"""
+
+    class Meta:
+        model = PaymentWalkthrough
+        fields = [
+            'test_no', 'payee_name', 'payee_type', 'period_start', 'period_end', 'test_date',
+            'sample_method', 'population_size', 'sample_size',
+            'terms_text', 'terms_days', 'terms_base',
+            'conclusion', 'defect_summary', 'suggestion', 'tester', 'reviewer',
+        ]
+        widgets = {
+            'test_no': forms.TextInput(attrs={**_TEXT, 'placeholder': '如 WT-2026-004'}),
+            'payee_name': forms.TextInput(attrs={**_TEXT, 'placeholder': '客户或供应商全称'}),
+            'payee_type': forms.Select(attrs={'class': 'form-select'}),
+            'period_start': forms.DateInput(attrs={**_TEXT, **_DATE}, format='%Y-%m-%d'),
+            'period_end': forms.DateInput(attrs={**_TEXT, **_DATE}, format='%Y-%m-%d'),
+            'test_date': forms.DateInput(attrs={**_TEXT, **_DATE}, format='%Y-%m-%d'),
+            'sample_method': forms.TextInput(attrs={**_TEXT, 'list': 'sample-method-list'}),
+            'population_size': forms.NumberInput(attrs={'class': 'form-control', 'min': 0, 'step': 1}),
+            'sample_size': forms.NumberInput(attrs={'class': 'form-control', 'min': 0, 'step': 1}),
+            'terms_text': forms.TextInput(attrs={**_TEXT, 'placeholder': '如 月结 60 天 / 货到 30 天'}),
+            'terms_days': forms.NumberInput(attrs={'class': 'form-control', 'min': 0, 'step': 1,
+                                                   'placeholder': '如 60'}),
+            'terms_base': forms.TextInput(attrs={**_TEXT, 'list': 'terms-base-list'}),
+            'conclusion': forms.TextInput(attrs={**_TEXT, 'readonly': 'readonly',
+                                                  'placeholder': '由控制点执行情况自动判定'}),
+            'defect_summary': forms.Textarea(attrs={'class': 'form-control', 'rows': 3,
+                                                    'placeholder': '逐条列明缺陷所在控制点、样本、具体表现'}),
+            'suggestion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3,
+                                                'placeholder': '整改措施、责任人、完成时限'}),
+            'tester': forms.TextInput(attrs={**_TEXT, 'placeholder': '测试人姓名'}),
+            'reviewer': forms.TextInput(attrs={**_TEXT, 'placeholder': '复核人姓名'}),
+        }
+        labels = {
+            'test_no': '测试编号',
+            'payee_name': '被测试对象',
+            'payee_type': '对象类型',
+            'period_start': '测试期间（起）',
+            'period_end': '测试期间（止）',
+            'test_date': '测试执行日期',
+            'sample_method': '抽样方法',
+            'population_size': '总体笔数',
+            'sample_size': '抽样笔数',
+            'terms_text': '账期约定',
+            'terms_days': '约定账期天数',
+            'terms_base': '账期起算口径',
+            'conclusion': '测试结论',
+            'defect_summary': '缺陷汇总',
+            'suggestion': '整改建议',
+            'tester': '测试人',
+            'reviewer': '复核人',
+        }
+
+    def clean(self):
+        data = super().clean()
+        start, end = data.get('period_start'), data.get('period_end')
+        if start and end and start > end:
+            self.add_error('period_end', '测试期间结束日不能早于开始日')
+        pop, sample = data.get('population_size'), data.get('sample_size')
+        if pop is not None and sample is not None and sample > pop:
+            self.add_error('sample_size', '抽样笔数不能大于总体笔数')
+        days = data.get('terms_days')
+        if days is not None and (days < 0 or days > 3650):
+            self.add_error('terms_days', '约定账期天数应在 0～3650 之间')
+        return data

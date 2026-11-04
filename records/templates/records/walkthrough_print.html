@@ -1,0 +1,59 @@
+{% extends 'records/walkthrough_detail.html' %}
+{% load static %}
+
+{% block page_title %}付款穿行测试（打印） - {{ object.payee_name }}{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+    .sidebar, .top-nav, .app-breadcrumb, .page-actions, .cr-side,
+    .skip-link, .sidebar-scrim, .mobile-menu-toggle { display: none !important; }
+    .main-content { margin: 0 !important; padding: 0 !important; }
+    #main { max-width: 900px; margin: 0 auto; padding: 22px 18px 44px; }
+    body { background: #fff !important; }
+    .cr-page { display: block; }
+    .cr-print-head { text-align: center; margin: 0 0 16px; }
+    .cr-print-head h1 {
+        font-family: var(--font-display);
+        font-size: 16pt;
+        font-weight: 600;
+        margin: 0 0 6px;
+        letter-spacing: 2px;
+    }
+    .cr-print-head .sub { font-size: 9.5pt; color: #555; }
+    .cr-sign {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 26px;
+        margin-top: 22px;
+        font-size: 9.5pt;
+        color: #333;
+    }
+    .cr-sign div { border-top: 1px solid #999; padding-top: 6px; }
+    @media print {
+        .cr-print-head { margin-bottom: 8mm; }
+        .wt-sample { break-inside: avoid; }
+    }
+</style>
+{% endblock %}
+
+{% block top_nav_actions %}{% endblock %}
+
+{% block print_title %}
+<div class="cr-print-head">
+    <h1>付款穿行测试记录</h1>
+    <div class="sub">
+        {{ object.payee_name }}（{{ object.payee_type }}）
+        {% if object.test_no %}　·　编号 {{ object.test_no }}{% endif %}
+        　·　{{ object.period_start|date:'Y 年 m 月 d 日' }} 至 {{ object.period_end|date:'Y 年 m 月 d 日' }}
+    </div>
+</div>
+{% endblock %}
+
+{% block print_foot %}
+<div class="cr-sign">
+    <div>测试人：{{ object.tester|default:"　　　　　" }}　日期：　　　　</div>
+    <div>复核人：{{ object.reviewer|default:"　　　　　" }}　日期：　　　　</div>
+    <div>审批人：　　　　　日期：　　　　</div>
+</div>
+{% endblock %}

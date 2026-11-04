@@ -1,0 +1,140 @@
+{% extends 'records/base.html' %}
+{% load static %}
+{% load accounts_tags %}
+
+{% block page_title %}付款穿行测试 - 每日工作记录管理网站{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/customer-review.css' %}?v=20261104a" rel="stylesheet">
+<style>
+    .table { min-width: 1000px; }
+    .table--fixed th:nth-child(1) { width: 11%; }
+    .table--fixed th:nth-child(2) { width: 19%; }
+    .table--fixed th:nth-child(3) { width: 7%; }
+    .table--fixed th:nth-child(4) { width: 14%; }
+    .table--fixed th:nth-child(5) { width: 12%; }
+    .table--fixed th:nth-child(6) { width: 8%; }
+    .table--fixed th:nth-child(7) { width: 10%; }
+    .table--fixed th:nth-child(8) { width: 6%; }
+    .table--fixed th:nth-child(9) { width: 13%; }
+    .table td { font-variant-numeric: tabular-nums; }
+    .att-count { display: inline-flex; align-items: center; gap: 3px; font-size: 0.78rem; color: var(--c-text-secondary); }
+    .att-count b { font-weight: 600; color: var(--c-primary-active); }
+</style>
+{% endblock %}
+
+{% block top_nav_actions %}
+    <form class="d-flex gap-2" method="GET" id="searchForm">
+        {% if payee_type_filter %}<input type="hidden" name="payee_type" value="{{ payee_type_filter }}">{% endif %}
+        <input class="search-input" type="search" placeholder="搜索被测试对象或测试编号"
+               name="search" value="{{ search_term }}" aria-label="搜索被测试对象或测试编号" maxlength="100">
+        <button class="btn-transparent" type="submit">搜索</button>
+    </form>
+    <a href="{% url 'customer_review_list' %}" class="btn-transparent">客户评审</a>
+    {% can "customer_review" "create" %}
+    <a href="{% url 'walkthrough_import' %}" class="btn-transparent">导入Excel</a>
+    {% endcan %}
+    <a href="{% url 'walkthrough_template' %}" class="btn-transparent">下载模板</a>
+    <a href="{% url 'walkthrough_export' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}" class="btn-transparent">导出Excel</a>
+    {% can "customer_review" "create" %}
+    <a href="{% url 'walkthrough_add' %}" class="btn-primary">新增穿行测试</a>
+    {% endcan %}
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h1>付款穿行测试<span class="total-hint">共 {{ walkthroughs.paginator.count }} 条记录</span></h1>
+        <div class="filter-chips">
+            {% if search_term %}
+            <a class="filter-chip" href="{% querystring search=None page=None %}">搜索：{{ search_term }} ✕</a>
+            {% endif %}
+            {% if conclusion_filter %}
+            <a class="filter-chip" href="{% querystring conclusion=None page=None %}">结论：{{ conclusion_filter }} ✕</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <nav class="cr-tabs" aria-label="被测试对象类型">
+        <a href="{% querystring payee_type=None page=None %}" {% if not payee_type_filter %}class="on" aria-current="page"{% endif %}>全部</a>
+        {% for value, label in payee_types %}
+        <a href="{% querystring payee_type=value page=None %}" {% if payee_type_filter == value %}class="on" aria-current="page"{% endif %}>{{ label }}</a>
+        {% endfor %}
+    </nav>
+
+    <div class="table-container">
+        <div class="table-responsive">
+            <table class="table--cards table table-sticky table--fixed">
+                <thead>
+                    <tr>
+                        <th scope="col">测试编号</th>
+                        <th scope="col">被测试对象</th>
+                        <th scope="col">类型</th>
+                        <th scope="col">测试期间</th>
+                        <th scope="col">样本 / 缺陷</th>
+                        <th scope="col">结论</th>
+                        <th scope="col">测试人</th>
+                        <th scope="col">附件</th>
+                        <th scope="col" class="col-actions">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for w in walkthroughs %}
+                    <tr data-href="{% url 'walkthrough_detail' w.id %}">
+                        <td data-label="测试编号" class="cell-ellipsis">{{ w.test_no|default:"—" }}</td>
+                        <td data-label="被测试对象" class="cell-ellipsis" title="{{ w.payee_name }}">{{ w.payee_name }}</td>
+                        <td data-label="类型">{{ w.payee_type }}</td>
+                        <td data-label="测试期间">
+                            <div class="cell-stack">
+                                <span class="cell-stack__main">{{ w.period_start|date:'Y-m-d' }}</span>
+                                <span class="cell-stack__sub">至 {{ w.period_end|date:'Y-m-d' }}</span>
+                            </div>
+                        </td>
+                        <td data-label="样本 / 缺陷">
+                            <div class="cr-score-cell">
+                                <b>{{ w.stat_samples }}</b><small>笔</small>
+                                {% if w.stat_defects %}
+                                <span class="status-badge danger">{{ w.stat_defects }} 项缺陷</span>
+                                {% else %}
+                                <span class="status-badge success">无缺陷</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td data-label="结论">
+                            {% if w.conclusion %}
+                            <span class="status-badge {{ w.conclusion_tone }}">{{ w.conclusion }}</span>
+                            {% else %}
+                            <span class="status-badge default">未判定</span>
+                            {% endif %}
+                        </td>
+                        <td data-label="测试人">{{ w.tester|default:"—" }}</td>
+                        <td data-label="附件">
+                            {% if w.attachment_count %}
+                            <span class="att-count" title="附件 {{ w.attachment_count }} 个"><b>{{ w.attachment_count }}</b></span>
+                            {% else %}—{% endif %}
+                        </td>
+                        <td data-label="操作" class="col-actions">
+                            <div class="u-toolbar-inline">
+                                <a href="{% url 'walkthrough_detail' w.id %}" class="btn-transparent btn-sm">查看</a>
+                                <a href="{% url 'walkthrough_export_one' w.id %}" class="btn-transparent btn-sm">导出</a>
+                                {% can "customer_review" "update" %}
+                                <a href="{% url 'walkthrough_edit' w.id %}" class="btn-transparent btn-sm">编辑</a>
+                                {% endcan %}
+                                {% can "customer_review" "delete" %}
+                                <form class="u-inline" method="post" action="{% url 'walkthrough_delete' w.id %}"
+                                      data-confirm="确定要删除这份穿行测试吗？删除后不可恢复。">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn-transparent btn-sm btn-delete">删除</button>
+                                </form>
+                                {% endcan %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    {% include 'records/_empty_row.html' with colspan=9 %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% include 'records/_pagination.html' with page_obj=walkthroughs %}
+    </div>
+{% endblock %}

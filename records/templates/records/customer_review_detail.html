@@ -1,0 +1,294 @@
+{% extends 'records/base.html' %}
+{% load static %}
+{% load accounts_tags %}
+{% load humanize %}
+
+{% block page_title %}{{ object.get_review_type_display }} - {{ object.customer_name }}{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/customer-review.css' %}?v=20261104a" rel="stylesheet">
+{% endblock %}
+
+{% block top_nav_actions %}
+    <a href="{% url 'customer_review_list' %}" class="btn-transparent">返回列表</a>
+    {% if not print_mode %}
+    <a href="{% url 'customer_review_export_one' object.id %}" class="btn-transparent">导出Excel</a>
+    <a href="{% url 'customer_review_print' object.id %}" class="btn-transparent" target="_blank" rel="noopener noreferrer">打印 / 导出 PDF</a>
+    {% can "customer_review" "update" %}
+    <a href="{% url 'customer_review_edit' object.id %}" class="btn-primary">编辑</a>
+    {% endcan %}
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+{% block print_title %}{% endblock %}
+
+<div class="cr-page">
+    <div class="cr-main">
+
+        <!-- 结论横幅 -->
+        <section class="cr-card">
+            <div class="cr-banner">
+                {% if object.review_type == 'audit' %}
+                <div class="cr-banner__score" style="font-size:1.6rem">
+                    {{ object.audit_conclusion|default:"未判定" }}
+                </div>
+                <div class="cr-banner__meta">
+                    <strong>{{ object.customer_name }}</strong>
+                    <span class="cr-hint">{{ object.get_review_type_display }}　·　{{ object.review_date|date:'Y-m-d' }}</span>
+                </div>
+                {% else %}
+                <div class="cr-banner__score">{{ object.total_score|floatformat:0 }}<small> / {{ total_possible }} 分</small></div>
+                <div class="cr-banner__meta">
+                    <strong>{{ object.customer_name }}</strong>
+                    <span class="cr-hint">{{ object.get_review_type_display }}　·　{{ object.review_date|date:'Y-m-d' }}</span>
+                </div>
+                {% if grade_info %}
+                <div class="cr-grade cr-grade--{{ grade_info.tone }}" style="margin-left:auto">
+                    <b>{{ grade_info.label }}</b><span>{{ grade_info.range }}</span>
+                </div>
+                {% endif %}
+                {% endif %}
+            </div>
+        </section>
+
+        <!-- 基本信息 -->
+        <section class="cr-card">
+            <div class="cr-card__head"><h2>基本信息</h2></div>
+            <div class="cr-card__body">
+                <div class="cr-kv">
+                    {% if object.review_no %}
+                    <div class="cr-kv__item"><div class="cr-kv__k">表单编号</div><div class="cr-kv__v">{{ object.review_no }}</div></div>
+                    {% endif %}
+                    <div class="cr-kv__item"><div class="cr-kv__k">客户全称</div><div class="cr-kv__v">{{ object.customer_name }}</div></div>
+                    {% if object.customer_code %}
+                    <div class="cr-kv__item"><div class="cr-kv__k">客户编码</div><div class="cr-kv__v">{{ object.customer_code }}</div></div>
+                    {% endif %}
+                    <div class="cr-kv__item"><div class="cr-kv__k">客户类型</div><div class="cr-kv__v">{{ object.customer_type }}</div></div>
+                    <div class="cr-kv__item"><div class="cr-kv__k">表单日期</div><div class="cr-kv__v">{{ object.review_date|date:'Y-m-d' }}</div></div>
+                    {% if object.period %}
+                    <div class="cr-kv__item"><div class="cr-kv__k">考评周期</div><div class="cr-kv__v">{{ object.period }}</div></div>
+                    {% endif %}
+                    {% if object.settle_method %}
+                    <div class="cr-kv__item"><div class="cr-kv__k">结算方式</div><div class="cr-kv__v">{{ object.settle_method }}</div></div>
+                    {% endif %}
+                    {% if object.region %}
+                    <div class="cr-kv__item"><div class="cr-kv__k">合作区域</div><div class="cr-kv__v">{{ object.region }}</div></div>
+                    {% endif %}
+                    {% if object.prev_grade %}
+                    <div class="cr-kv__item"><div class="cr-kv__k">原信用等级</div><div class="cr-kv__v">{{ object.prev_grade }}</div></div>
+                    {% endif %}
+                    {% if object.prev_limit is not None %}
+                    <div class="cr-kv__item"><div class="cr-kv__k">原授信额度</div><div class="cr-kv__v">{{ object.prev_limit|floatformat:2 }} 万元</div></div>
+                    {% endif %}
+                    {% if object.apply_no %}
+                    <div class="cr-kv__item"><div class="cr-kv__k">对应申请编号</div><div class="cr-kv__v">{{ object.apply_no }}</div></div>
+                    {% endif %}
+                    {% if object.audit_address %}
+                    <div class="cr-kv__item"><div class="cr-kv__k">审核地址</div><div class="cr-kv__v">{{ object.audit_address }}</div></div>
+                    {% endif %}
+                    {% if object.companion %}
+                    <div class="cr-kv__item"><div class="cr-kv__k">陪同人员</div><div class="cr-kv__v">{{ object.companion }}</div></div>
+                    {% endif %}
+                </div>
+            </div>
+        </section>
+
+        {% if object.needs_finance %}
+        <!-- 财务指标 -->
+        <section class="cr-card">
+            <div class="cr-card__head">
+                <h2>财务基础数据与指标</h2>
+                <span class="cr-note">金额单位：万元</span>
+            </div>
+            <div class="cr-card__body">
+                <div class="cr-fin">
+                    <div class="cr-fin__inputs">
+                        <div class="cr-fin__group-title">基础数据</div>
+                        <div class="cr-kv" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+                            <div class="cr-kv__item"><div class="cr-kv__k">资产总额</div><div class="cr-kv__v">{{ object.total_assets|default_if_none:'—'|floatformat:2|intcomma }}</div></div>
+                            <div class="cr-kv__item"><div class="cr-kv__k">负债总额</div><div class="cr-kv__v">{{ object.total_liabilities|default_if_none:'—'|floatformat:2|intcomma }}</div></div>
+                            <div class="cr-kv__item"><div class="cr-kv__k">流动资产</div><div class="cr-kv__v">{{ object.current_assets|default_if_none:'—'|floatformat:2|intcomma }}</div></div>
+                            <div class="cr-kv__item"><div class="cr-kv__k">流动负债</div><div class="cr-kv__v">{{ object.current_liabilities|default_if_none:'—'|floatformat:2|intcomma }}</div></div>
+                            <div class="cr-kv__item"><div class="cr-kv__k">存货</div><div class="cr-kv__v">{{ object.inventory|default_if_none:'—'|floatformat:2|intcomma }}</div></div>
+                            <div class="cr-kv__item"><div class="cr-kv__k">应收账款</div><div class="cr-kv__v">{{ object.accounts_receivable|default_if_none:'—'|floatformat:2|intcomma }}</div></div>
+                            <div class="cr-kv__item"><div class="cr-kv__k">货币资金</div><div class="cr-kv__v">{{ object.cash|default_if_none:'—'|floatformat:2|intcomma }}</div></div>
+                            <div class="cr-kv__item"><div class="cr-kv__k">有息负债</div><div class="cr-kv__v">{{ object.interest_debt|default_if_none:'—'|floatformat:2|intcomma }}</div></div>
+                            <div class="cr-kv__item"><div class="cr-kv__k">营业收入（本期）</div><div class="cr-kv__v">{{ object.revenue|default_if_none:'—'|floatformat:2|intcomma }}</div></div>
+                            <div class="cr-kv__item"><div class="cr-kv__k">营业收入（上期）</div><div class="cr-kv__v">{{ object.prev_revenue|default_if_none:'—'|floatformat:2|intcomma }}</div></div>
+                            <div class="cr-kv__item"><div class="cr-kv__k">净利润</div><div class="cr-kv__v">{{ object.net_profit|default_if_none:'—'|floatformat:2|intcomma }}</div></div>
+                            <div class="cr-kv__item"><div class="cr-kv__k">经营活动现金流净额</div><div class="cr-kv__v">{{ object.operating_cash_flow|default_if_none:'—'|floatformat:2|intcomma }}</div></div>
+                        </div>
+                    </div>
+                    <aside class="cr-ratios">
+                        <div class="cr-ratios__title">计算结果</div>
+                        {% for r in ratio_rows %}
+                        <div class="cr-ratio">
+                            <span class="cr-ratio__label">{{ r.label }}</span>
+                            <span class="cr-ratio__value{% if r.display == '—' %} is-empty{% endif %}">{{ r.display }}</span>
+                        </div>
+                        {% endfor %}
+                    </aside>
+                </div>
+            </div>
+        </section>
+        {% endif %}
+
+        {% if object.review_type == 'audit' %}
+        <!-- 现场审核判定 -->
+        <section class="cr-card">
+            <div class="cr-card__head"><h2>审核项判定</h2></div>
+            <div class="cr-card__body--flush">
+                {% for row in audit_rows %}
+                <div class="au-row{% if row.verdict == '不符合' %} is-fail{% elif row.verdict == '待整改' %} is-fix{% endif %}">
+                    <div class="au-head">
+                        <h3>{{ row.name }}</h3>
+                        {% if row.verdict %}
+                        <span class="status-badge {% if row.verdict == '符合' %}success{% elif row.verdict == '待整改' %}warning{% elif row.verdict == '不符合' %}danger{% else %}default{% endif %}">{{ row.verdict }}</span>
+                        {% else %}
+                        <span class="status-badge default">未判定</span>
+                        {% endif %}
+                        {% if row.tag %}<span class="au-tag {% if '否决' in row.tag %}au-tag--veto{% endif %}">{{ row.tag }}</span>{% endif %}
+                    </div>
+                    <ul class="au-points">
+                        {% for point in row.points %}<li>{{ point }}</li>{% endfor %}
+                    </ul>
+                    <div class="au-core">核心子项：{{ row.core }}</div>
+                    {% if row.note %}
+                    <div class="au-note"><div class="cr-hint">现场情况说明：{{ row.note }}</div></div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        {% if groups %}
+        <!-- 评分明细 -->
+        <section class="cr-card">
+            <div class="cr-card__head">
+                <h2>评分明细</h2>
+                <span class="cr-note">合计 {{ object.total_score|floatformat:0 }} / {{ total_possible }} 分</span>
+            </div>
+            <div class="cr-card__body--flush">
+                <table class="rv-table rv-read">
+                    <thead>
+                        <tr>
+                            <th scope="col" class="rv-col-dim">评价维度</th>
+                            <th scope="col">评分项 / 评分标准</th>
+                            <th scope="col" class="rv-col-max">标准分</th>
+                            <th scope="col" class="rv-col-score">实际得分</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for group in groups %}
+                        {% for item in group.items %}
+                        <tr>
+                            {% if forloop.first %}
+                            <td class="rv-dim" rowspan="{{ group.items|length }}">
+                                <span class="rv-dim__name">{{ group.name }}</span>
+                                <span class="rv-dim__max">标准 <b>{{ group.max }}</b> 分</span>
+                                <span class="rv-dim__got">已得 <b>{{ group.got }}</b> / {{ group.max }}</span>
+                            </td>
+                            {% endif %}
+                            <td>
+                                <div class="rv-item__name">
+                                    {{ item.name }}
+                                    {% if item.veto %}<span class="rv-item__flag">一票否决</span>{% endif %}
+                                </div>
+                                {% if item.value_text %}
+                                <div class="rv-cond">判定档位：{{ item.value_text }}</div>
+                                {% endif %}
+                                <details class="rv-detail">
+                                    <summary>评分标准与依据</summary>
+                                    <div class="rv-detail__body">
+                                        <table class="rv-tiers">
+                                            {% for tier in item.tiers %}
+                                            <tr><td>{{ tier.0 }} 分</td><td>{{ tier.1 }}</td></tr>
+                                            {% endfor %}
+                                        </table>
+                                        <p class="rv-basis">计分依据：{{ item.basis }}</p>
+                                    </div>
+                                </details>
+                            </td>
+                            <td class="rv-max rv-col-max">{{ item.max }}<span> 分</span></td>
+                            <td class="rv-col-score">
+                                {% if item.scored %}
+                                <span class="rv-got">{{ item.value }}</span> <span class="cr-hint">分</span>
+                                {% else %}
+                                <span class="rv-none">未评分</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- 结论与签署 -->
+        <section class="cr-card">
+            <div class="cr-card__head"><h2>结论与签署</h2></div>
+            <div class="cr-card__body">
+                <div class="cr-kv">
+                    {% if object.review_type != 'audit' %}
+                    <div class="cr-kv__item">
+                        <div class="cr-kv__k">建议信用额度</div>
+                        <div class="cr-kv__v">{% if object.credit_limit is not None %}{{ object.credit_limit|floatformat:2 }} 万元{% else %}—{% endif %}</div>
+                    </div>
+                    <div class="cr-kv__item">
+                        <div class="cr-kv__k">建议信用期限</div>
+                        <div class="cr-kv__v">{% if object.credit_days is not None %}{{ object.credit_days }} 天{% else %}—{% endif %}</div>
+                    </div>
+                    {% endif %}
+                    <div class="cr-kv__item"><div class="cr-kv__k">编制人</div><div class="cr-kv__v">{{ object.reviewer|default:"—" }}</div></div>
+                    <div class="cr-kv__item"><div class="cr-kv__k">审批人</div><div class="cr-kv__v">{{ object.approver|default:"未审批" }}</div></div>
+                </div>
+                <div class="cr-sec-title" style="font-size:0.85rem;margin-top:var(--sp-4)">结论与整改要求</div>
+                <p style="font-size:0.85rem;line-height:1.8;color:var(--c-text);white-space:pre-wrap;margin:0">{{ object.conclusion|default:"—" }}</p>
+            </div>
+        </section>
+    </div>
+
+    {% if not print_mode %}
+    <aside class="cr-side">
+        <div class="cr-sum">
+            <div class="cr-card__head"><h2>操作</h2></div>
+            <div class="cr-sum__body">
+                {% can "customer_review" "update" %}
+                <a href="{% url 'customer_review_edit' object.id %}" class="btn-primary" style="display:block;text-align:center">编辑这份表单</a>
+                {% endcan %}
+                <a href="{% url 'customer_review_print' object.id %}" class="btn-transparent" target="_blank" rel="noopener noreferrer"
+                   style="display:block;text-align:center;margin-top:8px">打印 / 导出 PDF</a>
+                <a href="{% url 'customer_review_export_one' object.id %}"
+                   style="display:block;text-align:center;margin-top:8px" class="btn-transparent">导出 Excel</a>
+                {% can "customer_review" "delete" %}
+                <form method="post" action="{% url 'customer_review_delete' object.id %}" data-confirm="确定要删除这份表单吗？删除后不可恢复。" style="margin-top:8px">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-transparent btn-delete" style="display:block;width:100%">删除</button>
+                </form>
+                {% endcan %}
+            </div>
+        </div>
+        <div class="cr-card">
+            <div class="cr-sum__body">
+                <div class="cr-hint">
+                    创建：{{ object.created_at|date:'Y-m-d H:i' }}<br>
+                    更新：{{ object.updated_at|date:'Y-m-d H:i' }}
+                    {% if object.created_by %}<br>录入人：{{ object.created_by }}{% endif %}
+                </div>
+            </div>
+        </div>
+    </aside>
+    {% endif %}
+</div>
+
+{% if not print_mode %}
+<div class="cr-att-wrap">
+    {% include 'attachments/_panel.html' with att_obj=att_obj %}
+</div>
+{% endif %}
+{% block print_foot %}{% endblock %}
+{% endblock %}

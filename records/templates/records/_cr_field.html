@@ -1,0 +1,15 @@
+{% comment %}
+单个表单项。用法：
+    {% include 'records/_cr_field.html' with f=form.customer_name label="客户全称" required=1 %}
+    {% include 'records/_cr_field.html' with f=form.region label="合作区域" hint="如 华东-江苏" span="cr-field--span2" %}
+
+为什么不在模板里逐个写 label + input：30 个字段重复 30 遍结构，改一次类名要改 30 处。
+label 用 include 参数传，因为 Django 模板拿不到 ModelForm 的中文 label 与业务强调的差异
+（如「原授信额度」要补单位）。
+{% endcomment %}
+<div class="cr-field {{ span }}">
+  <label for="{{ f.id_for_label }}">{{ label }}{% if required %}<span class="req" aria-hidden="true">*</span>{% endif %}</label>
+  {{ f }}
+  {{ f.errors }}
+  {% if hint %}<span class="cr-hint">{{ hint }}</span>{% endif %}
+</div>

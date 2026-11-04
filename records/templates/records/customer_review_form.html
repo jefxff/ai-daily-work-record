@@ -1,0 +1,323 @@
+{% extends 'records/base.html' %}
+{% load static %}
+{% load accounts_tags %}
+
+{% block page_title %}{% if is_edit %}编辑{% else %}新增{% endif %}{{ type_title }} - 每日工作记录管理网站{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/customer-review.css' %}?v=20261104a" rel="stylesheet">
+{% endblock %}
+
+{% block top_nav_actions %}
+    <a href="{% url 'customer_review_list' %}" class="btn-transparent">返回列表</a>
+    {% if is_edit %}
+    <a href="{% url 'customer_review_detail' instance.id %}" class="btn-transparent">查看详情</a>
+    <a href="{% url 'customer_review_print' instance.id %}" class="btn-transparent" target="_blank" rel="noopener noreferrer">打印</a>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<form method="post" id="review-form" class="cr-page" novalidate>
+    {% csrf_token %}
+
+    <div class="cr-main">
+        {% if form.errors %}
+        <div class="alert alert-danger" role="alert">
+            <strong>有 {{ form.errors|length }} 处需要修正：</strong>
+            <ul class="u-mt-1">
+                {% for field in form %}
+                    {% for error in field.errors %}<li>{{ field.label }}：{{ error }}</li>{% endfor %}
+                {% endfor %}
+                {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <!-- ① 表头信息 -->
+        <section class="cr-card">
+            <div class="cr-card__head">
+                <h2>{{ type_title }}</h2>
+                <span class="cr-note">带 <span style="color:var(--c-danger)">*</span> 为必填</span>
+            </div>
+            <div class="cr-card__body">
+                <div class="cr-meta">
+                    {% if review_type == 'credit' %}
+                        {% include 'records/_cr_field.html' with f=form.review_no label="评价编号" hint="格式建议 XY-年份-序号" %}
+                        {% include 'records/_cr_field.html' with f=form.customer_code label="客户编码" hint="与 ERP 客户档案一致" %}
+                        {% include 'records/_cr_field.html' with f=form.review_date label="评价日期" required=1 %}
+                        {% include 'records/_cr_field.html' with f=form.customer_name label="客户全称" required=1 hint="须与营业执照一致" %}
+                        {% include 'records/_cr_field.html' with f=form.customer_type label="客户经营类型" %}
+                        {% include 'records/_cr_field.html' with f=form.settle_method label="结算方式" hint="如 月结 60 天" %}
+                    {% elif review_type == 'review' %}
+                        {% include 'records/_cr_field.html' with f=form.review_no label="考评编号" %}
+                        {% include 'records/_cr_field.html' with f=form.customer_code label="客户编码" %}
+                        {% include 'records/_cr_field.html' with f=form.period label="考评周期" hint="如 2026 年度 / 2026 年第 3 季度" %}
+                        {% include 'records/_cr_field.html' with f=form.customer_name label="客户全称" required=1 %}
+                        {% include 'records/_cr_field.html' with f=form.customer_type label="客户经营类型" %}
+                        {% include 'records/_cr_field.html' with f=form.region label="合作区域" %}
+                        {% include 'records/_cr_field.html' with f=form.review_date label="考评日期" required=1 %}
+                        {% include 'records/_cr_field.html' with f=form.prev_grade label="原信用等级" hint="上一次评定结果" %}
+                        {% include 'records/_cr_field.html' with f=form.prev_limit label="原授信额度" hint="单位：万元" %}
+                    {% else %}
+                        {% include 'records/_cr_field.html' with f=form.review_no label="审核编号" %}
+                        {% include 'records/_cr_field.html' with f=form.apply_no label="对应申请编号" hint="关联的准入 / 提额申请" %}
+                        {% include 'records/_cr_field.html' with f=form.review_date label="审核日期" required=1 %}
+                        {% include 'records/_cr_field.html' with f=form.customer_name label="客户全称" required=1 %}
+                        {% include 'records/_cr_field.html' with f=form.customer_type label="客户类型" %}
+                        {% include 'records/_cr_field.html' with f=form.audit_address label="审核地址" hint="实际经营地址" %}
+                        {% include 'records/_cr_field.html' with f=form.reviewer label="审核人员" %}
+                        {% include 'records/_cr_field.html' with f=form.companion label="陪同人员" hint="客户方陪同人员" %}
+                    {% endif %}
+                </div>
+            </div>
+        </section>
+
+        {% if review_type == 'credit' %}
+        <!-- ② 基础财务数据 → 自动计算指标 -->
+        <section class="cr-card" data-finance>
+            <div class="cr-card__head">
+                <h2>基础财务数据</h2>
+                <span class="cr-note">单位：万元　·　取最近一期审计报告或财务报表</span>
+            </div>
+            <div class="cr-card__body">
+                <div class="cr-fin">
+                    <div class="cr-fin__inputs">
+                        {% for group in fin_groups %}
+                        <div class="cr-fin__group-title">{{ group.name }}</div>
+                        <div class="cr-fin__row">
+                            {% for fld in group.fields %}
+                            <div class="cr-fin__field">
+                                <label for="{{ fld.bound.id_for_label }}">
+                                    {{ fld.meta.label }}{% if fld.meta.required %}<span class="req" style="color:var(--c-danger)">*</span>{% endif %}
+                                </label>
+                                {{ fld.bound }}
+                                <span class="cr-fin__unit">{{ fld.meta.unit }}</span>
+                                {% if fld.bound.errors %}<ul class="errorlist">{% for e in fld.bound.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endfor %}
+                        <p class="cr-hint">
+                            只填资产、负债与营业收入即可得到 3 个核心比率；其余项留空时对应比率显示「—」，不影响保存。
+                            数据一经保存即与本次评价结论绑定，后续修改基础数据不会覆盖已出具的结果。
+                        </p>
+                    </div>
+
+                    <aside class="cr-ratios" aria-label="财务指标计算结果">
+                        <div class="cr-ratios__title">自动计算指标</div>
+                        {% for r in ratios %}
+                        <div class="cr-ratio">
+                            <span class="cr-ratio__label">{{ r.label }}</span>
+                            <span class="cr-ratio__value is-empty" data-ratio="{{ r.key }}" data-kind="{{ r.kind }}">—</span>
+                        </div>
+                        {% endfor %}
+                        <button type="button" class="cr-fill-btn" data-fill-fin disabled>
+                            按比率填入财务评分项建议分
+                        </button>
+                        <p class="cr-ratios__foot">
+                            比率按原表口径计算：资产负债率＝负债÷资产，速动比率＝（流动资产−存货）÷流动负债。
+                            建议分只在对应评分项尚未选择时自动填入，手工改过的项不会被覆盖。
+                        </p>
+                    </aside>
+                </div>
+            </div>
+        </section>
+        {% endif %}
+
+        {% if review_type == 'audit' %}
+        <!-- ② 现场审核判定 -->
+        <section class="cr-card" id="audit-form">
+            <div class="cr-card__head">
+                <h2>审核项判定</h2>
+                <span class="cr-note">核心子项不满足时，不得降格判为「待整改」</span>
+            </div>
+            <div class="cr-card__body--flush">
+                {% for row in audit_rows %}
+                <div class="au-row" data-row="{{ row.key }}">
+                    <div class="au-head">
+                        <h3>{{ row.name }}</h3>
+                        {% if row.tag %}
+                        <span class="au-tag {% if '否决' in row.tag %}au-tag--veto{% endif %}">{{ row.tag }}</span>
+                        {% endif %}
+                    </div>
+                    <ul class="au-points">
+                        {% for point in row.points %}<li>{{ point }}</li>{% endfor %}
+                    </ul>
+                    <div class="au-core">核心子项：{{ row.core }}</div>
+
+                    <div class="au-verdict">
+                        {% for v in audit_verdicts_choices %}
+                        <input type="radio" name="av_{{ row.key }}" id="av_{{ row.key }}_{{ forloop.counter }}"
+                               value="{{ v }}" {% if row.verdict == v %}checked{% endif %}>
+                        <label for="av_{{ row.key }}_{{ forloop.counter }}">{{ v }}</label>
+                        {% endfor %}
+                    </div>
+
+                    <div class="au-detail">
+                        <div><dt>判「符合」需同时满足</dt><dd>{{ row.pass }}</dd></div>
+                        <div><dt>可判「待整改」的情形</dt><dd>{{ row.fix }}</dd></div>
+                        <div><dt>直接判「不符合」的情形</dt><dd>{{ row.fail }}</dd></div>
+                    </div>
+
+                    <div class="au-note">
+                        <input class="form-control" type="text" name="an_{{ row.key }}" value="{{ row.note }}"
+                               maxlength="500" placeholder="现场情况说明：查看了哪些材料、编号、时间；判「不符合」的须写明具体表现">
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        {% if groups %}
+        <!-- ③ 评分明细 -->
+        <section class="cr-card">
+            <div class="cr-card__head">
+                <h2>评分明细</h2>
+                <span class="cr-note">共 {{ groups|length }} 个维度 · 合计 {{ total_possible }} 分 · 点「评分标准」查看分档</span>
+            </div>
+            <div class="cr-card__body cr-card__body--flush">
+                <table class="rv-table">
+                    <thead>
+                        <tr>
+                            <th scope="col" class="rv-col-dim">评价维度</th>
+                            <th scope="col">评分项 / 评分标准</th>
+                            <th scope="col" class="rv-col-max">标准分</th>
+                            <th scope="col" class="rv-col-score">实际得分</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for group in groups %}
+                        {% for item in group.items %}
+                        <tr>
+                            {% if forloop.first %}
+                            <td class="rv-dim" rowspan="{{ group.items|length }}">
+                                <span class="rv-dim__name">{{ group.name }}</span>
+                                <span class="rv-dim__max">标准 <b>{{ group.max }}</b> 分</span>
+                                {% if group.rule %}<span class="rv-dim__rule">{{ group.rule }}</span>{% endif %}
+                                <span class="rv-dim__got" data-dim-got="{{ group.index }}">已得 —</span>
+                            </td>
+                            {% endif %}
+                            <td>
+                                <div class="rv-item__name">
+                                    {{ item.name }}
+                                    {% if item.veto %}<span class="rv-item__flag">一票否决</span>{% endif %}
+                                    {% if item.fin %}<span class="rv-item__auto">可由财务数据推算</span>{% endif %}
+                                </div>
+                                <details class="rv-detail">
+                                    <summary>评分标准</summary>
+                                    <div class="rv-detail__body">
+                                        <table class="rv-tiers">
+                                            {% for tier in item.tiers %}
+                                            <tr>
+                                                <td>{{ tier.0 }} 分</td>
+                                                <td>{{ tier.1 }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </table>
+                                        <p class="rv-basis">计分依据：{{ item.basis }}</p>
+                                    </div>
+                                </details>
+                            </td>
+                            <td class="rv-max rv-col-max">{{ item.max }}<span> 分</span></td>
+                            <td class="rv-col-score">
+                                <div class="rv-score">
+                                    <select class="form-select{% if item.scored %} is-set{% endif %}"
+                                            name="score_{{ item.key }}"
+                                            data-score data-group="{{ group.index }}" data-max="{{ item.max }}"
+                                            {% if item.fin %}data-fin-score="{{ item.fin }}"{% endif %}
+                                            aria-label="{{ item.name }} 得分">
+                                        <option value="">未评分</option>
+                                        {% for tier in item.tiers %}
+                                        <option value="{{ tier.0 }}" {% if item.value == tier.0 %}selected{% endif %}>{{ tier.0 }} 分 · {{ tier.1 }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <p class="rv-score__desc" data-desc="{{ item.key }}">{{ item.value_text }}</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- ④ 结论与签署 -->
+        <section class="cr-card">
+            <div class="cr-card__head"><h2>结论与签署</h2></div>
+            <div class="cr-card__body">
+                <div class="cr-meta">
+                    {% if review_type == 'audit' %}
+                    {% include 'records/_cr_field.html' with f=form.approver label="审批人" hint="留空表示尚未审批" %}
+                    {% else %}
+                    {% include 'records/_cr_field.html' with f=form.credit_limit label="建议信用额度" hint="单位：万元" %}
+                    {% include 'records/_cr_field.html' with f=form.credit_days label="建议信用期限" hint="单位：天" %}
+                    {% include 'records/_cr_field.html' with f=form.reviewer label="编制人" %}
+                    {% include 'records/_cr_field.html' with f=form.approver label="审批人" hint="留空表示尚未审批" %}
+                    {% endif %}
+                    <div class="cr-field cr-field--span3">
+                        <label for="{{ form.conclusion.id_for_label }}">结论与整改要求</label>
+                        {{ form.conclusion }}
+                        <span class="cr-hint">写明评定结论、授信意见；现场审核须列明整改事项与期限。</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- 右侧：实时汇总 -->
+    <aside class="cr-side">
+        <div class="cr-sum">
+            <div class="cr-card__head"><h2>{% if review_type == 'audit' %}审核结论{% else %}实时汇总{% endif %}</h2></div>
+            <div class="cr-sum__body">
+                {% if review_type == 'audit' %}
+                <div class="cr-grade" data-audit-conclusion>—</div>
+                <p class="cr-grade__advice" data-audit-reason>尚未开始判定</p>
+                <p class="cr-ratios__foot" style="margin-top:12px">
+                    判定规则：任一审核项为「不符合」→ 不通过；无「不符合」但有「待整改」→ 有条件通过；
+                    全部「符合」或「不适用」→ 通过。结论随勾选实时更新，保存时由服务端按同一规则复核。
+                </p>
+                {% else %}
+                <div class="cr-total"><b data-total>0</b><span>/ {{ total_possible }} 分</span></div>
+                <div class="cr-track"><i data-track style="width:0%"></i></div>
+                <div class="cr-grade" data-grade>—</div>
+                <p class="cr-grade__advice" data-grade-advice></p>
+                <div class="cr-miss" data-miss>尚未评分</div>
+
+                <div class="cr-dimlist">
+                    {% for group in groups %}
+                    <div class="cr-dimrow">
+                        <div class="cr-dimrow__head">
+                            <span>{{ group.name }}</span>
+                            <span data-dim-got="{{ group.index }}">已得 —</span>
+                        </div>
+                        <div class="cr-dimrow__bar"><i data-dim-bar="{{ group.index }}" style="width:0%"></i></div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="cr-card">
+            <div class="cr-card__body">
+                <div class="cr-actions">
+                    <button type="submit" class="btn-primary">保存</button>
+                    <a href="{% url 'customer_review_list' %}" class="btn-transparent">取消</a>
+                </div>
+                <p class="cr-submit-note">
+                    保存后按标准分值与分档规则在服务端重新核算合计与等级，前端显示值不作为入库依据。
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    {{ grades|json_script:"grade-spec" }}
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/customer-review.js' %}?v=20261104a" defer></script>
+{% endblock %}

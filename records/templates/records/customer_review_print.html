@@ -1,0 +1,68 @@
+{% extends 'records/customer_review_detail.html' %}
+{% load static %}
+
+{% block page_title %}{{ object.get_review_type_display }}（打印） - {{ object.customer_name }}{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+    /* 打印视图是独立页面，屏幕上也不显示导航外壳 —— 否则用户在这个页面按 Ctrl+P
+       之前看到的是「应用界面」，不确定导出的到底是哪部分。 */
+    .sidebar, .top-nav, .app-breadcrumb, .page-actions, .cr-side,
+    .skip-link, .sidebar-scrim, .mobile-menu-toggle { display: none !important; }
+    .main-content { margin: 0 !important; padding: 0 !important; }
+    #main { max-width: 860px; margin: 0 auto; padding: 24px 20px 48px; }
+    body { background: #fff !important; }
+    .cr-page { display: block; }
+    .cr-card { box-shadow: none; }
+    .cr-print-head { text-align: center; margin: 0 0 18px; }
+    .cr-print-head h1 {
+        font-family: var(--font-display);
+        font-size: 17pt;
+        font-weight: 600;
+        margin: 0 0 6px;
+        letter-spacing: 2px;
+    }
+    .cr-print-head .sub { font-size: 9.5pt; color: #555; }
+    .cr-sign {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 28px;
+        margin-top: 26px;
+        font-size: 9.5pt;
+        color: #333;
+    }
+    .cr-sign div { border-top: 1px solid #999; padding-top: 6px; }
+    .cr-print-note { margin-top: 14px; font-size: 8.5pt; color: #777; line-height: 1.7; }
+    @media print {
+        .cr-print-head { margin-bottom: 10mm; }
+        .cr-sign { margin-top: 14mm; }
+        .rv-detail[open] > summary { display: none; }
+    }
+</style>
+{% endblock %}
+
+{% block top_nav_actions %}{% endblock %}
+
+{% block print_title %}
+<div class="cr-print-head">
+    <h1>{{ object.get_review_type_display }}</h1>
+    <div class="sub">
+        {{ object.customer_name }}
+        {% if object.review_no %}　·　编号 {{ object.review_no }}{% endif %}
+        　·　{{ object.review_date|date:'Y 年 m 月 d 日' }}
+    </div>
+</div>
+{% endblock %}
+
+{% block print_foot %}
+<div class="cr-sign">
+    <div>编制人：{{ object.reviewer|default:"　　　　　" }}</div>
+    <div>复核人：　　　　　</div>
+    <div>审批人：{{ object.approver|default:"　　　　　" }}</div>
+</div>
+<p class="cr-print-note">
+    本表依据《客户经销商准入、信用评价及定期评估管理制度》附件填制。分值与等级按表单内列明的分档标准计算，
+    每项评分依据见「评分标准与依据」；未列明依据的评分项视为未取得有效凭证，按最低档计。
+</p>
+{% endblock %}

@@ -26,6 +26,9 @@ from django.urls import NoReverseMatch, reverse
 NAV_MAP = [
     ('/daily_record/', 'daily_record', '每日记录', 'daily_record_list'),
     ('/decoration/', 'decoration', '装修', 'decoration_list'),
+    # 穿行测试是客户评审下的子页面，长前缀必须排在 /customer_review/ 之前
+    ('/customer_review/walkthrough/', 'customer_review', '付款穿行测试', 'walkthrough_list'),
+    ('/customer_review/', 'customer_review', '客户评审', 'customer_review_list'),
     ('/customer_credit/', 'customer_credit', '客户账期', 'customer_credit_list'),
     ('/customer_complaint/', 'customer_complaint', '客户客诉', 'customer_complaint_list'),
     ('/customer_ledger/', 'customer_ledger', '客户台账', 'customer_ledger_list'),
@@ -60,7 +63,11 @@ SEGMENT_LABELS = {
     'new': '新增',
     'edit': '编辑',
     'detail': '详情',
+    'print': '打印',
+    'walkthrough': '付款穿行测试',
     'export': '导出',
+    'import': '导入',
+    'template': '导入模板',
     'delete': '删除',
     'incomplete': '待补录',
     'subjects': '保险标的',

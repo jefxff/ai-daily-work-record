@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import views_customer_review
 from . import views_expiry, views_reports, views_audit, views_workspace, views_insurance
 
 urlpatterns = [
@@ -26,6 +27,36 @@ urlpatterns = [
     path('customer_credit/delete/<int:pk>/', views.customer_credit_delete, name='customer_credit_delete'),
     path('customer_credit/export/', views.customer_credit_export, name='customer_credit_export'),
     
+
+    # 客户评审（信用评价 / 定期考评 / 现场审核）
+    path('customer_review/', views_customer_review.customer_review_list, name='customer_review_list'),
+    path('customer_review/add/<str:review_type>/', views_customer_review.review_add, name='customer_review_add'),
+    path('customer_review/detail/<int:pk>/', views_customer_review.review_detail, name='customer_review_detail'),
+    path('customer_review/edit/<int:pk>/', views_customer_review.review_edit, name='customer_review_edit'),
+    path('customer_review/print/<int:pk>/', views_customer_review.review_print, name='customer_review_print'),
+    path('customer_review/delete/<int:pk>/', views_customer_review.customer_review_delete, name='customer_review_delete'),
+    path('customer_review/ratio_preview/', views_customer_review.ratio_preview, name='customer_review_ratio_preview'),
+
+    # 客户评审：Excel 导出 / 模板 / 导入（勾稽在 customer_review_io 内）
+    path('customer_review/export/', views_customer_review.review_export_list, name='customer_review_export'),
+    path('customer_review/export/<int:pk>/', views_customer_review.review_export_one, name='customer_review_export_one'),
+    path('customer_review/template/', views_customer_review.review_template, name='customer_review_template'),
+    path('customer_review/import/', views_customer_review.review_import, name='customer_review_import'),
+    path('customer_review/import/confirm/', views_customer_review.review_import_confirm, name='customer_review_import_confirm'),
+
+    # 付款穿行测试（长前缀必须排在 /customer_review/ 之前，面包屑按前缀匹配）
+    path('customer_review/walkthrough/', views_customer_review.walkthrough_list, name='walkthrough_list'),
+    path('customer_review/walkthrough/add/', views_customer_review.walkthrough_add, name='walkthrough_add'),
+    path('customer_review/walkthrough/detail/<int:pk>/', views_customer_review.walkthrough_detail, name='walkthrough_detail'),
+    path('customer_review/walkthrough/edit/<int:pk>/', views_customer_review.walkthrough_edit, name='walkthrough_edit'),
+    path('customer_review/walkthrough/print/<int:pk>/', views_customer_review.walkthrough_print, name='walkthrough_print'),
+    path('customer_review/walkthrough/delete/<int:pk>/', views_customer_review.walkthrough_delete, name='walkthrough_delete'),
+    path('customer_review/walkthrough/export/', views_customer_review.walkthrough_export_list, name='walkthrough_export'),
+    path('customer_review/walkthrough/export/<int:pk>/', views_customer_review.walkthrough_export_one, name='walkthrough_export_one'),
+    path('customer_review/walkthrough/template/', views_customer_review.walkthrough_template, name='walkthrough_template'),
+    path('customer_review/walkthrough/import/', views_customer_review.walkthrough_import, name='walkthrough_import'),
+    path('customer_review/walkthrough/import/confirm/', views_customer_review.walkthrough_import_confirm, name='walkthrough_import_confirm'),
+
     # 客户客诉
     path('customer_complaint/', views.customer_complaint_list, name='customer_complaint_list'),
     path('customer_complaint/add/', views.customer_complaint_add, name='customer_complaint_add'),

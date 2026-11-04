@@ -720,3 +720,200 @@ class CustomerLedgerChangeLog(models.Model):
 
     def __str__(self):
         return f'{self.ledger_id} {self.field}: {self.old_value} -> {self.new_value}'
+
+
+# ============================================================================
+# 客户评审：信用评价 / 定期考评 / 现场审核
+# ----------------------------------------------------------------------------
+# 三张表共用一张主表，用 review_type 区分：
+#   credit  客户信用评价表（100 分，含财务基础数据录入）
+#   review  客户定期考评表（100 分）
+#   audit   客户现场审核表（不计分，四档判定）
+#
+# 为什么合并而不是三张表：三者的主体信息（客户、日期、经办人、状态）完全一致，
+# 区别只在评分项。合并后列表页能在一个视图里按类型筛选，也便于「同一客户先审核、
+# 再评价、后续定期考评」形成一条时间线。评分项差异用 item_scores / audit_verdicts
+# 两个 JSON 字段承载，键与 records/credit_spec.py 的 item_key(组, 项) 一一对应。
+# ============================================================================
+
+
+class CustomerReview(models.Model):
+    """客户评审单（信用评价 / 定期考评 / 现场审核）。"""
+
+    TYPE_CREDIT = 'credit'
+    TYPE_REVIEW = 'review'
+    TYPE_AUDIT = 'audit'
+    REVIEW_TYPES = [
+        (TYPE_CREDIT, '客户信用评价'),
+        (TYPE_REVIEW, '客户定期考评'),
+        (TYPE_AUDIT, '客户现场审核'),
+    ]
+
+    CUSTOMER_TYPES = [('经销商', '经销商'), ('终端客户', '终端客户'), ('代加工客户', '代加工客户')]
+
+    review_type = models.CharField('表单类型', max_length=20, choices=REVIEW_TYPES,
+                                   default=TYPE_CREDIT, db_index=True)
+    review_no = models.CharField('表单编号', max_length=50, blank=True, default='')
+    customer_name = models.CharField('客户全称', max_length=100, db_index=True)
+    customer_code = models.CharField('客户编码', max_length=50, blank=True, default='')
+    customer_type = models.CharField('客户类型', max_length=20, choices=CUSTOMER_TYPES,
+                                     default='经销商')
+    review_date = models.DateField('表单日期')
+
+    # —— 各表差异化表头字段（按 review_type 显示，未涉及的留空）——
+    period = models.CharField('考评周期', max_length=50, blank=True, default='',
+                              help_text='如「2026 年度」「2026 年第 3 季度」')
+    settle_method = models.CharField('结算方式', max_length=50, blank=True, default='')
+    region = models.CharField('合作区域', max_length=50, blank=True, default='')
+    prev_grade = models.CharField('原信用等级', max_length=20, blank=True, default='')
+    prev_limit = models.DecimalField('原授信额度（万元）', max_digits=14, decimal_places=2,
+                                     null=True, blank=True)
+    apply_no = models.CharField('对应申请编号', max_length=50, blank=True, default='')
+    audit_address = models.CharField('审核地址', max_length=200, blank=True, default='')
+    companion = models.CharField('陪同人员', max_length=100, blank=True, default='')
+
+    # —— 财务基础数据（万元）——
+    total_assets = models.DecimalField('资产总额', max_digits=14, decimal_places=2, null=True, blank=True)
+    total_liabilities = models.DecimalField('负债总额', max_digits=14, decimal_places=2, null=True, blank=True)
+    current_assets = models.DecimalField('流动资产', max_digits=14, decimal_places=2, null=True, blank=True)
+    current_liabilities = models.DecimalField('流动负债', max_digits=14, decimal_places=2, null=True, blank=True)
+    inventory = models.DecimalField('存货', max_digits=14, decimal_places=2, null=True, blank=True)
+    accounts_receivable = models.DecimalField('应收账款', max_digits=14, decimal_places=2, null=True, blank=True)
+    cash = models.DecimalField('货币资金', max_digits=14, decimal_places=2, null=True, blank=True)
+    interest_debt = models.DecimalField('有息负债', max_digits=14, decimal_places=2, null=True, blank=True)
+    revenue = models.DecimalField('营业收入（本期）', max_digits=14, decimal_places=2, null=True, blank=True)
+    prev_revenue = models.DecimalField('营业收入（上期）', max_digits=14, decimal_places=2, null=True, blank=True)
+    net_profit = models.DecimalField('净利润', max_digits=14, decimal_places=2, null=True, blank=True)
+    operating_cash_flow = models.DecimalField('经营活动现金流量净额', max_digits=14, decimal_places=2,
+                                              null=True, blank=True)
+
+    # —— 由基础数据算出的比率（保存时重算并落库，便于列表检索与历史留档）——
+    # 落库而不是每次现算：财务数据一经保存即成为当期结论的依据，后续改了基础数据
+    # 也不应悄悄改变已出具的评价结果。
+    net_assets = models.DecimalField('净资产', max_digits=14, decimal_places=2, null=True, blank=True)
+    debt_ratio = models.DecimalField('资产负债率（%）', max_digits=8, decimal_places=2, null=True, blank=True)
+    current_ratio = models.DecimalField('流动比率', max_digits=8, decimal_places=2, null=True, blank=True)
+    quick_ratio = models.DecimalField('速动比率', max_digits=8, decimal_places=2, null=True, blank=True)
+    cash_ratio = models.DecimalField('现金比率', max_digits=8, decimal_places=2, null=True, blank=True)
+    ar_turnover = models.DecimalField('应收账款周转率（次）', max_digits=8, decimal_places=2, null=True, blank=True)
+    revenue_growth = models.DecimalField('营业收入增长率（%）', max_digits=8, decimal_places=2, null=True, blank=True)
+    net_margin = models.DecimalField('净利润率（%）', max_digits=8, decimal_places=2, null=True, blank=True)
+    cash_debt_ratio = models.DecimalField('经营现金流/有息负债（%）', max_digits=8, decimal_places=2,
+                                          null=True, blank=True)
+
+    # —— 评分结果 ——
+    item_scores = models.JSONField('评分明细', default=dict, blank=True,
+                                   help_text='{"g0i0": 5, ...}，键对应评分规则中的组/项序号')
+    total_score = models.DecimalField('合计得分', max_digits=6, decimal_places=1, default=0)
+    grade = models.CharField('评定等级', max_length=20, blank=True, default='')
+
+    # —— 现场审核结果 ——
+    audit_verdicts = models.JSONField('审核判定', default=dict, blank=True,
+                                      help_text='{"r0": "符合", ...}')
+    audit_notes = models.JSONField('审核情况说明', default=dict, blank=True,
+                                   help_text='{"r0": "现场查看证照原件，编号 ...", ...}')
+    audit_conclusion = models.CharField('审核结论', max_length=20, blank=True, default='')
+
+    # —— 结论与授信 ——
+    conclusion = models.TextField('结论与整改要求', blank=True, default='')
+    credit_limit = models.DecimalField('建议信用额度（万元）', max_digits=14, decimal_places=2,
+                                       null=True, blank=True)
+    credit_days = models.IntegerField('建议信用期限（天）', null=True, blank=True)
+    reviewer = models.CharField('编制人', max_length=50, blank=True, default='')
+    approver = models.CharField('审批人', max_length=50, blank=True, default='')
+
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name='创建人', null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='customer_reviews',
+    )
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
+    updated_at = models.DateTimeField('更新时间', auto_now=True)
+
+    class Meta:
+        verbose_name = '客户评审'
+        verbose_name_plural = '客户评审'
+        ordering = ['-review_date', '-id']
+        indexes = [
+            models.Index(fields=['review_type', 'review_date'], name='idx_review_type_date'),
+            models.Index(fields=['customer_name'], name='idx_review_customer'),
+        ]
+
+    def __str__(self):
+        return f'{self.get_review_type_display()} - {self.customer_name}'
+
+    @property
+    def title(self):
+        return self.get_review_type_display()
+
+    @property
+    def is_scored(self):
+        return self.review_type in (self.TYPE_CREDIT, self.TYPE_REVIEW)
+
+    @property
+    def needs_finance(self):
+        """只有信用评价表需要录财务基础数据。"""
+        return self.review_type == self.TYPE_CREDIT
+
+    @property
+    def grade_tone(self):
+        """等级对应的颜色语义，模板里拼 status-badge 用。"""
+        return {'A': 'success', 'B': 'info', 'C': 'warning', 'D': 'danger'}.get(
+            (self.grade or '')[:1], 'default'
+        )
+
+
+class PaymentWalkthrough(models.Model):
+    """客户 / 供应商付款穿行测试。
+
+    一笔业务从采购申请走到记账，逐环节确认控制点是否真的执行。
+    样本以 JSON 存储（samples 字段），因为一个测试的样本笔数不固定，
+    每笔样本都要走 8 个控制点；拆成三张表反而让一次录入要做十几条插入。
+    """
+
+    PAYEE_TYPES = [('供应商', '供应商'), ('客户', '客户')]
+
+    test_no = models.CharField('测试编号', max_length=50, blank=True, default='')
+    payee_name = models.CharField('被测试对象', max_length=100, db_index=True)
+    payee_type = models.CharField('对象类型', max_length=20, choices=PAYEE_TYPES, default='供应商')
+    period_start = models.DateField('测试期间起')
+    period_end = models.DateField('测试期间止')
+    test_date = models.DateField('测试执行日期')
+
+    sample_method = models.CharField('抽样方法', max_length=30, blank=True, default='随机抽样')
+    population_size = models.IntegerField('总体笔数', null=True, blank=True)
+    sample_size = models.IntegerField('抽样笔数', null=True, blank=True)
+
+    # 账期执行核对：表头记「与被测试对象约定的账期」，样本可逐笔覆盖
+    terms_text = models.CharField('账期约定', max_length=100, blank=True, default='')
+    terms_days = models.IntegerField('约定账期天数', null=True, blank=True)
+    terms_base = models.CharField('账期起算口径', max_length=20, blank=True, default='验收日')
+
+    samples = models.JSONField('样本明细', default=list, blank=True)
+    conclusion = models.CharField('测试结论', max_length=20, blank=True, default='')
+    defect_summary = models.TextField('缺陷汇总', blank=True, default='')
+    suggestion = models.TextField('整改建议', blank=True, default='')
+
+    tester = models.CharField('测试人', max_length=50, blank=True, default='')
+    reviewer = models.CharField('复核人', max_length=50, blank=True, default='')
+
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name='创建人', null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='payment_walkthroughs',
+    )
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
+    updated_at = models.DateTimeField('更新时间', auto_now=True)
+
+    class Meta:
+        verbose_name = '付款穿行测试'
+        verbose_name_plural = '付款穿行测试'
+        ordering = ['-test_date', '-id']
+        indexes = [models.Index(fields=['payee_name'], name='idx_walkthrough_payee')]
+
+    def __str__(self):
+        return f'穿行测试 - {self.payee_name}'
+
+    @property
+    def conclusion_tone(self):
+        return {'有效': 'success', '基本有效': 'info', '部分有效': 'warning', '无效': 'danger'}.get(
+            self.conclusion, 'default'
+        )

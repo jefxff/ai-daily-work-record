@@ -1,0 +1,163 @@
+{% extends 'records/base.html' %}
+{% load static %}
+{% load accounts_tags %}
+
+{% block page_title %}客户评审 - 每日工作记录管理网站{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/customer-review.css' %}?v=20261104a" rel="stylesheet">
+<style>
+    /* 列预算（合计 100%）：表格固定布局，长文本列截断 */
+    .table { min-width: 1040px; }
+    .table--fixed th:nth-child(1) { width: 10%; }
+    .table--fixed th:nth-child(2) { width: 17%; }
+    .table--fixed th:nth-child(3) { width: 10%; }
+    .table--fixed th:nth-child(4) { width: 7%; }
+    .table--fixed th:nth-child(5) { width: 9%; }
+    .table--fixed th:nth-child(6) { width: 11%; }
+    .table--fixed th:nth-child(7) { width: 13%; }
+    .table--fixed th:nth-child(8) { width: 7%; }
+    .table--fixed th:nth-child(9) { width: 5%; }
+    .table--fixed th:nth-child(10) { width: 11%; }
+    .table td { font-variant-numeric: tabular-nums; }
+    /* 附件数：小圆点数字，没有附件时不占位 */
+    .att-count { display: inline-flex; align-items: center; gap: 3px; font-size: 0.78rem; color: var(--c-text-secondary); }
+    .att-count b { font-weight: 600; color: var(--c-primary-active); }
+    .att-count svg { width: 13px; height: 13px; }
+</style>
+{% endblock %}
+
+{% block top_nav_actions %}
+    <form class="d-flex gap-2" method="GET" id="searchForm">
+        {% if review_type_filter %}<input type="hidden" name="review_type" value="{{ review_type_filter }}">{% endif %}
+        <input class="search-input" type="search" placeholder="搜索客户名称、编码或表单编号"
+               name="search" value="{{ search_term }}" aria-label="搜索客户名称、编码或表单编号" maxlength="100">
+        <button class="btn-transparent" type="submit">搜索</button>
+    </form>
+    <a href="{% url 'walkthrough_list' %}" class="btn-transparent">付款穿行测试</a>
+    {% can "customer_review" "create" %}
+    <a href="{% url 'customer_review_import' %}" class="btn-transparent">导入Excel</a>
+    {% endcan %}
+    <a href="{% url 'customer_review_template' %}" class="btn-transparent">下载模板</a>
+    <a href="{% url 'customer_review_export' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}" class="btn-transparent">导出Excel</a>
+    {% can "customer_review" "create" %}
+    <details class="cr-add">
+        <summary class="btn-primary" role="button">新增评审单</summary>
+        <div class="cr-add__menu">
+            <a href="{% url 'customer_review_add' 'credit' %}">客户信用评价表</a>
+            <a href="{% url 'customer_review_add' 'review' %}">客户定期考评表</a>
+            <a href="{% url 'customer_review_add' 'audit' %}">客户现场审核表</a>
+        </div>
+    </details>
+    {% endcan %}
+{% endblock %}
+
+{% block content %}
+    <div class="page-header">
+        <h1>客户评审<span class="total-hint">共 {{ reviews.paginator.count }} 条记录</span></h1>
+        <div class="filter-chips">
+            {% if search_term %}
+            <a class="filter-chip" href="{% querystring search=None page=None %}">搜索：{{ search_term }} ✕</a>
+            {% endif %}
+            {% if customer_name_filter %}
+            <a class="filter-chip" href="{% querystring customer_name=None page=None %}">客户：{{ customer_name_filter }} ✕</a>
+            {% endif %}
+            {% if customer_type_filter %}
+            <a class="filter-chip" href="{% querystring customer_type=None page=None %}">客户类型：{{ customer_type_filter }} ✕</a>
+            {% endif %}
+            {% if grade_filter %}
+            <a class="filter-chip" href="{% querystring grade=None page=None %}">等级：{{ grade_filter }} ✕</a>
+            {% endif %}
+        </div>
+    </div>
+
+    {% comment %}
+    类型页签用链接切换而不是前端 Tab：三种表单的筛选、分页、排序都要落到 URL 上，
+    否则刷新/分享链接会回到「全部」。页签只改 review_type 一个参数，其余条件保留。
+    {% endcomment %}
+    <nav class="cr-tabs" aria-label="评审表单类型">
+        <a href="{% querystring review_type=None page=None %}" {% if not review_type_filter %}class="on" aria-current="page"{% endif %}>全部</a>
+        {% for value, label in review_types %}
+        <a href="{% querystring review_type=value page=None %}" {% if review_type_filter == value %}class="on" aria-current="page"{% endif %}>{{ label }}</a>
+        {% endfor %}
+    </nav>
+
+    <div class="table-container">
+        <div class="table-responsive">
+            <table class="table--cards table table-sticky table--fixed">
+                <thead>
+                    <tr>
+                        <th scope="col">编号</th>
+                        <th scope="col">客户全称</th>
+                        <th scope="col">表单类型</th>
+                        <th scope="col">客户类型</th>
+                        <th scope="col">表单日期</th>
+                        <th scope="col">得分 / 等级</th>
+                        <th scope="col">结论</th>
+                        <th scope="col">编制人</th>
+                        <th scope="col">附件</th>
+                        <th scope="col" class="col-actions">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in reviews %}
+                    <tr data-href="{% url 'customer_review_detail' r.id %}">
+                        <td data-label="编号" class="cell-ellipsis">{{ r.review_no|default:"—" }}</td>
+                        <td data-label="客户全称" class="cell-ellipsis" title="{{ r.customer_name }}">{{ r.customer_name }}</td>
+                        <td data-label="表单类型">{{ r.get_review_type_display }}</td>
+                        <td data-label="客户类型">{{ r.customer_type }}</td>
+                        <td data-label="表单日期">{{ r.review_date|date:'Y-m-d' }}</td>
+                        <td data-label="得分 / 等级">
+                            {% if r.review_type == 'audit' %}
+                                {% if r.audit_conclusion %}
+                                <span class="status-badge {% if r.audit_conclusion == '通过' %}success{% elif r.audit_conclusion == '有条件通过' %}warning{% else %}danger{% endif %}">{{ r.audit_conclusion }}</span>
+                                {% else %}
+                                <span class="status-badge default">未判定</span>
+                                {% endif %}
+                            {% else %}
+                            <div class="cr-score-cell">
+                                <b>{{ r.total_score|floatformat:0 }}</b>
+                                <small>/ 100</small>
+                                {% if r.grade %}
+                                <span class="status-badge {{ r.grade_tone }}">{{ r.grade }}</span>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td data-label="结论" class="cell-clamp" title="{{ r.conclusion|default:'' }}">
+                            <span>{{ r.conclusion|default:"—"|truncatechars:40 }}</span>
+                        </td>
+                        <td data-label="编制人">{{ r.reviewer|default:"—" }}</td>
+                        <td data-label="附件">
+                            {% if r.attachment_count %}
+                            <span class="att-count" title="附件 {{ r.attachment_count }} 个"><b>{{ r.attachment_count }}</b></span>
+                            {% else %}—{% endif %}
+                        </td>
+                        <td data-label="操作" class="col-actions">
+                            <div class="u-toolbar-inline">
+                                <a href="{% url 'customer_review_detail' r.id %}" class="btn-transparent btn-sm">查看</a>
+                                <a href="{% url 'customer_review_export_one' r.id %}" class="btn-transparent btn-sm">导出</a>
+                                {% can "customer_review" "update" %}
+                                <a href="{% url 'customer_review_edit' r.id %}" class="btn-transparent btn-sm">编辑</a>
+                                {% endcan %}
+                                {% can "customer_review" "delete" %}
+                                <form class="u-inline" method="post" action="{% url 'customer_review_delete' r.id %}"
+                                      data-confirm="确定要删除这份{{ r.get_review_type_display }}吗？删除后不可恢复。">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn-transparent btn-sm btn-delete">删除</button>
+                                </form>
+                                {% endcan %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    {% include 'records/_empty_row.html' with colspan=10 %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% include 'records/_pagination.html' with page_obj=reviews %}
+    </div>
+{% endblock %}
+
+
