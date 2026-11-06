@@ -487,6 +487,18 @@ h1, h2, h3, h4, h5, h6, .page-title, .section-title, .top-nav-title, .sidebar-lo
             .page-actions .btn-primary { height: 40px; padding: 0 14px; }
             .page-actions .search-input { min-width: 0; flex: 1 1 180px; }
         }
+        /* 窄屏下详情页「标题左、操作右」同排不成立：操作条 flex:0 0 auto 按
+           max-content 占位（3~4 枚按钮 ≈350px+），把同行为 flex:1 1 0% 的标题
+           挤到只剩一行一字的竖条。≤960px 让操作条退回独占整行（排在标题与
+           面包屑之后、正文之前），标题恢复整行宽度。需 !important 压过
+           D-2 内联规则的 order/flex 标记。 */
+        @media (max-width: 960px) {
+            main.container:has(> .page-header) > .page-actions.page-actions--inline {
+                order: 3 !important;
+                flex: 1 1 100% !important;
+                justify-content: flex-start;
+            }
+        }
         @media (max-width: 640px) {
             .page-actions > form { flex: 1 1 100%; }
             .page-actions .btn-transparent,
