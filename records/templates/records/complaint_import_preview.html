@@ -14,13 +14,71 @@
         <p class="form-text">确认无误后点击「确认导入」。{% if overwrite %}已选择覆盖已有字段。{% else %}当前为仅补空模式。{% endif %}</p>
     </div>
 
+    {# 列检查固定在预览页最上方，结构参考档案台账导入的 bad_cells 卡片 #}
+    <section class="column-check" id="column-check" aria-label="列检查">
+        <div class="column-check__head">
+            <h2>列检查</h2>
+            <span class="column-check__meta">识别到 {{ header_report.recognized_count }} / {{ header_report.total_columns }} 列</span>
+        </div>
+
+        {% if header_report.issues %}
+        <ul class="column-check__headers">
+            {% for level, text in header_report.issues %}
+            <li class="column-check__header-item column-check__header-item--{{ level }}">{{ text }}</li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="column-check__ok">表头列检查通过，{{ header_report.recognized_count }} 列全部识别。</p>
+        {% endif %}
+
+        {% if preview.column_issues %}
+        <p class="column-check__summary-title">共 {{ preview.column_issues|length }} 类异常列、{{ preview.issue_rows|length }} 处异常，均为阻断错误，修正后才能导入</p>
+        <div class="table-responsive">
+            <table class="table table-sm column-check__summary">
+                <thead>
+                    <tr><th>异常列</th><th>异常类型</th><th>影响行数</th><th>行号</th></tr>
+                </thead>
+                <tbody>
+                    {% for group in preview.column_issues %}
+                    <tr>
+                        <td data-label="异常列"><span class="column-check__badge">{{ group.column }}</span></td>
+                        <td data-label="异常类型">{{ group.kind }}</td>
+                        <td data-label="影响行数">{{ group.count }}</td>
+                        <td data-label="行号">{{ group.row_label }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <details class="column-check__details">
+            <summary>展开逐条明细（{{ preview.issue_rows|length }} 条，按行号 / 列 / 原因）</summary>
+            <div class="column-check__scroll">
+                <table class="table table-sm">
+                    <thead><tr><th>行号</th><th>列</th><th>原因</th></tr></thead>
+                    <tbody>
+                        {% for detail in preview.issue_rows %}
+                        <tr>
+                            <td data-label="行号">{{ detail.row }}</td>
+                            <td data-label="列">{{ detail.column }}</td>
+                            <td data-label="原因">{{ detail.reason }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </details>
+        {% else %}
+        <p class="column-check__ok">数据列检查通过，未发现异常单元格。</p>
+        {% endif %}
+    </section>
+
     {% if preview.errors %}
-    <div class="alert alert-danger" role="alert">
-        <strong>发现 {{ preview.errors|length }} 个阻断错误，修正后才能导入：</strong>
+    <details class="alert alert-danger import-errors" id="import-errors">
+        <summary>发现 {{ preview.errors|length }} 个阻断错误，修正后才能导入（展开查看逐行清单）</summary>
         <ul>
             {% for error in preview.errors %}<li>{{ error }}</li>{% endfor %}
         </ul>
-    </div>
+    </details>
     {% endif %}
 
     {% if preview.warnings %}
@@ -81,8 +139,13 @@
         {% csrf_token %}
         <input type="hidden" name="payload" value="{{ payload }}">
         <input type="hidden" name="overwrite" value="{% if overwrite %}1{% else %}0{% endif %}">
-        <button type="submit" class="btn btn-primary" {% if preview.errors %}disabled title="请先修正阻断错误"{% endif %}>确认导入</button>
-        <a href="{% url 'complaint_import' %}" class="btn btn-outline-secondary">取消</a>
+        <div class="import-confirm__actions">
+            <button type="submit" class="btn btn-primary" {% if preview.errors %}disabled title="请先修正阻断错误"{% endif %}>确认导入</button>
+            <a href="{% url 'complaint_import' %}" class="btn btn-outline-secondary">取消</a>
+        </div>
+        {% if preview.errors %}
+        <p class="import-confirm__hint">存在 {{ preview.errors|length }} 个阻断错误，暂无法导入。<a href="#column-check">查看上方列检查</a></p>
+        {% endif %}
     </form>
 {% endblock %}
 
@@ -96,6 +159,32 @@
     .badge-error { background: #fdeaea; color: #b42318; }
     .changes-cell { max-width: 520px; white-space: normal !important; }
     .change-chip { display: inline-block; margin: 2px 4px 2px 0; padding: 2px 6px; background: var(--c-surface-sunken); border-radius: 4px; font-size: 12px; }
-    .import-confirm { margin: 1.5rem 0 2rem; display: flex; gap: 0.75rem; }
+
+    /* 列检查卡片：预览页最上方，表头差异 + 按列汇总 + 逐条明细 */
+    .column-check { margin: 1rem 0 1.25rem; border: 1px solid var(--c-border); border-radius: var(--r-sm); background: var(--c-surface); overflow: hidden; }
+    .column-check__head { display: flex; align-items: baseline; gap: 0.75rem; padding: 0.7rem 1rem; border-bottom: 1px solid var(--c-border); background: var(--c-surface-sunken); }
+    .column-check__head h2 { margin: 0; font-size: 1rem; font-weight: 600; color: var(--c-text); }
+    .column-check__meta { color: var(--c-text-secondary); font-size: 0.8rem; }
+    .column-check__headers { margin: 0; padding: 0.6rem 1rem 0.6rem 1.25rem; }
+    .column-check__header-item { font-size: 0.85rem; line-height: 1.7; }
+    .column-check__header-item--danger { color: var(--c-danger); }
+    .column-check__header-item--warning { color: var(--c-warning); }
+    .column-check__ok { margin: 0; padding: 0.75rem 1rem; color: var(--c-success); font-size: 0.875rem; }
+    .column-check__summary-title { margin: 0; padding: 0.55rem 1rem; color: var(--c-danger); font-size: 0.85rem; font-weight: 600; }
+    .column-check__summary { margin: 0; }
+    .column-check__badge { display: inline-block; padding: 2px 8px; border-radius: 999px; background: var(--c-danger-bg); color: var(--c-danger); font-size: 0.8rem; }
+    .column-check__details { border-top: 1px solid var(--c-border); }
+    .column-check__details > summary { padding: 0.6rem 1rem; cursor: pointer; font-size: 0.875rem; color: var(--c-text-secondary); }
+    .column-check__scroll { max-height: 260px; overflow-y: auto; }
+
+    /* 逐行错误清单默认收起：明细已在列检查卡片里按列列出 */
+    .import-errors > summary { cursor: pointer; font-weight: 600; }
+    .import-errors ul { margin: 0.5rem 0 0; padding-left: 1.25em; }
+
+    .import-confirm { margin: 1.5rem 0 2rem; }
+    .import-confirm__actions { display: flex; gap: 0.75rem; }
+    .import-confirm__hint { margin: 0.6rem 0 0; color: var(--c-danger); font-size: 0.875rem; }
+    .import-confirm__hint a { text-decoration: underline; }
+    .import-confirm .btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
 </style>
 {% endblock %}

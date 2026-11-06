@@ -926,10 +926,11 @@ def complaint_import(request):
             'error': '请选择要导入的 Excel 文件',
         })
     try:
-        rows = complaint_io.parse_excel(upload)
+        raw_headers, rows = complaint_io.parse_excel_with_headers(upload)
         if not rows:
             raise ValueError('Excel 中没有可导入的数据行')
         preview = complaint_io.build_preview(rows, overwrite=overwrite)
+        header_report = complaint_io.build_header_report(raw_headers)
     except ValueError as exc:
         return render(request, 'records/complaint_import.html', {
             'error': str(exc),
@@ -941,6 +942,7 @@ def complaint_import(request):
         })
     return render(request, 'records/complaint_import_preview.html', {
         'preview': preview,
+        'header_report': header_report,
         'payload': payload,
         'overwrite': overwrite,
         'filename': upload.name,

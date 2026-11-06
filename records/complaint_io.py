@@ -208,20 +208,84 @@ def _read_xls(f):
     return headers, data_rows
 
 
-def parse_excel(f):
-    """解析 Excel，返回 [{表头: 文本}]；表头缺失/行数超限时抛 ValueError。"""
+def _parse_excel(f):
+    """解析 Excel，返回 (原始表头, 数据行)；表头与行数校验在此完成。"""
     ext = _validate_file(f)
     try:
         f.seek(0)
     except (AttributeError, OSError):
         pass
-    headers, rows = _read_xls(f) if ext == 'XLS' else _read_xlsx(f)
-    headers = [h for h in headers if h]
+    raw_headers, rows = _read_xls(f) if ext == 'XLS' else _read_xlsx(f)
+    headers = [h for h in raw_headers if h]
     if _REQUIRED_HEADER not in headers:
         raise ValueError('Excel 缺少必填列「案号」，请使用系统提供的导入模板')
     if len(rows) > MAX_IMPORT_ROWS:
         raise ValueError(f'单次导入最多 {MAX_IMPORT_ROWS} 行，当前 {len(rows)} 行')
-    return rows
+    return raw_headers, rows
+
+
+def parse_excel(f):
+    """解析 Excel，返回 [{表头: 文本}]；表头缺失/行数超限时抛 ValueError。"""
+    return _parse_excel(f)[1]
+
+
+def parse_excel_with_headers(f):
+    """同 parse_excel，额外返回原始表头（含空表头列），供预览页做列检查。"""
+    return _parse_excel(f)
+
+
+# ---------------------------------------------------------------- 表头列检查
+
+def _col_letter(index):
+    """1-based 列序号 -> Excel 列字母（1 -> A，27 -> AA）。"""
+    letters = ''
+    while index > 0:
+        index, rem = divmod(index - 1, 26)
+        letters = chr(65 + rem) + letters
+    return letters
+
+
+def build_header_report(raw_headers):
+    """表头列检查：缺失列 / 未识别列 / 空表头列 / 列顺序。
+
+    只生成展示数据，不改变解析与校验口径（系统按表头名取值）。
+    """
+    present = [h for h in raw_headers if h]
+    expected = list(COMPLAINT_HEADERS)
+    known = [h for h in present if h in expected]
+    unknown = [h for h in present if h not in expected]
+    missing_required = [h for h in REQUIRED_HEADERS if h not in present]
+    missing_optional = [h for h in expected if h not in present and h not in REQUIRED_HEADERS]
+    blank_columns = [_col_letter(i) for i, h in enumerate(raw_headers, 1) if not h]
+    order_mismatch = known != [h for h in expected if h in present]
+
+    issues = []
+    if missing_required:
+        issues.append(('danger', '缺失必填列：' + '、'.join(missing_required)))
+    if unknown:
+        issues.append(('warning', '未识别列：' + '、'.join(unknown) + '（导入时忽略）'))
+    if blank_columns:
+        issues.append((
+            'warning',
+            f'空表头列 {len(blank_columns)} 个（{"、".join(blank_columns)} 列），导入时忽略',
+        ))
+    if missing_optional:
+        issues.append(('warning', '缺少可选列：' + '、'.join(missing_optional)))
+    if order_mismatch:
+        issues.append(('warning', '列顺序与模板不同；系统按表头名取值，不影响导入'))
+
+    return {
+        'total_columns': len(raw_headers),
+        'recognized': known,
+        'recognized_count': len(known),
+        'unknown': unknown,
+        'missing_required': missing_required,
+        'missing_optional': missing_optional,
+        'blank_columns': blank_columns,
+        'order_mismatch': order_mismatch,
+        'issues': issues,
+        'ok': not issues,
+    }
 
 
 # ---------------------------------------------------------------- 行 -> 字段
@@ -264,33 +328,84 @@ def _changes(values, obj, overwrite):
     return changes
 
 
-def _row_errors(index, values, row):
-    """单行阻断错误列表（必填 / 长度 / 枚举 / 金额）。"""
-    errors = []
+def _row_error_items(index, values, row):
+    """单行阻断错误的结构化列表 [(列名, 异常类型, 完整文案)]。
+
+    完整文案与改造前 _row_errors 逐字一致；按列汇总与逐行清单共用同一来源，
+    避免展示层再靠字符串猜列名。
+    """
+    items = []
     for header in REQUIRED_HEADERS:
         if header == AMOUNT_HEADER:
             continue
         field = TEXT_FIELDS.get(header)
         if _empty(values.get(field)):
-            errors.append(f'第 {index} 行：{header}为空')
+            items.append((header, '为空', f'第 {index} 行：{header}为空'))
     for field, (limit, label) in MAX_LENGTHS.items():
         text = values.get(field) or ''
         if len(text) > limit:
-            errors.append(f'第 {index} 行：{label}超过 {limit} 个字符')
+            items.append((label, '超长', f'第 {index} 行：{label}超过 {limit} 个字符'))
     progress = values.get('progress')
     if progress and progress not in [c[0] for c in Complaint.PROGRESS_CHOICES]:
         allowed = ' / '.join(c[0] for c in Complaint.PROGRESS_CHOICES)
-        errors.append(f'第 {index} 行：进度「{progress}」不是有效状态（可选：{allowed}）')
+        items.append((
+            '进度', '枚举不符',
+            f'第 {index} 行：进度「{progress}」不是有效状态（可选：{allowed}）',
+        ))
     # 金额单独判：空单元格报「为空」，有原文却解析不出数值报「无法识别」，两者不重复
     raw_amount = _cell_text(row.get(AMOUNT_HEADER))
     amount = values.get(AMOUNT_FIELD)
     if not raw_amount:
-        errors.append(f'第 {index} 行：{AMOUNT_HEADER}为空')
+        items.append((AMOUNT_HEADER, '为空', f'第 {index} 行：{AMOUNT_HEADER}为空'))
     elif amount is None:
-        errors.append(f'第 {index} 行：涉案金额无法识别为数值')
+        items.append((AMOUNT_HEADER, '无法识别为数值', f'第 {index} 行：涉案金额无法识别为数值'))
     if amount is not None and (amount > MAX_AMOUNT or amount < 0):
-        errors.append(f'第 {index} 行：涉案金额 {amount} 超出允许范围（0 ~ {MAX_AMOUNT}）')
-    return errors
+        items.append((
+            AMOUNT_HEADER, '超出范围',
+            f'第 {index} 行：涉案金额 {amount} 超出允许范围（0 ~ {MAX_AMOUNT}）',
+        ))
+    return items
+
+
+def _row_errors(index, values, row):
+    """单行阻断错误列表（必填 / 长度 / 枚举 / 金额）。"""
+    return [text for _column, _kind, text in _row_error_items(index, values, row)]
+
+
+def _compress_rows(numbers):
+    """行号列表压成区间文案：[15,16,18,28..45] -> '15、16、18、28-45'。"""
+    if not numbers:
+        return ''
+    parts = []
+    start = prev = numbers[0]
+    for num in numbers[1:]:
+        if num == prev + 1:
+            prev = num
+            continue
+        parts.append(str(start) if start == prev else f'{start}-{prev}')
+        start = prev = num
+    parts.append(str(start) if start == prev else f'{start}-{prev}')
+    return '、'.join(parts)
+
+
+def _summarize_column_issues(issue_rows):
+    """按 (列名, 异常类型) 汇总，供预览页顶部展示「哪些列异常」。"""
+    groups = {}
+    for item in issue_rows:
+        key = (item['column'], item['kind'])
+        group = groups.setdefault(key, {
+            'column': item['column'], 'kind': item['kind'],
+            'count': 0, 'rows': [],
+        })
+        group['count'] += 1
+        group['rows'].append(item['row'])
+    order = {header: i for i, header in enumerate(COMPLAINT_HEADERS)}
+    result = []
+    for group in groups.values():
+        group['row_label'] = _compress_rows(sorted(set(group['rows'])))
+        result.append(group)
+    result.sort(key=lambda g: (-g['count'], order.get(g['column'], 999), g['kind']))
+    return result
 
 
 # ---------------------------------------------------------------- 预览
@@ -314,17 +429,25 @@ def _match_spec(values):
 
 
 def build_preview(rows, overwrite=False):
-    """构建导入预览：items / errors / warnings / summary。
+    """构建导入预览：items / errors / warnings / summary / column_issues。
 
     errors 为阻断错误（确认阶段整批拒绝）；warnings 为不影响导入的提示。
+    column_issues / issue_rows 只用于预览页展示，不参与校验口径。
     """
     items, errors, warnings = [], [], []
+    issue_rows = []
     seen_case = {}
 
     parsed = []
     for index, row in enumerate(rows, start=2):
         values = row_to_values(row)
-        parsed.append((index, values, _row_errors(index, values, row)))
+        error_items = _row_error_items(index, values, row)
+        for column, kind, text in error_items:
+            issue_rows.append({
+                'row': index, 'column': column, 'kind': kind,
+                'text': text, 'reason': text.split('：', 1)[-1],
+            })
+        parsed.append((index, values, [text for _c, _k, text in error_items]))
 
     # 组合键（占位案号行）在文件内出现次数：同组多行无法区分，需跳过
     combo_counts = {}
@@ -343,9 +466,12 @@ def build_preview(rows, overwrite=False):
         matched_by, lookup, dedupe_key = _match_spec(values)
         if matched_by == '案号':
             if dedupe_key in seen_case:
-                errors.append(
-                    f'第 {index} 行：案号「{dedupe_key[1]}」与第 {seen_case[dedupe_key]} 行重复'
-                )
+                text = f'第 {index} 行：案号「{dedupe_key[1]}」与第 {seen_case[dedupe_key]} 行重复'
+                errors.append(text)
+                issue_rows.append({
+                    'row': index, 'column': '案号', 'kind': '文件内重复',
+                    'text': text, 'reason': text.split('：', 1)[-1],
+                })
                 continue
             seen_case[dedupe_key] = index
 
@@ -412,6 +538,8 @@ def build_preview(rows, overwrite=False):
         'errors': errors,
         'warnings': warnings,
         'summary': summary,
+        'column_issues': _summarize_column_issues(issue_rows),
+        'issue_rows': issue_rows,
     }
 
 
