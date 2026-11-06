@@ -1,4 +1,4 @@
-from django.contrib import messages
+﻿from django.contrib import messages
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
 from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest, Http404
@@ -15,6 +15,7 @@ from .audit import log_operation, snapshot
 from .crud import make_delete_view, make_export_view, make_form_view, make_list_view
 from . import insurance_grouping, insurance_services
 from . import customer_ledger_import as ledger_io
+from . import complaint_io
 from django.utils import timezone
 from accounts.decorators import perm_required, require_any_module
 from accounts.services import has_perm, visible_modules
@@ -907,18 +908,78 @@ complaint_delete = make_delete_view(
 complaint_export = make_export_view(
     model=Complaint, perm_module='complaint', sheet_title='客诉记录', log_label='诉讼',
     filename_base='客诉记录', empty_text='当前无客诉记录，无法导出Excel',
-    headers=['序号', '纠纷类型', '被告', '案号', '涉案金额（元）', '受理法院', '代理律师', '进度', '立案日期', '开庭日期', '判决日期', '执行日期', '结案日期', '详细进度', '备注'],
-    row_values=lambda obj, serial: [
-        serial, obj.dispute_type, obj.defendant, obj.case_number, obj.amount,
-        obj.court, obj.lawyer, obj.progress,
-        obj.filed_at.strftime('%Y-%m-%d') if obj.filed_at else '',
-        obj.hearing_at.strftime('%Y-%m-%d') if obj.hearing_at else '',
-        obj.judgment_at.strftime('%Y-%m-%d') if obj.judgment_at else '',
-        obj.execution_at.strftime('%Y-%m-%d') if obj.execution_at else '',
-        obj.closed_at.strftime('%Y-%m-%d') if obj.closed_at else '',
-        obj.detailed_progress or '', obj.remarks or '',
-    ],
+    headers=complaint_io.COMPLAINT_HEADERS,
+    row_values=complaint_io.complaint_export_row,
 )
+
+
+@perm_required("complaint", "create")
+def complaint_import(request):
+    """导入第 1/2 步：上传 Excel → 预览（新增/更新/跳过/错误）。"""
+    if request.method != 'POST':
+        return render(request, 'records/complaint_import.html')
+
+    upload = request.FILES.get('file')
+    overwrite = request.POST.get('overwrite') == '1'
+    if not upload:
+        return render(request, 'records/complaint_import.html', {
+            'error': '请选择要导入的 Excel 文件',
+        })
+    try:
+        rows = complaint_io.parse_excel(upload)
+        if not rows:
+            raise ValueError('Excel 中没有可导入的数据行')
+        preview = complaint_io.build_preview(rows, overwrite=overwrite)
+    except ValueError as exc:
+        return render(request, 'records/complaint_import.html', {
+            'error': str(exc),
+        })
+    payload = json.dumps(rows, ensure_ascii=False)
+    if len(payload.encode('utf-8')) > 2 * 1024 * 1024:
+        return render(request, 'records/complaint_import.html', {
+            'error': '文件内容过大，无法一次性预览；请拆分为多个 Excel 分批导入。',
+        })
+    return render(request, 'records/complaint_import_preview.html', {
+        'preview': preview,
+        'payload': payload,
+        'overwrite': overwrite,
+        'filename': upload.name,
+    })
+
+
+@perm_required("complaint", "create")
+@require_POST
+def complaint_import_confirm(request):
+    """导入第 3 步：确认写入（单事务全成全败）。"""
+    try:
+        rows = json.loads(request.POST.get('payload') or '[]')
+        if not isinstance(rows, list) or not rows:
+            raise ValueError('导入数据已失效，请重新上传文件')
+        overwrite = request.POST.get('overwrite') == '1'
+        preview = complaint_io.build_preview(rows, overwrite=overwrite)
+        if preview['errors']:
+            raise ValueError('导入数据校验未通过：' + '；'.join(preview['errors'][:10]))
+        if preview['summary']['update'] and not has_perm(
+            request.user, 'complaint', 'update'
+        ):
+            raise ValueError('当前账号缺少编辑权限，无法更新已有记录')
+        result = complaint_io.apply_rows(rows, overwrite=overwrite)
+    except (ValueError, json.JSONDecodeError) as exc:
+        return render(request, 'records/complaint_import.html', {
+            'error': str(exc),
+        })
+
+    log_operation(
+        request, '诉讼', '导入', '[诉讼]下的导入',
+        f'导入诉讼记录: 新增{result["created"]} 更新{result["updated"]} 跳过{result["skipped"]}',
+    )
+    return render(request, 'records/complaint_import_result.html', {'result': result})
+
+
+@perm_required("complaint", "read")
+def complaint_template(request):
+    """下载导入模板：16 列表头 + 填写说明。"""
+    return complaint_io.template_response()
 
 
 @perm_required("decoration", "read")

@@ -126,6 +126,7 @@ def search(request):
     # 搜索客诉记录
     complaint_results = Complaint.objects.filter(
         Q(dispute_type__icontains=search_term) |
+        Q(plaintiff__icontains=search_term) |
         Q(defendant__icontains=search_term) |
         Q(case_number__icontains=search_term) |
         Q(court__icontains=search_term) |

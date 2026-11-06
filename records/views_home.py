@@ -332,7 +332,7 @@ def home(request):
     def _litigation_item(case):
         kind = case.answer_level if case.answer_level in ('danger', 'warning') else 'gray'
         return {
-            'title': f'{case.dispute_type} · {case.case_number} · 被告 {case.defendant}',
+            'title': f'{case.dispute_type} · {case.case_number} · 原告 {case.plaintiff or "—"} · 被告 {case.defendant}',
             'meta': f'涉案 ¥{case.amount:,.2f}' if case.amount else '—',
             'deadline': (
                 f'答辩截止 {case.answer_deadline:%Y-%m-%d}'

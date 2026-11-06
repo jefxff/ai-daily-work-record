@@ -415,6 +415,7 @@
         <thead>
             <tr>
                 <th scope="col">纠纷类型</th>
+                <th scope="col">原告</th>
                 <th scope="col">被告</th>
                 <th scope="col">案号</th>
                 <th scope="col">涉案金额（元）</th>
@@ -428,6 +429,7 @@
             {% for complaint in complaint_results %}
             <tr>
                 <td data-label="纠纷类型">{{ complaint.dispute_type }}</td>
+                <td data-label="原告">{{ complaint.plaintiff|default:"—" }}</td>
                 <td data-label="被告">{{ complaint.defendant }}</td>
                 <td data-label="案号">{{ complaint.case_number }}</td>
                 <td data-label="涉案金额（元）">¥{{ complaint.amount|floatformat:2 }}</td>

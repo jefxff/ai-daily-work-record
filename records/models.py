@@ -500,6 +500,7 @@ class Complaint(models.Model):
     }
 
     dispute_type = models.CharField(max_length=100, verbose_name='纠纷类型', null=False, blank=False)
+    plaintiff = models.CharField(max_length=100, verbose_name='原告', null=False, blank=False, default='')
     defendant = models.CharField(max_length=100, verbose_name='被告', null=False, blank=False)
     case_number = models.CharField(max_length=50, verbose_name='案号', null=False, blank=False)
     amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='涉案金额（元）', null=False, blank=False)

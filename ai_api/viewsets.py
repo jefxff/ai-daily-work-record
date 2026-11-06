@@ -340,7 +340,7 @@ class ComplaintViewSet(EnhancedModelViewSet):
     audit_display_field = 'case_number'
     queryset = Complaint.objects.all()
     serializer_class = ComplaintSerializer
-    search_fields = ['dispute_type', 'defendant', 'case_number', 'court', 'lawyer']
+    search_fields = ['dispute_type', 'plaintiff', 'defendant', 'case_number', 'court', 'lawyer']
     ordering_fields = ['amount', 'progress']
 
 

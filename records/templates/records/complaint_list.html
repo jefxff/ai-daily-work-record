@@ -71,8 +71,10 @@
         </div>
     </div>
     {% can "complaint" "create" %}
+    <a href="{% url 'complaint_import' %}" class="btn-transparent">导入Excel</a>
     <a href="{% url 'complaint_add' %}" class="btn-primary">新增诉讼</a>
     {% endcan %}
+    <a href="{% url 'complaint_template' %}" class="btn-transparent">下载模板</a>
     <a href="{% url 'complaint_export' %}" class="btn-transparent">下载Excel</a>
     <span data-col-settings-anchor data-col-settings-position="after"></span>
 {% endblock %}
@@ -111,6 +113,7 @@
                     <tr>
                         <th scope="col" class="col-optional">序号</th>
                         <th scope="col">纠纷类型</th>
+                        <th scope="col">原告</th>
                         <th scope="col">被告</th>
                         <th scope="col">案号</th>
                         {% include 'records/_sort_th.html' with label="涉案金额（元）" field="amount" %}
@@ -127,6 +130,7 @@
                     <tr data-href="{% url 'complaint_detail' complaint.pk %}">
                         <td data-label="序号" class="col-optional">{{ forloop.counter }}</td>
                         <td data-label="纠纷类型">{{ complaint.dispute_type }}</td>
+                        <td data-label="原告" class="cell-ellipsis" title="{{ complaint.plaintiff }}">{{ complaint.plaintiff|default:"—" }}</td>
                         <td data-label="被告" class="cell-ellipsis" title="{{ complaint.defendant }}">{{ complaint.defendant }}</td>
                         <td data-label="案号" class="cell-ellipsis" title="{{ complaint.case_number }}">{{ complaint.case_number }}</td>
                         <td data-label="涉案金额（元）" class="cell-ellipsis">{% if complaint.amount %}¥{{ complaint.amount|floatformat:2|intcomma }}{% else %}—{% endif %}</td>
@@ -182,19 +186,20 @@
 
 {% block extra_css %}
 <style>
-    /* 列预算（合计 100%）：固定布局；被告 / 案号为长串，单行省略；详细进度两行截断。 */
-    .table { min-width: 1080px; }
-    .table--fixed th:nth-child(1)  { width: 5%; }
-    .table--fixed th:nth-child(2)  { width: 8%; }
-    .table--fixed th:nth-child(3)  { width: 12%; }
-    .table--fixed th:nth-child(4)  { width: 10%; }
-    .table--fixed th:nth-child(5)  { width: 10%; }
-    .table--fixed th:nth-child(6)  { width: 12%; }
-    .table--fixed th:nth-child(7)  { width: 7%; }
-    .table--fixed th:nth-child(8)  { width: 13%; }
-    .table--fixed th:nth-child(9)  { width: 6%; }
+    /* 列预算（合计 100%）：固定布局；原告 / 被告 / 案号为长串，单行省略；详细进度两行截断。 */
+    .table { min-width: 1200px; }
+    .table--fixed th:nth-child(1)  { width: 4%; }
+    .table--fixed th:nth-child(2)  { width: 7%; }
+    .table--fixed th:nth-child(3)  { width: 9%; }
+    .table--fixed th:nth-child(4)  { width: 9%; }
+    .table--fixed th:nth-child(5)  { width: 9%; }
+    .table--fixed th:nth-child(6)  { width: 9%; }
+    .table--fixed th:nth-child(7)  { width: 11%; }
+    .table--fixed th:nth-child(8)  { width: 7%; }
+    .table--fixed th:nth-child(9)  { width: 12%; }
     .table--fixed th:nth-child(10) { width: 5%; }
-    .table--fixed th:nth-child(11) { width: 12%; }
+    .table--fixed th:nth-child(11) { width: 5%; }
+    .table--fixed th:nth-child(12) { width: 13%; }
     .table td { font-variant-numeric: tabular-nums; }
 </style>
 {% endblock %}

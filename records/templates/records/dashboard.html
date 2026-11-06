@@ -296,6 +296,7 @@
                     <table>
                         <thead>
                             <tr>
+                                <th scope="col">原告</th>
                                 <th scope="col">被告</th>
                                 <th scope="col">案号</th>
                                 <th scope="col">进度</th>
@@ -304,13 +305,14 @@
                         <tbody>
                             {% for complaint in complaints|slice:':5' %}
                             <tr>
+                                <td data-label="原告">{{ complaint.plaintiff|default:"—" }}</td>
                                 <td data-label="被告">{{ complaint.defendant }}</td>
                                 <td data-label="案号">{{ complaint.case_number }}</td>
                                 <td data-label="进度">{{ complaint.progress }}</td>
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="3" class="empty-cell">📭 暂无数据</td>
+                                <td colspan="4" class="empty-cell">📭 暂无数据</td>
                             </tr>
                             {% endfor %}
                         </tbody>

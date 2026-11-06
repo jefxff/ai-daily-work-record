@@ -1,0 +1,63 @@
+﻿{% extends 'records/base.html' %}
+{% load static %}
+
+{% block page_title %}导入诉讼记录 - 每日工作记录管理网站{% endblock %}
+
+{% block top_nav_actions %}
+    <a href="{% url 'complaint_list' %}" class="btn-transparent">返回列表</a>
+    <a href="{% url 'complaint_template' %}" class="btn-transparent">下载导入模板</a>
+{% endblock %}
+
+{% block content %}
+    <div class="form-container">
+        <h1 class="form-title" data-kicker="IMPORT / 诉讼">导入诉讼记录</h1>
+        <p class="form-text">
+            仅支持 Excel（.xlsx / .xls），单次最多 5000 行。系统会先解析并展示预览，
+            确认后才会写库。表头与「下载Excel」导出的 16 列完全一致，
+            支持「导出 → 修改 → 导入」闭环。
+        </p>
+
+        {% if error %}
+        <div class="alert alert-danger" role="alert">{{ error }}</div>
+        {% endif %}
+
+        <form data-validate="1" novalidate method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="id_file" class="form-label">选择 Excel 文件 *</label>
+                <input type="file" name="file" id="id_file" class="form-control" accept=".xlsx,.xls" required>
+            </div>
+            <div class="form-group">
+                <label class="form-check-label">
+                    <input type="checkbox" name="overwrite" value="1" class="form-check-input">
+                    覆盖已有记录的非空字段（默认仅补空）
+                </label>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">解析并预览</button>
+                <a href="{% url 'complaint_list' %}" class="btn btn-outline-secondary">取消</a>
+            </div>
+        </form>
+
+        <div class="import-notes">
+            <h3>导入规则</h3>
+            <ul>
+                <li>以「案号」为去重键：系统中已存在同案号时走更新，否则新增。</li>
+                <li>必填列：纠纷类型、被告、案号、涉案金额（元）、受理法院、代理律师、进度。</li>
+                <li>原告建议填写；历史记录可能为空，留空不阻断导入，导入后可在编辑页补填。</li>
+                <li>进度只能填：立案 / 审理中 / 判决 / 执行 / 结案。</li>
+                <li>默认仅补空：已有值不会被覆盖；勾选覆盖后才会替换非空字段。</li>
+                <li>涉案金额单位为元，可填 120000 或 120000.50。</li>
+                <li>日期支持 2026-01-31、2026/1/31、20260131；无法识别时留空。</li>
+            </ul>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .import-notes { margin-top: 2rem; padding: 1rem 1.25rem; background: var(--c-surface-sunken); border-radius: 8px; }
+    .import-notes h3 { margin: 0 0 0.75rem; font-size: 1rem; font-weight: 600; }
+    .import-notes ul { margin: 0; padding-left: 1.25rem; color: var(--c-text-secondary); font-size: 0.875rem; line-height: 1.8; }
+</style>
+{% endblock %}

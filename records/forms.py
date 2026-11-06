@@ -399,9 +399,10 @@ class ComplaintForm(forms.ModelForm):
     """客诉表单"""
     class Meta:
         model = Complaint
-        fields = ['dispute_type', 'defendant', 'case_number', 'amount', 'court', 'lawyer', 'progress', 'detailed_progress', 'remarks', 'filed_at', 'hearing_at', 'judgment_at', 'execution_at', 'closed_at']
+        fields = ['dispute_type', 'plaintiff', 'defendant', 'case_number', 'amount', 'court', 'lawyer', 'progress', 'detailed_progress', 'remarks', 'filed_at', 'hearing_at', 'judgment_at', 'execution_at', 'closed_at']
         widgets = {
             'dispute_type': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '请输入纠纷类型'}),
+            'plaintiff': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '请输入原告'}),
             'defendant': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '请输入被告'}),
             'case_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '请输入案号'}),
             'amount': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '请输入涉案金额', 'step': '0.01'}),
@@ -418,6 +419,7 @@ class ComplaintForm(forms.ModelForm):
         }
         labels = {
             'dispute_type': '纠纷类型',
+            'plaintiff': '原告',
             'defendant': '被告',
             'case_number': '案号',
             'amount': '涉案金额（元）',
@@ -444,6 +446,12 @@ class ComplaintForm(forms.ModelForm):
         if not defendant:
             raise forms.ValidationError('被告不能为空')
         return defendant
+
+    def clean_plaintiff(self):
+        plaintiff = self.cleaned_data.get('plaintiff')
+        if not plaintiff:
+            raise forms.ValidationError('原告不能为空')
+        return plaintiff
     
     def clean_case_number(self):
         case_number = self.cleaned_data.get('case_number')

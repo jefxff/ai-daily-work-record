@@ -81,6 +81,11 @@
                 </div>
 
                 <div class="detail-row">
+                    <span class="detail-label">原告：</span>
+                    <span class="detail-value">{{ complaint.plaintiff|default:"—" }}</span>
+                </div>
+
+                <div class="detail-row">
                     <span class="detail-label">被告：</span>
                     <span class="detail-value">{{ complaint.defendant }}</span>
                 </div>
