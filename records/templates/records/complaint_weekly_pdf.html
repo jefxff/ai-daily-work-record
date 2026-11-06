@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>诉讼案件周报</title>
+<style>
+    /* 自包含打印页：CSS 内联，PDF 生成不依赖 /static 与站点会话。
+       配色沿用站点 tokens.css 的中性色 + 主色 #096dd9。 */
+    :root {
+        --ink: #1f1f1f;
+        --ink-2: #5c6370;
+        --ink-3: #8b95a5;
+        --line: #e4e7ec;
+        --line-soft: #f0f2f5;
+        --brand: #096dd9;
+        --brand-deep: #0050b3;
+        --brand-soft: #e6f7ff;
+        --wash: #f7f8fa;
+        --nil: #b7bec8;
+    }
+    * { box-sizing: border-box; }
+    body {
+        margin: 0; padding: 0; background: #fff; color: var(--ink);
+        font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+        font-size: 8pt; line-height: 1.55;
+        -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    h1 {
+        margin: 0; text-align: center;
+        font-size: 14.5pt; font-weight: 600; letter-spacing: 1.2px; line-height: 1.35;
+        break-after: avoid; page-break-after: avoid;
+    }
+    .head-rule { height: 1px; background: var(--line); margin: 6px 0 8px; }
+    h2 {
+        margin: 9px 0 5px; display: flex; align-items: center; gap: 8px;
+        font-size: 10pt; font-weight: 600; letter-spacing: .4px;
+        break-after: avoid; page-break-after: avoid;
+    }
+    h2::before {
+        content: ""; width: 3px; height: 12px; border-radius: 2px;
+        background: var(--brand); flex: none;
+    }
+    .updates {
+        margin: 0; padding: 4px 12px; background: var(--wash); border-radius: 4px;
+        break-inside: avoid; page-break-inside: avoid;
+    }
+    .updates ol { margin: 0; padding: 0; list-style: none; column-count: 2; column-gap: 20px; column-rule: 1px solid #eaedf1; }
+    .updates li {
+        display: flex; gap: 8px; padding: 1px 0;
+        font-size: 7.8pt; line-height: 1.4; break-inside: avoid; page-break-inside: avoid;
+    }
+    
+    .updates li .idx {
+        flex: none; min-width: 15px; padding-top: 1px;
+        color: var(--brand); font-size: 7.4pt; font-weight: 600;
+        font-variant-numeric: tabular-nums; letter-spacing: .3px;
+    }
+    .updates li.empty, .updates li.empty .idx { color: var(--ink-3); }
+    .scope { margin: 3px 0 0; text-align: right; font-size: 7.2pt; color: var(--ink-3); letter-spacing: .3px; }
+
+    /* 开放式表格：只保留表头下的一条实线与行间的极浅分隔线 */
+    table.detail {
+        width: 100%; table-layout: fixed; border-collapse: collapse;
+        font-size: 7.4pt; line-height: 1.38;
+    }
+    table.detail th {
+        padding: 0 6px 4px; border-bottom: 1px solid #cfd8e3;
+        font-size: 7.1pt; font-weight: 600; color: var(--ink-2);
+        text-align: left; letter-spacing: .2px; vertical-align: bottom;
+    }
+    table.detail td {
+        padding: 2.5px 6px; border-bottom: 1px solid var(--line-soft);
+        vertical-align: top; overflow-wrap: anywhere; word-break: break-word;
+    }
+    table.detail tbody tr:last-child td { border-bottom: 0; }
+    table.detail thead { display: table-header-group; }
+    table.detail tr { break-inside: avoid; page-break-inside: avoid; }
+    table.detail th:first-child { white-space: nowrap; }
+    table.detail td.seq {
+        text-align: center; color: var(--ink-3); font-size: 7.2pt;
+        font-variant-numeric: tabular-nums;
+    }
+    table.detail td.case { font-weight: 600; color: #263041; }
+    table.detail td.money {
+        text-align: right; font-weight: 600; white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+    }
+    table.detail td.note { font-size: 7pt; line-height: 1.4; color: var(--ink-2); }
+    table.detail td.note div + div { margin-top: 1px; }
+    .sub { margin-top: 1px; font-size: 7pt; line-height: 1.4; color: var(--ink-2); }
+    .nil { color: var(--nil); }
+    .pill {
+        display: inline-block; padding: 1px 6px; border-radius: 9px;
+        background: var(--brand-soft); color: var(--brand-deep);
+        font-size: 7.1pt; white-space: nowrap;
+    }
+    td.empty { text-align: center; color: var(--ink-3); padding: 14px 6px; }
+    .subtotal {
+        display: flex; justify-content: space-between; align-items: baseline;
+        margin-top: 1px; padding: 5px 6px 0; border-top: 1px solid var(--line);
+        break-inside: avoid; page-break-inside: avoid;
+    }
+    .subtotal .label { font-size: 8.2pt; color: var(--ink-2); letter-spacing: .3px; }
+    .subtotal .amount {
+        font-size: 9.5pt; font-weight: 600; color: var(--ink);
+        font-variant-numeric: tabular-nums;
+    }
+    .page-break { break-before: page; page-break-before: always; }
+    @media screen {
+        body { background: #e9edf1; padding: 22px; }
+        .sheet {
+            max-width: 1120px; margin: 0 auto; padding: 24px 28px;
+            background: #fff; box-shadow: 0 2px 18px rgba(20, 30, 50, .10);
+        }
+        .page-break {
+            break-before: auto; page-break-before: auto;
+            margin-top: 26px; padding-top: 24px; border-top: 1px dashed var(--line);
+        }
+    }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+<h1>{{ title }}</h1>
+<div class="head-rule"></div>
+
+<section class="updates-block">
+    <h2>一、本周更新内容</h2>
+    <div class="updates">
+        <ol>
+            {% for item in updates %}<li><span class="idx">{{ forloop.counter|stringformat:"02d" }}</span><span>{{ item }}</span></li>{% empty %}<li class="empty"><span class="idx">—</span><span>本周暂无案件更新</span></li>{% endfor %}
+        </ol>
+    </div>
+    <p class="scope">已剔除已结案</p>
+</section>
+
+{% for group in groups %}
+<section class="group{% if group.break_before %} page-break{% endif %}">
+    <h2>{{ group.heading }}</h2>
+    <table class="detail">
+        <colgroup>
+            <col style="width:3.5%"><col style="width:14.5%"><col style="width:16.5%">
+            <col style="width:8.5%"><col style="width:11%"><col style="width:6%">
+            <col style="width:10%"><col style="width:14%"><col style="width:16%">
+        </colgroup>
+        <thead>
+            <tr>
+                <th>序号</th><th>案号</th><th>当事人（原告 / 被告）</th>
+                <th>纠纷类型</th><th>涉案金额（元）</th><th>进度</th>
+                <th>受理法院 / 代理律师</th><th>详细进度</th><th>备注</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in group.rows %}
+            <tr>
+                <td class="seq">{{ row.seq }}</td>
+                <td class="case {% if row.case_number == '—' %}nil{% endif %}">{{ row.case_number }}</td>
+                <td>{{ row.plaintiff }}<div class="sub {% if row.defendant == '—' %}nil{% endif %}">{{ row.defendant }}</div></td>
+                <td class="{% if row.dispute_type == '—' %}nil{% endif %}">{{ row.dispute_type }}</td>
+                <td class="money">{{ row.amount }}</td>
+                <td>{% if row.progress == '—' %}<span class="nil">—</span>{% else %}<span class="pill">{{ row.progress }}</span>{% endif %}</td>
+                <td>{{ row.court }}<div class="sub {% if row.lawyer == '—' %}nil{% endif %}">{{ row.lawyer }}</div></td>
+                <td class="{% if row.detailed_progress == '—' %}nil{% endif %}">{{ row.detailed_progress }}</td>
+                <td class="note">{% for line in row.note_lines %}<div{% if line == '—' %} class="nil"{% endif %}>{{ line }}</div>{% endfor %}</td>
+            </tr>
+            {% empty %}
+            <tr><td class="empty" colspan="9">本组暂无未结案案件</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <div class="subtotal">
+        <span class="label">小计　{{ group.count }} 条</span>
+        <span class="amount">{{ group.subtotal }}</span>
+    </div>
+</section>
+{% endfor %}
+
+</div>
+</body>
+</html>

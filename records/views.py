@@ -16,6 +16,7 @@ from .crud import make_delete_view, make_export_view, make_form_view, make_list_
 from . import insurance_grouping, insurance_services
 from . import customer_ledger_import as ledger_io
 from . import complaint_io
+from . import complaint_weekly
 from django.utils import timezone
 from accounts.decorators import perm_required, require_any_module
 from accounts.services import has_perm, visible_modules
@@ -982,6 +983,50 @@ def complaint_import_confirm(request):
 def complaint_template(request):
     """下载导入模板：16 列表头 + 填写说明。"""
     return complaint_io.template_response()
+
+
+@perm_required("complaint", "read")
+def complaint_weekly_pdf(request):
+    """导出诉讼案件周报 PDF：剔除已结案，货款纠纷在上、非货款纠纷另起一页。
+
+    ?week=last 取上一周（供每周一自动任务）；?start=&end= 指定任意窗口；
+    ?html=1 返回自包含打印页，用于核对版式或由浏览器另存为 PDF。
+    """
+    try:
+        context = complaint_weekly.build_context(
+            week=request.GET.get('week', 'current'),
+            start=request.GET.get('start') or None,
+            end=request.GET.get('end') or None,
+        )
+    except (ValueError, TypeError) as exc:
+        return HttpResponseBadRequest(f'周报日期参数无效：{exc}')
+
+    html = complaint_weekly.render_html(context)
+    if request.GET.get('html') == '1':
+        return HttpResponse(html)
+
+    try:
+        pdf_bytes = complaint_weekly.render_pdf(html, context['generated_at'])
+    except Exception as exc:
+        logger.exception('诉讼案件周报 PDF 生成失败')
+        return HttpResponse(f'PDF 生成失败（{type(exc).__name__}），请查看服务日志。', status=500)
+
+    window = context['window']
+    filename = '诉讼案件周报-%s-%s.pdf' % (
+        window.label_start.strftime('%Y%m%d'), window.label_end.strftime('%Y%m%d'),
+    )
+    from work_record.export_utils import content_disposition
+
+    response = HttpResponse(pdf_bytes, content_type='application/pdf')
+    response['Content-Disposition'] = content_disposition(
+        filename, ascii_fallback='complaint-weekly.pdf'
+    )
+    # 导出动作本身写留痕，周窗口统计按 operation_type='导出' 排除，不污染本周更新内容
+    log_operation(
+        request, '诉讼', '导出', '[诉讼]下的导出',
+        f'导出诉讼案件周报PDF: {context["open_count"]} 条',
+    )
+    return response
 
 
 @perm_required("decoration", "read")

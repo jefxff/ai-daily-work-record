@@ -139,6 +139,7 @@ urlpatterns = [
     path('complaint/import/', views.complaint_import, name='complaint_import'),
     path('complaint/import/confirm/', views.complaint_import_confirm, name='complaint_import_confirm'),
     path('complaint/template/', views.complaint_template, name='complaint_template'),
+    path('complaint/weekly/pdf/', views.complaint_weekly_pdf, name='complaint_weekly_pdf'),
     path('complaint/advance/<int:pk>/', views.complaint_advance, name='complaint_advance'),
 
     # 数据展示看板
