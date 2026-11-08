@@ -1,0 +1,6974 @@
+{
+  "home": {
+    "desktop": {
+      "url": "/",
+      "vw": 1440,
+      "docScrollW": 1440,
+      "bodyScrollW": 1440,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [
+        {
+          "sel": "span.home-kpi__meta.is-danger",
+          "fs": 11,
+          "text": "含逾期 15 条"
+        },
+        {
+          "sel": "span.home-kpi__meta",
+          "fs": 11,
+          "text": "已逾期或久未闭环"
+        },
+        {
+          "sel": "span.home-kpi__meta",
+          "fs": 11,
+          "text": "不含已逾期"
+        },
+        {
+          "sel": "span.home-kpi__meta",
+          "fs": 11,
+          "text": "我的每日记录"
+        },
+        {
+          "sel": "span.home-progress__val",
+          "fs": 11.5,
+          "text": "80%"
+        },
+        {
+          "sel": "span.home-progress__val",
+          "fs": 11.5,
+          "text": "50%"
+        },
+        {
+          "sel": "span.home-progress__val",
+          "fs": 11.5,
+          "text": "30%"
+        },
+        {
+          "sel": "span.home-progress__val",
+          "fs": 11.5,
+          "text": "70%"
+        },
+        {
+          "sel": "span.home-progress__val",
+          "fs": 11.5,
+          "text": "0%"
+        },
+        {
+          "sel": "span.home-panel__hint",
+          "fs": 11,
+          "text": "环比 = 近 7 日新增 vs 前 7 日；无历"
+        },
+        {
+          "sel": "span.home-module__delta",
+          "fs": 11,
+          "text": "较上周 0"
+        },
+        {
+          "sel": "div.home-quote__unit",
+          "fs": 11.5,
+          "text": "元/克"
+        }
+      ],
+      "smallTargets": [
+        {
+          "sel": "a",
+          "w": 229,
+          "h": 31,
+          "text": "客户账期"
+        },
+        {
+          "sel": "a.nav-tab.active",
+          "w": 28,
+          "h": 39,
+          "text": "首页"
+        },
+        {
+          "sel": "button.seg-tabs__item.home-ttab",
+          "w": 109,
+          "h": 30,
+          "text": "每日记录9"
+        },
+        {
+          "sel": "button.seg-tabs__item.home-ttab",
+          "w": 113,
+          "h": 30,
+          "text": "客户客诉14"
+        },
+        {
+          "sel": "button.seg-tabs__item.home-ttab",
+          "w": 107,
+          "h": 30,
+          "text": "保险到期1"
+        },
+        {
+          "sel": "button.seg-tabs__item.home-ttab",
+          "w": 87,
+          "h": 30,
+          "text": "诉讼15"
+        },
+        {
+          "sel": "button.home-rows__toggle",
+          "w": 116,
+          "h": 30,
+          "text": "展开全部 9 条▾"
+        },
+        {
+          "sel": "a.home-panel__link",
+          "w": 94,
+          "h": 20,
+          "text": "数据展示看板 →"
+        },
+        {
+          "sel": "a.home-panel__link",
+          "w": 78,
+          "h": 16,
+          "text": "金属价格行情"
+        },
+        {
+          "sel": "a.home-panel__link",
+          "w": 101,
+          "h": 20,
+          "text": "全部 15 个品种 →"
+        }
+      ],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 1440,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": 0,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": ""
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 274,
+          "w": 1142,
+          "h": 46,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 274,
+          "w": 1142,
+          "h": 1296,
+          "pos": "static",
+          "display": "block",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": null
+      }
+    },
+    "laptop": {
+      "url": "/",
+      "vw": 1180,
+      "docScrollW": 1180,
+      "bodyScrollW": 1180,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [
+        {
+          "sel": "span.home-kpi__meta.is-danger",
+          "fs": 11,
+          "text": "含逾期 15 条"
+        },
+        {
+          "sel": "span.home-kpi__meta",
+          "fs": 11,
+          "text": "已逾期或久未闭环"
+        },
+        {
+          "sel": "span.home-kpi__meta",
+          "fs": 11,
+          "text": "不含已逾期"
+        },
+        {
+          "sel": "span.home-kpi__meta",
+          "fs": 11,
+          "text": "我的每日记录"
+        },
+        {
+          "sel": "span.home-progress__val",
+          "fs": 11.5,
+          "text": "80%"
+        },
+        {
+          "sel": "span.home-progress__val",
+          "fs": 11.5,
+          "text": "50%"
+        },
+        {
+          "sel": "span.home-progress__val",
+          "fs": 11.5,
+          "text": "30%"
+        },
+        {
+          "sel": "span.home-progress__val",
+          "fs": 11.5,
+          "text": "70%"
+        },
+        {
+          "sel": "span.home-progress__val",
+          "fs": 11.5,
+          "text": "0%"
+        },
+        {
+          "sel": "span.home-panel__hint",
+          "fs": 11,
+          "text": "环比 = 近 7 日新增 vs 前 7 日；无历"
+        },
+        {
+          "sel": "span.home-module__delta",
+          "fs": 11,
+          "text": "较上周 0"
+        },
+        {
+          "sel": "div.home-quote__unit",
+          "fs": 11.5,
+          "text": "元/克"
+        }
+      ],
+      "smallTargets": [
+        {
+          "sel": "a",
+          "w": 229,
+          "h": 31,
+          "text": "客户账期"
+        },
+        {
+          "sel": "a.nav-tab.active",
+          "w": 28,
+          "h": 39,
+          "text": "首页"
+        },
+        {
+          "sel": "button.seg-tabs__item.home-ttab",
+          "w": 109,
+          "h": 30,
+          "text": "每日记录9"
+        },
+        {
+          "sel": "button.seg-tabs__item.home-ttab",
+          "w": 113,
+          "h": 30,
+          "text": "客户客诉14"
+        },
+        {
+          "sel": "button.seg-tabs__item.home-ttab",
+          "w": 107,
+          "h": 30,
+          "text": "保险到期1"
+        },
+        {
+          "sel": "button.seg-tabs__item.home-ttab",
+          "w": 87,
+          "h": 30,
+          "text": "诉讼15"
+        },
+        {
+          "sel": "button.home-rows__toggle",
+          "w": 116,
+          "h": 30,
+          "text": "展开全部 9 条▾"
+        },
+        {
+          "sel": "a.home-panel__link",
+          "w": 94,
+          "h": 20,
+          "text": "数据展示看板 →"
+        },
+        {
+          "sel": "a.home-panel__link",
+          "w": 78,
+          "h": 16,
+          "text": "金属价格行情"
+        },
+        {
+          "sel": "a.home-panel__link",
+          "w": 101,
+          "h": 20,
+          "text": "全部 15 个品种 →"
+        }
+      ],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 1180,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": 0,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": ""
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 274,
+          "w": 882,
+          "h": 46,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 274,
+          "w": 882,
+          "h": 1549,
+          "pos": "static",
+          "display": "block",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": null
+      }
+    },
+    "tablet": {
+      "url": "/",
+      "vw": 768,
+      "docScrollW": 768,
+      "bodyScrollW": 768,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [
+        {
+          "sel": "span.home-kpi__meta.is-danger",
+          "fs": 11,
+          "text": "含逾期 15 条"
+        },
+        {
+          "sel": "span.home-kpi__meta",
+          "fs": 11,
+          "text": "已逾期或久未闭环"
+        },
+        {
+          "sel": "span.home-kpi__meta",
+          "fs": 11,
+          "text": "不含已逾期"
+        },
+        {
+          "sel": "span.home-kpi__meta",
+          "fs": 11,
+          "text": "我的每日记录"
+        },
+        {
+          "sel": "span.home-panel__hint",
+          "fs": 11,
+          "text": "环比 = 近 7 日新增 vs 前 7 日；无历"
+        },
+        {
+          "sel": "span.home-module__delta",
+          "fs": 11,
+          "text": "较上周 0"
+        },
+        {
+          "sel": "div.home-quote__unit",
+          "fs": 11.5,
+          "text": "元/克"
+        },
+        {
+          "sel": "div.home-quote__unit",
+          "fs": 11.5,
+          "text": "元/千克"
+        },
+        {
+          "sel": "div.home-quote__unit",
+          "fs": 11.5,
+          "text": "元/吨"
+        },
+        {
+          "sel": "div.home-quote__unit",
+          "fs": 11.5,
+          "text": "元/吨"
+        },
+        {
+          "sel": "div.home-quote__unit",
+          "fs": 11.5,
+          "text": "元/吨"
+        }
+      ],
+      "smallTargets": [
+        {
+          "sel": "button.home-rows__toggle",
+          "w": 116,
+          "h": 30,
+          "text": "展开全部 9 条▾"
+        },
+        {
+          "sel": "a.home-panel__link",
+          "w": 94,
+          "h": 20,
+          "text": "数据展示看板 →"
+        },
+        {
+          "sel": "a.home-panel__link",
+          "w": 78,
+          "h": 16,
+          "text": "金属价格行情"
+        },
+        {
+          "sel": "a.home-panel__link",
+          "w": 101,
+          "h": 20,
+          "text": "全部 15 个品种 →"
+        }
+      ],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 768,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 16,
+          "w": 736,
+          "h": 46,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 16,
+          "w": 736,
+          "h": 2117,
+          "pos": "static",
+          "display": "block",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": null
+      }
+    },
+    "mobile": {
+      "url": "/",
+      "vw": 390,
+      "docScrollW": 390,
+      "bodyScrollW": 390,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [
+        {
+          "sel": "span.home-kpi__meta.is-danger",
+          "fs": 11,
+          "text": "含逾期 15 条"
+        },
+        {
+          "sel": "span.home-kpi__meta",
+          "fs": 11,
+          "text": "已逾期或久未闭环"
+        },
+        {
+          "sel": "span.home-kpi__meta",
+          "fs": 11,
+          "text": "不含已逾期"
+        },
+        {
+          "sel": "span.home-kpi__meta",
+          "fs": 11,
+          "text": "我的每日记录"
+        },
+        {
+          "sel": "span.home-panel__hint",
+          "fs": 11,
+          "text": "环比 = 近 7 日新增 vs 前 7 日；无历"
+        },
+        {
+          "sel": "span.home-module__delta",
+          "fs": 11,
+          "text": "较上周 0"
+        },
+        {
+          "sel": "div.home-quote__unit",
+          "fs": 11.5,
+          "text": "元/克"
+        },
+        {
+          "sel": "div.home-quote__unit",
+          "fs": 11.5,
+          "text": "元/千克"
+        },
+        {
+          "sel": "div.home-quote__unit",
+          "fs": 11.5,
+          "text": "元/吨"
+        },
+        {
+          "sel": "div.home-quote__unit",
+          "fs": 11.5,
+          "text": "元/吨"
+        },
+        {
+          "sel": "div.home-quote__unit",
+          "fs": 11.5,
+          "text": "元/吨"
+        }
+      ],
+      "smallTargets": [
+        {
+          "sel": "button.home-rows__toggle",
+          "w": 116,
+          "h": 30,
+          "text": "展开全部 9 条▾"
+        },
+        {
+          "sel": "a.home-panel__link",
+          "w": 94,
+          "h": 20,
+          "text": "数据展示看板 →"
+        },
+        {
+          "sel": "a.home-panel__link",
+          "w": 78,
+          "h": 16,
+          "text": "金属价格行情"
+        },
+        {
+          "sel": "a.home-panel__link",
+          "w": 101,
+          "h": 20,
+          "text": "全部 15 个品种 →"
+        }
+      ],
+      "overflowing": [
+        {
+          "sel": "button.seg-tabs__item.home-ttab",
+          "right": 450,
+          "w": 87
+        }
+      ],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 390,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 12,
+          "w": 366,
+          "h": 132,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 12,
+          "w": 366,
+          "h": 2483,
+          "pos": "static",
+          "display": "block",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": null
+      }
+    },
+    "mobile_sm": {
+      "url": "/",
+      "vw": 320,
+      "docScrollW": 320,
+      "bodyScrollW": 320,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [
+        {
+          "sel": "span.home-kpi__meta.is-danger",
+          "fs": 11,
+          "text": "含逾期 15 条"
+        },
+        {
+          "sel": "span.home-kpi__meta",
+          "fs": 11,
+          "text": "已逾期或久未闭环"
+        },
+        {
+          "sel": "span.home-kpi__meta",
+          "fs": 11,
+          "text": "不含已逾期"
+        },
+        {
+          "sel": "span.home-kpi__meta",
+          "fs": 11,
+          "text": "我的每日记录"
+        },
+        {
+          "sel": "span.home-panel__hint",
+          "fs": 11,
+          "text": "环比 = 近 7 日新增 vs 前 7 日；无历"
+        },
+        {
+          "sel": "span.home-module__delta",
+          "fs": 11,
+          "text": "较上周 0"
+        },
+        {
+          "sel": "div.home-quote__unit",
+          "fs": 11.5,
+          "text": "元/克"
+        },
+        {
+          "sel": "div.home-quote__unit",
+          "fs": 11.5,
+          "text": "元/千克"
+        },
+        {
+          "sel": "div.home-quote__unit",
+          "fs": 11.5,
+          "text": "元/吨"
+        },
+        {
+          "sel": "div.home-quote__unit",
+          "fs": 11.5,
+          "text": "元/吨"
+        },
+        {
+          "sel": "div.home-quote__unit",
+          "fs": 11.5,
+          "text": "元/吨"
+        }
+      ],
+      "smallTargets": [
+        {
+          "sel": "button.home-rows__toggle",
+          "w": 116,
+          "h": 30,
+          "text": "展开全部 9 条▾"
+        },
+        {
+          "sel": "a.home-panel__link",
+          "w": 94,
+          "h": 20,
+          "text": "数据展示看板 →"
+        },
+        {
+          "sel": "a.home-panel__link",
+          "w": 78,
+          "h": 16,
+          "text": "金属价格行情"
+        },
+        {
+          "sel": "a.home-panel__link",
+          "w": 101,
+          "h": 20,
+          "text": "全部 15 个品种 →"
+        }
+      ],
+      "overflowing": [
+        {
+          "sel": "button.seg-tabs__item.home-ttab",
+          "right": 361,
+          "w": 107
+        }
+      ],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 320,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 12,
+          "w": 296,
+          "h": 172,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 12,
+          "w": 296,
+          "h": 2836,
+          "pos": "static",
+          "display": "block",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": null
+      }
+    }
+  },
+  "workspace": {
+    "desktop": {
+      "url": "/workspace/",
+      "vw": 1440,
+      "docScrollW": 1440,
+      "bodyScrollW": 1440,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [
+        {
+          "sel": "a",
+          "w": 229,
+          "h": 31,
+          "text": "客户账期"
+        },
+        {
+          "sel": "a.nav-tab",
+          "w": 28,
+          "h": 39,
+          "text": "首页"
+        },
+        {
+          "sel": "a",
+          "w": 24,
+          "h": 18,
+          "text": "首页"
+        },
+        {
+          "sel": "select#perPageSelect.per-page-select",
+          "w": 49,
+          "h": 29,
+          "text": "10\n                30\n  "
+        },
+        {
+          "sel": "a.page-link",
+          "w": 28,
+          "h": 28,
+          "text": "2"
+        },
+        {
+          "sel": "button.btn-transparent.btn-sm",
+          "w": 48,
+          "h": 29,
+          "text": "确定"
+        }
+      ],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 1440,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": 0,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": ""
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 274,
+          "w": 1142,
+          "h": 878,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": {
+          "tableW": 1142,
+          "scrollW": 1142,
+          "clientW": 1142,
+          "minWidth": "960px",
+          "parentOverflow": "visible"
+        }
+      }
+    },
+    "laptop": {
+      "url": "/workspace/",
+      "vw": 1180,
+      "docScrollW": 1236,
+      "bodyScrollW": 1236,
+      "hasHScroll": true,
+      "overflowX": 56,
+      "tinyText": [],
+      "smallTargets": [
+        {
+          "sel": "a",
+          "w": 229,
+          "h": 31,
+          "text": "客户账期"
+        },
+        {
+          "sel": "a.nav-tab",
+          "w": 28,
+          "h": 39,
+          "text": "首页"
+        },
+        {
+          "sel": "a",
+          "w": 24,
+          "h": 18,
+          "text": "首页"
+        },
+        {
+          "sel": "select#perPageSelect.per-page-select",
+          "w": 49,
+          "h": 29,
+          "text": "10\n                30\n  "
+        },
+        {
+          "sel": "a.page-link",
+          "w": 28,
+          "h": 28,
+          "text": "2"
+        },
+        {
+          "sel": "button.btn-transparent.btn-sm",
+          "w": 48,
+          "h": 29,
+          "text": "确定"
+        }
+      ],
+      "overflowing": [
+        {
+          "sel": "table.table--cards.table",
+          "right": 1234,
+          "w": 960
+        },
+        {
+          "sel": "thead",
+          "right": 1234,
+          "w": 960
+        },
+        {
+          "sel": "tr",
+          "right": 1234,
+          "w": 960
+        },
+        {
+          "sel": "tbody",
+          "right": 1234,
+          "w": 960
+        }
+      ],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 1180,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": 0,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": ""
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 274,
+          "w": 882,
+          "h": 909,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": {
+          "tableW": 960,
+          "scrollW": 962,
+          "clientW": 960,
+          "minWidth": "960px",
+          "parentOverflow": "visible"
+        }
+      }
+    },
+    "tablet": {
+      "url": "/workspace/",
+      "vw": 768,
+      "docScrollW": 768,
+      "bodyScrollW": 768,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [],
+      "overflowing": [
+        {
+          "sel": "table.table--cards.table",
+          "right": 976,
+          "w": 960
+        },
+        {
+          "sel": "thead",
+          "right": 976,
+          "w": 960
+        },
+        {
+          "sel": "tr",
+          "right": 976,
+          "w": 960
+        },
+        {
+          "sel": "th",
+          "right": 832,
+          "w": 115
+        },
+        {
+          "sel": "tbody",
+          "right": 976,
+          "w": 960
+        },
+        {
+          "sel": "td",
+          "right": 832,
+          "w": 115
+        },
+        {
+          "sel": "span.ws-days.ws-days--overdue",
+          "right": 804,
+          "w": 59
+        }
+      ],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 768,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 16,
+          "w": 736,
+          "h": 912,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": {
+          "tableW": 960,
+          "scrollW": 962,
+          "clientW": 960,
+          "minWidth": "960px",
+          "parentOverflow": "auto"
+        }
+      }
+    },
+    "mobile": {
+      "url": "/workspace/",
+      "vw": 390,
+      "docScrollW": 390,
+      "bodyScrollW": 390,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [],
+      "overflowing": [
+        {
+          "sel": "a.ws-src-chip",
+          "right": 419,
+          "w": 65
+        }
+      ],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 390,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 12,
+          "w": 366,
+          "h": 3836,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": {
+          "tableW": 342,
+          "scrollW": 342,
+          "clientW": 342,
+          "minWidth": "0px",
+          "parentOverflow": "auto"
+        }
+      }
+    },
+    "mobile_sm": {
+      "url": "/workspace/",
+      "vw": 320,
+      "docScrollW": 320,
+      "bodyScrollW": 320,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [],
+      "overflowing": [
+        {
+          "sel": "a.ws-src-chip",
+          "right": 348,
+          "w": 52
+        },
+        {
+          "sel": "div.pag-controls",
+          "right": 349,
+          "w": 305
+        },
+        {
+          "sel": "ul.pagination",
+          "right": 349,
+          "w": 305
+        },
+        {
+          "sel": "li.page-item",
+          "right": 349,
+          "w": 44
+        },
+        {
+          "sel": "a.page-link",
+          "right": 349,
+          "w": 44
+        }
+      ],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 320,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 12,
+          "w": 296,
+          "h": 3872,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": {
+          "tableW": 272,
+          "scrollW": 272,
+          "clientW": 272,
+          "minWidth": "0px",
+          "parentOverflow": "auto"
+        }
+      }
+    }
+  },
+  "dashboard": {
+    "desktop": {
+      "url": "/dashboard/",
+      "vw": 1440,
+      "docScrollW": 1440,
+      "bodyScrollW": 1440,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [
+        {
+          "sel": "div.stat-sub",
+          "fs": 11.5,
+          "text": "不含档案 · 覆盖 10 个可见模块"
+        },
+        {
+          "sel": "div.stat-sub",
+          "fs": 11.5,
+          "text": "单独计组，不计入业务记录"
+        },
+        {
+          "sel": "div.stat-sub",
+          "fs": 11.5,
+          "text": "分母 47 条（每日记录 + 客户客诉）"
+        },
+        {
+          "sel": "div.stat-sub",
+          "fs": 11.5,
+          "text": "每日记录未完成 + 客诉未闭环 + 诉讼在办"
+        },
+        {
+          "sel": "span.stat-delta",
+          "fs": 11.5,
+          "text": "→ 与上周持平"
+        },
+        {
+          "sel": "div.chart-note",
+          "fs": 11.5,
+          "text": "档案 21 条单列，与其它模块差两个数量级，不并"
+        }
+      ],
+      "smallTargets": [
+        {
+          "sel": "a",
+          "w": 229,
+          "h": 31,
+          "text": "客户账期"
+        },
+        {
+          "sel": "a.nav-tab",
+          "w": 28,
+          "h": 39,
+          "text": "首页"
+        },
+        {
+          "sel": "a",
+          "w": 24,
+          "h": 18,
+          "text": "首页"
+        },
+        {
+          "sel": "a.module-status.status-error",
+          "w": 78,
+          "h": 28,
+          "text": "14 单超时"
+        },
+        {
+          "sel": "a.module-status.status-warning",
+          "w": 90,
+          "h": 28,
+          "text": "15 件进行中"
+        },
+        {
+          "sel": "a.module-status.status-error",
+          "w": 71,
+          "h": 28,
+          "text": "9 条逾期"
+        },
+        {
+          "sel": "a.module-status.status-warning",
+          "w": 83,
+          "h": 28,
+          "text": "5 份借出中"
+        }
+      ],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 1440,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": 0,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": ""
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 274,
+          "w": 1142,
+          "h": 3445,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": {
+          "tableW": 317,
+          "scrollW": 317,
+          "clientW": 317,
+          "minWidth": "0px",
+          "parentOverflow": "visible"
+        }
+      }
+    },
+    "laptop": {
+      "url": "/dashboard/",
+      "vw": 1180,
+      "docScrollW": 1180,
+      "bodyScrollW": 1180,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [
+        {
+          "sel": "div.stat-sub",
+          "fs": 11.5,
+          "text": "不含档案 · 覆盖 10 个可见模块"
+        },
+        {
+          "sel": "div.stat-sub",
+          "fs": 11.5,
+          "text": "单独计组，不计入业务记录"
+        },
+        {
+          "sel": "div.stat-sub",
+          "fs": 11.5,
+          "text": "分母 47 条（每日记录 + 客户客诉）"
+        },
+        {
+          "sel": "div.stat-sub",
+          "fs": 11.5,
+          "text": "每日记录未完成 + 客诉未闭环 + 诉讼在办"
+        },
+        {
+          "sel": "span.stat-delta",
+          "fs": 11.5,
+          "text": "→ 与上周持平"
+        },
+        {
+          "sel": "div.chart-note",
+          "fs": 11.5,
+          "text": "档案 21 条单列，与其它模块差两个数量级，不并"
+        }
+      ],
+      "smallTargets": [
+        {
+          "sel": "a",
+          "w": 229,
+          "h": 31,
+          "text": "客户账期"
+        },
+        {
+          "sel": "a.nav-tab",
+          "w": 28,
+          "h": 39,
+          "text": "首页"
+        },
+        {
+          "sel": "a",
+          "w": 24,
+          "h": 18,
+          "text": "首页"
+        },
+        {
+          "sel": "a.module-status.status-error",
+          "w": 78,
+          "h": 28,
+          "text": "14 单超时"
+        },
+        {
+          "sel": "a.module-status.status-warning",
+          "w": 90,
+          "h": 28,
+          "text": "15 件进行中"
+        },
+        {
+          "sel": "a.module-status.status-error",
+          "w": 71,
+          "h": 28,
+          "text": "9 条逾期"
+        },
+        {
+          "sel": "a.module-status.status-warning",
+          "w": 83,
+          "h": 28,
+          "text": "5 份借出中"
+        }
+      ],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 1180,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": 0,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": ""
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 274,
+          "w": 882,
+          "h": 3731,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": {
+          "tableW": 381,
+          "scrollW": 381,
+          "clientW": 381,
+          "minWidth": "0px",
+          "parentOverflow": "visible"
+        }
+      }
+    },
+    "tablet": {
+      "url": "/dashboard/",
+      "vw": 768,
+      "docScrollW": 768,
+      "bodyScrollW": 768,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [
+        {
+          "sel": "div.stat-sub",
+          "fs": 11.5,
+          "text": "不含档案 · 覆盖 10 个可见模块"
+        },
+        {
+          "sel": "div.stat-sub",
+          "fs": 11.5,
+          "text": "单独计组，不计入业务记录"
+        },
+        {
+          "sel": "div.stat-sub",
+          "fs": 11.5,
+          "text": "分母 47 条（每日记录 + 客户客诉）"
+        },
+        {
+          "sel": "div.stat-sub",
+          "fs": 11.5,
+          "text": "每日记录未完成 + 客诉未闭环 + 诉讼在办"
+        },
+        {
+          "sel": "span.stat-delta",
+          "fs": 11.5,
+          "text": "→ 与上周持平"
+        },
+        {
+          "sel": "div.chart-note",
+          "fs": 11.5,
+          "text": "档案 21 条单列，与其它模块差两个数量级，不并"
+        }
+      ],
+      "smallTargets": [],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 768,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 16,
+          "w": 736,
+          "h": 4356,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": {
+          "tableW": 308,
+          "scrollW": 308,
+          "clientW": 308,
+          "minWidth": "0px",
+          "parentOverflow": "auto"
+        }
+      }
+    },
+    "mobile": {
+      "url": "/dashboard/",
+      "vw": 390,
+      "docScrollW": 390,
+      "bodyScrollW": 390,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [
+        {
+          "sel": "div.stat-sub",
+          "fs": 11.5,
+          "text": "不含档案 · 覆盖 10 个可见模块"
+        },
+        {
+          "sel": "div.stat-sub",
+          "fs": 11.5,
+          "text": "单独计组，不计入业务记录"
+        },
+        {
+          "sel": "div.stat-sub",
+          "fs": 11.5,
+          "text": "分母 47 条（每日记录 + 客户客诉）"
+        },
+        {
+          "sel": "div.stat-sub",
+          "fs": 11.5,
+          "text": "每日记录未完成 + 客诉未闭环 + 诉讼在办"
+        },
+        {
+          "sel": "span.stat-delta",
+          "fs": 11.5,
+          "text": "→ 与上周持平"
+        },
+        {
+          "sel": "div.chart-note",
+          "fs": 11.5,
+          "text": "档案 21 条单列，与其它模块差两个数量级，不并"
+        }
+      ],
+      "smallTargets": [],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 390,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 12,
+          "w": 366,
+          "h": 7572,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": {
+          "tableW": 318,
+          "scrollW": 318,
+          "clientW": 318,
+          "minWidth": "0px",
+          "parentOverflow": "auto"
+        }
+      }
+    },
+    "mobile_sm": {
+      "url": "/dashboard/",
+      "vw": 320,
+      "docScrollW": 352,
+      "bodyScrollW": 352,
+      "hasHScroll": true,
+      "overflowX": 32,
+      "tinyText": [
+        {
+          "sel": "div.stat-sub",
+          "fs": 11.5,
+          "text": "不含档案 · 覆盖 10 个可见模块"
+        },
+        {
+          "sel": "div.stat-sub",
+          "fs": 11.5,
+          "text": "单独计组，不计入业务记录"
+        },
+        {
+          "sel": "div.stat-sub",
+          "fs": 11.5,
+          "text": "分母 47 条（每日记录 + 客户客诉）"
+        },
+        {
+          "sel": "div.stat-sub",
+          "fs": 11.5,
+          "text": "每日记录未完成 + 客诉未闭环 + 诉讼在办"
+        },
+        {
+          "sel": "span.stat-delta",
+          "fs": 11.5,
+          "text": "→ 与上周持平"
+        },
+        {
+          "sel": "div.chart-note",
+          "fs": 11.5,
+          "text": "档案 21 条单列，与其它模块差两个数量级，不并"
+        }
+      ],
+      "smallTargets": [],
+      "overflowing": [
+        {
+          "sel": "div.chart-box",
+          "right": 352,
+          "w": 340
+        },
+        {
+          "sel": "div.chart-title",
+          "right": 328,
+          "w": 292
+        },
+        {
+          "sel": "div.chart-note",
+          "right": 328,
+          "w": 292
+        },
+        {
+          "sel": "div.chart-canvas",
+          "right": 328,
+          "w": 292
+        },
+        {
+          "sel": "canvas#chartModules",
+          "right": 328,
+          "w": 292
+        },
+        {
+          "sel": "canvas#chartTrend",
+          "right": 328,
+          "w": 292
+        }
+      ],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 320,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 12,
+          "w": 296,
+          "h": 8225,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": {
+          "tableW": 252,
+          "scrollW": 252,
+          "clientW": 252,
+          "minWidth": "0px",
+          "parentOverflow": "auto"
+        }
+      }
+    }
+  },
+  "daily_record_list": {
+    "desktop": {
+      "url": "/daily_record/",
+      "vw": 1440,
+      "docScrollW": 1440,
+      "bodyScrollW": 1440,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [
+        {
+          "sel": "span.dr-content__flag",
+          "fs": 11,
+          "text": "已沉淀"
+        },
+        {
+          "sel": "span.dr-content__flag",
+          "fs": 11,
+          "text": "已沉淀"
+        },
+        {
+          "sel": "span.dr-content__flag",
+          "fs": 11,
+          "text": "已沉淀"
+        },
+        {
+          "sel": "span.dr-content__flag",
+          "fs": 11,
+          "text": "已沉淀"
+        },
+        {
+          "sel": "span.dr-content__flag",
+          "fs": 11,
+          "text": "已沉淀"
+        }
+      ],
+      "smallTargets": [
+        {
+          "sel": "a",
+          "w": 229,
+          "h": 31,
+          "text": "客户账期"
+        },
+        {
+          "sel": "a.nav-tab",
+          "w": 28,
+          "h": 39,
+          "text": "首页"
+        },
+        {
+          "sel": "a",
+          "w": 24,
+          "h": 18,
+          "text": "首页"
+        },
+        {
+          "sel": "a.th-sort",
+          "w": 78,
+          "h": 20,
+          "text": "日期及时间"
+        },
+        {
+          "sel": "a.th-sort",
+          "w": 65,
+          "h": 20,
+          "text": "截至日期"
+        },
+        {
+          "sel": "select#perPageSelect.per-page-select",
+          "w": 49,
+          "h": 29,
+          "text": "10\n                30\n  "
+        },
+        {
+          "sel": "a.page-link",
+          "w": 28,
+          "h": 28,
+          "text": "2"
+        },
+        {
+          "sel": "button.btn-transparent.btn-sm",
+          "w": 48,
+          "h": 29,
+          "text": "确定"
+        }
+      ],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 1440,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": 0,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": ""
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 274,
+          "w": 1142,
+          "h": 877,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": {
+          "tableW": 1142,
+          "scrollW": 1142,
+          "clientW": 1142,
+          "minWidth": "1110px",
+          "parentOverflow": "visible"
+        }
+      }
+    },
+    "laptop": {
+      "url": "/daily_record/",
+      "vw": 1180,
+      "docScrollW": 1384,
+      "bodyScrollW": 1384,
+      "hasHScroll": true,
+      "overflowX": 204,
+      "tinyText": [
+        {
+          "sel": "span.dr-content__flag",
+          "fs": 11,
+          "text": "已沉淀"
+        },
+        {
+          "sel": "span.dr-content__flag",
+          "fs": 11,
+          "text": "已沉淀"
+        },
+        {
+          "sel": "span.dr-content__flag",
+          "fs": 11,
+          "text": "已沉淀"
+        },
+        {
+          "sel": "span.dr-content__flag",
+          "fs": 11,
+          "text": "已沉淀"
+        },
+        {
+          "sel": "span.dr-content__flag",
+          "fs": 11,
+          "text": "已沉淀"
+        }
+      ],
+      "smallTargets": [
+        {
+          "sel": "a",
+          "w": 229,
+          "h": 31,
+          "text": "客户账期"
+        },
+        {
+          "sel": "a.nav-tab",
+          "w": 28,
+          "h": 39,
+          "text": "首页"
+        },
+        {
+          "sel": "a",
+          "w": 24,
+          "h": 18,
+          "text": "首页"
+        },
+        {
+          "sel": "a.th-sort",
+          "w": 78,
+          "h": 20,
+          "text": "日期及时间"
+        },
+        {
+          "sel": "a.th-sort",
+          "w": 65,
+          "h": 20,
+          "text": "截至日期"
+        },
+        {
+          "sel": "select#perPageSelect.per-page-select",
+          "w": 49,
+          "h": 29,
+          "text": "10\n                30\n  "
+        },
+        {
+          "sel": "a.page-link",
+          "w": 28,
+          "h": 28,
+          "text": "2"
+        },
+        {
+          "sel": "button.btn-transparent.btn-sm",
+          "w": 48,
+          "h": 29,
+          "text": "确定"
+        }
+      ],
+      "overflowing": [
+        {
+          "sel": "table.table-ledger.dr-table",
+          "right": 1384,
+          "w": 1110
+        },
+        {
+          "sel": "thead",
+          "right": 1384,
+          "w": 1110
+        },
+        {
+          "sel": "tr",
+          "right": 1384,
+          "w": 1110
+        },
+        {
+          "sel": "th",
+          "right": 1262,
+          "w": 133
+        },
+        {
+          "sel": "a.th-sort",
+          "right": 1208,
+          "w": 65
+        },
+        {
+          "sel": "tbody",
+          "right": 1384,
+          "w": 1110
+        },
+        {
+          "sel": "td",
+          "right": 1262,
+          "w": 133
+        },
+        {
+          "sel": "div.progress-cell",
+          "right": 1247,
+          "w": 105
+        },
+        {
+          "sel": "div.mini-progress",
+          "right": 1205,
+          "w": 63
+        },
+        {
+          "sel": "div.mini-progress.done",
+          "right": 1205,
+          "w": 63
+        },
+        {
+          "sel": "span.mini-progress-fill",
+          "right": 1205,
+          "w": 63
+        }
+      ],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 1180,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": 0,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": ""
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 274,
+          "w": 882,
+          "h": 906,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": {
+          "tableW": 1110,
+          "scrollW": 1110,
+          "clientW": 1110,
+          "minWidth": "1110px",
+          "parentOverflow": "visible"
+        }
+      }
+    },
+    "tablet": {
+      "url": "/daily_record/",
+      "vw": 768,
+      "docScrollW": 768,
+      "bodyScrollW": 768,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [
+        {
+          "sel": "span.dr-content__flag",
+          "fs": 11,
+          "text": "已沉淀"
+        },
+        {
+          "sel": "span.dr-content__flag",
+          "fs": 11,
+          "text": "已沉淀"
+        },
+        {
+          "sel": "span.dr-content__flag",
+          "fs": 11,
+          "text": "已沉淀"
+        },
+        {
+          "sel": "span.dr-content__flag",
+          "fs": 11,
+          "text": "已沉淀"
+        },
+        {
+          "sel": "span.dr-content__flag",
+          "fs": 11,
+          "text": "已沉淀"
+        }
+      ],
+      "smallTargets": [
+        {
+          "sel": "a.th-sort",
+          "w": 77,
+          "h": 19,
+          "text": "日期及时间"
+        },
+        {
+          "sel": "a.th-sort",
+          "w": 64,
+          "h": 19,
+          "text": "截至日期"
+        }
+      ],
+      "overflowing": [
+        {
+          "sel": "table.table-ledger.dr-table",
+          "right": 1126,
+          "w": 1110
+        },
+        {
+          "sel": "thead",
+          "right": 1126,
+          "w": 1110
+        },
+        {
+          "sel": "tr",
+          "right": 1126,
+          "w": 1110
+        },
+        {
+          "sel": "th",
+          "right": 871,
+          "w": 118
+        },
+        {
+          "sel": "a.th-sort",
+          "right": 943,
+          "w": 64
+        },
+        {
+          "sel": "tbody",
+          "right": 1126,
+          "w": 1110
+        },
+        {
+          "sel": "td",
+          "right": 871,
+          "w": 118
+        },
+        {
+          "sel": "span.dr-status.dr-status--doing",
+          "right": 819,
+          "w": 58
+        },
+        {
+          "sel": "div.progress-cell",
+          "right": 995,
+          "w": 117
+        },
+        {
+          "sel": "div.mini-progress",
+          "right": 953,
+          "w": 75
+        },
+        {
+          "sel": "div",
+          "right": 1114,
+          "w": 98
+        },
+        {
+          "sel": "span.dr-status.dr-status--done",
+          "right": 819,
+          "w": 58
+        },
+        {
+          "sel": "div.mini-progress.done",
+          "right": 953,
+          "w": 75
+        },
+        {
+          "sel": "span.mini-progress-fill",
+          "right": 953,
+          "w": 75
+        },
+        {
+          "sel": "span.dr-status.dr-status--todo",
+          "right": 819,
+          "w": 58
+        }
+      ],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 768,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 16,
+          "w": 736,
+          "h": 901,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": {
+          "tableW": 1110,
+          "scrollW": 1110,
+          "clientW": 1110,
+          "minWidth": "1110px",
+          "parentOverflow": "auto"
+        }
+      }
+    },
+    "mobile": {
+      "url": "/daily_record/",
+      "vw": 390,
+      "docScrollW": 390,
+      "bodyScrollW": 390,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [
+        {
+          "sel": "span.dr-content__flag",
+          "fs": 11,
+          "text": "已沉淀"
+        },
+        {
+          "sel": "span.dr-content__flag",
+          "fs": 11,
+          "text": "已沉淀"
+        },
+        {
+          "sel": "span.dr-content__flag",
+          "fs": 11,
+          "text": "已沉淀"
+        },
+        {
+          "sel": "span.dr-content__flag",
+          "fs": 11,
+          "text": "已沉淀"
+        },
+        {
+          "sel": "span.dr-content__flag",
+          "fs": 11,
+          "text": "已沉淀"
+        }
+      ],
+      "smallTargets": [],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 390,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 12,
+          "w": 366,
+          "h": 3943,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": {
+          "tableW": 342,
+          "scrollW": 342,
+          "clientW": 342,
+          "minWidth": "0px",
+          "parentOverflow": "auto"
+        }
+      }
+    },
+    "mobile_sm": {
+      "url": "/daily_record/",
+      "vw": 320,
+      "docScrollW": 320,
+      "bodyScrollW": 320,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [
+        {
+          "sel": "span.dr-content__flag",
+          "fs": 11,
+          "text": "已沉淀"
+        },
+        {
+          "sel": "span.dr-content__flag",
+          "fs": 11,
+          "text": "已沉淀"
+        },
+        {
+          "sel": "span.dr-content__flag",
+          "fs": 11,
+          "text": "已沉淀"
+        },
+        {
+          "sel": "span.dr-content__flag",
+          "fs": 11,
+          "text": "已沉淀"
+        },
+        {
+          "sel": "span.dr-content__flag",
+          "fs": 11,
+          "text": "已沉淀"
+        }
+      ],
+      "smallTargets": [],
+      "overflowing": [
+        {
+          "sel": "div#drExportMenu.tb-more-menu",
+          "right": 402,
+          "w": 168
+        },
+        {
+          "sel": "a",
+          "right": 395,
+          "w": 154
+        }
+      ],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 320,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 12,
+          "w": 296,
+          "h": 4290,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": {
+          "tableW": 272,
+          "scrollW": 272,
+          "clientW": 272,
+          "minWidth": "0px",
+          "parentOverflow": "auto"
+        }
+      }
+    }
+  },
+  "daily_record_form": {
+    "desktop": {
+      "url": "/daily_record/add/",
+      "vw": 1440,
+      "docScrollW": 1440,
+      "bodyScrollW": 1440,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [
+        {
+          "sel": "a",
+          "w": 229,
+          "h": 31,
+          "text": "客户账期"
+        },
+        {
+          "sel": "a.nav-tab",
+          "w": 28,
+          "h": 39,
+          "text": "首页"
+        },
+        {
+          "sel": "a",
+          "w": 24,
+          "h": 18,
+          "text": "首页"
+        },
+        {
+          "sel": "a",
+          "w": 48,
+          "h": 18,
+          "text": "每日记录"
+        }
+      ],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 1440,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": 0,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": ""
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 274,
+          "w": 1142,
+          "h": 1059,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": null
+      }
+    },
+    "laptop": {
+      "url": "/daily_record/add/",
+      "vw": 1180,
+      "docScrollW": 1180,
+      "bodyScrollW": 1180,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [
+        {
+          "sel": "a",
+          "w": 229,
+          "h": 31,
+          "text": "客户账期"
+        },
+        {
+          "sel": "a.nav-tab",
+          "w": 28,
+          "h": 39,
+          "text": "首页"
+        },
+        {
+          "sel": "a",
+          "w": 24,
+          "h": 18,
+          "text": "首页"
+        },
+        {
+          "sel": "a",
+          "w": 48,
+          "h": 18,
+          "text": "每日记录"
+        }
+      ],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 1180,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": 0,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": ""
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 274,
+          "w": 882,
+          "h": 1059,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": null
+      }
+    },
+    "tablet": {
+      "url": "/daily_record/add/",
+      "vw": 768,
+      "docScrollW": 768,
+      "bodyScrollW": 768,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 768,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 16,
+          "w": 736,
+          "h": 1370,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": null
+      }
+    },
+    "mobile": {
+      "url": "/daily_record/add/",
+      "vw": 390,
+      "docScrollW": 390,
+      "bodyScrollW": 390,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 390,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 12,
+          "w": 366,
+          "h": 1476,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": null
+      }
+    },
+    "mobile_sm": {
+      "url": "/daily_record/add/",
+      "vw": 320,
+      "docScrollW": 320,
+      "bodyScrollW": 320,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 320,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 12,
+          "w": 296,
+          "h": 1588,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": null
+      }
+    }
+  },
+  "daily_record_detail": {
+    "desktop": {
+      "url": "/daily_record/detail/127/",
+      "vw": 1440,
+      "docScrollW": 1440,
+      "bodyScrollW": 1440,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [
+        {
+          "sel": "a",
+          "w": 229,
+          "h": 31,
+          "text": "客户账期"
+        },
+        {
+          "sel": "a.nav-tab",
+          "w": 28,
+          "h": 39,
+          "text": "首页"
+        },
+        {
+          "sel": "a",
+          "w": 24,
+          "h": 18,
+          "text": "首页"
+        },
+        {
+          "sel": "a",
+          "w": 48,
+          "h": 18,
+          "text": "每日记录"
+        }
+      ],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 1440,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": 0,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": ""
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 274,
+          "w": 1142,
+          "h": 852,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": null
+      }
+    },
+    "laptop": {
+      "url": "/daily_record/detail/127/",
+      "vw": 1180,
+      "docScrollW": 1180,
+      "bodyScrollW": 1180,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [
+        {
+          "sel": "a",
+          "w": 229,
+          "h": 31,
+          "text": "客户账期"
+        },
+        {
+          "sel": "a.nav-tab",
+          "w": 28,
+          "h": 39,
+          "text": "首页"
+        },
+        {
+          "sel": "a",
+          "w": 24,
+          "h": 18,
+          "text": "首页"
+        },
+        {
+          "sel": "a",
+          "w": 48,
+          "h": 18,
+          "text": "每日记录"
+        }
+      ],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 1180,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": 0,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": ""
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 274,
+          "w": 882,
+          "h": 852,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": null
+      }
+    },
+    "tablet": {
+      "url": "/daily_record/detail/127/",
+      "vw": 768,
+      "docScrollW": 768,
+      "bodyScrollW": 768,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 768,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 16,
+          "w": 736,
+          "h": 868,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": null
+      }
+    },
+    "mobile": {
+      "url": "/daily_record/detail/127/",
+      "vw": 390,
+      "docScrollW": 390,
+      "bodyScrollW": 390,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 390,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 12,
+          "w": 366,
+          "h": 1077,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": null
+      }
+    },
+    "mobile_sm": {
+      "url": "/daily_record/detail/127/",
+      "vw": 320,
+      "docScrollW": 320,
+      "bodyScrollW": 320,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 320,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 12,
+          "w": 296,
+          "h": 1169,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": null
+      }
+    }
+  },
+  "complaint_list": {
+    "desktop": {
+      "url": "/complaint/",
+      "vw": 1440,
+      "docScrollW": 1474,
+      "bodyScrollW": 1474,
+      "hasHScroll": true,
+      "overflowX": 34,
+      "tinyText": [],
+      "smallTargets": [
+        {
+          "sel": "a",
+          "w": 229,
+          "h": 31,
+          "text": "客户账期"
+        },
+        {
+          "sel": "a.active",
+          "w": 229,
+          "h": 31,
+          "text": "诉讼"
+        },
+        {
+          "sel": "a.nav-tab",
+          "w": 28,
+          "h": 39,
+          "text": "首页"
+        },
+        {
+          "sel": "a",
+          "w": 24,
+          "h": 18,
+          "text": "首页"
+        },
+        {
+          "sel": "a.th-sort",
+          "w": 104,
+          "h": 20,
+          "text": "涉案金额（元）"
+        },
+        {
+          "sel": "a.th-sort",
+          "w": 39,
+          "h": 20,
+          "text": "进度"
+        },
+        {
+          "sel": "select#perPageSelect.per-page-select",
+          "w": 49,
+          "h": 29,
+          "text": "10\n                30\n  "
+        },
+        {
+          "sel": "a.page-link",
+          "w": 28,
+          "h": 28,
+          "text": "2"
+        },
+        {
+          "sel": "button.btn-transparent.btn-sm",
+          "w": 48,
+          "h": 29,
+          "text": "确定"
+        }
+      ],
+      "overflowing": [
+        {
+          "sel": "table.table-ledger.table--cards",
+          "right": 1474,
+          "w": 1200
+        },
+        {
+          "sel": "thead",
+          "right": 1474,
+          "w": 1200
+        },
+        {
+          "sel": "tr",
+          "right": 1474,
+          "w": 1200
+        },
+        {
+          "sel": "tbody",
+          "right": 1474,
+          "w": 1200
+        }
+      ],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 1440,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": 0,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": ""
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 274,
+          "w": 1142,
+          "h": 895,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": {
+          "tableW": 1200,
+          "scrollW": 1200,
+          "clientW": 1200,
+          "minWidth": "1200px",
+          "parentOverflow": "visible"
+        }
+      }
+    },
+    "laptop": {
+      "url": "/complaint/",
+      "vw": 1180,
+      "docScrollW": 1474,
+      "bodyScrollW": 1474,
+      "hasHScroll": true,
+      "overflowX": 294,
+      "tinyText": [],
+      "smallTargets": [
+        {
+          "sel": "a",
+          "w": 229,
+          "h": 31,
+          "text": "客户账期"
+        },
+        {
+          "sel": "a.active",
+          "w": 229,
+          "h": 31,
+          "text": "诉讼"
+        },
+        {
+          "sel": "a.nav-tab",
+          "w": 28,
+          "h": 39,
+          "text": "首页"
+        },
+        {
+          "sel": "a",
+          "w": 24,
+          "h": 18,
+          "text": "首页"
+        },
+        {
+          "sel": "a.th-sort",
+          "w": 104,
+          "h": 20,
+          "text": "涉案金额（元）"
+        },
+        {
+          "sel": "a.th-sort",
+          "w": 39,
+          "h": 20,
+          "text": "进度"
+        },
+        {
+          "sel": "select#perPageSelect.per-page-select",
+          "w": 49,
+          "h": 29,
+          "text": "10\n                30\n  "
+        },
+        {
+          "sel": "a.page-link",
+          "w": 28,
+          "h": 28,
+          "text": "2"
+        },
+        {
+          "sel": "button.btn-transparent.btn-sm",
+          "w": 48,
+          "h": 29,
+          "text": "确定"
+        }
+      ],
+      "overflowing": [
+        {
+          "sel": "table.table-ledger.table--cards",
+          "right": 1474,
+          "w": 1200
+        },
+        {
+          "sel": "thead",
+          "right": 1474,
+          "w": 1200
+        },
+        {
+          "sel": "tr",
+          "right": 1474,
+          "w": 1200
+        },
+        {
+          "sel": "th",
+          "right": 1237,
+          "w": 158
+        },
+        {
+          "sel": "tbody",
+          "right": 1474,
+          "w": 1200
+        },
+        {
+          "sel": "td.cell-clamp",
+          "right": 1237,
+          "w": 158
+        },
+        {
+          "sel": "span",
+          "right": 1223,
+          "w": 130
+        },
+        {
+          "sel": "td",
+          "right": 1302,
+          "w": 66
+        }
+      ],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 1180,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": 0,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": ""
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 274,
+          "w": 882,
+          "h": 933,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": {
+          "tableW": 1200,
+          "scrollW": 1200,
+          "clientW": 1200,
+          "minWidth": "1200px",
+          "parentOverflow": "visible"
+        }
+      }
+    },
+    "tablet": {
+      "url": "/complaint/",
+      "vw": 768,
+      "docScrollW": 768,
+      "bodyScrollW": 768,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [
+        {
+          "sel": "a.th-sort",
+          "w": 103,
+          "h": 19,
+          "text": "涉案金额（元）"
+        },
+        {
+          "sel": "a.th-sort",
+          "w": 39,
+          "h": 19,
+          "text": "进度"
+        }
+      ],
+      "overflowing": [
+        {
+          "sel": "table.table-ledger.table--cards",
+          "right": 1216,
+          "w": 1200
+        },
+        {
+          "sel": "thead",
+          "right": 1216,
+          "w": 1200
+        },
+        {
+          "sel": "tr",
+          "right": 1216,
+          "w": 1200
+        },
+        {
+          "sel": "th",
+          "right": 820,
+          "w": 92
+        },
+        {
+          "sel": "tbody",
+          "right": 1216,
+          "w": 1200
+        },
+        {
+          "sel": "td",
+          "right": 820,
+          "w": 92
+        },
+        {
+          "sel": "span.status-badge.success",
+          "right": 780,
+          "w": 44
+        },
+        {
+          "sel": "td.cell-clamp",
+          "right": 979,
+          "w": 158
+        },
+        {
+          "sel": "span",
+          "right": 971,
+          "w": 142
+        },
+        {
+          "sel": "span.status-badge.info",
+          "right": 780,
+          "w": 44
+        },
+        {
+          "sel": "span.status-badge.warning",
+          "right": 792,
+          "w": 56
+        }
+      ],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 768,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 16,
+          "w": 736,
+          "h": 974,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": {
+          "tableW": 1200,
+          "scrollW": 1200,
+          "clientW": 1200,
+          "minWidth": "1200px",
+          "parentOverflow": "auto"
+        }
+      }
+    },
+    "mobile": {
+      "url": "/complaint/",
+      "vw": 390,
+      "docScrollW": 390,
+      "bodyScrollW": 390,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 390,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 12,
+          "w": 366,
+          "h": 5762,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": {
+          "tableW": 342,
+          "scrollW": 342,
+          "clientW": 342,
+          "minWidth": "0px",
+          "parentOverflow": "auto"
+        }
+      }
+    },
+    "mobile_sm": {
+      "url": "/complaint/",
+      "vw": 320,
+      "docScrollW": 320,
+      "bodyScrollW": 320,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 320,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 12,
+          "w": 296,
+          "h": 5814,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": {
+          "tableW": 272,
+          "scrollW": 272,
+          "clientW": 272,
+          "minWidth": "0px",
+          "parentOverflow": "auto"
+        }
+      }
+    }
+  },
+  "complaint_form": {
+    "desktop": {
+      "url": "/complaint/add/",
+      "vw": 1440,
+      "docScrollW": 1440,
+      "bodyScrollW": 1440,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [
+        {
+          "sel": "a",
+          "w": 229,
+          "h": 31,
+          "text": "客户账期"
+        },
+        {
+          "sel": "a.active",
+          "w": 229,
+          "h": 31,
+          "text": "诉讼"
+        },
+        {
+          "sel": "a.nav-tab",
+          "w": 28,
+          "h": 39,
+          "text": "首页"
+        },
+        {
+          "sel": "a",
+          "w": 24,
+          "h": 18,
+          "text": "首页"
+        }
+      ],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 1440,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": 0,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": ""
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 274,
+          "w": 1142,
+          "h": 1305,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": null
+      }
+    },
+    "laptop": {
+      "url": "/complaint/add/",
+      "vw": 1180,
+      "docScrollW": 1180,
+      "bodyScrollW": 1180,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [
+        {
+          "sel": "a",
+          "w": 229,
+          "h": 31,
+          "text": "客户账期"
+        },
+        {
+          "sel": "a.active",
+          "w": 229,
+          "h": 31,
+          "text": "诉讼"
+        },
+        {
+          "sel": "a.nav-tab",
+          "w": 28,
+          "h": 39,
+          "text": "首页"
+        },
+        {
+          "sel": "a",
+          "w": 24,
+          "h": 18,
+          "text": "首页"
+        }
+      ],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 1180,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": 0,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": ""
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 274,
+          "w": 882,
+          "h": 1305,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": null
+      }
+    },
+    "tablet": {
+      "url": "/complaint/add/",
+      "vw": 768,
+      "docScrollW": 768,
+      "bodyScrollW": 768,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 768,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 16,
+          "w": 736,
+          "h": 1318,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": null
+      }
+    },
+    "mobile": {
+      "url": "/complaint/add/",
+      "vw": 390,
+      "docScrollW": 390,
+      "bodyScrollW": 390,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 390,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 12,
+          "w": 366,
+          "h": 1814,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": null
+      }
+    },
+    "mobile_sm": {
+      "url": "/complaint/add/",
+      "vw": 320,
+      "docScrollW": 320,
+      "bodyScrollW": 320,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 320,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 12,
+          "w": 296,
+          "h": 1814,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": null
+      }
+    }
+  },
+  "complaint_detail": {
+    "desktop": {
+      "url": "/complaint/detail/120/",
+      "vw": 1440,
+      "docScrollW": 1440,
+      "bodyScrollW": 1440,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [
+        {
+          "sel": "span.case-date",
+          "fs": 11,
+          "text": "2026-03-28"
+        },
+        {
+          "sel": "span.case-date",
+          "fs": 11,
+          "text": "2026-05-16"
+        },
+        {
+          "sel": "span.case-date",
+          "fs": 11,
+          "text": "2026-07-19"
+        },
+        {
+          "sel": "span.case-date",
+          "fs": 11,
+          "text": "2026-09-04"
+        },
+        {
+          "sel": "span.case-date",
+          "fs": 11,
+          "text": "2026-10-08"
+        }
+      ],
+      "smallTargets": [
+        {
+          "sel": "a",
+          "w": 229,
+          "h": 31,
+          "text": "客户账期"
+        },
+        {
+          "sel": "a.active",
+          "w": 229,
+          "h": 31,
+          "text": "诉讼"
+        },
+        {
+          "sel": "a.nav-tab",
+          "w": 28,
+          "h": 39,
+          "text": "首页"
+        },
+        {
+          "sel": "a",
+          "w": 24,
+          "h": 18,
+          "text": "首页"
+        }
+      ],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 1440,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": 0,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": ""
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 274,
+          "w": 1142,
+          "h": 1734,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": null
+      }
+    },
+    "laptop": {
+      "url": "/complaint/detail/120/",
+      "vw": 1180,
+      "docScrollW": 1180,
+      "bodyScrollW": 1180,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [
+        {
+          "sel": "span.case-date",
+          "fs": 11,
+          "text": "2026-03-28"
+        },
+        {
+          "sel": "span.case-date",
+          "fs": 11,
+          "text": "2026-05-16"
+        },
+        {
+          "sel": "span.case-date",
+          "fs": 11,
+          "text": "2026-07-19"
+        },
+        {
+          "sel": "span.case-date",
+          "fs": 11,
+          "text": "2026-09-04"
+        },
+        {
+          "sel": "span.case-date",
+          "fs": 11,
+          "text": "2026-10-08"
+        }
+      ],
+      "smallTargets": [
+        {
+          "sel": "a",
+          "w": 229,
+          "h": 31,
+          "text": "客户账期"
+        },
+        {
+          "sel": "a.active",
+          "w": 229,
+          "h": 31,
+          "text": "诉讼"
+        },
+        {
+          "sel": "a.nav-tab",
+          "w": 28,
+          "h": 39,
+          "text": "首页"
+        },
+        {
+          "sel": "a",
+          "w": 24,
+          "h": 18,
+          "text": "首页"
+        }
+      ],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 1180,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": 0,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": ""
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 274,
+          "w": 882,
+          "h": 1760,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": null
+      }
+    },
+    "tablet": {
+      "url": "/complaint/detail/120/",
+      "vw": 768,
+      "docScrollW": 768,
+      "bodyScrollW": 768,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [
+        {
+          "sel": "span.case-date",
+          "fs": 11,
+          "text": "2026-03-28"
+        },
+        {
+          "sel": "span.case-date",
+          "fs": 11,
+          "text": "2026-05-16"
+        },
+        {
+          "sel": "span.case-date",
+          "fs": 11,
+          "text": "2026-07-19"
+        },
+        {
+          "sel": "span.case-date",
+          "fs": 11,
+          "text": "2026-09-04"
+        },
+        {
+          "sel": "span.case-date",
+          "fs": 11,
+          "text": "2026-10-08"
+        }
+      ],
+      "smallTargets": [],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 768,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 16,
+          "w": 736,
+          "h": 1967,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": null
+      }
+    },
+    "mobile": {
+      "url": "/complaint/detail/120/",
+      "vw": 390,
+      "docScrollW": 390,
+      "bodyScrollW": 390,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 390,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 12,
+          "w": 366,
+          "h": 2110,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": null
+      }
+    },
+    "mobile_sm": {
+      "url": "/complaint/detail/120/",
+      "vw": 320,
+      "docScrollW": 320,
+      "bodyScrollW": 320,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 320,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 12,
+          "w": 296,
+          "h": 2177,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": null
+      }
+    }
+  },
+  "price_eval_list": {
+    "desktop": {
+      "url": "/price_evaluation/",
+      "vw": 1440,
+      "docScrollW": 1440,
+      "bodyScrollW": 1440,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [
+        {
+          "sel": "a",
+          "w": 229,
+          "h": 31,
+          "text": "客户账期"
+        },
+        {
+          "sel": "a.nav-tab",
+          "w": 28,
+          "h": 39,
+          "text": "首页"
+        },
+        {
+          "sel": "a",
+          "w": 24,
+          "h": 18,
+          "text": "首页"
+        },
+        {
+          "sel": "a.th-sort",
+          "w": 78,
+          "h": 20,
+          "text": "内控审核价"
+        },
+        {
+          "sel": "select#perPageSelect.per-page-select",
+          "w": 49,
+          "h": 29,
+          "text": "10\n                30\n  "
+        },
+        {
+          "sel": "a.page-link",
+          "w": 28,
+          "h": 28,
+          "text": "2"
+        },
+        {
+          "sel": "button.btn-transparent.btn-sm",
+          "w": 48,
+          "h": 29,
+          "text": "确定"
+        }
+      ],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 1440,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": 0,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": ""
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 274,
+          "w": 1142,
+          "h": 953,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": {
+          "tableW": 1142,
+          "scrollW": 1142,
+          "clientW": 1142,
+          "minWidth": "0px",
+          "parentOverflow": "visible"
+        }
+      }
+    },
+    "laptop": {
+      "url": "/price_evaluation/",
+      "vw": 1180,
+      "docScrollW": 1180,
+      "bodyScrollW": 1180,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [
+        {
+          "sel": "a",
+          "w": 229,
+          "h": 31,
+          "text": "客户账期"
+        },
+        {
+          "sel": "a.nav-tab",
+          "w": 28,
+          "h": 39,
+          "text": "首页"
+        },
+        {
+          "sel": "a",
+          "w": 24,
+          "h": 18,
+          "text": "首页"
+        },
+        {
+          "sel": "a.th-sort",
+          "w": 78,
+          "h": 20,
+          "text": "内控审核价"
+        },
+        {
+          "sel": "select#perPageSelect.per-page-select",
+          "w": 49,
+          "h": 29,
+          "text": "10\n                30\n  "
+        },
+        {
+          "sel": "a.page-link",
+          "w": 28,
+          "h": 28,
+          "text": "2"
+        },
+        {
+          "sel": "button.btn-transparent.btn-sm",
+          "w": 48,
+          "h": 29,
+          "text": "确定"
+        }
+      ],
+      "overflowing": [
+        {
+          "sel": "table.table-ledger.table--cards",
+          "right": 1406,
+          "w": 1132
+        },
+        {
+          "sel": "thead",
+          "right": 1406,
+          "w": 1132
+        },
+        {
+          "sel": "tr",
+          "right": 1406,
+          "w": 1132
+        },
+        {
+          "sel": "th.col-num.is-num",
+          "right": 1276,
+          "w": 104
+        },
+        {
+          "sel": "tbody",
+          "right": 1406,
+          "w": 1132
+        },
+        {
+          "sel": "td.cell-ellipsis.col-num",
+          "right": 1276,
+          "w": 104
+        }
+      ],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 1180,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": 0,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": ""
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 274,
+          "w": 882,
+          "h": 947,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": {
+          "tableW": 1132,
+          "scrollW": 1132,
+          "clientW": 1132,
+          "minWidth": "1132px",
+          "parentOverflow": "auto"
+        }
+      }
+    },
+    "tablet": {
+      "url": "/price_evaluation/",
+      "vw": 768,
+      "docScrollW": 768,
+      "bodyScrollW": 768,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [
+        {
+          "sel": "a.th-sort",
+          "w": 77,
+          "h": 19,
+          "text": "内控审核价"
+        }
+      ],
+      "overflowing": [
+        {
+          "sel": "table.table-ledger.table--cards",
+          "right": 1148,
+          "w": 1132
+        },
+        {
+          "sel": "thead",
+          "right": 1148,
+          "w": 1132
+        },
+        {
+          "sel": "tr",
+          "right": 1148,
+          "w": 1132
+        },
+        {
+          "sel": "th.col-num.is-num",
+          "right": 808,
+          "w": 116
+        },
+        {
+          "sel": "th",
+          "right": 914,
+          "w": 106
+        },
+        {
+          "sel": "a.th-sort",
+          "right": 906,
+          "w": 77
+        },
+        {
+          "sel": "tbody",
+          "right": 1148,
+          "w": 1132
+        },
+        {
+          "sel": "td.col-num.is-num",
+          "right": 808,
+          "w": 116
+        },
+        {
+          "sel": "div.supplier-cell",
+          "right": 800,
+          "w": 100
+        },
+        {
+          "sel": "span.supplier-name",
+          "right": 800,
+          "w": 100
+        },
+        {
+          "sel": "span.supplier-price",
+          "right": 800,
+          "w": 100
+        },
+        {
+          "sel": "td.cell-ellipsis",
+          "right": 914,
+          "w": 106
+        },
+        {
+          "sel": "td.cell-ellipsis.col-num",
+          "right": 1018,
+          "w": 104
+        }
+      ],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 768,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 16,
+          "w": 736,
+          "h": 937,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": {
+          "tableW": 1132,
+          "scrollW": 1132,
+          "clientW": 1132,
+          "minWidth": "1132px",
+          "parentOverflow": "auto"
+        }
+      }
+    },
+    "mobile": {
+      "url": "/price_evaluation/",
+      "vw": 390,
+      "docScrollW": 390,
+      "bodyScrollW": 390,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 390,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 12,
+          "w": 366,
+          "h": 5102,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": {
+          "tableW": 342,
+          "scrollW": 342,
+          "clientW": 342,
+          "minWidth": "0px",
+          "parentOverflow": "auto"
+        }
+      }
+    },
+    "mobile_sm": {
+      "url": "/price_evaluation/",
+      "vw": 320,
+      "docScrollW": 320,
+      "bodyScrollW": 320,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 320,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 12,
+          "w": 296,
+          "h": 5102,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": {
+          "tableW": 272,
+          "scrollW": 272,
+          "clientW": 272,
+          "minWidth": "0px",
+          "parentOverflow": "auto"
+        }
+      }
+    }
+  },
+  "customer_credit_list": {
+    "desktop": {
+      "url": "/customer_credit/",
+      "vw": 1440,
+      "docScrollW": 1440,
+      "bodyScrollW": 1440,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [
+        {
+          "sel": "span.assessment-range",
+          "fs": 11,
+          "text": "至 2026/07"
+        },
+        {
+          "sel": "span.assessment-range",
+          "fs": 11,
+          "text": "至 2026/08"
+        }
+      ],
+      "smallTargets": [
+        {
+          "sel": "a.active",
+          "w": 229,
+          "h": 31,
+          "text": "客户账期"
+        },
+        {
+          "sel": "a",
+          "w": 229,
+          "h": 31,
+          "text": "客户客诉"
+        },
+        {
+          "sel": "a.nav-tab",
+          "w": 28,
+          "h": 39,
+          "text": "首页"
+        },
+        {
+          "sel": "a",
+          "w": 24,
+          "h": 18,
+          "text": "首页"
+        },
+        {
+          "sel": "a.th-sort",
+          "w": 76,
+          "h": 20,
+          "text": "提出 / 现场"
+        },
+        {
+          "sel": "select#perPageSelect.per-page-select",
+          "w": 49,
+          "h": 29,
+          "text": "10\n                30\n  "
+        },
+        {
+          "sel": "a.page-link",
+          "w": 28,
+          "h": 28,
+          "text": "2"
+        },
+        {
+          "sel": "button.btn-transparent.btn-sm",
+          "w": 48,
+          "h": 29,
+          "text": "确定"
+        }
+      ],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 1440,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": 0,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": ""
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 274,
+          "w": 1142,
+          "h": 961,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": {
+          "tableW": 1142,
+          "scrollW": 1142,
+          "clientW": 1142,
+          "minWidth": "1080px",
+          "parentOverflow": "visible"
+        }
+      }
+    },
+    "laptop": {
+      "url": "/customer_credit/",
+      "vw": 1180,
+      "docScrollW": 1354,
+      "bodyScrollW": 1354,
+      "hasHScroll": true,
+      "overflowX": 174,
+      "tinyText": [
+        {
+          "sel": "span.assessment-range",
+          "fs": 11,
+          "text": "至 2026/07"
+        },
+        {
+          "sel": "span.assessment-range",
+          "fs": 11,
+          "text": "至 2026/08"
+        }
+      ],
+      "smallTargets": [
+        {
+          "sel": "a.active",
+          "w": 229,
+          "h": 31,
+          "text": "客户账期"
+        },
+        {
+          "sel": "a",
+          "w": 229,
+          "h": 31,
+          "text": "客户客诉"
+        },
+        {
+          "sel": "a.nav-tab",
+          "w": 28,
+          "h": 39,
+          "text": "首页"
+        },
+        {
+          "sel": "a",
+          "w": 24,
+          "h": 18,
+          "text": "首页"
+        },
+        {
+          "sel": "a.th-sort",
+          "w": 76,
+          "h": 20,
+          "text": "提出 / 现场"
+        },
+        {
+          "sel": "select#perPageSelect.per-page-select",
+          "w": 49,
+          "h": 29,
+          "text": "10\n                30\n  "
+        },
+        {
+          "sel": "a.page-link",
+          "w": 28,
+          "h": 28,
+          "text": "2"
+        },
+        {
+          "sel": "button.btn-transparent.btn-sm",
+          "w": 48,
+          "h": 29,
+          "text": "确定"
+        }
+      ],
+      "overflowing": [
+        {
+          "sel": "table.table-ledger.table--cards",
+          "right": 1354,
+          "w": 1080
+        },
+        {
+          "sel": "thead",
+          "right": 1354,
+          "w": 1080
+        },
+        {
+          "sel": "tr",
+          "right": 1354,
+          "w": 1080
+        },
+        {
+          "sel": "th",
+          "right": 1210,
+          "w": 96
+        },
+        {
+          "sel": "tbody",
+          "right": 1354,
+          "w": 1080
+        },
+        {
+          "sel": "td",
+          "right": 1210,
+          "w": 96
+        },
+        {
+          "sel": "span.assessment-range",
+          "right": 1195,
+          "w": 67
+        }
+      ],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 1180,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": 0,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": ""
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 274,
+          "w": 882,
+          "h": 999,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": {
+          "tableW": 1080,
+          "scrollW": 1080,
+          "clientW": 1080,
+          "minWidth": "1080px",
+          "parentOverflow": "visible"
+        }
+      }
+    },
+    "tablet": {
+      "url": "/customer_credit/",
+      "vw": 768,
+      "docScrollW": 768,
+      "bodyScrollW": 768,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [
+        {
+          "sel": "span.assessment-range",
+          "fs": 11,
+          "text": "至 2026/07"
+        },
+        {
+          "sel": "span.assessment-range",
+          "fs": 11,
+          "text": "至 2026/08"
+        }
+      ],
+      "smallTargets": [
+        {
+          "sel": "a.th-sort",
+          "w": 75,
+          "h": 19,
+          "text": "提出 / 现场"
+        }
+      ],
+      "overflowing": [
+        {
+          "sel": "table.table-ledger.table--cards",
+          "right": 1096,
+          "w": 1080
+        },
+        {
+          "sel": "thead",
+          "right": 1096,
+          "w": 1080
+        },
+        {
+          "sel": "tr",
+          "right": 1096,
+          "w": 1080
+        },
+        {
+          "sel": "th",
+          "right": 856,
+          "w": 120
+        },
+        {
+          "sel": "tbody",
+          "right": 1096,
+          "w": 1080
+        },
+        {
+          "sel": "td",
+          "right": 856,
+          "w": 120
+        },
+        {
+          "sel": "div.cell-stack",
+          "right": 848,
+          "w": 104
+        },
+        {
+          "sel": "span",
+          "right": 848,
+          "w": 104
+        },
+        {
+          "sel": "span.status-badge.danger",
+          "right": 800,
+          "w": 56
+        },
+        {
+          "sel": "span.cell-stack__sub",
+          "right": 848,
+          "w": 104
+        },
+        {
+          "sel": "span.status-badge.success",
+          "right": 788,
+          "w": 44
+        },
+        {
+          "sel": "span.status-badge.warning",
+          "right": 915,
+          "w": 51
+        },
+        {
+          "sel": "span.assessment-range",
+          "right": 943,
+          "w": 79
+        }
+      ],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 768,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 16,
+          "w": 736,
+          "h": 992,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": {
+          "tableW": 1080,
+          "scrollW": 1080,
+          "clientW": 1080,
+          "minWidth": "1080px",
+          "parentOverflow": "auto"
+        }
+      }
+    },
+    "mobile": {
+      "url": "/customer_credit/",
+      "vw": 390,
+      "docScrollW": 390,
+      "bodyScrollW": 390,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [
+        {
+          "sel": "span.assessment-range",
+          "fs": 11,
+          "text": "至 2026/07"
+        },
+        {
+          "sel": "span.assessment-range",
+          "fs": 11,
+          "text": "至 2026/08"
+        }
+      ],
+      "smallTargets": [],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 390,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 12,
+          "w": 366,
+          "h": 5608,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": {
+          "tableW": 342,
+          "scrollW": 342,
+          "clientW": 342,
+          "minWidth": "0px",
+          "parentOverflow": "auto"
+        }
+      }
+    },
+    "mobile_sm": {
+      "url": "/customer_credit/",
+      "vw": 320,
+      "docScrollW": 320,
+      "bodyScrollW": 320,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [
+        {
+          "sel": "span.assessment-range",
+          "fs": 11,
+          "text": "至 2026/07"
+        },
+        {
+          "sel": "span.assessment-range",
+          "fs": 11,
+          "text": "至 2026/08"
+        }
+      ],
+      "smallTargets": [],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 320,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 12,
+          "w": 296,
+          "h": 5836,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": {
+          "tableW": 272,
+          "scrollW": 272,
+          "clientW": 272,
+          "minWidth": "0px",
+          "parentOverflow": "auto"
+        }
+      }
+    }
+  },
+  "decoration_list": {
+    "desktop": {
+      "url": "/decoration/",
+      "vw": 1440,
+      "docScrollW": 1440,
+      "bodyScrollW": 1440,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [
+        {
+          "sel": "a",
+          "w": 229,
+          "h": 31,
+          "text": "客户账期"
+        },
+        {
+          "sel": "a.nav-tab",
+          "w": 28,
+          "h": 39,
+          "text": "首页"
+        },
+        {
+          "sel": "a",
+          "w": 24,
+          "h": 18,
+          "text": "首页"
+        },
+        {
+          "sel": "a.th-sort",
+          "w": 65,
+          "h": 20,
+          "text": "开工日期"
+        },
+        {
+          "sel": "select#perPageSelect.per-page-select",
+          "w": 49,
+          "h": 29,
+          "text": "10\n                30\n  "
+        },
+        {
+          "sel": "a.page-link",
+          "w": 28,
+          "h": 28,
+          "text": "2"
+        },
+        {
+          "sel": "button.btn-transparent.btn-sm",
+          "w": 48,
+          "h": 29,
+          "text": "确定"
+        }
+      ],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 1440,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": 0,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": ""
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 274,
+          "w": 1142,
+          "h": 852,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": {
+          "tableW": 1142,
+          "scrollW": 1142,
+          "clientW": 1142,
+          "minWidth": "1142px",
+          "parentOverflow": "visible"
+        }
+      }
+    },
+    "laptop": {
+      "url": "/decoration/",
+      "vw": 1180,
+      "docScrollW": 1416,
+      "bodyScrollW": 1416,
+      "hasHScroll": true,
+      "overflowX": 236,
+      "tinyText": [],
+      "smallTargets": [
+        {
+          "sel": "a",
+          "w": 229,
+          "h": 31,
+          "text": "客户账期"
+        },
+        {
+          "sel": "a.nav-tab",
+          "w": 28,
+          "h": 39,
+          "text": "首页"
+        },
+        {
+          "sel": "a",
+          "w": 24,
+          "h": 18,
+          "text": "首页"
+        },
+        {
+          "sel": "a.th-sort",
+          "w": 65,
+          "h": 20,
+          "text": "开工日期"
+        },
+        {
+          "sel": "select#perPageSelect.per-page-select",
+          "w": 49,
+          "h": 29,
+          "text": "10\n                30\n  "
+        },
+        {
+          "sel": "a.page-link",
+          "w": 28,
+          "h": 28,
+          "text": "2"
+        },
+        {
+          "sel": "button.btn-transparent.btn-sm",
+          "w": 48,
+          "h": 29,
+          "text": "确定"
+        }
+      ],
+      "overflowing": [
+        {
+          "sel": "table.table-ledger.table--cards",
+          "right": 1416,
+          "w": 1142
+        },
+        {
+          "sel": "thead",
+          "right": 1416,
+          "w": 1142
+        },
+        {
+          "sel": "tr",
+          "right": 1416,
+          "w": 1142
+        },
+        {
+          "sel": "th.col-num.is-num",
+          "right": 1280,
+          "w": 124
+        },
+        {
+          "sel": "a.th-sort",
+          "right": 1266,
+          "w": 65
+        },
+        {
+          "sel": "tbody",
+          "right": 1416,
+          "w": 1142
+        },
+        {
+          "sel": "td.cell-ellipsis.col-num",
+          "right": 1280,
+          "w": 124
+        }
+      ],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 1180,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": 0,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": ""
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 274,
+          "w": 882,
+          "h": 864,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": {
+          "tableW": 1142,
+          "scrollW": 1142,
+          "clientW": 1142,
+          "minWidth": "1142px",
+          "parentOverflow": "visible"
+        }
+      }
+    },
+    "tablet": {
+      "url": "/decoration/",
+      "vw": 768,
+      "docScrollW": 768,
+      "bodyScrollW": 768,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [
+        {
+          "sel": "a.th-sort",
+          "w": 64,
+          "h": 19,
+          "text": "开工日期"
+        }
+      ],
+      "overflowing": [
+        {
+          "sel": "table.table-ledger.table--cards",
+          "right": 1158,
+          "w": 1142
+        },
+        {
+          "sel": "thead",
+          "right": 1158,
+          "w": 1142
+        },
+        {
+          "sel": "tr",
+          "right": 1158,
+          "w": 1142
+        },
+        {
+          "sel": "th.col-num.is-num",
+          "right": 774,
+          "w": 124
+        },
+        {
+          "sel": "a.th-sort",
+          "right": 1014,
+          "w": 64
+        },
+        {
+          "sel": "tbody",
+          "right": 1158,
+          "w": 1142
+        },
+        {
+          "sel": "td.cell-ellipsis.col-num",
+          "right": 774,
+          "w": 124
+        }
+      ],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 768,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 16,
+          "w": 736,
+          "h": 868,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": {
+          "tableW": 1142,
+          "scrollW": 1142,
+          "clientW": 1142,
+          "minWidth": "1142px",
+          "parentOverflow": "auto"
+        }
+      }
+    },
+    "mobile": {
+      "url": "/decoration/",
+      "vw": 390,
+      "docScrollW": 390,
+      "bodyScrollW": 390,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 390,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 12,
+          "w": 366,
+          "h": 4136,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": {
+          "tableW": 342,
+          "scrollW": 342,
+          "clientW": 342,
+          "minWidth": "0px",
+          "parentOverflow": "auto"
+        }
+      }
+    },
+    "mobile_sm": {
+      "url": "/decoration/",
+      "vw": 320,
+      "docScrollW": 320,
+      "bodyScrollW": 320,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 320,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 12,
+          "w": 296,
+          "h": 4364,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": {
+          "tableW": 272,
+          "scrollW": 272,
+          "clientW": 272,
+          "minWidth": "0px",
+          "parentOverflow": "auto"
+        }
+      }
+    }
+  },
+  "knowledge": {
+    "desktop": {
+      "url": "/knowledge/",
+      "vw": 1440,
+      "docScrollW": 1440,
+      "bodyScrollW": 1440,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [
+        {
+          "sel": "span.status-badge.warning",
+          "fs": 11.2,
+          "text": "仅自己可见"
+        },
+        {
+          "sel": "span.kb-chip.kb-chip-cat",
+          "fs": 11.5,
+          "text": "工作沉淀"
+        },
+        {
+          "sel": "span.kb-chip",
+          "fs": 11.5,
+          "text": "prompt"
+        },
+        {
+          "sel": "span.kb-chip",
+          "fs": 11.5,
+          "text": "代码审计，"
+        },
+        {
+          "sel": "span.status-badge.warning",
+          "fs": 11.2,
+          "text": "仅自己可见"
+        },
+        {
+          "sel": "span.kb-chip.kb-chip-cat",
+          "fs": 11.5,
+          "text": "工作沉淀"
+        },
+        {
+          "sel": "span.kb-chip",
+          "fs": 11.5,
+          "text": "工作沉淀"
+        },
+        {
+          "sel": "span.kb-chip",
+          "fs": 11.5,
+          "text": "2026-10"
+        },
+        {
+          "sel": "span.status-badge.warning",
+          "fs": 11.2,
+          "text": "仅自己可见"
+        },
+        {
+          "sel": "span.kb-chip.kb-chip-cat",
+          "fs": 11.5,
+          "text": "【演示】Django 基础"
+        },
+        {
+          "sel": "span.kb-chip",
+          "fs": 11.5,
+          "text": "python"
+        },
+        {
+          "sel": "span.kb-chip",
+          "fs": 11.5,
+          "text": "django"
+        }
+      ],
+      "smallTargets": [
+        {
+          "sel": "a",
+          "w": 229,
+          "h": 31,
+          "text": "客户账期"
+        },
+        {
+          "sel": "a.nav-tab",
+          "w": 28,
+          "h": 39,
+          "text": "首页"
+        },
+        {
+          "sel": "a",
+          "w": 24,
+          "h": 18,
+          "text": "首页"
+        },
+        {
+          "sel": "select#perPageSelect.per-page-select",
+          "w": 49,
+          "h": 29,
+          "text": "10\n                30\n  "
+        },
+        {
+          "sel": "a.page-link",
+          "w": 28,
+          "h": 28,
+          "text": "2"
+        },
+        {
+          "sel": "button.btn-transparent.btn-sm",
+          "w": 48,
+          "h": 29,
+          "text": "确定"
+        },
+        {
+          "sel": "a.kb-side-report-link",
+          "w": 246,
+          "h": 25,
+          "text": "阅读报告"
+        },
+        {
+          "sel": "a.kb-side-btn",
+          "w": 42,
+          "h": 26,
+          "text": "管理"
+        },
+        {
+          "sel": "a.kb-side-btn.kb-side-btn-primary",
+          "w": 42,
+          "h": 26,
+          "text": "新建"
+        },
+        {
+          "sel": "button.kb-cat-caret",
+          "w": 20,
+          "h": 26,
+          "text": ""
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 85,
+          "h": 31,
+          "text": "prompt"
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 104,
+          "h": 31,
+          "text": "代码审计，"
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 91,
+          "h": 31,
+          "text": "工作沉淀"
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 87,
+          "h": 31,
+          "text": "2026-10"
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 83,
+          "h": 31,
+          "text": "python"
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 81,
+          "h": 31,
+          "text": "django"
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 66,
+          "h": 31,
+          "text": "检查"
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 82,
+          "h": 31,
+          "text": "Django"
+        }
+      ],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 1440,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": 0,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": ""
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 274,
+          "w": 1142,
+          "h": 888,
+          "pos": "static",
+          "display": "block",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": null
+      }
+    },
+    "laptop": {
+      "url": "/knowledge/",
+      "vw": 1180,
+      "docScrollW": 1180,
+      "bodyScrollW": 1180,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [
+        {
+          "sel": "span.status-badge.warning",
+          "fs": 11.2,
+          "text": "仅自己可见"
+        },
+        {
+          "sel": "span.kb-chip.kb-chip-cat",
+          "fs": 11.5,
+          "text": "工作沉淀"
+        },
+        {
+          "sel": "span.kb-chip",
+          "fs": 11.5,
+          "text": "prompt"
+        },
+        {
+          "sel": "span.kb-chip",
+          "fs": 11.5,
+          "text": "代码审计，"
+        },
+        {
+          "sel": "span.status-badge.warning",
+          "fs": 11.2,
+          "text": "仅自己可见"
+        },
+        {
+          "sel": "span.kb-chip.kb-chip-cat",
+          "fs": 11.5,
+          "text": "工作沉淀"
+        },
+        {
+          "sel": "span.kb-chip",
+          "fs": 11.5,
+          "text": "工作沉淀"
+        },
+        {
+          "sel": "span.kb-chip",
+          "fs": 11.5,
+          "text": "2026-10"
+        },
+        {
+          "sel": "span.status-badge.warning",
+          "fs": 11.2,
+          "text": "仅自己可见"
+        },
+        {
+          "sel": "span.kb-chip.kb-chip-cat",
+          "fs": 11.5,
+          "text": "【演示】Django 基础"
+        },
+        {
+          "sel": "span.kb-chip",
+          "fs": 11.5,
+          "text": "python"
+        },
+        {
+          "sel": "span.kb-chip",
+          "fs": 11.5,
+          "text": "django"
+        }
+      ],
+      "smallTargets": [
+        {
+          "sel": "a",
+          "w": 229,
+          "h": 31,
+          "text": "客户账期"
+        },
+        {
+          "sel": "a.nav-tab",
+          "w": 28,
+          "h": 39,
+          "text": "首页"
+        },
+        {
+          "sel": "a",
+          "w": 24,
+          "h": 18,
+          "text": "首页"
+        },
+        {
+          "sel": "select#perPageSelect.per-page-select",
+          "w": 49,
+          "h": 29,
+          "text": "10\n                30\n  "
+        },
+        {
+          "sel": "a.page-link",
+          "w": 28,
+          "h": 28,
+          "text": "2"
+        },
+        {
+          "sel": "button.btn-transparent.btn-sm",
+          "w": 48,
+          "h": 29,
+          "text": "确定"
+        },
+        {
+          "sel": "a.kb-side-report-link",
+          "w": 267,
+          "h": 25,
+          "text": "阅读报告"
+        },
+        {
+          "sel": "a.kb-side-btn",
+          "w": 42,
+          "h": 26,
+          "text": "管理"
+        },
+        {
+          "sel": "a.kb-side-btn.kb-side-btn-primary",
+          "w": 42,
+          "h": 26,
+          "text": "新建"
+        },
+        {
+          "sel": "button.kb-cat-caret",
+          "w": 20,
+          "h": 26,
+          "text": ""
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 85,
+          "h": 31,
+          "text": "prompt"
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 104,
+          "h": 31,
+          "text": "代码审计，"
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 91,
+          "h": 31,
+          "text": "工作沉淀"
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 87,
+          "h": 31,
+          "text": "2026-10"
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 83,
+          "h": 31,
+          "text": "python"
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 81,
+          "h": 31,
+          "text": "django"
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 66,
+          "h": 31,
+          "text": "检查"
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 82,
+          "h": 31,
+          "text": "Django"
+        }
+      ],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 1180,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": 0,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": ""
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 274,
+          "w": 882,
+          "h": 1763,
+          "pos": "static",
+          "display": "block",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": null
+      }
+    },
+    "tablet": {
+      "url": "/knowledge/",
+      "vw": 768,
+      "docScrollW": 768,
+      "bodyScrollW": 768,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [
+        {
+          "sel": "span.status-badge.warning",
+          "fs": 11.2,
+          "text": "仅自己可见"
+        },
+        {
+          "sel": "span.kb-chip.kb-chip-cat",
+          "fs": 11.5,
+          "text": "工作沉淀"
+        },
+        {
+          "sel": "span.kb-chip",
+          "fs": 11.5,
+          "text": "prompt"
+        },
+        {
+          "sel": "span.kb-chip",
+          "fs": 11.5,
+          "text": "代码审计，"
+        },
+        {
+          "sel": "span.status-badge.warning",
+          "fs": 11.2,
+          "text": "仅自己可见"
+        },
+        {
+          "sel": "span.kb-chip.kb-chip-cat",
+          "fs": 11.5,
+          "text": "工作沉淀"
+        },
+        {
+          "sel": "span.kb-chip",
+          "fs": 11.5,
+          "text": "工作沉淀"
+        },
+        {
+          "sel": "span.kb-chip",
+          "fs": 11.5,
+          "text": "2026-10"
+        },
+        {
+          "sel": "span.status-badge.warning",
+          "fs": 11.2,
+          "text": "仅自己可见"
+        },
+        {
+          "sel": "span.kb-chip.kb-chip-cat",
+          "fs": 11.5,
+          "text": "【演示】Django 基础"
+        },
+        {
+          "sel": "span.kb-chip",
+          "fs": 11.5,
+          "text": "python"
+        },
+        {
+          "sel": "span.kb-chip",
+          "fs": 11.5,
+          "text": "django"
+        }
+      ],
+      "smallTargets": [
+        {
+          "sel": "a.kb-side-report-link",
+          "w": 339,
+          "h": 25,
+          "text": "阅读报告"
+        },
+        {
+          "sel": "a.kb-side-btn",
+          "w": 42,
+          "h": 26,
+          "text": "管理"
+        },
+        {
+          "sel": "a.kb-side-btn.kb-side-btn-primary",
+          "w": 42,
+          "h": 26,
+          "text": "新建"
+        },
+        {
+          "sel": "button.kb-cat-caret",
+          "w": 20,
+          "h": 26,
+          "text": ""
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 85,
+          "h": 31,
+          "text": "prompt"
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 104,
+          "h": 31,
+          "text": "代码审计，"
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 91,
+          "h": 31,
+          "text": "工作沉淀"
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 87,
+          "h": 31,
+          "text": "2026-10"
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 83,
+          "h": 31,
+          "text": "python"
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 81,
+          "h": 31,
+          "text": "django"
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 66,
+          "h": 31,
+          "text": "检查"
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 82,
+          "h": 31,
+          "text": "Django"
+        }
+      ],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 768,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 16,
+          "w": 736,
+          "h": 2021,
+          "pos": "static",
+          "display": "block",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": null
+      }
+    },
+    "mobile": {
+      "url": "/knowledge/",
+      "vw": 390,
+      "docScrollW": 390,
+      "bodyScrollW": 390,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [
+        {
+          "sel": "span.status-badge.warning",
+          "fs": 11.2,
+          "text": "仅自己可见"
+        },
+        {
+          "sel": "span.kb-chip.kb-chip-cat",
+          "fs": 11.5,
+          "text": "工作沉淀"
+        },
+        {
+          "sel": "span.kb-chip",
+          "fs": 11.5,
+          "text": "prompt"
+        },
+        {
+          "sel": "span.kb-chip",
+          "fs": 11.5,
+          "text": "代码审计，"
+        },
+        {
+          "sel": "span.status-badge.warning",
+          "fs": 11.2,
+          "text": "仅自己可见"
+        },
+        {
+          "sel": "span.kb-chip.kb-chip-cat",
+          "fs": 11.5,
+          "text": "工作沉淀"
+        },
+        {
+          "sel": "span.kb-chip",
+          "fs": 11.5,
+          "text": "工作沉淀"
+        },
+        {
+          "sel": "span.kb-chip",
+          "fs": 11.5,
+          "text": "2026-10"
+        },
+        {
+          "sel": "span.status-badge.warning",
+          "fs": 11.2,
+          "text": "仅自己可见"
+        },
+        {
+          "sel": "span.kb-chip.kb-chip-cat",
+          "fs": 11.5,
+          "text": "【演示】Django 基础"
+        },
+        {
+          "sel": "span.kb-chip",
+          "fs": 11.5,
+          "text": "python"
+        },
+        {
+          "sel": "span.kb-chip",
+          "fs": 11.5,
+          "text": "django"
+        }
+      ],
+      "smallTargets": [
+        {
+          "sel": "a.kb-side-report-link",
+          "w": 332,
+          "h": 25,
+          "text": "阅读报告"
+        },
+        {
+          "sel": "a.kb-side-btn",
+          "w": 42,
+          "h": 26,
+          "text": "管理"
+        },
+        {
+          "sel": "a.kb-side-btn.kb-side-btn-primary",
+          "w": 42,
+          "h": 26,
+          "text": "新建"
+        },
+        {
+          "sel": "button.kb-cat-caret",
+          "w": 20,
+          "h": 26,
+          "text": ""
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 85,
+          "h": 31,
+          "text": "prompt"
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 104,
+          "h": 31,
+          "text": "代码审计，"
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 91,
+          "h": 31,
+          "text": "工作沉淀"
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 87,
+          "h": 31,
+          "text": "2026-10"
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 83,
+          "h": 31,
+          "text": "python"
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 81,
+          "h": 31,
+          "text": "django"
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 66,
+          "h": 31,
+          "text": "检查"
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 82,
+          "h": 31,
+          "text": "Django"
+        }
+      ],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 390,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 12,
+          "w": 366,
+          "h": 2623,
+          "pos": "static",
+          "display": "block",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": null
+      }
+    },
+    "mobile_sm": {
+      "url": "/knowledge/",
+      "vw": 320,
+      "docScrollW": 320,
+      "bodyScrollW": 320,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [
+        {
+          "sel": "span.status-badge.warning",
+          "fs": 11.2,
+          "text": "仅自己可见"
+        },
+        {
+          "sel": "span.kb-chip.kb-chip-cat",
+          "fs": 11.5,
+          "text": "工作沉淀"
+        },
+        {
+          "sel": "span.kb-chip",
+          "fs": 11.5,
+          "text": "prompt"
+        },
+        {
+          "sel": "span.kb-chip",
+          "fs": 11.5,
+          "text": "代码审计，"
+        },
+        {
+          "sel": "span.status-badge.warning",
+          "fs": 11.2,
+          "text": "仅自己可见"
+        },
+        {
+          "sel": "span.kb-chip.kb-chip-cat",
+          "fs": 11.5,
+          "text": "工作沉淀"
+        },
+        {
+          "sel": "span.kb-chip",
+          "fs": 11.5,
+          "text": "工作沉淀"
+        },
+        {
+          "sel": "span.kb-chip",
+          "fs": 11.5,
+          "text": "2026-10"
+        },
+        {
+          "sel": "span.status-badge.warning",
+          "fs": 11.2,
+          "text": "仅自己可见"
+        },
+        {
+          "sel": "span.kb-chip.kb-chip-cat",
+          "fs": 11.5,
+          "text": "【演示】Django 基础"
+        },
+        {
+          "sel": "span.kb-chip",
+          "fs": 11.5,
+          "text": "python"
+        },
+        {
+          "sel": "span.kb-chip",
+          "fs": 11.5,
+          "text": "django"
+        }
+      ],
+      "smallTargets": [
+        {
+          "sel": "a.kb-side-report-link",
+          "w": 262,
+          "h": 25,
+          "text": "阅读报告"
+        },
+        {
+          "sel": "a.kb-side-btn",
+          "w": 42,
+          "h": 26,
+          "text": "管理"
+        },
+        {
+          "sel": "a.kb-side-btn.kb-side-btn-primary",
+          "w": 42,
+          "h": 26,
+          "text": "新建"
+        },
+        {
+          "sel": "button.kb-cat-caret",
+          "w": 20,
+          "h": 26,
+          "text": ""
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 85,
+          "h": 31,
+          "text": "prompt"
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 104,
+          "h": 31,
+          "text": "代码审计，"
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 91,
+          "h": 31,
+          "text": "工作沉淀"
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 87,
+          "h": 31,
+          "text": "2026-10"
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 83,
+          "h": 31,
+          "text": "python"
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 81,
+          "h": 31,
+          "text": "django"
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 66,
+          "h": 31,
+          "text": "检查"
+        },
+        {
+          "sel": "a.tag-item",
+          "w": 82,
+          "h": 31,
+          "text": "Django"
+        }
+      ],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 320,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 12,
+          "w": 296,
+          "h": 2935,
+          "pos": "static",
+          "display": "block",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": null
+      }
+    }
+  },
+  "data_download": {
+    "desktop": {
+      "url": "/data_download/",
+      "vw": 1440,
+      "docScrollW": 1440,
+      "bodyScrollW": 1440,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [
+        {
+          "sel": "a",
+          "w": 229,
+          "h": 31,
+          "text": "客户账期"
+        },
+        {
+          "sel": "a.nav-tab",
+          "w": 28,
+          "h": 39,
+          "text": "首页"
+        },
+        {
+          "sel": "a",
+          "w": 24,
+          "h": 18,
+          "text": "首页"
+        }
+      ],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 1440,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": 0,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": ""
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 274,
+          "w": 1142,
+          "h": 972,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": null
+      }
+    },
+    "laptop": {
+      "url": "/data_download/",
+      "vw": 1180,
+      "docScrollW": 1180,
+      "bodyScrollW": 1180,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [
+        {
+          "sel": "a",
+          "w": 229,
+          "h": 31,
+          "text": "客户账期"
+        },
+        {
+          "sel": "a.nav-tab",
+          "w": 28,
+          "h": 39,
+          "text": "首页"
+        },
+        {
+          "sel": "a",
+          "w": 24,
+          "h": 18,
+          "text": "首页"
+        }
+      ],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 1180,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": 0,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": ""
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 274,
+          "w": 882,
+          "h": 1248,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": null
+      }
+    },
+    "tablet": {
+      "url": "/data_download/",
+      "vw": 768,
+      "docScrollW": 768,
+      "bodyScrollW": 768,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 768,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 16,
+          "w": 736,
+          "h": 1296,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": null
+      }
+    },
+    "mobile": {
+      "url": "/data_download/",
+      "vw": 390,
+      "docScrollW": 390,
+      "bodyScrollW": 390,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 390,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 12,
+          "w": 366,
+          "h": 2377,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": null
+      }
+    },
+    "mobile_sm": {
+      "url": "/data_download/",
+      "vw": 320,
+      "docScrollW": 320,
+      "bodyScrollW": 320,
+      "hasHScroll": false,
+      "overflowX": 0,
+      "tinyText": [],
+      "smallTargets": [],
+      "overflowing": [],
+      "fixedWide": [],
+      "tiny": [],
+      "layout": {
+        "viewport": {
+          "w": 320,
+          "h": 900
+        },
+        "sidebar": {
+          "sel": "aside, .sidebar, .app-sidebar, nav.sidebar, #sidebar",
+          "x": -250,
+          "w": 250,
+          "h": 844,
+          "pos": "fixed",
+          "display": "block",
+          "overflowX": "auto",
+          "transform": "matrix(1, 0, 0, 1, -250, 0)"
+        },
+        "topnav": {
+          "sel": "header, .topnav, .app-topbar, nav.navbar, .navbar",
+          "x": 0,
+          "w": 0,
+          "h": 0,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "main": {
+          "sel": "main, main.container, .app-main",
+          "x": 12,
+          "w": 296,
+          "h": 2574,
+          "pos": "static",
+          "display": "flex",
+          "overflowX": "visible",
+          "transform": ""
+        },
+        "table": null
+      }
+    }
+  }
+}

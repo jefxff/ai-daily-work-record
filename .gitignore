@@ -89,3 +89,11 @@ build/
 # 前端巡检中间产物（sweep.js 读取的路由清单与截图）
 /.shot_routes.txt
 /.shot/
+
+# UI 响应式审计取证产物：脚本与量测数据入库可复核，中间截图不入库
+.ui-audit/shots/
+.ui-audit/ab/
+.ui-audit/compare/
+
+# 本地工具工作区数据（记忆/临时笔记，不入库，不删除）
+.workbuddy/

@@ -1,0 +1,158 @@
+{
+  "daily_record_list": {
+    "vw": 1180,
+    "docScrollW": 1384,
+    "hScrollbar": true,
+    "bodyOverflowX": "visible",
+    "htmlOverflowX": "visible",
+    "clippedByAncestor": null,
+    "hiddenRight": [
+      {
+        "sel": "table.table-ledger.dr-table",
+        "right": 1384,
+        "w": 1110,
+        "clippedBy": null
+      },
+      {
+        "sel": "tr",
+        "right": 1384,
+        "w": 1110,
+        "clippedBy": null
+      },
+      {
+        "sel": "th",
+        "right": 1262,
+        "w": 133,
+        "clippedBy": null
+      },
+      {
+        "sel": "tr",
+        "right": 1384,
+        "w": 1110,
+        "clippedBy": null
+      },
+      {
+        "sel": "td",
+        "right": 1262,
+        "w": 133,
+        "clippedBy": null
+      },
+      {
+        "sel": "tr",
+        "right": 1384,
+        "w": 1110,
+        "clippedBy": null
+      },
+      {
+        "sel": "td",
+        "right": 1262,
+        "w": 133,
+        "clippedBy": null
+      }
+    ]
+  },
+  "complaint_list": {
+    "vw": 1180,
+    "docScrollW": 1474,
+    "hScrollbar": true,
+    "bodyOverflowX": "visible",
+    "htmlOverflowX": "visible",
+    "clippedByAncestor": null,
+    "hiddenRight": [
+      {
+        "sel": "table.table-ledger.table--cards",
+        "right": 1474,
+        "w": 1200,
+        "clippedBy": null
+      },
+      {
+        "sel": "tr",
+        "right": 1474,
+        "w": 1200,
+        "clippedBy": null
+      },
+      {
+        "sel": "th",
+        "right": 1237,
+        "w": 158,
+        "clippedBy": null
+      },
+      {
+        "sel": "th",
+        "right": 1302,
+        "w": 66,
+        "clippedBy": null
+      },
+      {
+        "sel": "tr",
+        "right": 1474,
+        "w": 1200,
+        "clippedBy": null
+      },
+      {
+        "sel": "td.cell-clamp",
+        "right": 1237,
+        "w": 158,
+        "clippedBy": null
+      },
+      {
+        "sel": "td",
+        "right": 1302,
+        "w": 66,
+        "clippedBy": null
+      }
+    ]
+  },
+  "decoration_list": {
+    "vw": 1180,
+    "docScrollW": 1416,
+    "hScrollbar": true,
+    "bodyOverflowX": "visible",
+    "htmlOverflowX": "visible",
+    "clippedByAncestor": null,
+    "hiddenRight": [
+      {
+        "sel": "table.table-ledger.table--cards",
+        "right": 1416,
+        "w": 1142,
+        "clippedBy": null
+      },
+      {
+        "sel": "tr",
+        "right": 1416,
+        "w": 1142,
+        "clippedBy": null
+      },
+      {
+        "sel": "th.col-num.is-num",
+        "right": 1280,
+        "w": 124,
+        "clippedBy": null
+      },
+      {
+        "sel": "tr",
+        "right": 1416,
+        "w": 1142,
+        "clippedBy": null
+      },
+      {
+        "sel": "td.cell-ellipsis.col-num",
+        "right": 1280,
+        "w": 124,
+        "clippedBy": null
+      },
+      {
+        "sel": "tr",
+        "right": 1416,
+        "w": 1142,
+        "clippedBy": null
+      },
+      {
+        "sel": "td.cell-ellipsis.col-num",
+        "right": 1280,
+        "w": 124,
+        "clippedBy": null
+      }
+    ]
+  }
+}
