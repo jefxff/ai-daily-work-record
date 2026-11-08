@@ -121,7 +121,7 @@ body.copilot-dragging {
 .copilot-header:hover .copilot-grip { opacity: .9; }
 .copilot-panel.is-locked .copilot-grip { opacity: .25; }
 .copilot-badge {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 500;
     padding: 1px 6px;
     border-radius: 10px;
@@ -181,7 +181,7 @@ body.copilot-dragging {
     color: var(--c-primary-active, #0050b3);
 }
 .copilot-badge {
-    font-size: 11px;
+    font-size: 12px;
     padding: 2px 8px;
     border-radius: 10px;
     background: var(--c-primary-subtle, #e6f7ff);
@@ -554,10 +554,10 @@ body.copilot-dragging {
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-.copilot-history-meta { font-size: 11px; color: var(--c-text-tertiary, #626a77); }
+.copilot-history-meta { font-size: 12px; color: var(--c-text-tertiary, #626a77); }
 .copilot-history-op {
     font-family: inherit;
-    font-size: 11px;
+    font-size: 12px;
     padding: 3px 6px;
     border: 0;
     border-radius: 4px;
@@ -580,7 +580,7 @@ body.copilot-dragging {
 .copilot-history-foot {
     padding: 8px 14px;
     border-top: 1px solid var(--c-divider, #f0f2f5);
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.5;
     color: var(--c-text-tertiary, #626a77);
 }
@@ -604,7 +604,10 @@ body.copilot-dragging {
         border-bottom: 0;
     }
     .copilot-resize { display: none; }
-    .copilot-fab { right: 16px; bottom: 16px; }
+    /* 小屏缩到 44px（同时满足触控目标），减少遮挡卡片正文的面积 */
+    .copilot-fab { right: 12px; bottom: 12px; width: 44px; height: 44px; }
+    /* 列表底部留出空间，最后一张卡片不再被悬浮按钮压住 */
+    .table-container:has(.table--cards) { padding-bottom: 56px; }
     .copilot-iconbtn { width: 40px; height: 40px; }
     .copilot-header { padding: 6px 10px; }
     .copilot-history { top: 52px; }

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-08T13:58:27.783Z",
+  "generatedAt": "2026-11-08T14:08:00.624Z",
   "base": "https://127.0.0.1:8443",
   "browser": "153.0.4234.32",
   "widths": [
@@ -1477,7 +1477,7 @@
       "bodyHasSidebarOpen": false,
       "sidebarShow": false,
       "scrimExists": true,
-      "scrimHasHidden": true,
+      "scrimHasHidden": false,
       "scrimDisplay": "none",
       "scrimVisibility": "visible",
       "scrimOpacity": "1",
@@ -1492,14 +1492,14 @@
       "bodyHasSidebarOpen": true,
       "sidebarShow": true,
       "scrimExists": true,
-      "scrimHasHidden": true,
-      "scrimDisplay": "none",
+      "scrimHasHidden": false,
+      "scrimDisplay": "block",
       "scrimVisibility": "visible",
       "scrimOpacity": "1",
       "scrimZIndex": "25",
       "scrimSize": [
-        0,
-        0
+        390,
+        788
       ],
       "ariaExpanded": "true"
     },
@@ -1507,7 +1507,7 @@
       "bodyHasSidebarOpen": false,
       "sidebarShow": false,
       "scrimExists": true,
-      "scrimHasHidden": true,
+      "scrimHasHidden": false,
       "scrimDisplay": "none",
       "scrimVisibility": "visible",
       "scrimOpacity": "1",

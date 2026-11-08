@@ -965,7 +965,7 @@ main.container .ins-card .ins-timeline-table :is(th, td):nth-child(4) {
   padding-right: 6px !important;
   white-space: nowrap;
 }
-main.container .ins-card .ins-timeline-table td:nth-child(4) .ins-muted { font-size: 11px; }
+main.container .ins-card .ins-timeline-table td:nth-child(4) .ins-muted { font-size: 12px; }
 main.container .ins-card .ins-timeline-table :is(th, td):nth-child(5) {
   width: 7%;
   padding-left: 4px !important;
@@ -985,7 +985,7 @@ main.container .ins-card .ins-timeline-table :is(td:nth-child(6), td:nth-child(7
 }
 main.container .ins-card .ins-timeline-table :is(td:nth-child(6), td:nth-child(7))
   :is(.ins-cont, .status-badge, .ins-muted) {
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.5;
   white-space: normal;
   overflow-wrap: anywhere;

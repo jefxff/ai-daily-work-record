@@ -29,11 +29,11 @@ data-view-mode 由 main.js 在 <head> 里同步改写；这里给出默认值，
     <link href="{% static 'css/bootstrap.min.css' %}?v=5.3" rel="stylesheet">
     <!-- 设计令牌 + 外壳 + 组件：外置后可被浏览器缓存；版本号用于发布瞬间避免「新 HTML + 旧 CSS」 -->
     <link href="{% static 'css/tokens.css' %}?v=20261101f" rel="stylesheet">
-    <link href="{% static 'css/app.css' %}?v=20261108a" rel="stylesheet">
-    <link href="{% static 'css/components.css' %}?v=20261105b" rel="stylesheet">
+    <link href="{% static 'css/app.css' %}?v=20261108b" rel="stylesheet">
+    <link href="{% static 'css/components.css' %}?v=20261108a" rel="stylesheet">
     <!-- 全局布局模式（全宽 / 限宽居中）+ 台账表格语义类；必须在 components.css 之后 -->
     <link href="{% static 'css/main.css' %}?v=20261105a" rel="stylesheet">
-    <link href="{% static 'copilot/panel.css' %}?v=20261101b" rel="stylesheet">
+    <link href="{% static 'copilot/panel.css' %}?v=20261108a" rel="stylesheet">
     <!-- 列表页通用表格工具（列设置 / 表头语义 / 操作列收纳），defer 不阻塞首屏 -->
     <script src="{% static 'js/table-tools.js' %}?v=20261105c" defer></script>
     <!-- 表单校验与提交锁（仅 data-validate="1" 的录入表单生效） -->
@@ -44,13 +44,20 @@ data-view-mode 由 main.js 在 <head> 里同步改写；这里给出默认值，
     <!-- 整页「新增 / 编辑 / 详情」统一外壳：放在 extra_css 之后，
          使页面级 <style> 无法覆盖全局规格；选择器带 main.container 前缀，
          压过档案片段里散落在 body 的内联 <style>。 -->
-    <link href="{% static 'css/page-shell.css' %}?v=20261104a" rel="stylesheet">
+    <link href="{% static 'css/page-shell.css' %}?v=20261108a" rel="stylesheet">
 </head>
 <body data-url-notifications="{% url 'notifications:list' %}">
     <a href="#main" class="skip-link">跳到主内容</a>
     {% include "records/_sidebar.html" %}
     {% include "records/_topnav.html" %}
-    <div class="sidebar-scrim" id="sidebarScrim" hidden></div>
+    {% comment %}
+    不要给遮罩加 hidden 属性：bootstrap.min.css 的 [hidden]{display:none!important}
+    是作者层带 !important 的全局规则，会压过 components.css 的
+    body.sidebar-open .sidebar-scrim{display:block}，导致抽屉打开时遮罩恒为 0×0
+    （2026-11-08 真实页面 CDP 实证）。显示态由 CSS 单源控制：
+    .sidebar-scrim 默认 display:none，body.sidebar-open 时为 block。
+    {% endcomment %}
+    <div class="sidebar-scrim" id="sidebarScrim"></div>
     <div class="main-content">
         {% comment %}
         全局主内容轨道。三条约束叠加的结果：

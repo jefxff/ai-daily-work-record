@@ -113,6 +113,7 @@
     display: flex;
     align-items: baseline;
     justify-content: space-between;
+    flex-wrap: wrap;
     gap: var(--sp-3);
     padding: var(--sp-2) var(--sp-3);
     border-bottom: 1px solid var(--c-divider);
@@ -165,6 +166,10 @@
     font-weight: 600;
     color: var(--c-text-secondary);
   }
+  /* 值里带状态徽标时，38% 的标签会把长文本挤成窄条、徽标压到正文上
+     （CMP3 / 390px 实测）。让标签独占一行，值在下一行完整铺开。 */
+  .table--cards td:has(.dr-content__flag)::before,
+  .table--cards td:has(.badge)::before { flex: 0 0 100%; }
   /* 首列（通常是编号）加粗，作为卡片的"标题行" */
   .table--cards td:first-child {
     font-weight: 600;
@@ -774,7 +779,7 @@ td[data-label="操作"] > div { justify-content: center; }
   min-height: 15px;
   margin-top: 2px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
   color: var(--c-text-tertiary);
@@ -1341,7 +1346,7 @@ th[aria-sort="descending"] .th-sort__ind::before { display: none; }
   border-radius: 8px;
   background: var(--c-primary);
   color: var(--c-text-inverse);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   line-height: 1;
 }
@@ -1648,7 +1653,7 @@ tr[data-href]:has(td .act-more[open]) > td { background: transparent; }
   border: 1px solid var(--c-neutral-line);
   border-radius: var(--r-full);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--c-neutral);
   white-space: nowrap;
 }
