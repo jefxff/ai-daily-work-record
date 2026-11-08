@@ -2089,6 +2089,12 @@ a.home-kpi:hover .home-kpi__value { color: var(--c-primary-active); }
     overflow-x: auto;
     overscroll-behavior-x: contain;
   }
+  /* 横向滚动容器不产生竖向滚动，相对视口的表头吸附既无效果，又会因
+     top:var(--h-topbar) 被下推 56px 盖住第一行数据（Playwright B4 实测：
+     thead .th-sort 拦截 tbody 首行点击）。宽表内统一降级为静态表头。 */
+  .table-container .table-responsive[data-wide-table] thead th {
+    position: static;
+  }
 }
 
 @media print {

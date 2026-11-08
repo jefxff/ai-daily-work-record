@@ -738,10 +738,11 @@
     /* 口径说明：解释「这个数字数的是什么」，避免 9438 与 364 混读 */
     .stat-sub {
         margin-top: 0.35rem;
-        font-size: 0.72rem;
+        font-size: 0.75rem;
         line-height: 1.35;
+        /* 不要给正文加 opacity：--c-text-secondary 本身是 6.05:1，
+           叠 0.85 透明度后降到 4.11:1，触发 axe color-contrast（2026-11-08 实测）。 */
         color: var(--c-text-secondary);
-        opacity: 0.85;
         overflow-wrap: anywhere;
     }
 
@@ -1020,7 +1021,7 @@
         }
         .chart-note {
             margin: -0.5rem 0 0.6rem;
-            font-size: 0.72rem;
+            font-size: 0.75rem;
             color: var(--c-text-secondary);
         }
         /* 高度随视口伸缩：1440 下 280px 让 30 个日期刻度有呼吸，矮屏自动收窄 */

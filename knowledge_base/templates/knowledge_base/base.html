@@ -49,7 +49,10 @@
         min-height: 36px;
         margin: 0 0 10px;
     }
-    .kb-page-head h1 {
+    /* 外壳品牌名不是页面标题：每个子页已有自己的语义 h1（文档列表 / 搜索结果 /
+       文档标题）。2026-11-08 巡检发现全模块每页出现 2 个 h1，故降级为 p，
+       样式保持不变。 */
+    .kb-page-head .kb-page-brand {
         margin: 0;
         font-size: 1.375rem;
         font-weight: 600;
@@ -57,7 +60,7 @@
         letter-spacing: -0.01em;
         color: var(--c-text);
     }
-    @media (max-width: 1280px) { .kb-page-head h1 { font-size: 1.25rem; } }
+    @media (max-width: 1280px) { .kb-page-head .kb-page-brand { font-size: 1.25rem; } }
     /* 未声明右栏的页面（大纲编辑器等）不渲染空的筛选栏 */
     .knowledge-wrapper:not(.knowledge-main-with-right) > .fixed-right-sidebar { display: none; }
     .fixed-right-sidebar {
@@ -146,7 +149,7 @@
     }
     .tag-count {
         margin-left: 0.3rem;
-        font-size: 0.7em;
+        font-size: 0.75rem;
         opacity: 0.7;
     }
     .tag-dot {
@@ -168,7 +171,7 @@
     .kb-stat { text-align: center; padding: 0.1rem 0.05rem; position: relative; }
     .kb-stat + .kb-stat { border-left: 1px solid var(--c-border); }
     .kb-stat-value { font-size: 1.02rem; font-weight: 600; color: var(--c-text); line-height: 1.25; font-variant-numeric: tabular-nums; }
-    .kb-stat-label { font-size: 0.66rem; color: var(--c-text-tertiary); margin-top: 1px; }
+    .kb-stat-label { font-size: 0.75rem; color: var(--c-text-tertiary); margin-top: 1px; }
     /* 阅读报告入口：并入统计区底部的薄链接，不再单占一个分区 */
     .kb-side-report-link {
         display: flex; align-items: center; gap: 0.35rem; margin-top: 0.35rem;
@@ -251,16 +254,16 @@
     .kb-doc-stat + .kb-doc-stat { border-left: 1px solid var(--c-border); }
     .kb-doc-stat b { font-size: 1.15rem; font-weight: 600; color: var(--c-text); line-height: 1.2; font-variant-numeric: tabular-nums; }
     .kb-doc-stat b.is-accent { color: var(--c-primary); }
-    .kb-doc-stat span { font-size: 0.72rem; color: var(--c-text-tertiary); }
+    .kb-doc-stat span { font-size: 0.75rem; color: var(--c-text-tertiary); }
     .kb-doc-item-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
     .kb-doc-item-title { font-size: 1rem; font-weight: 600; color: var(--c-text); margin: 0; }
     /* hover 标题染分类色相（规则声明在上方色板块，勿在此重复声明） */
     /* 可见性徽章（列表行内标题旁，弱化尺寸避免喧宾夺主） */
-    .kb-vis-mini { font-size: 0.7rem; padding: 1px 6px; margin-left: 0.35rem; vertical-align: 2px; }
+    .kb-vis-mini { font-size: 0.75rem; padding: 1px 6px; margin-left: 0.35rem; vertical-align: 2px; }
     .kb-doc-item-date { font-size: 0.75rem; color: var(--c-text-secondary); white-space: nowrap; }
     .kb-doc-item-summary { margin: 0.35rem 0 0.6rem; color: var(--c-text-secondary); font-size: 0.85rem; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     .kb-doc-item-meta { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
-    .kb-chip { background: var(--c-surface-sunken); color: var(--c-text-secondary); border-radius: 4px; padding: 1px 8px; font-size: 0.72rem; }
+    .kb-chip { background: var(--c-surface-sunken); color: var(--c-text-secondary); border-radius: 4px; padding: 1px 8px; font-size: 0.75rem; }
     .kb-chip-cat { background: var(--c-primary-subtle); color: var(--c-primary); }
     .kb-doc-item-views { margin-left: auto; font-size: 0.75rem; color: var(--c-text-tertiary); }
 
@@ -458,7 +461,7 @@ records/base.html 的 {% block breadcrumb %} 把面包屑渲染成 <main> 的直
 {% block content %}
 <div class="knowledge-wrapper {% block content_wrapper_class %}knowledge-main-with-right{% endblock %}">
     <div class="knowledge-main-content">
-        <div class="kb-page-head"><h1>知识库</h1></div>
+        <div class="kb-page-head"><p class="kb-page-brand">知识库</p></div>
         {% include 'knowledge_base/_crumb.html' %}
         {% block knowledge_content %}{% endblock %}
     </div>

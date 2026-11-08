@@ -255,7 +255,7 @@
     color: var(--c-text-secondary);
     border-radius: 4px;
     padding: 1px 8px;
-    font-size: 0.72rem;
+    font-size: 0.75rem;
 }
 .kb-chip-cat { background: var(--c-primary-subtle); color: var(--c-primary); }
 
@@ -286,7 +286,7 @@
 .kb-doc-summary-label {
     display: inline-block;
     margin-right: var(--sp-2);
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     font-weight: 700;
     letter-spacing: 0.06em;
     color: var(--c-primary);
@@ -621,7 +621,7 @@
     margin: 0 2px;
     padding: 0 7px;
     border-radius: 9px;
-    font-size: 0.72em;
+    font-size: 0.75rem;
     font-weight: 600;
     line-height: 17px;
     vertical-align: 1px;
@@ -657,7 +657,7 @@
 .kb-outline .kb-node-ref .kb-outline-text { color: var(--c-primary-active); }
 .kb-outline-due {
     flex: none;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     color: var(--c-text-tertiary);
     font-variant-numeric: tabular-nums;
     margin-left: auto;
@@ -780,7 +780,9 @@
 .kb-mm-collapse:hover { stroke: var(--c-primary); }
 .kb-mm-collapse-text {
     fill: var(--c-text-secondary);
-    font-size: 10px;
+    /* ui-font-exempt: SVG 画布按固定坐标绘制的折叠标记（+/−），
+       不是正文；放大到 12px 会溢出节点圆圈，故不适用屏幕正文字号下限。 */
+    font-size: 10px; /* ui-font-exempt */
     font-weight: 700;
     pointer-events: none;
 }

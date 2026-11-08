@@ -72,6 +72,8 @@ node_modules/
 tests/visual/.auth/
 tests/visual/test-results/
 tests/visual/playwright-report/
+# 从仓库根目录误跑 Playwright 时也会在根目录产出 test-results/
+/test-results/
 
 # Package files
 *.egg
