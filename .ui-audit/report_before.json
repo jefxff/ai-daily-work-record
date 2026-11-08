@@ -1,0 +1,1524 @@
+{
+  "generatedAt": "2026-11-08T13:51:37.780Z",
+  "base": "https://127.0.0.1:8443",
+  "browser": "153.0.4234.32",
+  "widths": [
+    320,
+    390,
+    768,
+    960,
+    961,
+    1024,
+    1180,
+    1280,
+    1366,
+    1440,
+    1512,
+    1600,
+    1920
+  ],
+  "source": "真实浏览器 DOM 量测（非外推）",
+  "pages": {
+    "home": {
+      "320": {
+        "vw": 320,
+        "path": "/",
+        "title": "我的工作台 · 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 320,
+        "bodyScrollW": 320,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "390": {
+        "vw": 390,
+        "path": "/",
+        "title": "我的工作台 · 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 390,
+        "bodyScrollW": 390,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "768": {
+        "vw": 768,
+        "path": "/",
+        "title": "我的工作台 · 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 768,
+        "bodyScrollW": 768,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "960": {
+        "vw": 960,
+        "path": "/",
+        "title": "我的工作台 · 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 960,
+        "bodyScrollW": 960,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "961": {
+        "vw": 961,
+        "path": "/",
+        "title": "我的工作台 · 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 961,
+        "bodyScrollW": 961,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1024": {
+        "vw": 1024,
+        "path": "/",
+        "title": "我的工作台 · 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1024,
+        "bodyScrollW": 1024,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1180": {
+        "vw": 1180,
+        "path": "/",
+        "title": "我的工作台 · 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1180,
+        "bodyScrollW": 1180,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1280": {
+        "vw": 1280,
+        "path": "/",
+        "title": "我的工作台 · 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1280,
+        "bodyScrollW": 1280,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1366": {
+        "vw": 1366,
+        "path": "/",
+        "title": "我的工作台 · 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1366,
+        "bodyScrollW": 1366,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1440": {
+        "vw": 1440,
+        "path": "/",
+        "title": "我的工作台 · 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1440,
+        "bodyScrollW": 1440,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1512": {
+        "vw": 1512,
+        "path": "/",
+        "title": "我的工作台 · 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1512,
+        "bodyScrollW": 1512,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1600": {
+        "vw": 1600,
+        "path": "/",
+        "title": "我的工作台 · 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1600,
+        "bodyScrollW": 1600,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1920": {
+        "vw": 1920,
+        "path": "/",
+        "title": "我的工作台 · 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1920,
+        "bodyScrollW": 1920,
+        "overflowX": 0,
+        "isLogin": false
+      }
+    },
+    "workspace": {
+      "320": {
+        "vw": 320,
+        "path": "/workspace/",
+        "title": "待办工作台 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 320,
+        "bodyScrollW": 320,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "390": {
+        "vw": 390,
+        "path": "/workspace/",
+        "title": "待办工作台 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 390,
+        "bodyScrollW": 390,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "768": {
+        "vw": 768,
+        "path": "/workspace/",
+        "title": "待办工作台 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 768,
+        "bodyScrollW": 768,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "960": {
+        "vw": 960,
+        "path": "/workspace/",
+        "title": "待办工作台 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 960,
+        "bodyScrollW": 960,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "961": {
+        "vw": 961,
+        "path": "/workspace/",
+        "title": "待办工作台 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1236,
+        "bodyScrollW": 1236,
+        "overflowX": 275,
+        "isLogin": false
+      },
+      "1024": {
+        "vw": 1024,
+        "path": "/workspace/",
+        "title": "待办工作台 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1236,
+        "bodyScrollW": 1236,
+        "overflowX": 212,
+        "isLogin": false
+      },
+      "1180": {
+        "vw": 1180,
+        "path": "/workspace/",
+        "title": "待办工作台 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1236,
+        "bodyScrollW": 1236,
+        "overflowX": 56,
+        "isLogin": false
+      },
+      "1280": {
+        "vw": 1280,
+        "path": "/workspace/",
+        "title": "待办工作台 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1280,
+        "bodyScrollW": 1280,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1366": {
+        "vw": 1366,
+        "path": "/workspace/",
+        "title": "待办工作台 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1366,
+        "bodyScrollW": 1366,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1440": {
+        "vw": 1440,
+        "path": "/workspace/",
+        "title": "待办工作台 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1440,
+        "bodyScrollW": 1440,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1512": {
+        "vw": 1512,
+        "path": "/workspace/",
+        "title": "待办工作台 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1512,
+        "bodyScrollW": 1512,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1600": {
+        "vw": 1600,
+        "path": "/workspace/",
+        "title": "待办工作台 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1600,
+        "bodyScrollW": 1600,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1920": {
+        "vw": 1920,
+        "path": "/workspace/",
+        "title": "待办工作台 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1920,
+        "bodyScrollW": 1920,
+        "overflowX": 0,
+        "isLogin": false
+      }
+    },
+    "dashboard": {
+      "320": {
+        "vw": 320,
+        "path": "/dashboard/",
+        "title": "数据展示 - 汇总看板 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 352,
+        "bodyScrollW": 352,
+        "overflowX": 32,
+        "isLogin": false
+      },
+      "390": {
+        "vw": 390,
+        "path": "/dashboard/",
+        "title": "数据展示 - 汇总看板 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 390,
+        "bodyScrollW": 390,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "768": {
+        "vw": 768,
+        "path": "/dashboard/",
+        "title": "数据展示 - 汇总看板 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 768,
+        "bodyScrollW": 768,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "960": {
+        "vw": 960,
+        "path": "/dashboard/",
+        "title": "数据展示 - 汇总看板 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 960,
+        "bodyScrollW": 960,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "961": {
+        "vw": 961,
+        "path": "/dashboard/",
+        "title": "数据展示 - 汇总看板 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 961,
+        "bodyScrollW": 961,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1024": {
+        "vw": 1024,
+        "path": "/dashboard/",
+        "title": "数据展示 - 汇总看板 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1024,
+        "bodyScrollW": 1024,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1180": {
+        "vw": 1180,
+        "path": "/dashboard/",
+        "title": "数据展示 - 汇总看板 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1180,
+        "bodyScrollW": 1180,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1280": {
+        "vw": 1280,
+        "path": "/dashboard/",
+        "title": "数据展示 - 汇总看板 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1280,
+        "bodyScrollW": 1280,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1366": {
+        "vw": 1366,
+        "path": "/dashboard/",
+        "title": "数据展示 - 汇总看板 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1366,
+        "bodyScrollW": 1366,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1440": {
+        "vw": 1440,
+        "path": "/dashboard/",
+        "title": "数据展示 - 汇总看板 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1440,
+        "bodyScrollW": 1440,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1512": {
+        "vw": 1512,
+        "path": "/dashboard/",
+        "title": "数据展示 - 汇总看板 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1512,
+        "bodyScrollW": 1512,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1600": {
+        "vw": 1600,
+        "path": "/dashboard/",
+        "title": "数据展示 - 汇总看板 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1600,
+        "bodyScrollW": 1600,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1920": {
+        "vw": 1920,
+        "path": "/dashboard/",
+        "title": "数据展示 - 汇总看板 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1920,
+        "bodyScrollW": 1920,
+        "overflowX": 0,
+        "isLogin": false
+      }
+    },
+    "daily_record_list": {
+      "320": {
+        "vw": 320,
+        "path": "/daily_record/",
+        "title": "每日记录 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 320,
+        "bodyScrollW": 320,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "390": {
+        "vw": 390,
+        "path": "/daily_record/",
+        "title": "每日记录 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 390,
+        "bodyScrollW": 390,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "768": {
+        "vw": 768,
+        "path": "/daily_record/",
+        "title": "每日记录 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 768,
+        "bodyScrollW": 768,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "960": {
+        "vw": 960,
+        "path": "/daily_record/",
+        "title": "每日记录 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 960,
+        "bodyScrollW": 960,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "961": {
+        "vw": 961,
+        "path": "/daily_record/",
+        "title": "每日记录 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1384,
+        "bodyScrollW": 1384,
+        "overflowX": 423,
+        "isLogin": false
+      },
+      "1024": {
+        "vw": 1024,
+        "path": "/daily_record/",
+        "title": "每日记录 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1384,
+        "bodyScrollW": 1384,
+        "overflowX": 360,
+        "isLogin": false
+      },
+      "1180": {
+        "vw": 1180,
+        "path": "/daily_record/",
+        "title": "每日记录 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1384,
+        "bodyScrollW": 1384,
+        "overflowX": 204,
+        "isLogin": false
+      },
+      "1280": {
+        "vw": 1280,
+        "path": "/daily_record/",
+        "title": "每日记录 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1384,
+        "bodyScrollW": 1384,
+        "overflowX": 104,
+        "isLogin": false
+      },
+      "1366": {
+        "vw": 1366,
+        "path": "/daily_record/",
+        "title": "每日记录 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1384,
+        "bodyScrollW": 1384,
+        "overflowX": 18,
+        "isLogin": false
+      },
+      "1440": {
+        "vw": 1440,
+        "path": "/daily_record/",
+        "title": "每日记录 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1440,
+        "bodyScrollW": 1440,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1512": {
+        "vw": 1512,
+        "path": "/daily_record/",
+        "title": "每日记录 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1512,
+        "bodyScrollW": 1512,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1600": {
+        "vw": 1600,
+        "path": "/daily_record/",
+        "title": "每日记录 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1600,
+        "bodyScrollW": 1600,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1920": {
+        "vw": 1920,
+        "path": "/daily_record/",
+        "title": "每日记录 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1920,
+        "bodyScrollW": 1920,
+        "overflowX": 0,
+        "isLogin": false
+      }
+    },
+    "daily_record_form": {
+      "320": {
+        "vw": 320,
+        "path": "/daily_record/add/",
+        "title": "新增每日记录 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 320,
+        "bodyScrollW": 320,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "390": {
+        "vw": 390,
+        "path": "/daily_record/add/",
+        "title": "新增每日记录 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 390,
+        "bodyScrollW": 390,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "768": {
+        "vw": 768,
+        "path": "/daily_record/add/",
+        "title": "新增每日记录 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 768,
+        "bodyScrollW": 768,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "960": {
+        "vw": 960,
+        "path": "/daily_record/add/",
+        "title": "新增每日记录 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 960,
+        "bodyScrollW": 960,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "961": {
+        "vw": 961,
+        "path": "/daily_record/add/",
+        "title": "新增每日记录 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 961,
+        "bodyScrollW": 961,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1024": {
+        "vw": 1024,
+        "path": "/daily_record/add/",
+        "title": "新增每日记录 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1024,
+        "bodyScrollW": 1024,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1180": {
+        "vw": 1180,
+        "path": "/daily_record/add/",
+        "title": "新增每日记录 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1180,
+        "bodyScrollW": 1180,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1280": {
+        "vw": 1280,
+        "path": "/daily_record/add/",
+        "title": "新增每日记录 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1280,
+        "bodyScrollW": 1280,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1366": {
+        "vw": 1366,
+        "path": "/daily_record/add/",
+        "title": "新增每日记录 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1366,
+        "bodyScrollW": 1366,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1440": {
+        "vw": 1440,
+        "path": "/daily_record/add/",
+        "title": "新增每日记录 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1440,
+        "bodyScrollW": 1440,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1512": {
+        "vw": 1512,
+        "path": "/daily_record/add/",
+        "title": "新增每日记录 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1512,
+        "bodyScrollW": 1512,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1600": {
+        "vw": 1600,
+        "path": "/daily_record/add/",
+        "title": "新增每日记录 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1600,
+        "bodyScrollW": 1600,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1920": {
+        "vw": 1920,
+        "path": "/daily_record/add/",
+        "title": "新增每日记录 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1920,
+        "bodyScrollW": 1920,
+        "overflowX": 0,
+        "isLogin": false
+      }
+    },
+    "complaint_list": {
+      "320": {
+        "vw": 320,
+        "path": "/complaint/",
+        "title": "诉讼列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 320,
+        "bodyScrollW": 320,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "390": {
+        "vw": 390,
+        "path": "/complaint/",
+        "title": "诉讼列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 390,
+        "bodyScrollW": 390,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "768": {
+        "vw": 768,
+        "path": "/complaint/",
+        "title": "诉讼列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 768,
+        "bodyScrollW": 768,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "960": {
+        "vw": 960,
+        "path": "/complaint/",
+        "title": "诉讼列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 960,
+        "bodyScrollW": 960,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "961": {
+        "vw": 961,
+        "path": "/complaint/",
+        "title": "诉讼列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1474,
+        "bodyScrollW": 1474,
+        "overflowX": 513,
+        "isLogin": false
+      },
+      "1024": {
+        "vw": 1024,
+        "path": "/complaint/",
+        "title": "诉讼列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1474,
+        "bodyScrollW": 1474,
+        "overflowX": 450,
+        "isLogin": false
+      },
+      "1180": {
+        "vw": 1180,
+        "path": "/complaint/",
+        "title": "诉讼列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1474,
+        "bodyScrollW": 1474,
+        "overflowX": 294,
+        "isLogin": false
+      },
+      "1280": {
+        "vw": 1280,
+        "path": "/complaint/",
+        "title": "诉讼列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1474,
+        "bodyScrollW": 1474,
+        "overflowX": 194,
+        "isLogin": false
+      },
+      "1366": {
+        "vw": 1366,
+        "path": "/complaint/",
+        "title": "诉讼列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1474,
+        "bodyScrollW": 1474,
+        "overflowX": 108,
+        "isLogin": false
+      },
+      "1440": {
+        "vw": 1440,
+        "path": "/complaint/",
+        "title": "诉讼列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1474,
+        "bodyScrollW": 1474,
+        "overflowX": 34,
+        "isLogin": false
+      },
+      "1512": {
+        "vw": 1512,
+        "path": "/complaint/",
+        "title": "诉讼列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1512,
+        "bodyScrollW": 1512,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1600": {
+        "vw": 1600,
+        "path": "/complaint/",
+        "title": "诉讼列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1600,
+        "bodyScrollW": 1600,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1920": {
+        "vw": 1920,
+        "path": "/complaint/",
+        "title": "诉讼列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1920,
+        "bodyScrollW": 1920,
+        "overflowX": 0,
+        "isLogin": false
+      }
+    },
+    "price_eval_list": {
+      "320": {
+        "vw": 320,
+        "path": "/price_evaluation/",
+        "title": "核价列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 320,
+        "bodyScrollW": 320,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "390": {
+        "vw": 390,
+        "path": "/price_evaluation/",
+        "title": "核价列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 390,
+        "bodyScrollW": 390,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "768": {
+        "vw": 768,
+        "path": "/price_evaluation/",
+        "title": "核价列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 768,
+        "bodyScrollW": 768,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "960": {
+        "vw": 960,
+        "path": "/price_evaluation/",
+        "title": "核价列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 960,
+        "bodyScrollW": 960,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "961": {
+        "vw": 961,
+        "path": "/price_evaluation/",
+        "title": "核价列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 961,
+        "bodyScrollW": 961,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1024": {
+        "vw": 1024,
+        "path": "/price_evaluation/",
+        "title": "核价列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1024,
+        "bodyScrollW": 1024,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1180": {
+        "vw": 1180,
+        "path": "/price_evaluation/",
+        "title": "核价列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1180,
+        "bodyScrollW": 1180,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1280": {
+        "vw": 1280,
+        "path": "/price_evaluation/",
+        "title": "核价列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1280,
+        "bodyScrollW": 1280,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1366": {
+        "vw": 1366,
+        "path": "/price_evaluation/",
+        "title": "核价列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1366,
+        "bodyScrollW": 1366,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1440": {
+        "vw": 1440,
+        "path": "/price_evaluation/",
+        "title": "核价列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1440,
+        "bodyScrollW": 1440,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1512": {
+        "vw": 1512,
+        "path": "/price_evaluation/",
+        "title": "核价列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1512,
+        "bodyScrollW": 1512,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1600": {
+        "vw": 1600,
+        "path": "/price_evaluation/",
+        "title": "核价列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1600,
+        "bodyScrollW": 1600,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1920": {
+        "vw": 1920,
+        "path": "/price_evaluation/",
+        "title": "核价列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1920,
+        "bodyScrollW": 1920,
+        "overflowX": 0,
+        "isLogin": false
+      }
+    },
+    "customer_credit_list": {
+      "320": {
+        "vw": 320,
+        "path": "/customer_credit/",
+        "title": "客户账期列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 320,
+        "bodyScrollW": 320,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "390": {
+        "vw": 390,
+        "path": "/customer_credit/",
+        "title": "客户账期列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 390,
+        "bodyScrollW": 390,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "768": {
+        "vw": 768,
+        "path": "/customer_credit/",
+        "title": "客户账期列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 768,
+        "bodyScrollW": 768,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "960": {
+        "vw": 960,
+        "path": "/customer_credit/",
+        "title": "客户账期列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 960,
+        "bodyScrollW": 960,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "961": {
+        "vw": 961,
+        "path": "/customer_credit/",
+        "title": "客户账期列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1354,
+        "bodyScrollW": 1354,
+        "overflowX": 393,
+        "isLogin": false
+      },
+      "1024": {
+        "vw": 1024,
+        "path": "/customer_credit/",
+        "title": "客户账期列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1354,
+        "bodyScrollW": 1354,
+        "overflowX": 330,
+        "isLogin": false
+      },
+      "1180": {
+        "vw": 1180,
+        "path": "/customer_credit/",
+        "title": "客户账期列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1354,
+        "bodyScrollW": 1354,
+        "overflowX": 174,
+        "isLogin": false
+      },
+      "1280": {
+        "vw": 1280,
+        "path": "/customer_credit/",
+        "title": "客户账期列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1354,
+        "bodyScrollW": 1354,
+        "overflowX": 74,
+        "isLogin": false
+      },
+      "1366": {
+        "vw": 1366,
+        "path": "/customer_credit/",
+        "title": "客户账期列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1366,
+        "bodyScrollW": 1366,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1440": {
+        "vw": 1440,
+        "path": "/customer_credit/",
+        "title": "客户账期列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1440,
+        "bodyScrollW": 1440,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1512": {
+        "vw": 1512,
+        "path": "/customer_credit/",
+        "title": "客户账期列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1512,
+        "bodyScrollW": 1512,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1600": {
+        "vw": 1600,
+        "path": "/customer_credit/",
+        "title": "客户账期列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1600,
+        "bodyScrollW": 1600,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1920": {
+        "vw": 1920,
+        "path": "/customer_credit/",
+        "title": "客户账期列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1920,
+        "bodyScrollW": 1920,
+        "overflowX": 0,
+        "isLogin": false
+      }
+    },
+    "decoration_list": {
+      "320": {
+        "vw": 320,
+        "path": "/decoration/",
+        "title": "装修列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 320,
+        "bodyScrollW": 320,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "390": {
+        "vw": 390,
+        "path": "/decoration/",
+        "title": "装修列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 390,
+        "bodyScrollW": 390,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "768": {
+        "vw": 768,
+        "path": "/decoration/",
+        "title": "装修列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 768,
+        "bodyScrollW": 768,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "960": {
+        "vw": 960,
+        "path": "/decoration/",
+        "title": "装修列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 960,
+        "bodyScrollW": 960,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "961": {
+        "vw": 961,
+        "path": "/decoration/",
+        "title": "装修列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1416,
+        "bodyScrollW": 1416,
+        "overflowX": 455,
+        "isLogin": false
+      },
+      "1024": {
+        "vw": 1024,
+        "path": "/decoration/",
+        "title": "装修列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1416,
+        "bodyScrollW": 1416,
+        "overflowX": 392,
+        "isLogin": false
+      },
+      "1180": {
+        "vw": 1180,
+        "path": "/decoration/",
+        "title": "装修列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1416,
+        "bodyScrollW": 1416,
+        "overflowX": 236,
+        "isLogin": false
+      },
+      "1280": {
+        "vw": 1280,
+        "path": "/decoration/",
+        "title": "装修列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1416,
+        "bodyScrollW": 1416,
+        "overflowX": 136,
+        "isLogin": false
+      },
+      "1366": {
+        "vw": 1366,
+        "path": "/decoration/",
+        "title": "装修列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1416,
+        "bodyScrollW": 1416,
+        "overflowX": 50,
+        "isLogin": false
+      },
+      "1440": {
+        "vw": 1440,
+        "path": "/decoration/",
+        "title": "装修列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1440,
+        "bodyScrollW": 1440,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1512": {
+        "vw": 1512,
+        "path": "/decoration/",
+        "title": "装修列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1512,
+        "bodyScrollW": 1512,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1600": {
+        "vw": 1600,
+        "path": "/decoration/",
+        "title": "装修列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1600,
+        "bodyScrollW": 1600,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1920": {
+        "vw": 1920,
+        "path": "/decoration/",
+        "title": "装修列表 - 每日工作记录管理网站",
+        "h1": 1,
+        "docScrollW": 1920,
+        "bodyScrollW": 1920,
+        "overflowX": 0,
+        "isLogin": false
+      }
+    },
+    "knowledge": {
+      "320": {
+        "vw": 320,
+        "path": "/knowledge/",
+        "title": "知识库 - 每日工作记录管理网站",
+        "h1": 2,
+        "docScrollW": 320,
+        "bodyScrollW": 320,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "390": {
+        "vw": 390,
+        "path": "/knowledge/",
+        "title": "知识库 - 每日工作记录管理网站",
+        "h1": 2,
+        "docScrollW": 390,
+        "bodyScrollW": 390,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "768": {
+        "vw": 768,
+        "path": "/knowledge/",
+        "title": "知识库 - 每日工作记录管理网站",
+        "h1": 2,
+        "docScrollW": 768,
+        "bodyScrollW": 768,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "960": {
+        "vw": 960,
+        "path": "/knowledge/",
+        "title": "知识库 - 每日工作记录管理网站",
+        "h1": 2,
+        "docScrollW": 960,
+        "bodyScrollW": 960,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "961": {
+        "vw": 961,
+        "path": "/knowledge/",
+        "title": "知识库 - 每日工作记录管理网站",
+        "h1": 2,
+        "docScrollW": 961,
+        "bodyScrollW": 961,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1024": {
+        "vw": 1024,
+        "path": "/knowledge/",
+        "title": "知识库 - 每日工作记录管理网站",
+        "h1": 2,
+        "docScrollW": 1024,
+        "bodyScrollW": 1024,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1180": {
+        "vw": 1180,
+        "path": "/knowledge/",
+        "title": "知识库 - 每日工作记录管理网站",
+        "h1": 2,
+        "docScrollW": 1180,
+        "bodyScrollW": 1180,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1280": {
+        "vw": 1280,
+        "path": "/knowledge/",
+        "title": "知识库 - 每日工作记录管理网站",
+        "h1": 2,
+        "docScrollW": 1280,
+        "bodyScrollW": 1280,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1366": {
+        "vw": 1366,
+        "path": "/knowledge/",
+        "title": "知识库 - 每日工作记录管理网站",
+        "h1": 2,
+        "docScrollW": 1366,
+        "bodyScrollW": 1366,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1440": {
+        "vw": 1440,
+        "path": "/knowledge/",
+        "title": "知识库 - 每日工作记录管理网站",
+        "h1": 2,
+        "docScrollW": 1440,
+        "bodyScrollW": 1440,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1512": {
+        "vw": 1512,
+        "path": "/knowledge/",
+        "title": "知识库 - 每日工作记录管理网站",
+        "h1": 2,
+        "docScrollW": 1512,
+        "bodyScrollW": 1512,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1600": {
+        "vw": 1600,
+        "path": "/knowledge/",
+        "title": "知识库 - 每日工作记录管理网站",
+        "h1": 2,
+        "docScrollW": 1600,
+        "bodyScrollW": 1600,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1920": {
+        "vw": 1920,
+        "path": "/knowledge/",
+        "title": "知识库 - 每日工作记录管理网站",
+        "h1": 2,
+        "docScrollW": 1920,
+        "bodyScrollW": 1920,
+        "overflowX": 0,
+        "isLogin": false
+      }
+    },
+    "data_download": {
+      "320": {
+        "vw": 320,
+        "path": "/data_download/",
+        "title": "数据下载",
+        "h1": 1,
+        "docScrollW": 320,
+        "bodyScrollW": 320,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "390": {
+        "vw": 390,
+        "path": "/data_download/",
+        "title": "数据下载",
+        "h1": 1,
+        "docScrollW": 390,
+        "bodyScrollW": 390,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "768": {
+        "vw": 768,
+        "path": "/data_download/",
+        "title": "数据下载",
+        "h1": 1,
+        "docScrollW": 768,
+        "bodyScrollW": 768,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "960": {
+        "vw": 960,
+        "path": "/data_download/",
+        "title": "数据下载",
+        "h1": 1,
+        "docScrollW": 960,
+        "bodyScrollW": 960,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "961": {
+        "vw": 961,
+        "path": "/data_download/",
+        "title": "数据下载",
+        "h1": 1,
+        "docScrollW": 961,
+        "bodyScrollW": 961,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1024": {
+        "vw": 1024,
+        "path": "/data_download/",
+        "title": "数据下载",
+        "h1": 1,
+        "docScrollW": 1024,
+        "bodyScrollW": 1024,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1180": {
+        "vw": 1180,
+        "path": "/data_download/",
+        "title": "数据下载",
+        "h1": 1,
+        "docScrollW": 1180,
+        "bodyScrollW": 1180,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1280": {
+        "vw": 1280,
+        "path": "/data_download/",
+        "title": "数据下载",
+        "h1": 1,
+        "docScrollW": 1280,
+        "bodyScrollW": 1280,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1366": {
+        "vw": 1366,
+        "path": "/data_download/",
+        "title": "数据下载",
+        "h1": 1,
+        "docScrollW": 1366,
+        "bodyScrollW": 1366,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1440": {
+        "vw": 1440,
+        "path": "/data_download/",
+        "title": "数据下载",
+        "h1": 1,
+        "docScrollW": 1440,
+        "bodyScrollW": 1440,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1512": {
+        "vw": 1512,
+        "path": "/data_download/",
+        "title": "数据下载",
+        "h1": 1,
+        "docScrollW": 1512,
+        "bodyScrollW": 1512,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1600": {
+        "vw": 1600,
+        "path": "/data_download/",
+        "title": "数据下载",
+        "h1": 1,
+        "docScrollW": 1600,
+        "bodyScrollW": 1600,
+        "overflowX": 0,
+        "isLogin": false
+      },
+      "1920": {
+        "vw": 1920,
+        "path": "/data_download/",
+        "title": "数据下载",
+        "h1": 1,
+        "docScrollW": 1920,
+        "bodyScrollW": 1920,
+        "overflowX": 0,
+        "isLogin": false
+      }
+    }
+  },
+  "p0_2": {
+    "before": {
+      "bodyHasSidebarOpen": false,
+      "sidebarShow": false,
+      "scrimExists": true,
+      "scrimHasHidden": true,
+      "scrimDisplay": "none",
+      "scrimVisibility": "visible",
+      "scrimOpacity": "1",
+      "scrimZIndex": "25",
+      "scrimSize": [
+        0,
+        0
+      ],
+      "ariaExpanded": "false"
+    },
+    "opened": {
+      "bodyHasSidebarOpen": true,
+      "sidebarShow": true,
+      "scrimExists": true,
+      "scrimHasHidden": true,
+      "scrimDisplay": "none",
+      "scrimVisibility": "visible",
+      "scrimOpacity": "1",
+      "scrimZIndex": "25",
+      "scrimSize": [
+        0,
+        0
+      ],
+      "ariaExpanded": "true"
+    },
+    "closed": {
+      "bodyHasSidebarOpen": false,
+      "sidebarShow": false,
+      "scrimExists": true,
+      "scrimHasHidden": true,
+      "scrimDisplay": "none",
+      "scrimVisibility": "visible",
+      "scrimOpacity": "1",
+      "scrimZIndex": "25",
+      "scrimSize": [
+        0,
+        0
+      ],
+      "ariaExpanded": "false"
+    }
+  },
+  "errors": [],
+  "loginRedirects": 0
+}

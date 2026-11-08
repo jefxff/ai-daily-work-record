@@ -2063,6 +2063,37 @@ a.home-kpi:hover .home-kpi__value { color: var(--c-primary-active); }
   .table-head-sticky > thead > tr > th { position: static; }
 }
 
+/* ============================================================================
+   宽表横向滚动收口（2026-11-08 UI 响应式整改 / P0-1）
+   ----------------------------------------------------------------------------
+   上面两段 @media (min-width:961px) 为了让表头相对视口吸附，把
+   .table-responsive 的 overflow 设成 visible。这对「列宽已收敛进容器」的表格
+   正确；但带硬编码 min-width 的宽表会直接把 .table-container 撑破，整页出现
+   横向滚动条：工作台 960 / 每日记录 1110 / 客户账期 1080 / 装修 1142 /
+   诉讼 1200。真实浏览器实测 961px 最严重（诉讼 513px），1440px 仍有 34px。
+
+   做法：给这些宽表的 .table-responsive 打 data-wide-table 标记，用更高特异性
+   （.table-container .table-responsive[data-wide-table] = 0,3,0）把横向滚动
+   收回卡片内部。选择器写法沿用 price_evaluation_list.html:150-152 已验证的
+   权重技巧：只写单类会被上面的 :has() 规则压回去。未标记的表格保持
+   overflow:visible，表头相对视口吸附的行为零改动。
+
+   取舍：被标记的宽表在桌面端失去「相对视口吸附」的表头（横向滚动容器不竖向
+   滚动时 sticky 不生效），换来整页不溢出、且所有列都能横向滚动查看。
+   ========================================================================== */
+@media (min-width: 961px) {
+  .table-container .table-responsive[data-wide-table] {
+    max-height: none;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+}
+
+@media print {
+  /* 打印时宽表要完整落到纸上，不能被卡片裁掉 */
+  .table-container .table-responsive[data-wide-table] { overflow: visible; }
+}
+
 /* 侧栏二级菜单的当前项：.sidebar-menu-item a.active 已覆盖背景与左侧竖条，
    这里只补内边距下的圆角与字色，避免和一级菜单的样式混在一起 */
 .sidebar-dropdown a.active {

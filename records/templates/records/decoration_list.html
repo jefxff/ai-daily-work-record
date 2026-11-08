@@ -53,7 +53,7 @@
             {% endif %}{% has_filters as show_clear %}{% if show_clear %}<a class="filter-chip filter-chip--clear" href="{{ request.path }}" aria-label="全部清除筛选条件">全部清除<span aria-hidden="true"> ✕</span></a>{% endif %}</div>
     </div>
     <div class="table-container">
-        <div class="table-responsive">
+        <div class="table-responsive" data-wide-table="1">
             <div class="hidden-cols-hint">窄屏已隐藏 1 个次要列；需要逐列比对时请横屏或改用桌面端。</div><table class="table-ledger table--cards table table-sticky table--fixed">
                 <thead>
                     <tr>
