@@ -15,7 +15,7 @@ xlrd==2.0.2
 # 2.31.0 含 CVE-2024-35195 / CVE-2024-47081
 requests==2.34.2
 beautifulsoup4==4.15.0
-markdown==3.11.2
+markdown==3.11.3
 bleach==6.4.0
 # 档案管理模块依赖；Pillow 同时是图像上传攻击面，必须显式锁定（勿依赖 qrcode[pil] 间接引入）
 qrcode==8.2
