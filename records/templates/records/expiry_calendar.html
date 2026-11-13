@@ -294,7 +294,9 @@
     .expiry-cal-nav-ph { width: 64px; }   /* 无翻页链接时占位，保持标题居中轴稳定 */
     .expiry-cal-grid {
         display: grid;
-        grid-template-columns: repeat(7, 1fr);
+        /* 1fr 的最小值默认是 auto，格内不换行的标题会把列撑宽、挤出视口；
+           minmax(0,1fr) 让 7 列严格等分容器宽度。 */
+        grid-template-columns: repeat(7, minmax(0, 1fr));
         gap: 4px;
     }
     .expiry-cal-wd {
@@ -308,6 +310,7 @@
         display: flex;
         flex-direction: column;
         align-items: flex-start;
+        min-width: 0;
         min-height: 84px;
         padding: 6px 8px 8px;
         border: 1px solid var(--c-border);
@@ -316,6 +319,7 @@
         color: var(--c-text);
         text-decoration: none;
         font-size: 13px;
+        overflow: hidden;
     }
     a.expiry-cal-cell:hover { border-color: var(--c-primary); box-shadow: var(--sh-focus); }
     .expiry-cal-cell.empty { cursor: default; }
@@ -528,11 +532,43 @@
         background: var(--c-info-bg);
         font-size: 13px;
     }
-    /* 小屏（≤640px）：月历格子收紧，图例换行 */
+    /* 小屏（≤640px）：月历格子收紧，格内标题保留截断预览，完整内容见下方清单 */
     @media (max-width: 640px) {
-        .expiry-cal-cell { min-height: 44px; padding: 4px 5px; font-size: 12px; }
+        .expiry-cal { padding: 10px 12px; }
+        .expiry-cal-grid { gap: 3px; }
+        .expiry-cal-wd { font-size: 11px; padding: 2px 0; }
+        .expiry-cal-cell {
+            min-height: 56px;
+            padding: 4px 5px 5px;
+            font-size: 12px;
+        }
         .expiry-cal-cell.is-today .expiry-cal-daynum { width: 18px; height: 18px; }
-        .expiry-cal-head { flex-wrap: wrap; }
+        .expiry-cal-head { flex-wrap: wrap; gap: 0.5rem; }
+    }
+    /* 手机（≤480px）：7 列平分后每列仅 40px 左右，放不下标题文本，
+       格内改为「日期 + 来源色点 + +N 项」，颜色与下方图例对应。 */
+    @media (max-width: 480px) {
+        .expiry-cal-cell { padding: 4px 3px 5px; align-items: center; }
+        .expiry-cal-items {
+            flex-direction: row;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 3px;
+            margin-top: 4px;
+        }
+        .expiry-cal-item {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 6px;
+            width: 6px;
+            height: 6px;
+            padding-left: 0;
+            font-size: 0;
+            overflow: visible;
+        }
+        .expiry-cal-item::before { position: static; width: 6px; height: 6px; }
+        .expiry-cal-more { padding-left: 0; font-size: 10px; line-height: 1.2; }
     }
 </style>
 {% endblock %}

@@ -177,6 +177,26 @@
     /* 小屏卡片模式下表头隐藏，列宽定义不影响布局 */
     @media (max-width: 640px) {
         .workspace-table { min-width: 0; }
+        /* 卡片模式把 td 改为 flex 多行，标题的 2.9em 限高（配合组件层的
+           overflow:visible）会让长标题溢出到下一行字段，与「来源」标签重叠。
+           小屏取消限高，让标题在本行内完整换行。 */
+        .workspace-table .ws-title {
+            max-height: none;
+            overflow: visible;
+        }
+        /* 标题是本表最长的字段：固定为「标签一行 + 内容一整行、左对齐」，
+           避免 flex 自动换行时长标题把标签单独挤到上一行、各卡片排版不一致。
+           选择器带 tbody，特异度与组件层的 `.table--cards tbody td[data-label]` 持平，
+           且本页 <style> 后加载，text-align 才能盖过其 !important。 */
+        .workspace-table tbody td[data-label="待办事项"] {
+            display: block;
+            text-align: left !important;
+        }
+        .workspace-table tbody td[data-label="待办事项"]::before {
+            display: block;
+            width: 100%;
+            margin-bottom: 2px;
+        }
         .ws-filter-bar { width: 100%; }
         .ws-source-chips { width: 100%; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 2px; }
         .ws-urgency { flex: 1 1 140px; }
