@@ -36,9 +36,17 @@ echo -e ""
 echo -e "按 Ctrl+C 停止服务"
 
 # settings.py 默认 DEBUG=0（安全默认值）。启动脚本走生产模式，显式列出可访问主机。
-# _detect_allowed_hosts() 会自动探测当前机器的内网 IP 追加进来，DHCP 换 IP 无需改配置。
+# _detect_allowed_hosts() 会自动探测当前机器的内网 IP 追加进来，DHCP 换 IP 无需改配置；
+# 这里只追加对外域名（生产模式禁止 '*'，见 settings.py）。
 export DJANGO_DEBUG=0
-export DJANGO_ALLOWED_HOSTS="localhost,127.0.0.1"
+export DJANGO_ALLOWED_HOSTS="localhost,127.0.0.1,gl.fmvsemi.com"
+
+# 前置 HTTPS 反向代理（gl.fmvsemi.com → nginx/Tengine → 本机 8000）：
+# 让 Django 依据 X-Forwarded-Proto 判定 is_secure，并信任该域名发起的 Origin。
+# 刻意不设 DJANGO_HTTPS_ONLY=1：它会开启 SECURE_SSL_REDIRECT 与 Secure Cookie，
+# 导致「局域网 http://IP:8000」直连的登录态失效。
+export DJANGO_BEHIND_HTTPS_PROXY=1
+export DJANGO_CSRF_TRUSTED_ORIGINS="https://gl.fmvsemi.com"
 
 # 独立调度进程：定时任务扫描 + 通知发送 worker。
 # 调度已与 web 进程解耦，DJANGO_DEBUG 不再影响定时任务是否执行。

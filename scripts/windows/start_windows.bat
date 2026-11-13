@@ -38,7 +38,13 @@ echo ========================================
 REM settings.py 默认 DEBUG=0（安全默认值）。启动脚本走生产模式，显式列出可访问主机。
 REM _detect_allowed_hosts() 会自动探测当前机器的内网 IP 追加进来，DHCP 换 IP 无需改配置。
 set DJANGO_DEBUG=0
-set DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+set DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,gl.fmvsemi.com
+
+REM 前置 HTTPS 反向代理（gl.fmvsemi.com → 网关 → 本机 8080）：
+REM 依据 X-Forwarded-Proto 判定 is_secure，并信任该域名发起的 Origin。
+REM 不设 DJANGO_HTTPS_ONLY=1：否则局域网 http://IP:8080 直连会失去登录态。
+set DJANGO_BEHIND_HTTPS_PROXY=1
+set DJANGO_CSRF_TRUSTED_ORIGINS=https://gl.fmvsemi.com
 
 REM 独立调度进程：定时任务扫描 + 通知发送 worker（与 web 进程分离，DEBUG 开关不再影响调度）
 if not exist logs mkdir logs

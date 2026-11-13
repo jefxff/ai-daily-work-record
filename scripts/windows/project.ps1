@@ -48,6 +48,18 @@ $WebErr = Join-Path $LogDir 'web.err'
 $SchedOut = Join-Path $LogDir 'scheduler.out'
 $SchedErr = Join-Path $LogDir 'scheduler.err'
 
+# 子进程环境变量。Start-Detached 用 WMI 创建进程，子进程继承的是 WmiPrvSE 的环境，
+# 本 shell 里的 $env:XXX 不会被继承（实测会拿到字面量 %XXX%），所以必须在 cmd 行内显式 set。
+# 局域网 IP 由 settings._detect_allowed_hosts() 自动探测；这里只追加对外域名。
+# 刻意不设 DJANGO_HTTPS_ONLY=1：它会开启 SECURE_SSL_REDIRECT 与 Secure Cookie，
+# 导致「局域网 http://IP:8080」直连的登录态失效。
+$script:ChildEnv = [ordered]@{
+    'DJANGO_DEBUG'                = '0'
+    'DJANGO_ALLOWED_HOSTS'        = 'localhost,127.0.0.1,gl.fmvsemi.com'
+    'DJANGO_BEHIND_HTTPS_PROXY'   = '1'
+    'DJANGO_CSRF_TRUSTED_ORIGINS' = 'https://gl.fmvsemi.com'
+}
+
 # 心跳有效窗口（秒）：与 notifications/scheduler.py 的 ALIVE_WINDOW_SECONDS 一致。
 # start 与 status 必须用同一个阈值，否则会出现「start 认为活着、status 认为死了」。
 $script:HeartbeatAliveSeconds = 90
@@ -269,7 +281,16 @@ function Start-Detached {
         if ($a -match '[\s"]') { '"' + ($a -replace '"', '\"') + '"' } else { $a }
     }
     $argLine = ($quotedArgs -join ' ')
-    $cmdLine = 'cmd.exe /d /s /c ""' + $PythonPath + '" ' + $argLine +
+
+    # WMI 不继承本 shell 环境，先把 $script:ChildEnv 拼成 cmd 的 set 前缀。
+    # 注意引号：/s /c 只会剥掉最外层一对引号，前缀必须用 set "K=V" 形式，
+    # 前缀存在时 exe 路径不能再写成 ""exe""（会变成空引号 + 路径）。
+    $envPrefix = ''
+    foreach ($k in $script:ChildEnv.Keys) {
+        $envPrefix += 'set "' + $k + '=' + $script:ChildEnv[$k] + '" && '
+    }
+
+    $cmdLine = 'cmd.exe /d /s /c "' + $envPrefix + '"' + $PythonPath + '" ' + $argLine +
         ' > "' + $StdOutPath + '" 2> "' + $StdErrPath + '""'
 
     try {
