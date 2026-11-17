@@ -97,7 +97,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!selected.length) return;
         var msg = '确定删除选中的 ' + selected.length + ' 条客户台账吗？附件也会一并删除，且不可恢复。';
         askConfirm(msg, false, function () {
-            submit(batchBtn.dataset.batchUrl, 'ids=' + encodeURIComponent(selected.join(',')), batchBtn);
+            submit(batchBtn.dataset.batchUrl, { ids: selected.join(',') }, batchBtn);
         });
     });
 
@@ -106,12 +106,18 @@ document.addEventListener('DOMContentLoaded', function () {
         var msg = '将删除全部 ' + total + ' 条客户台账（无视筛选与分页），附件一并清理，不可恢复。\n\n' +
                   '确认请在下框输入「清空」两个字。';
         askConfirm(msg, true, function (typed) {
-            submit(purgeBtn.dataset.purgeUrl, 'confirm=' + encodeURIComponent(typed), purgeBtn);
+            submit(purgeBtn.dataset.purgeUrl, { confirm: typed }, purgeBtn);
         });
     });
 
-    function submit(url, body, btn) {
+    /* 用 URLSearchParams 提交：浏览器会自动带上
+       Content-Type: application/x-www-form-urlencoded;charset=UTF-8，
+       后端 request.POST 才能读到字段（手拼字符串会被当成 text/plain，
+       导致视图里 ids / confirm 取到空值）。 */
+    function submit(url, fields, btn) {
         btn.disabled = true;
+        var body = new URLSearchParams();
+        Object.keys(fields).forEach(function (k) { body.append(k, fields[k]); });
         fetch(url, {
             method: 'POST',
             headers: { 'X-CSRFToken': csrfToken(), 'X-Requested-With': 'XMLHttpRequest' },
