@@ -647,6 +647,27 @@ def customer_ledger_attachment_upload_to(instance, filename):
     return os.path.join('customer_ledgers', f'{stem}{ext}')
 
 
+class CustomerType(models.Model):
+    """客户类型字典：客户台账的类型标签，一客户可同时拥有多个类型。
+
+    三档标准值与客户账期(customer_segment)/客户评审(customer_type)对齐：
+    经销商 / 终端客户 / 代加工客户。用独立字典表 + 多对多，是因为
+    「既是经销商又是代加工客户」是多值语义，单值字段无法表达；同时
+    筛选/统计走结构化查询，新增类型无需改表结构。
+    """
+
+    name = models.CharField('类型名称', max_length=20, unique=True)
+    sort_order = models.PositiveIntegerField('排序', default=0)
+
+    class Meta:
+        verbose_name = '客户类型'
+        verbose_name_plural = '客户类型字典'
+        ordering = ['sort_order', 'id']
+
+    def __str__(self):
+        return self.name
+
+
 class CustomerLedger(models.Model):
     """客户台账：来源 Excel 31 列的结构化主数据 + 单条记录一个 PDF 汇总附件。
 
@@ -659,7 +680,13 @@ class CustomerLedger(models.Model):
 
     responsible_salesperson = models.CharField('责任业务', max_length=50, blank=True, default='')
     customer_name = models.CharField('客户名称', max_length=200)
+    # 过渡期保留旧自由文本字段：历史脏值留档供人工复核，稳定后再移除。
+    # verbose_name 保持"客户分类"以兼容 copilot 的字段标签识别，勿改为"客户分类(旧)"。
     customer_category = models.CharField('客户分类', max_length=50, blank=True, default='')
+    # 规范化客户类型：一客户可多选（经销商/终端客户/代加工客户）。
+    customer_types = models.ManyToManyField(
+        CustomerType, verbose_name='客户类型', related_name='ledgers', blank=True,
+    )
     legal_representative = models.CharField('法人姓名', max_length=50, blank=True, default='')
     address = models.CharField('地址', max_length=300, blank=True, default='')
     credit_code = models.CharField(
@@ -774,6 +801,19 @@ class CustomerLedger(models.Model):
     @property
     def attachment_basename(self):
         return os.path.basename(self.attachment.name) if self.attachment else ''
+
+    @property
+    def customer_type_names(self):
+        """规范类型名称列表（按字典排序），供模板/导出展示。"""
+        return list(self.customer_types.values_list('name', flat=True))
+
+    @property
+    def customer_type_label(self):
+        """规范类型的展示文案；无类型时回退到旧字段，再回退到「—」。"""
+        names = self.customer_type_names
+        if names:
+            return '/'.join(names)
+        return (self.customer_category or '').strip() or '—'
 
 
 class CustomerLedgerChangeLog(models.Model):

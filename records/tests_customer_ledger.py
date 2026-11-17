@@ -18,7 +18,7 @@ from django.urls import reverse
 from accounts.models import Permission, Role
 
 from . import customer_ledger_import as ledger_io
-from .models import CustomerLedger
+from .models import CustomerLedger, CustomerType
 
 User = get_user_model()
 
@@ -213,12 +213,16 @@ class CustomerLedgerCrudTests(CustomerLedgerTestBase):
         self.assertEqual(resp.status_code, 403)
 
     def test_list_search_and_filters(self):
-        self.make_ledger(customer_name='杭州甲客户', customer_category='经销商', credit_code='C-A')
-        self.make_ledger(customer_name='宁波乙客户', customer_category='终端商', credit_code='C-B')
+        dealer = self.make_ledger(customer_name='杭州甲客户', customer_category='经销商', credit_code='C-A')
+        terminal_type = CustomerType.objects.get(name='终端客户')
+        dealer_type = CustomerType.objects.get(name='经销商')
+        dealer.customer_types.add(dealer_type)
+        end = self.make_ledger(customer_name='宁波乙客户', customer_category='终端商', credit_code='C-B')
+        end.customer_types.add(terminal_type)
         resp = self.client.get(reverse('customer_ledger_list'), {'search': '杭州'})
         self.assertContains(resp, '杭州甲客户')
         self.assertNotContains(resp, '宁波乙客户')
-        resp = self.client.get(reverse('customer_ledger_list'), {'customer_category': '终端商'})
+        resp = self.client.get(reverse('customer_ledger_list'), {'customer_type': '终端客户'})
         self.assertContains(resp, '宁波乙客户')
         self.assertNotContains(resp, '杭州甲客户')
 
@@ -237,6 +241,146 @@ class CustomerLedgerCrudTests(CustomerLedgerTestBase):
         self.assertNotContains(resp, '有附件客户')
 
 
+class CustomerLedgerBatchDeleteTests(CustomerLedgerTestBase):
+    """工具栏「删除选中」：仅超级管理员可用，按勾选 id 批量删除并清理附件。"""
+
+    def setUp(self):
+        super().setUp()
+        self.targets = [
+            self.make_ledger(customer_name=f'批量客户{i}', credit_code=f'BATCH-{i}')
+            for i in range(2)
+        ]
+
+    def test_non_superuser_is_forbidden(self):
+        resp = self.client.post(reverse('customer_ledger_batch_delete'), {
+            'ids': ','.join(str(o.pk) for o in self.targets),
+        })
+        self.assertEqual(resp.status_code, 403)
+        self.assertEqual(CustomerLedger.objects.filter(pk__in=[o.pk for o in self.targets]).count(), 2)
+
+    def test_requires_post(self):
+        superuser = User.objects.create_superuser(username='ledger_root', password='pass12345')
+        self.client.force_login(superuser)
+        resp = self.client.get(reverse('customer_ledger_batch_delete'))
+        self.assertEqual(resp.status_code, 405)
+
+    def test_superuser_deletes_selected_and_removes_files(self):
+        superuser = User.objects.create_superuser(username='ledger_root', password='pass12345')
+        self.client.force_login(superuser)
+
+        target = self.targets[0]
+        pdf = SimpleUploadedFile('batch.pdf', PDF_BYTES, content_type='application/pdf')
+        self.client.post(reverse('customer_ledger_edit', args=[target.pk]), {
+            'customer_name': target.customer_name,
+            'credit_code': target.credit_code,
+            'archive_no': target.archive_no,
+            'attachment': pdf,
+        })
+        target.refresh_from_db()
+        name = target.attachment.name
+        storage = target.attachment.storage
+        self.assertTrue(storage.exists(name))
+
+        keep = self.make_ledger(customer_name='保留客户', credit_code='BATCH-KEEP')
+        resp = self.client.post(reverse('customer_ledger_batch_delete'), {
+            'ids': ','.join(str(o.pk) for o in self.targets),
+        })
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json()['ok'])
+        self.assertEqual(resp.json()['deleted'], 2)
+        self.assertFalse(CustomerLedger.objects.filter(pk__in=[o.pk for o in self.targets]).exists())
+        self.assertFalse(storage.exists(name))
+        self.assertTrue(CustomerLedger.objects.filter(pk=keep.pk).exists())
+
+    def test_empty_selection_is_rejected(self):
+        superuser = User.objects.create_superuser(username='ledger_root', password='pass12345')
+        self.client.force_login(superuser)
+        resp = self.client.post(reverse('customer_ledger_batch_delete'), {'ids': ''})
+        self.assertEqual(resp.status_code, 400)
+
+    def test_checkbox_column_only_rendered_for_superuser(self):
+        resp = self.client.get(reverse('customer_ledger_list'))
+        self.assertNotContains(resp, 'clCheckAll')
+        self.assertNotContains(resp, 'customer_ledger_batch_delete')
+        self.assertNotContains(resp, 'customer_ledger_purge')
+        self.assertNotContains(resp, 'clPurgeLedger')
+
+        superuser = User.objects.create_superuser(username='ledger_root', password='pass12345')
+        self.client.force_login(superuser)
+        resp = self.client.get(reverse('customer_ledger_list'))
+        self.assertContains(resp, 'clCheckAll')
+        self.assertContains(resp, 'cl-row-check')
+        self.assertContains(resp, '删除选中')
+        self.assertContains(resp, '清空台账')
+        self.assertContains(resp, 'clConfirmInput')
+
+
+class CustomerLedgerPurgeTests(CustomerLedgerTestBase):
+    """工具栏「清空台账」：删除全部记录（无视筛选与分页），要求确认词，仅超级管理员。"""
+
+    def setUp(self):
+        super().setUp()
+        self.targets = [
+            self.make_ledger(customer_name=f'清空客户{i}', credit_code=f'PURGE-{i}')
+            for i in range(3)
+        ]
+
+    def test_non_superuser_is_forbidden(self):
+        resp = self.client.post(reverse('customer_ledger_purge'), {'confirm': '清空'})
+        self.assertEqual(resp.status_code, 403)
+        self.assertEqual(CustomerLedger.objects.filter(pk__in=[o.pk for o in self.targets]).count(), 3)
+
+    def test_requires_post(self):
+        superuser = User.objects.create_superuser(username='purge_root', password='pass12345')
+        self.client.force_login(superuser)
+        resp = self.client.get(reverse('customer_ledger_purge'))
+        self.assertEqual(resp.status_code, 405)
+
+    def test_requires_confirmation_word(self):
+        superuser = User.objects.create_superuser(username='purge_root', password='pass12345')
+        self.client.force_login(superuser)
+        for payload in ({}, {'confirm': ''}, {'confirm': '删除'}):
+            resp = self.client.post(reverse('customer_ledger_purge'), payload)
+            self.assertEqual(resp.status_code, 400, payload)
+        self.assertEqual(CustomerLedger.objects.filter(pk__in=[o.pk for o in self.targets]).count(), 3)
+
+    def test_purge_deletes_everything_ignoring_filters(self):
+        superuser = User.objects.create_superuser(username='purge_root', password='pass12345')
+        self.client.force_login(superuser)
+
+        target = self.targets[0]
+        pdf = SimpleUploadedFile('purge.pdf', PDF_BYTES, content_type='application/pdf')
+        self.client.post(reverse('customer_ledger_edit', args=[target.pk]), {
+            'customer_name': target.customer_name,
+            'credit_code': target.credit_code,
+            'archive_no': target.archive_no,
+            'attachment': pdf,
+        })
+        target.refresh_from_db()
+        name = target.attachment.name
+        storage = target.attachment.storage
+        self.assertTrue(storage.exists(name))
+        total_before = CustomerLedger.objects.count()
+        self.assertGreaterEqual(total_before, 3)
+
+        # 即使列表只显示筛选后的子集，清空也作用于全表。
+        resp = self.client.post(
+            reverse('customer_ledger_purge') + '?search=清空客户0&per_page=10', {'confirm': '清空'})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['deleted'], total_before)
+        self.assertFalse(CustomerLedger.objects.exists())
+        self.assertFalse(storage.exists(name))
+
+    def test_purge_on_empty_table_is_rejected(self):
+        superuser = User.objects.create_superuser(username='purge_root', password='pass12345')
+        self.client.force_login(superuser)
+        CustomerLedger.objects.all().delete()
+        resp = self.client.post(reverse('customer_ledger_purge'), {'confirm': '清空'})
+        self.assertEqual(resp.status_code, 404)
+
+
 class CustomerLedgerExportTests(CustomerLedgerTestBase):
     def test_export_headers_match_import_template(self):
         from openpyxl import load_workbook
@@ -249,6 +393,16 @@ class CustomerLedgerExportTests(CustomerLedgerTestBase):
         headers = [cell.value for cell in ws[1]]
         self.assertEqual(headers, ledger_io.CUSTOMER_LEDGER_HEADERS)
         self.assertEqual(ws.max_row, 2)
+
+    def test_export_joins_multiple_types(self):
+        from openpyxl import load_workbook
+
+        obj = self.make_ledger()
+        obj.customer_types.set(CustomerType.objects.filter(name__in=['经销商', '代加工客户']))
+        resp = self.client.get(reverse('customer_ledger_export'))
+        wb = load_workbook(io.BytesIO(resp.content))
+        category = wb.active.cell(row=2, column=4).value
+        self.assertEqual(set(category.split('/')), {'经销商', '代加工客户'})
 
     def test_template_download(self):
         from openpyxl import load_workbook
@@ -298,9 +452,26 @@ class CustomerLedgerImportTests(CustomerLedgerTestBase):
         self.assertEqual(created.registered_capital_text, '50万')
         self.assertEqual(created.credit_limit, Decimal('30.00'))
         self.assertEqual(created.change_date, date(2026, 1, 15))
+        self.assertEqual(list(created.customer_types.values_list('name', flat=True)), ['经销商'])
         existing.refresh_from_db()
         self.assertEqual(existing.responsible_salesperson, '赵六')
         self.assertEqual(existing.paid_in_capital, Decimal('20.00'))
+
+    def test_import_maps_multi_value_and_legacy_synonyms(self):
+        upload = build_xlsx([{
+            '客户名称': '多类型客户', '客户分类': '终端商/代加工客户',
+            '统一社会信用代码': '91330000MULTI0001',
+        }])
+        resp = self.client.post(reverse('customer_ledger_import'), {'file': upload})
+        self.assertFalse(resp.context['preview']['errors'])
+        self.client.post(reverse('customer_ledger_import_confirm'), {
+            'payload': resp.context['payload'], 'overwrite': '0',
+        })
+        obj = CustomerLedger.objects.get(customer_name='多类型客户')
+        self.assertEqual(
+            set(obj.customer_types.values_list('name', flat=True)),
+            {'终端客户', '代加工客户'},
+        )
 
     def test_only_fill_mode_does_not_overwrite_existing(self):
         self.make_ledger(

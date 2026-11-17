@@ -43,8 +43,16 @@
                 </div>
                 <div class="col-md-4">
                     <div class="form-group">
-                        <label for="id_customer_category" class="form-label">客户分类</label>
-                        {{ form.customer_category }}
+                        <span class="form-label d-block">客户类型</span>
+                        <div class="ct-choice-group" role="group" aria-label="客户类型（可多选）">
+                            {% for checkbox in form.customer_types %}
+                                <label class="ct-choice">
+                                    {{ checkbox.tag }}
+                                    <span class="ct-choice__text">{{ checkbox.choice_label }}</span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                        <small class="form-text">可多选：既是经销商又是代加工客户的，请都勾上。</small>
                     </div>
                 </div>
                 <div class="col-md-4">
@@ -288,5 +296,60 @@
         color: var(--c-text);
     }
     .current-attachment { margin-top: 0.5rem; font-size: 0.875rem; color: var(--c-text-secondary); }
+
+    /* 客户类型：卡片式多选（整块可点、有选中态与键盘焦点环），选项来自 CustomerType 字典。 */
+    .ct-choice-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .ct-choice {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        margin: 0;
+        padding: 0.42rem 0.85rem;
+        border: 1px solid var(--c-border);
+        border-radius: 999px;
+        background: var(--c-surface);
+        color: var(--c-text-secondary);
+        font-size: 0.9rem;
+        line-height: 1.2;
+        cursor: pointer;
+        user-select: none;
+        transition: border-color 0.15s ease, background-color 0.15s ease,
+                    color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .ct-choice:hover {
+        border-color: var(--c-primary-hover, var(--c-primary));
+        background: var(--c-surface-sunken);
+        color: var(--c-text);
+    }
+    .ct-choice input[type="checkbox"] {
+        width: 15px;
+        height: 15px;
+        margin: 0;
+        flex: none;
+        accent-color: var(--c-primary);
+        cursor: pointer;
+    }
+    /* 选中态：表单控件本身没有 :has 依赖，用 :checked + 兄弟选择器兼容旧浏览器。 */
+    .ct-choice input[type="checkbox"]:checked { accent-color: var(--c-primary); }
+    .ct-choice:has(input[type="checkbox"]:checked) {
+        border-color: var(--c-primary);
+        background: var(--c-primary-subtle, var(--c-surface-sunken));
+        color: var(--c-primary);
+        font-weight: 600;
+        box-shadow: 0 0 0 1px var(--c-primary) inset;
+    }
+    .ct-choice:has(input[type="checkbox"]:focus-visible) {
+        outline: 2px solid var(--c-primary-ring, var(--c-primary));
+        outline-offset: 2px;
+    }
+    /* :has() 不可用时（老内核）退化为浏览器默认焦点环与复选框颜色，功能不受影响。 */
+    .ct-choice__text { white-space: nowrap; }
+    @media (max-width: 575px) {
+        .ct-choice { width: 100%; }
+    }
 </style>
 {% endblock %}

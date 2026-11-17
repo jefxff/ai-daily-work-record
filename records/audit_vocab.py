@@ -140,6 +140,7 @@ ACTION_SYNONYMS = {
     "文档删除": Action.DELETE,
     "分类删除": Action.DELETE,
     "文件夹删除": Action.DELETE,
+    "批量删除": Action.DELETE,
     # 状态
     "文档归档": Action.STATUS,
     "归档": Action.STATUS,

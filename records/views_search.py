@@ -84,8 +84,9 @@ def search(request):
         Q(credit_code__icontains=search_term) |
         Q(address__icontains=search_term) |
         Q(archive_no__icontains=search_term) |
-        Q(remarks__icontains=search_term)
-    )
+        Q(remarks__icontains=search_term) |
+        Q(customer_types__name__icontains=search_term)
+    ).distinct()
 
     # 搜索制度及处罚
     regulation_results = Regulation.objects.filter(

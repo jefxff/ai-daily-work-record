@@ -4,7 +4,7 @@ from django.core.files.storage import default_storage
 from work_record.file_validation import content_matches, normalize_ext, read_head
 
 from .models import (CustomerComplaint, CustomerCredit, CustomerLedger, CustomerReview,
-                     Decoration, Insurance, Complaint, PaymentWalkthrough,
+                     CustomerType, Decoration, Insurance, Complaint, PaymentWalkthrough,
                      PriceEvaluation, Regulation)
 
 
@@ -498,7 +498,7 @@ class CustomerLedgerForm(forms.ModelForm):
     class Meta:
         model = CustomerLedger
         fields = [
-            'responsible_salesperson', 'customer_name', 'customer_category',
+            'responsible_salesperson', 'customer_name', 'customer_types',
             'legal_representative', 'address', 'credit_code',
             'registered_capital', 'registered_capital_text',
             'paid_in_capital', 'paid_in_capital_text', 'company_status',
@@ -518,8 +518,8 @@ class CustomerLedgerForm(forms.ModelForm):
             'customer_name': forms.TextInput(attrs={
                 'class': 'form-control', 'placeholder': '请输入客户名称',
             }),
-            'customer_category': forms.TextInput(attrs={
-                'class': 'form-control', 'placeholder': '如 经销商 / 终端商',
+            'customer_types': forms.CheckboxSelectMultiple(attrs={
+                'class': 'form-check-input',
             }),
             'legal_representative': forms.TextInput(attrs={
                 'class': 'form-control', 'placeholder': '请输入法人姓名',

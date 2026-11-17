@@ -20,11 +20,11 @@
                     <input type="text" name="customer_name" placeholder="模糊搜索客户名称" value="{{ customer_name_filter }}" aria-label="客户名称" maxlength="100">
                 </div>
                 <div class="filter-group">
-                    <label>客户分类</label>
-                    <select name="customer_category">
-                        <option value="">全部分类</option>
-                        {% for item in customer_categories %}
-                        <option value="{{ item }}" {% if customer_category_filter == item %}selected{% endif %}>{{ item }}</option>
+                    <label>客户类型</label>
+                    <select name="customer_type">
+                        <option value="">全部类型</option>
+                        {% for item in customer_types %}
+                        <option value="{{ item }}" {% if customer_type_filter == item %}selected{% endif %}>{{ item }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -63,11 +63,24 @@
     </div>
     {% can "customer_ledger" "create" %}
     <a href="{% url 'customer_ledger_import' %}" class="btn-transparent">导入Excel</a>
-    <a href="{% url 'customer_ledger_add' %}" class="btn-primary">新增客户台账</a>
     {% endcan %}
     <a href="{% url 'customer_ledger_template' %}" class="btn-transparent">下载模板</a>
     <a href="{% url 'customer_ledger_export' %}" class="btn-transparent">下载Excel</a>
     <span data-col-settings-anchor data-col-settings-position="after"></span>
+    {% if request.user.is_superuser %}
+    <button type="button" class="btn-transparent" id="clClearSelection" data-cl-clear-selection hidden
+            title="取消所有勾选（含其它页已勾选的）">清除勾选</button>
+    <button type="button" class="btn-transparent btn-delete" id="clBatchDelete"
+            data-batch-url="{% url 'customer_ledger_batch_delete' %}"
+            disabled title="勾选左侧复选框后可用">删除选中<span class="cl-batch-count" id="clBatchCount"></span></button>
+    <button type="button" class="btn-transparent btn-delete" id="clPurgeLedger"
+            data-purge-url="{% url 'customer_ledger_purge' %}"
+            data-total="{{ ledgers.paginator.count }}"
+            title="删除全部客户台账记录（含附件），不可恢复">清空台账</button>
+    {% endif %}
+    {% can "customer_ledger" "create" %}
+    <a href="{% url 'customer_ledger_add' %}" class="btn-primary">新增客户台账</a>
+    {% endcan %}
 {% endblock %}
 
 {% block content %}
@@ -80,8 +93,8 @@
             {% if customer_name_filter %}
             <a class="filter-chip" href="{% querystring customer_name=None page=None %}">客户：{{ customer_name_filter }} ✕</a>
             {% endif %}
-            {% if customer_category_filter %}
-            <a class="filter-chip" href="{% querystring customer_category=None page=None %}">分类：{{ customer_category_filter }} ✕</a>
+            {% if customer_type_filter %}
+            <a class="filter-chip" href="{% querystring customer_type=None page=None %}">类型：{{ customer_type_filter }} ✕</a>
             {% endif %}
             {% if responsible_salesperson_filter %}
             <a class="filter-chip" href="{% querystring responsible_salesperson=None page=None %}">责任业务：{{ responsible_salesperson_filter }} ✕</a>
@@ -96,12 +109,17 @@
     <div class="table-container">
         <div class="table-responsive">
             <div class="hidden-cols-hint">窄屏已隐藏 5 个次要列；需要逐列比对时请横屏或改用桌面端。</div>
-            <table class="table-ledger table--cards table table-sticky table--fixed">
+            <table class="table-ledger table--cards table table-sticky table--fixed{% if request.user.is_superuser %} table--check{% endif %}">
                 <thead>
                     <tr>
+                        {% if request.user.is_superuser %}
+                        <th scope="col" class="cl-check-col">
+                            <input type="checkbox" id="clCheckAll" aria-label="全选本页台账">
+                        </th>
+                        {% endif %}
                         <th scope="col" class="col-optional">序号</th>
                         <th scope="col">客户名称</th>
-                        <th scope="col" class="col-optional">客户分类</th>
+                        <th scope="col" class="col-optional">客户类型</th>
                         <th scope="col">责任业务</th>
                         <th scope="col" class="col-optional">法人姓名</th>
                         <th scope="col" class="col-optional">统一社会信用代码</th>
@@ -115,9 +133,14 @@
                 <tbody>
                     {% for ledger in ledgers %}
                     <tr data-href="{% url 'customer_ledger_detail' ledger.id %}">
+                        {% if request.user.is_superuser %}
+                        <td data-label="选择" class="cl-check-col">
+                            <input type="checkbox" class="cl-row-check" value="{{ ledger.id }}" data-no-row-click aria-label="选择第 {{ forloop.counter }} 条台账">
+                        </td>
+                        {% endif %}
                         <td data-label="序号" class="col-optional">{{ forloop.counter }}</td>
                         <td data-label="客户名称" class="cell-ellipsis" title="{{ ledger.customer_name }}">{{ ledger.customer_name }}</td>
-                        <td data-label="客户分类" class="col-optional cell-ellipsis" title="{{ ledger.customer_category|default:'—' }}">{{ ledger.customer_category|default:'—' }}</td>
+                        <td data-label="客户类型" class="col-optional cell-ellipsis" title="{{ ledger.customer_type_label }}">{{ ledger.customer_type_label }}</td>
                         <td data-label="责任业务">{{ ledger.responsible_salesperson|default:'—' }}</td>
                         <td data-label="法人姓名" class="col-optional">{{ ledger.legal_representative|default:'—' }}</td>
                         <td data-label="统一社会信用代码" class="col-optional cell-ellipsis" title="{{ ledger.credit_code|default:'—' }}">{{ ledger.credit_code|default:'—' }}</td>
@@ -144,13 +167,42 @@
                         </td>
                     </tr>
                     {% empty %}
+                    {% if request.user.is_superuser %}
+                    {% include 'records/_empty_row.html' with colspan=12 %}
+                    {% else %}
                     {% include 'records/_empty_row.html' with colspan=11 %}
+                    {% endif %}
                     {% endfor %}
                 </tbody>
             </table>
         </div>
         {% include 'records/_pagination.html' with page_obj=ledgers %}
     </div>
+
+    {% if request.user.is_superuser %}
+    {# 清空台账 / 删除选中的页内确认框：危险操作要求手输「清空」才放行 #}
+    <div class="cl-confirm-backdrop" id="clConfirmBackdrop">
+        <div class="cl-confirm" role="dialog" aria-modal="true" aria-labelledby="clConfirmMessage">
+            <div class="cl-confirm-icon" aria-hidden="true">⚠️</div>
+            <div class="cl-confirm-message" id="clConfirmMessage">确定要执行该操作吗？</div>
+            <label class="cl-confirm-hint" id="clConfirmHint" for="clConfirmInput" hidden>
+                请输入「清空」以确认：
+            </label>
+            <input type="text" class="cl-confirm-input" id="clConfirmInput" autocomplete="off"
+                   spellcheck="false" aria-label="输入清空两字确认" hidden>
+            <div class="cl-confirm-actions">
+                <button type="button" class="btn-transparent" id="clConfirmCancel">取消</button>
+                <button type="button" class="btn-transparent btn-delete" id="clConfirmOk">确定</button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if request.user.is_superuser %}
+<script src="{% static 'js/pages/records/customer_ledger_list.js' %}?v=20261117a" defer></script>
+{% endif %}
 {% endblock %}
 
 {% block extra_css %}
@@ -168,7 +220,59 @@
     .table--fixed th:nth-child(9)  { width: 8%; }
     .table--fixed th:nth-child(10) { width: 5%; }
     .table--fixed th:nth-child(11) { width: 12%; }
+    /* 超级管理员多一列勾选（.table--check）：后续列整体右移一位，勾选列固定 36px 宽。 */
+    .table--check { min-width: 1116px; }
+    .table--check th:nth-child(1)  { width: 36px; }
+    .table--check th:nth-child(2)  { width: 4%; }
+    .table--check th:nth-child(3)  { width: 14%; }
+    .table--check th:nth-child(4)  { width: 8%; }
+    .table--check th:nth-child(5)  { width: 8%; }
+    .table--check th:nth-child(6)  { width: 8%; }
+    .table--check th:nth-child(7)  { width: 14%; }
+    .table--check th:nth-child(8)  { width: 9%; }
+    .table--check th:nth-child(9)  { width: 9%; }
+    .table--check th:nth-child(10) { width: 8%; }
+    .table--check th:nth-child(11) { width: 5%; }
+    .table--check th:nth-child(12) { width: 12%; }
+    .cl-check-col { text-align: center; vertical-align: middle; }
+    .cl-check-col input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--c-primary); cursor: pointer; }
+    .cl-batch-count:not(:empty) { margin-left: 4px; }
     .table td { font-variant-numeric: tabular-nums; }
+    /* 页内确认框（清空台账 / 删除选中）：与全局 confirm 视觉一致，另多一个确认词输入框 */
+    .cl-confirm-backdrop {
+        position: fixed; inset: 0; z-index: var(--z-modal);
+        display: none; align-items: center; justify-content: center;
+        background: rgba(0, 0, 0, 0.45);
+    }
+    .cl-confirm-backdrop.show { display: flex; }
+    .cl-confirm {
+        width: 360px; max-width: 90vw; padding: 1.5rem;
+        background: var(--c-surface); border-radius: 8px;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+    }
+    .cl-confirm-icon { text-align: center; font-size: 2rem; margin-bottom: 0.75rem; }
+    .cl-confirm-message {
+        text-align: center; color: var(--c-text); margin-bottom: 1rem;
+        white-space: pre-line; line-height: 1.6;
+    }
+    .cl-confirm-hint {
+        display: block; margin-bottom: 0.4rem;
+        font-size: 0.85rem; color: var(--c-text-secondary);
+    }
+    .cl-confirm-input {
+        width: 100%; margin-bottom: 1rem; padding: 0.45rem 0.6rem;
+        border: 1px solid var(--c-danger-line); border-radius: 4px;
+        background: var(--c-surface); color: var(--c-text);
+        font-size: 0.95rem; letter-spacing: 0.1em;
+    }
+    .cl-confirm-input:focus {
+        outline: 2px solid var(--c-danger); outline-offset: 1px;
+        border-color: var(--c-danger);
+    }
+    .cl-confirm-actions { display: flex; gap: 0.75rem; justify-content: center; }
+    @media (max-width: 767px) {
+        .cl-check-col { display: none; }
+    }
 </style>
 {% endblock %}
 

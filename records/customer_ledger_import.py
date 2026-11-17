@@ -17,10 +17,43 @@ from django.db import transaction
 from django.http import HttpResponse
 from django.utils import timezone
 
-from .models import CustomerLedger
+from .models import CustomerLedger, CustomerType
 
 MAX_IMPORT_ROWS = 5000
 IMPORT_MAX_SIZE = 10 * 1024 * 1024
+
+# 客户分类列的历史同义词 -> 规范类型（导入时复用；与迁移 0033 保持一致）。
+_CATEGORY_TOKEN_MAP = {
+    '经销商': '经销商', '代理商': '经销商', '代理': '经销商',
+    '终端商': '终端客户', '终端': '终端客户', '终端客户': '终端客户',
+    '代加工客户': '代加工客户', '代加工': '代加工客户',
+    '#N/A': None, 'N/A': None, 'NA': None, '0': None, '-': None,
+    '其他类': None, '其他（工厂）': None, '其他': None,
+    '应收款临时新增客户': None, '临时导期初销售订单': None,
+}
+
+
+def parse_category_types(raw):
+    """Excel「客户分类」文本 -> 规范类型名称集合（多值 / 、 拆分 + 同义词映射）。"""
+    text = (raw or '').strip()
+    if not text:
+        return set()
+    names = set()
+    for token in text.replace('、', '/').split('/'):
+        token = token.strip()
+        if not token:
+            continue
+        if token in _CATEGORY_TOKEN_MAP:
+            mapped = _CATEGORY_TOKEN_MAP[token]
+            if mapped:
+                names.add(mapped)
+        elif token.startswith('代加工'):
+            names.add('代加工客户')
+        elif '终端' in token:
+            names.add('终端客户')
+        elif '经销' in token or '代理' in token:
+            names.add('经销商')
+    return names
 
 # 来源表 31 列（顺序即导出顺序，也是模板表头）
 CUSTOMER_LEDGER_HEADERS = [
@@ -274,6 +307,8 @@ def row_to_values(row):
         values[field] = _to_date(row.get(header))
     # 档案编号空串必须落 None，避免唯一约束冲突
     values['archive_no'] = values.get('archive_no') or None
+    # 客户分类拆出规范类型（M2M，单独写入，不进 IMPORT_FIELDS）。
+    values['_customer_types'] = parse_category_types(values.get('customer_category'))
     return values
 
 
@@ -379,6 +414,12 @@ def build_preview(rows, overwrite=False):
                 )
 
         changes = _changes(values, obj, overwrite)
+        # 客户类型（M2M）作为单独一项进入变更清单，便于预览。
+        new_types = values.get('_customer_types') or set()
+        if new_types:
+            old_types = set(obj.customer_types.values_list('name', flat=True)) if obj else set()
+            if new_types != old_types:
+                changes.append(('客户类型', '/'.join(sorted(new_types))))
         if obj is None:
             action = 'create'
         elif changes:
@@ -412,6 +453,19 @@ def build_preview(rows, overwrite=False):
 
 # ---------------------------------------------------------------- 写入
 
+def _sync_customer_types(obj, names):
+    """把规范类型集合写入 M2M；names 为空时不动（避免误清空已有类型）。"""
+    if not names:
+        return False
+    id_map = {t.name: t.id for t in CustomerType.objects.filter(name__in=names)}
+    target_ids = [id_map[n] for n in names if n in id_map]
+    current_ids = set(obj.customer_types.values_list('id', flat=True))
+    if set(target_ids) == current_ids:
+        return False
+    obj.customer_types.set(target_ids)
+    return True
+
+
 def apply_rows(rows, overwrite=False):
     """按预览结果写库：先把阻断错误全部拦下，再单事务全成全败。"""
     preview = build_preview(rows, overwrite=overwrite)
@@ -422,14 +476,21 @@ def apply_rows(rows, overwrite=False):
     with transaction.atomic():
         for item in preview['items']:
             values = item['values']
+            new_types = values.get('_customer_types') or set()
             if item['action'] == 'create':
-                obj = CustomerLedger(**values)
+                obj = CustomerLedger(**{k: v for k, v in values.items() if not k.startswith('_')})
                 obj._credit_change_source = 'Excel导入'
                 obj.save()
+                _sync_customer_types(obj, new_types)
                 created += 1
                 continue
             if item['action'] == 'skip':
-                skipped += 1
+                # 类型单独变化也算一次更新。
+                obj = CustomerLedger.objects.get(pk=item['matched_id'])
+                if _sync_customer_types(obj, new_types):
+                    updated += 1
+                else:
+                    skipped += 1
                 continue
             obj = CustomerLedger.objects.select_for_update().get(pk=item['matched_id'])
             touched = False
@@ -447,6 +508,9 @@ def apply_rows(rows, overwrite=False):
             if touched:
                 obj._credit_change_source = 'Excel导入'
                 obj.save()
+            if _sync_customer_types(obj, new_types):
+                touched = True
+            if touched:
                 updated += 1
             else:
                 skipped += 1
@@ -471,9 +535,11 @@ def _amount_out(text, number):
 
 def ledger_export_row(obj, serial):
     """单条记录 -> 31 列导出值（与导入表头严格对齐）。"""
+    types = [t.name for t in obj.customer_types.all()]
+    category_out = '/'.join(types) if types else (obj.customer_category or '')
     return [
         serial,
-        obj.responsible_salesperson, obj.customer_name, obj.customer_category,
+        obj.responsible_salesperson, obj.customer_name, category_out,
         obj.legal_representative, obj.address, obj.credit_code,
         _amount_out(obj.registered_capital_text, obj.registered_capital),
         _amount_out(obj.paid_in_capital_text, obj.paid_in_capital),
@@ -517,7 +583,9 @@ def template_response():
         '4. 注册资金/实缴资金/额度可填「50万」「0」等原文，系统自动换算为万元。',
         '5. 日期支持 2026-01-31、2026/1/31、20260131；无法识别时留空。',
         '6. 同一文件内统一社会信用代码、档案编号不得重复。',
-        '7. 附件（营业执照/法人身份证/基本合同等合并 PDF）不在 Excel 中导入，',
+        '7. 客户分类可填「经销商」「终端客户」「代加工客户」，多类型用 / 分隔',
+        '   （如 经销商/代加工客户）；历史同义词（终端商/代理商等）会自动换算。',
+        '8. 附件（营业执照/法人身份证/基本合同等合并 PDF）不在 Excel 中导入，',
         '   请在记录详情或编辑页上传。',
     ]:
         notes.append([line])

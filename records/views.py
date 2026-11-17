@@ -8,7 +8,7 @@ from django.db.models import Count, F, Q
 from django.db.models.functions import TruncDate
 from datetime import date, datetime, timedelta
 import json
-from .models import Decoration, CustomerCredit, CustomerComplaint, CustomerCreditDoc, CustomerLedger, Regulation, PriceEvaluation, DailyRecord, MetalPrice, Insurance, Complaint, OperationLog
+from .models import Decoration, CustomerCredit, CustomerComplaint, CustomerCreditDoc, CustomerLedger, CustomerType, Regulation, PriceEvaluation, DailyRecord, MetalPrice, Insurance, Complaint, OperationLog
 from .forms import DecorationForm, CustomerCreditForm, CustomerComplaintForm, CustomerComplaintClosureForm, CustomerLedgerForm, RegulationForm, PriceEvaluationForm, InsuranceForm, ComplaintForm
 from . import audit_vocab
 from .audit import log_operation, snapshot
@@ -1209,7 +1209,8 @@ customer_ledger_list = make_list_view(
     ],
     filters=[
         ('customer_name', 'customer_name__icontains'),
-        ('customer_category', 'customer_category'),
+        # 客户类型按多对多关联筛选；value 为类型名称字符串。
+        ('customer_type', lambda qs, value: qs.filter(customer_types__name=value)),
         ('responsible_salesperson', 'responsible_salesperson'),
         ('company_status', 'company_status'),
         ('attachment', lambda qs, value: (
@@ -1219,8 +1220,11 @@ customer_ledger_list = make_list_view(
     ],
     filter_options={
         'salespersons': 'responsible_salesperson',
-        'customer_categories': 'customer_category',
         'company_statuses': 'company_status',
+    },
+    # 类型下拉直接取字典表，避免历史脏值污染选项。
+    option_queries={
+        'customer_types': ('name', lambda request: CustomerType.objects.all()),
     },
     extra_context={
         'attachment_choices': [('', '全部'), ('yes', '有附件'), ('no', '无附件')],
@@ -1253,9 +1257,82 @@ customer_ledger_delete = make_delete_view(
     after_delete=_delete_ledger_files,
 )
 
+
+@perm_required("customer_ledger", "delete")
+@require_POST
+def customer_ledger_batch_delete(request):
+    """客户台账列表页批量删除：仅超级管理员可用。
+
+    复用单条删除的 after_delete 清理逻辑（汇总 PDF + 通用附件），
+    逐条留痕一次批量记录；before 只在单条时携带快照。
+    """
+    if not getattr(request.user, "is_superuser", False):
+        return JsonResponse({'ok': False, 'message': '仅超级管理员可执行批量删除'}, status=403)
+
+    ids = []
+    for part in (request.POST.get('ids') or '').split(','):
+        part = part.strip()
+        if part.isdigit():
+            ids.append(int(part))
+    if not ids:
+        return JsonResponse({'ok': False, 'message': '未选择任何记录'}, status=400)
+
+    objs = list(CustomerLedger.objects.filter(id__in=ids))
+    if not objs:
+        return JsonResponse({'ok': False, 'message': '没有可删除的记录'}, status=404)
+
+    before = snapshot(objs[0]) if len(objs) == 1 else None
+    ids_str = ','.join(str(o.pk) for o in objs)
+    for obj in objs:
+        obj_id = obj.pk
+        obj.delete()
+        _delete_ledger_files(obj, obj_id)
+    log_operation(
+        request, '客户台账', '批量删除', f'[客户台账]下的记录#{ids_str}',
+        f'批量删除 {len(objs)} 条客户台账（含附件清理）', before=before,
+    )
+    return JsonResponse({'ok': True, 'message': f'已删除 {len(objs)} 条', 'deleted': len(objs)})
+
+
+CUSTOMER_LEDGER_PURGE_WORD = '清空'
+
+
+@perm_required("customer_ledger", "delete")
+@require_POST
+def customer_ledger_purge(request):
+    """清空客户台账：删除全部记录（无视筛选与分页），仅超级管理员可用。
+
+    与 batch-delete 的区别是没有 id 清单，删的是表里所有台账；
+    因此要求前端回传确认词「清空」，后端再校验一次，避免误触。
+    逐条删除以复用 _delete_ledger_files 的附件清理（汇总 PDF + 通用附件）。
+    """
+    if not getattr(request.user, "is_superuser", False):
+        return JsonResponse({'ok': False, 'message': '仅超级管理员可清空客户台账'}, status=403)
+
+    if (request.POST.get('confirm') or '').strip() != CUSTOMER_LEDGER_PURGE_WORD:
+        return JsonResponse(
+            {'ok': False, 'message': f'请输入「{CUSTOMER_LEDGER_PURGE_WORD}」两个字确认'}, status=400)
+
+    objs = list(CustomerLedger.objects.all())
+    if not objs:
+        return JsonResponse({'ok': False, 'message': '客户台账已是空的，无需清空'}, status=404)
+
+    total = len(objs)
+    for obj in objs:
+        obj_id = obj.pk
+        obj.delete()
+        _delete_ledger_files(obj, obj_id)
+    log_operation(
+        request, '客户台账', '批量删除', '[客户台账]下的全部记录',
+        f'清空客户台账 {total} 条（含附件清理）',
+    )
+    return JsonResponse({'ok': True, 'message': f'已清空 {total} 条', 'deleted': total})
+
+
 customer_ledger_export = make_export_view(
     model=CustomerLedger, perm_module='customer_ledger', sheet_title='客户台账', log_label='客户台账',
     filename_base='客户台账', empty_text='当前无客户台账记录，无法导出Excel',
+    queryset=lambda request: CustomerLedger.objects.prefetch_related('customer_types'),
     headers=ledger_io.CUSTOMER_LEDGER_HEADERS,
     row_values=ledger_io.ledger_export_row,
     column_width=18,

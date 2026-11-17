@@ -205,7 +205,7 @@
         <thead>
             <tr>
                 <th scope="col">客户名称</th>
-                <th scope="col">客户分类</th>
+                <th scope="col">客户类型</th>
                 <th scope="col">责任业务</th>
                 <th scope="col">统一社会信用代码</th>
                 <th scope="col">档案编号</th>
@@ -216,7 +216,7 @@
             {% for ledger in customer_ledger_results %}
             <tr data-href="{% url 'customer_ledger_detail' ledger.id %}">
                 <td data-label="客户名称">{{ ledger.customer_name }}</td>
-                <td data-label="客户分类">{{ ledger.customer_category|default:'' }}</td>
+                <td data-label="客户类型">{{ ledger.customer_type_label }}</td>
                 <td data-label="责任业务">{{ ledger.responsible_salesperson|default:'' }}</td>
                 <td data-label="统一社会信用代码">{{ ledger.credit_code|default:'' }}</td>
                 <td data-label="档案编号">{{ ledger.archive_no|default:'' }}</td>

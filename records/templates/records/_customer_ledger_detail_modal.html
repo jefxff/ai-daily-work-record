@@ -6,7 +6,7 @@
             <h2 class="lgd-modal-name">{{ ledger.customer_name }}</h2>
         </div>
         <div class="lgd-modal-tags">
-            {% if ledger.customer_category %}<span class="lgd-modal-tag">{{ ledger.customer_category }}</span>{% endif %}
+            {% for t in ledger.customer_type_names %}<span class="lgd-modal-tag">{{ t }}</span>{% empty %}{% if ledger.customer_category %}<span class="lgd-modal-tag">{{ ledger.customer_category }}</span>{% endif %}{% endfor %}
             {% if ledger.company_status %}
                 {% if '注销' in ledger.company_status or '吊销' in ledger.company_status %}
                 <span class="status-badge danger">{{ ledger.company_status }}</span>
