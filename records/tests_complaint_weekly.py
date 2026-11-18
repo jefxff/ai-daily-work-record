@@ -228,6 +228,69 @@ class WeeklyPdfViewTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn('login', response['Location'])
 
+    def test_preview_get_renders_editor_and_iframe(self):
+        """预览页 GET：左侧可编辑表单 + 右侧 iframe，且不产生导出留痕。"""
+        OperationLog.objects.all().delete()
+        response = self.client.get(reverse('complaint_weekly_pdf_preview'))
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode('utf-8')
+        self.assertIn('周报预览与编辑', content)
+        self.assertIn('id="weeklyForm"', content)
+        self.assertIn('id="previewFrame"', content)
+        self.assertIn('name="title"', content)
+        self.assertIn('name="updates_text"', content)
+        self.assertIn('name="row_0_1_case_number"', content)
+        self.assertIn('确认下载', content)
+        self.assertFalse(OperationLog.objects.filter(
+            module_type='诉讼', operation_type='导出',
+            change_summary__contains='导出诉讼案件周报PDF',
+        ).exists())
+
+    def test_preview_get_bad_date_returns_400(self):
+        response = self.client.get(reverse('complaint_weekly_pdf_preview'), {'start': 'bad'})
+        self.assertEqual(response.status_code, 400)
+
+    def test_preview_html_post_rerenders_edited_content(self):
+        """实时预览 POST：编辑后的标题/更新/明细字段反映到 HTML。"""
+        response = self.client.post(reverse('complaint_weekly_pdf_preview_html'), {
+            'week': 'current',
+            'title': '自定义周报标题',
+            'updates_text': '自定义更新条目一\n自定义更新条目二',
+            'row_0_1_case_number': 'EDIT-999',
+            'row_0_1_note_lines': '编辑后的备注',
+        })
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode('utf-8')
+        self.assertIn('自定义周报标题', html)
+        self.assertIn('自定义更新条目一', html)
+        self.assertIn('自定义更新条目二', html)
+        self.assertIn('EDIT-999', html)
+        self.assertIn('编辑后的备注', html)
+
+    def test_preview_post_downloads_edited_pdf_and_logs(self):
+        """确认下载 POST：产出应用了编辑的 PDF，并写导出留痕。"""
+        OperationLog.objects.all().delete()
+        with patch.object(cw, 'render_pdf', return_value=b'%PDF-1.4 preview') as mocked:
+            response = self.client.post(reverse('complaint_weekly_pdf_preview'), {
+                'week': 'current',
+                'title': '下载版标题',
+                'updates_text': '下载版更新',
+                'row_0_1_case_number': 'DL-001',
+            })
+        self.assertTrue(mocked.called)
+        html_arg = mocked.call_args[0][0]
+        self.assertIn('下载版标题', html_arg)
+        self.assertIn('下载版更新', html_arg)
+        self.assertIn('DL-001', html_arg)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+        self.assertIn('complaint-weekly.pdf', response['Content-Disposition'])
+        self.assertEqual(response.content, b'%PDF-1.4 preview')
+        self.assertTrue(OperationLog.objects.filter(
+            module_type='诉讼', operation_type='导出',
+            change_summary__contains='导出诉讼案件周报PDF',
+        ).exists())
+
     def test_real_pdf_generation(self):
         """不打桩，验证 Chromium 真能产出可打开的 PDF。"""
         response = self.client.get(reverse('complaint_weekly_pdf'))

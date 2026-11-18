@@ -141,6 +141,8 @@ urlpatterns = [
     path('complaint/import/confirm/', views.complaint_import_confirm, name='complaint_import_confirm'),
     path('complaint/template/', views.complaint_template, name='complaint_template'),
     path('complaint/weekly/pdf/', views.complaint_weekly_pdf, name='complaint_weekly_pdf'),
+    path('complaint/weekly/pdf/preview/', views.complaint_weekly_pdf_preview, name='complaint_weekly_pdf_preview'),
+    path('complaint/weekly/pdf/preview/html/', views.complaint_weekly_pdf_preview_html, name='complaint_weekly_pdf_preview_html'),
     path('complaint/advance/<int:pk>/', views.complaint_advance, name='complaint_advance'),
 
     # 数据展示看板

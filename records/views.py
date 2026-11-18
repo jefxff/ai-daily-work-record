@@ -1,4 +1,4 @@
-﻿from django.contrib import messages
+from django.contrib import messages
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
 from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest, Http404
@@ -1027,6 +1027,132 @@ def complaint_weekly_pdf(request):
         f'导出诉讼案件周报PDF: {context["open_count"]} 条',
     )
     return response
+
+
+# ---- 诉讼周报：先预览并编辑，确认后再下载 ----
+# 明细中允许编辑的展示字段（均为渲染后的字符串，覆盖仅作用于本次导出，不写回数据库）
+_WEEKLY_ROW_FIELDS = (
+    ('case_number', '案号'), ('plaintiff', '原告'), ('defendant', '被告'),
+    ('dispute_type', '纠纷类型'), ('amount', '涉案金额'), ('progress', '进度'),
+    ('court', '受理法院'), ('lawyer', '代理律师'), ('detailed_progress', '详细进度'),
+)
+
+
+def _weekly_context_from(data):
+    """统一解析窗口参数并组装上下文；返回 (context, 错误响应或 None)。"""
+    try:
+        week = data.get('week') or 'current'
+        if week not in ('current', 'last'):
+            week = 'current'  # 自定义日期由 start/end 决定，week 仅作兜底
+        context = complaint_weekly.build_context(
+            week=week,
+            start=data.get('start') or None,
+            end=data.get('end') or None,
+        )
+    except (ValueError, TypeError) as exc:
+        return None, HttpResponseBadRequest(f'周报日期参数无效：{exc}')
+    return context, None
+
+
+def _weekly_apply_edits(context, data):
+    """把表单中的编辑覆盖到上下文（仅本次导出，不写回数据库）。"""
+    title = (data.get('title') or '').strip()
+    if title:
+        context['title'] = title
+    if 'updates_text' in data:
+        context['updates'] = [
+            line.strip() for line in data.get('updates_text', '').splitlines() if line.strip()
+        ]
+    for gi, group in enumerate(context['groups']):
+        for row in group['rows']:
+            prefix = f'row_{gi}_{row["seq"]}_'
+            for field, _label in _WEEKLY_ROW_FIELDS:
+                key = prefix + field
+                if key in data:
+                    row[field] = data.get(key)
+            note_key = prefix + 'note_lines'
+            if note_key in data:
+                row['note_lines'] = [
+                    line.strip() for line in data.get(note_key, '').splitlines() if line.strip()
+                ] or ['—']
+
+
+def _weekly_pdf_response(request, context):
+    """把上下文渲染为 PDF 下载响应，并写导出留痕。"""
+    html = complaint_weekly.render_html(context)
+    try:
+        pdf_bytes = complaint_weekly.render_pdf(html, context['generated_at'])
+    except Exception as exc:
+        logger.exception('诉讼案件周报 PDF 生成失败')
+        return HttpResponse(f'PDF 生成失败（{type(exc).__name__}），请查看服务日志。', status=500)
+    window = context['window']
+    filename = '诉讼案件周报-%s-%s.pdf' % (
+        window.label_start.strftime('%Y%m%d'), window.label_end.strftime('%Y%m%d'),
+    )
+    from work_record.export_utils import content_disposition
+
+    response = HttpResponse(pdf_bytes, content_type='application/pdf')
+    response['Content-Disposition'] = content_disposition(
+        filename, ascii_fallback='complaint-weekly.pdf'
+    )
+    log_operation(
+        request, '诉讼', '导出', '[诉讼]下的导出',
+        f'导出诉讼案件周报PDF: {context["open_count"]} 条',
+    )
+    return response
+
+
+@perm_required("complaint", "read")
+def complaint_weekly_pdf_preview(request):
+    """诉讼周报：先预览并编辑，确认后再下载 PDF。"""
+    if request.method == 'POST':
+        context, err = _weekly_context_from(request.POST)
+        if err:
+            return err
+        _weekly_apply_edits(context, request.POST)
+        return _weekly_pdf_response(request, context)
+
+    context, err = _weekly_context_from(request.GET)
+    if err:
+        return err
+    edit_groups = []
+    for gi, group in enumerate(context['groups']):
+        edit_rows = []
+        for row in group['rows']:
+            prefix = f'row_{gi}_{row["seq"]}_'
+            fields = [
+                {'name': field, 'label': label, 'value': row.get(field) or ''}
+                for field, label in _WEEKLY_ROW_FIELDS
+            ]
+            edit_rows.append({
+                'prefix': prefix,
+                'row': row,
+                'fields': fields,
+                'note_text': '\n'.join(row['note_lines']) if row['note_lines'] != ['—'] else '',
+            })
+        edit_groups.append({'heading': group['heading'], 'rows': edit_rows})
+    return render(request, 'records/complaint_weekly_preview.html', {
+        'preview_html': complaint_weekly.render_html(context),
+        'title': context['title'],
+        'updates_text': '\n'.join(context['updates']),
+        'window_label': context['window'].label,
+        'week': request.GET.get('week', 'current') or 'current',
+        'start': request.GET.get('start', ''),
+        'end': request.GET.get('end', ''),
+        'edit_groups': edit_groups,
+        'open_count': context['open_count'],
+    })
+
+
+@perm_required("complaint", "read")
+@require_POST
+def complaint_weekly_pdf_preview_html(request):
+    """AJAX：按编辑后的内容重新渲染打印页，供预览 iframe 实时刷新。"""
+    context, err = _weekly_context_from(request.POST)
+    if err:
+        return err
+    _weekly_apply_edits(context, request.POST)
+    return HttpResponse(complaint_weekly.render_html(context))
 
 
 @perm_required("decoration", "read")
