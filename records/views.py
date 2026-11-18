@@ -1258,42 +1258,6 @@ customer_ledger_delete = make_delete_view(
 )
 
 
-@perm_required("customer_ledger", "delete")
-@require_POST
-def customer_ledger_batch_delete(request):
-    """客户台账列表页批量删除：仅超级管理员可用。
-
-    复用单条删除的 after_delete 清理逻辑（汇总 PDF + 通用附件），
-    逐条留痕一次批量记录；before 只在单条时携带快照。
-    """
-    if not getattr(request.user, "is_superuser", False):
-        return JsonResponse({'ok': False, 'message': '仅超级管理员可执行批量删除'}, status=403)
-
-    ids = []
-    for part in (request.POST.get('ids') or '').split(','):
-        part = part.strip()
-        if part.isdigit():
-            ids.append(int(part))
-    if not ids:
-        return JsonResponse({'ok': False, 'message': '未选择任何记录'}, status=400)
-
-    objs = list(CustomerLedger.objects.filter(id__in=ids))
-    if not objs:
-        return JsonResponse({'ok': False, 'message': '没有可删除的记录'}, status=404)
-
-    before = snapshot(objs[0]) if len(objs) == 1 else None
-    ids_str = ','.join(str(o.pk) for o in objs)
-    for obj in objs:
-        obj_id = obj.pk
-        obj.delete()
-        _delete_ledger_files(obj, obj_id)
-    log_operation(
-        request, '客户台账', '批量删除', f'[客户台账]下的记录#{ids_str}',
-        f'批量删除 {len(objs)} 条客户台账（含附件清理）', before=before,
-    )
-    return JsonResponse({'ok': True, 'message': f'已删除 {len(objs)} 条', 'deleted': len(objs)})
-
-
 CUSTOMER_LEDGER_PURGE_WORD = '清空'
 
 

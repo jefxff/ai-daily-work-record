@@ -241,80 +241,6 @@ class CustomerLedgerCrudTests(CustomerLedgerTestBase):
         self.assertNotContains(resp, '有附件客户')
 
 
-class CustomerLedgerBatchDeleteTests(CustomerLedgerTestBase):
-    """工具栏「删除选中」：仅超级管理员可用，按勾选 id 批量删除并清理附件。"""
-
-    def setUp(self):
-        super().setUp()
-        self.targets = [
-            self.make_ledger(customer_name=f'批量客户{i}', credit_code=f'BATCH-{i}')
-            for i in range(2)
-        ]
-
-    def test_non_superuser_is_forbidden(self):
-        resp = self.client.post(reverse('customer_ledger_batch_delete'), {
-            'ids': ','.join(str(o.pk) for o in self.targets),
-        })
-        self.assertEqual(resp.status_code, 403)
-        self.assertEqual(CustomerLedger.objects.filter(pk__in=[o.pk for o in self.targets]).count(), 2)
-
-    def test_requires_post(self):
-        superuser = User.objects.create_superuser(username='ledger_root', password='pass12345')
-        self.client.force_login(superuser)
-        resp = self.client.get(reverse('customer_ledger_batch_delete'))
-        self.assertEqual(resp.status_code, 405)
-
-    def test_superuser_deletes_selected_and_removes_files(self):
-        superuser = User.objects.create_superuser(username='ledger_root', password='pass12345')
-        self.client.force_login(superuser)
-
-        target = self.targets[0]
-        pdf = SimpleUploadedFile('batch.pdf', PDF_BYTES, content_type='application/pdf')
-        self.client.post(reverse('customer_ledger_edit', args=[target.pk]), {
-            'customer_name': target.customer_name,
-            'credit_code': target.credit_code,
-            'archive_no': target.archive_no,
-            'attachment': pdf,
-        })
-        target.refresh_from_db()
-        name = target.attachment.name
-        storage = target.attachment.storage
-        self.assertTrue(storage.exists(name))
-
-        keep = self.make_ledger(customer_name='保留客户', credit_code='BATCH-KEEP')
-        resp = self.client.post(reverse('customer_ledger_batch_delete'), {
-            'ids': ','.join(str(o.pk) for o in self.targets),
-        })
-        self.assertEqual(resp.status_code, 200)
-        self.assertTrue(resp.json()['ok'])
-        self.assertEqual(resp.json()['deleted'], 2)
-        self.assertFalse(CustomerLedger.objects.filter(pk__in=[o.pk for o in self.targets]).exists())
-        self.assertFalse(storage.exists(name))
-        self.assertTrue(CustomerLedger.objects.filter(pk=keep.pk).exists())
-
-    def test_empty_selection_is_rejected(self):
-        superuser = User.objects.create_superuser(username='ledger_root', password='pass12345')
-        self.client.force_login(superuser)
-        resp = self.client.post(reverse('customer_ledger_batch_delete'), {'ids': ''})
-        self.assertEqual(resp.status_code, 400)
-
-    def test_checkbox_column_only_rendered_for_superuser(self):
-        resp = self.client.get(reverse('customer_ledger_list'))
-        self.assertNotContains(resp, 'clCheckAll')
-        self.assertNotContains(resp, 'customer_ledger_batch_delete')
-        self.assertNotContains(resp, 'customer_ledger_purge')
-        self.assertNotContains(resp, 'clPurgeLedger')
-
-        superuser = User.objects.create_superuser(username='ledger_root', password='pass12345')
-        self.client.force_login(superuser)
-        resp = self.client.get(reverse('customer_ledger_list'))
-        self.assertContains(resp, 'clCheckAll')
-        self.assertContains(resp, 'cl-row-check')
-        self.assertContains(resp, '删除选中')
-        self.assertContains(resp, '清空台账')
-        self.assertContains(resp, 'clConfirmInput')
-
-
 class CustomerLedgerPurgeTests(CustomerLedgerTestBase):
     """工具栏「清空台账」：删除全部记录（无视筛选与分页），要求确认词，仅超级管理员。"""
 
@@ -379,6 +305,25 @@ class CustomerLedgerPurgeTests(CustomerLedgerTestBase):
         CustomerLedger.objects.all().delete()
         resp = self.client.post(reverse('customer_ledger_purge'), {'confirm': '清空'})
         self.assertEqual(resp.status_code, 404)
+
+    def test_purge_button_only_rendered_for_superuser(self):
+        """列表页不再有勾选列与「删除选中」，只保留超管可见的「清空台账」。"""
+        resp = self.client.get(reverse('customer_ledger_list'))
+        self.assertNotContains(resp, 'clCheckAll')
+        self.assertNotContains(resp, 'cl-row-check')
+        self.assertNotContains(resp, 'clBatchDelete')
+        self.assertNotContains(resp, 'customer_ledger_purge')
+        self.assertNotContains(resp, 'clPurgeLedger')
+
+        superuser = User.objects.create_superuser(username='purge_root', password='pass12345')
+        self.client.force_login(superuser)
+        resp = self.client.get(reverse('customer_ledger_list'))
+        self.assertNotContains(resp, 'clCheckAll')
+        self.assertNotContains(resp, 'cl-row-check')
+        self.assertNotContains(resp, 'clBatchDelete')
+        self.assertContains(resp, '清空台账')
+        self.assertContains(resp, 'clPurgeLedger')
+        self.assertContains(resp, 'clConfirmInput')
 
 
 class CustomerLedgerExportTests(CustomerLedgerTestBase):

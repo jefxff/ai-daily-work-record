@@ -74,7 +74,6 @@ urlpatterns = [
     path('customer_ledger/detail/<int:pk>/', views.customer_ledger_detail, name='customer_ledger_detail'),
     path('customer_ledger/edit/<int:pk>/', views.customer_ledger_edit, name='customer_ledger_edit'),
     path('customer_ledger/delete/<int:pk>/', views.customer_ledger_delete, name='customer_ledger_delete'),
-    path('customer_ledger/batch-delete/', views.customer_ledger_batch_delete, name='customer_ledger_batch_delete'),
     path('customer_ledger/purge/', views.customer_ledger_purge, name='customer_ledger_purge'),
     path('customer_ledger/export/', views.customer_ledger_export, name='customer_ledger_export'),
     path('customer_ledger/import/', views.customer_ledger_import, name='customer_ledger_import'),
