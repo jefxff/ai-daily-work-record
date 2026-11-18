@@ -1,0 +1,13 @@
+ledger 546: {'id': 546, 'responsible_salesperson': '张鉴明', 'customer_name': '中山市中拓电子科技有限公司', 'customer_category': '经销商', 'legal_representative': '罗桂兰', 'address': '中山市东凤镇安乐村东海西路18号玉峰豪廷28幢113卡首层之三', 'credit_code': '91442000345425223M', 'registered_capital': 50, 'registered_capital_text': '50万', 'paid_in_capital': 37, 'paid_in_capital_text': '37万', 'company_status': '存续', 'business_license': '旧（2017年）无', 'payment_terms': '月结30天', 'credit_limit': 80, 'credit_limit_text': '80万', 'change_date': None, 'basic_contract': '无', 'contract_sign_date': None, 'contract_issues': '', 'asset_guarantee': '无', 'legal_id_card': '无', 'guarantor_id_card': '无', 'asset_guarantor': '', 'guaranteed_asset_detail': '', 'asset_mortgaged': '', 'asset_guarantee_issues': '', 'contract_count': '/', 'handling_suggestion': '增加资料签订基本合同', 'system_info': '系统款到发货', 'location': '', 'archive_no': 'JBKH-1', 'archive_date': None, 'remarks': '', 'attachment': '', 'created_at': '2026-11-18 01:27:49.170919', 'updated_at': '2026-11-18 01:27:49.170919'}
+
+changelog for 546:
+{'id': 1069, 'field': '账期', 'old_value': '', 'new_value': '月结30天', 'source': 'Excel导入', 'changed_at': '2026-11-18 01:27:49.185880', 'ledger_id': 546}
+{'id': 1070, 'field': '额度', 'old_value': '', 'new_value': '80万', 'source': 'Excel导入', 'changed_at': '2026-11-18 01:27:49.185880', 'ledger_id': 546}
+
+m2m for 546:
+{'id': 482, 'customerledger_id': 546, 'customertype_id': 1}
+
+max ids: 1076
+
+name search 中拓:
+{'id': 546, 'customer_name': '中山市中拓电子科技有限公司', 'archive_no': 'JBKH-1', 'updated_at': '2026-11-18 01:27:49.170919'}

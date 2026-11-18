@@ -1,0 +1,4 @@
+excel rows=531  db rows=531  excel unique cc=528  db unique cc=531
+cc matched: 526 ; excel-only: 2 ; db-only: 5
+excel-only sample: ['#N/A', '/']
+db-only sample: ['深圳市宇昊达科技有限公司', '91440300691180054D', '730568', 'ABC科技有限公司', '914403005642016337']

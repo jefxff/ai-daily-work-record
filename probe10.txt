@@ -1,0 +1,54 @@
+== files modified within last 240 min (excl .git/__pycache__/staticfiles) ==
+    -0.0 min ago |         18 B | .\logs\.hb_worker
+     0.0 min ago |          0 B | .\probe10.txt
+     0.0 min ago |    1732308 B | .\logs\debug.log
+     0.0 min ago |    4152992 B | .\db.sqlite3-wal
+     0.1 min ago |         18 B | .\logs\.hb_scheduler
+     2.4 min ago |        285 B | .\probe9.txt
+     4.2 min ago |      12572 B | .\probe8.txt
+     5.7 min ago |        630 B | .\probe7.txt
+     7.5 min ago |      10506 B | .\probe6.txt
+     8.6 min ago |       2705 B | .\probe5.txt
+     9.0 min ago |        858 B | .\probe4.txt
+     9.8 min ago |       1407 B | .\probe3.txt
+    10.4 min ago |       1784 B | .\probe2.txt
+    10.7 min ago |      10234 B | .\oplog_probe.txt
+    13.7 min ago |   39391232 B | .\db.sqlite3
+    34.1 min ago |        144 B | .\logs\.project-state.json
+    34.2 min ago |          0 B | .\logs\scheduler.err
+    34.2 min ago |          0 B | .\logs\scheduler.out
+    34.2 min ago |      32768 B | .\db.sqlite3-shm
+    34.2 min ago |          0 B | .\logs\web.err
+    34.2 min ago |          0 B | .\logs\web.out
+    41.0 min ago |      62940 B | .\records\views.py
+    41.4 min ago |      13923 B | .\records\templates\records\customer_ledger_list.html
+    42.3 min ago |      26318 B | .\records\tests_customer_ledger.py
+    42.6 min ago |      12031 B | .\records\urls.py
+    45.1 min ago |       5141 B | .\static\js\pages\records\customer_ledger_list.js
+
+== all sqlite/db files with mtime ==
+2026-11-18 10:08:10 | 39391232 B | db.sqlite3
+2026-11-18 09:47:42 | 32768 B | db.sqlite3-shm
+2026-11-18 10:21:50 | 4152992 B | db.sqlite3-wal
+2026-10-22 13:04:03 | 8802304 B | backups\db_before_insurance_phase2_20261022_131105.sqlite3
+2026-11-17 19:03:43 | 32768 B | backups\db_before_insurance_phase2_20261022_131105.sqlite3-shm
+2026-10-22 13:10:39 | 4165352 B | backups\db_before_insurance_phase2_20261022_131105.sqlite3-wal
+2026-10-22 13:36:00 | 8896512 B | backups\db_before_insurance_phase3_20261022_135050.sqlite3
+2026-11-17 19:03:43 | 32768 B | backups\db_before_insurance_phase3_20261022_135050.sqlite3-shm
+2026-10-22 13:50:48 | 4148872 B | backups\db_before_insurance_phase3_20261022_135050.sqlite3-wal
+2026-10-22 13:58:04 | 9031680 B | backups\db_before_oneoff_20261022_141518.sqlite3
+2026-11-17 19:03:43 | 32768 B | backups\db_before_oneoff_20261022_141518.sqlite3-shm
+2026-10-22 14:14:59 | 4148872 B | backups\db_before_oneoff_20261022_141518.sqlite3-wal
+2026-10-23 10:14:26 | 9994240 B | backups\db_pre_batch5_20261023_101426.sqlite3
+2026-11-17 19:03:43 | 32768 B | backups\db_pre_batch5_20261023_101426.sqlite3-shm
+2026-11-17 19:03:43 | 0 B | backups\db_pre_batch5_20261023_101426.sqlite3-wal
+2026-10-21 18:30:38 | 7618560 B | backups\db_pre_kb_batch1_20261021_183024.sqlite3
+2026-11-17 19:03:43 | 32768 B | backups\db_pre_kb_batch1_20261021_183024.sqlite3-shm
+2026-11-17 19:03:43 | 0 B | backups\db_pre_kb_batch1_20261021_183024.sqlite3-wal
+2026-10-21 19:31:16 | 7716864 B | backups\db_pre_kb_batch3_20261021_193116.sqlite3
+2026-11-17 19:03:43 | 32768 B | backups\db_pre_kb_batch3_20261021_193116.sqlite3-shm
+2026-11-17 19:03:43 | 0 B | backups\db_pre_kb_batch3_20261021_193116.sqlite3-wal
+2026-10-26 14:43:54 | 10518528 B | backups\redo_20261026_144353\db.sqlite3
+2026-10-26 14:50:02 | 10551296 B | backups\redo_20261026_145002\db.sqlite3
+2026-11-04 18:14:03 | 1269760 B | backups\test_roundtrip\live.sqlite3
+2026-11-04 18:14:03 | 1269760 B | backups\test_roundtrip\restored.sqlite3

@@ -1,0 +1,59 @@
+== oplog operation_time >= 2026-11-18 01:00 (UTC) ==
+{'id': 1588, 'operation_time': '2026-11-18 01:27:50.504312', 'operator': 'jefxff', 'module_type': '客户台账', 'operation_type': '导入', 'object_identifier': '[客户台账]下的导入', 'change_summary': '导入客户台账: 新增531 更新0 跳过0'}
+{'id': 1589, 'operation_time': '2026-11-18 01:50:40.629371', 'operator': 'jefxff', 'module_type': '金属价格', 'operation_type': '编辑', 'object_identifier': '[金属价格]下的价格刷新', 'change_summary': '刷新金属价格: 1#铜、A00铝、1#锌、0#锌、1#铅、1#锡、1#镍、1#白银、钯金、1#钴、1#锑、2#锑、1#镁、1#电解锰、黄金（共15种）'}
+{'id': 1590, 'operation_time': '2026-11-18 01:50:53.423680', 'operator': 'jefxff', 'module_type': '金属价格', 'operation_type': '编辑', 'object_identifier': '[金属价格]下的价格刷新', 'change_summary': '刷新金属价格: 1#铜、A00铝、1#锌、0#锌、1#铅、1#锡、1#镍、1#白银、钯金、1#钴、1#锑、2#锑、1#镁、1#电解锰、黄金（共15种）'}
+
+== oplog 客户台账 全部（id>=1500）==
+{'id': 1517, 'operation_time': '2026-11-14 02:49:56.251569', 'operation_type': '删除', 'object_identifier': '[客户台账]下的记录#7', 'change_summary': '删除客户台账: 深圳市汤诚科技有限公司'}
+{'id': 1518, 'operation_time': '2026-11-14 02:49:59.065904', 'operation_type': '删除', 'object_identifier': '[客户台账]下的记录#6', 'change_summary': '删除客户台账: 深圳市馨晋商电子有限公司'}
+{'id': 1519, 'operation_time': '2026-11-14 02:50:01.179806', 'operation_type': '删除', 'object_identifier': '[客户台账]下的记录#5', 'change_summary': '删除客户台账: 深圳市领跑微电子有限公司'}
+{'id': 1520, 'operation_time': '2026-11-14 02:50:03.398703', 'operation_type': '删除', 'object_identifier': '[客户台账]下的记录#4', 'change_summary': '删除客户台账: 深圳市祥华龙科技有限公司'}
+{'id': 1521, 'operation_time': '2026-11-14 02:50:07.594810', 'operation_type': '删除', 'object_identifier': '[客户台账]下的记录#3', 'change_summary': '删除客户台账: 深圳市泰尔鑫电子有限公司'}
+{'id': 1522, 'operation_time': '2026-11-14 02:50:09.888883', 'operation_type': '删除', 'object_identifier': '[客户台账]下的记录#2', 'change_summary': '删除客户台账: 中山市南头镇昔恩斯电子厂'}
+{'id': 1523, 'operation_time': '2026-11-14 02:50:16.775213', 'operation_type': '删除', 'object_identifier': '[客户台账]下的记录#1', 'change_summary': '删除客户台账: 中山市中拓电子科技有限公司'}
+{'id': 1571, 'operation_time': '2026-11-17 06:39:51.017905', 'operation_type': '导入', 'object_identifier': '[客户台账]下的导入', 'change_summary': '导入客户台账: 新增536 更新0 跳过0'}
+{'id': 1572, 'operation_time': '2026-11-17 06:41:35.514099', 'operation_type': '导入', 'object_identifier': '[客户台账]下的导入', 'change_summary': '导入客户台账: 新增0 更新533 跳过3'}
+{'id': 1573, 'operation_time': '2026-11-17 07:16:25.635886', 'operation_type': '导入', 'object_identifier': '[客户台账]下的导入', 'change_summary': '导入客户台账: 新增0 更新531 跳过5'}
+{'id': 1574, 'operation_time': '2026-11-17 08:35:36.516304', 'operation_type': '导出', 'object_identifier': '[客户台账]下的导出', 'change_summary': '导出客户台账: 536 条'}
+{'id': 1575, 'operation_time': '2026-11-17 09:13:31.375376', 'operation_type': '导出', 'object_identifier': '[客户台账]下的导出', 'change_summary': '导出客户台账: 536 条'}
+{'id': 1576, 'operation_time': '2026-11-17 10:45:14.279638', 'operation_type': '导出', 'object_identifier': '[客户台账]下的导出', 'change_summary': '导出客户台账: 536 条'}
+{'id': 1577, 'operation_time': '2026-11-17 11:00:01.067459', 'operation_type': '删除', 'object_identifier': '[客户台账]下的全部记录', 'change_summary': '清空客户台账 538 条（含附件清理）'}
+{'id': 1578, 'operation_time': '2026-11-17 11:40:35.871255', 'operation_type': '导出', 'object_identifier': '[客户台账]下的导出', 'change_summary': '导出客户台账: 536 条'}
+{'id': 1579, 'operation_time': '2026-11-17 11:40:44.795334', 'operation_type': '导出', 'object_identifier': '[客户台账]下的导出', 'change_summary': '导出客户台账: 536 条'}
+{'id': 1580, 'operation_time': '2026-11-17 11:43:26.169707', 'operation_type': '导入', 'object_identifier': '[客户台账]下的记录（数据恢复）', 'change_summary': '从 2026-11-17 10:45 导出的 Excel 恢复 536 条客户台账（含客户类型关联 481 条）；原 id 10-545 保持不变；变更留痕与附件因随删除清理无法恢复。'}
+{'id': 1585, 'operation_time': '2026-11-17 14:41:25.553279', 'operation_type': '删除', 'object_identifier': '[客户台账]下的记录#545,544', 'change_summary': '批量删除 2 条客户台账（含附件清理）'}
+{'id': 1586, 'operation_time': '2026-11-17 14:42:02.485307', 'operation_type': '删除', 'object_identifier': '[客户台账]下的全部记录', 'change_summary': '清空客户台账 534 条（含附件清理）'}
+{'id': 1588, 'operation_time': '2026-11-18 01:27:50.504312', 'operation_type': '导入', 'object_identifier': '[客户台账]下的导入', 'change_summary': '导入客户台账: 新增531 更新0 跳过0'}
+
+== ledger rows updated after 2026-11-18 01:00 ==
+{'id': 1076, 'customer_name': '深圳市美创昇电子科技有限公司', 'address': '深圳市宝安区新桥街道上星社区广深路新桥段35号唐商大厦A1409', 'company_status': '存续', 'paid_in_capital_text': '0', 'credit_limit_text': '50万', 'created_at': '2026-11-18 01:27:50.440243', 'updated_at': '2026-11-18 01:27:50.440243'}
+{'id': 1075, 'customer_name': '深圳市永漫数码有限公司', 'address': '深圳市龙华区观澜街道大富社区大富工业区3号A栋501', 'company_status': '存续', 'paid_in_capital_text': '0', 'credit_limit_text': '200万', 'created_at': '2026-11-18 01:27:50.438249', 'updated_at': '2026-11-18 01:27:50.438249'}
+{'id': 1074, 'customer_name': '深圳市誉芯科技有限公司', 'address': '深圳市龙华区观湖街道鹭湖社区观盛五路18号英飞拓大楼1201', 'company_status': '存续', 'paid_in_capital_text': '99.8万', 'credit_limit_text': '100万', 'created_at': '2026-11-18 01:27:50.436255', 'updated_at': '2026-11-18 01:27:50.436255'}
+{'id': 1073, 'customer_name': '深圳市睿诚兴电子有限公司', 'address': '深圳市宝安区石岩街道石龙社区工业二路1号惠科工业园厂房5二层', 'company_status': '存续', 'paid_in_capital_text': '220万', 'credit_limit_text': '200万', 'created_at': '2026-11-18 01:27:50.434260', 'updated_at': '2026-11-18 01:27:50.434260'}
+{'id': 1072, 'customer_name': '江西兆驰晶显有限公司', 'address': '江西省南昌市南昌高新技术产业开发区天祥北大道3495号', 'company_status': '存续', 'paid_in_capital_text': '5000万', 'credit_limit_text': '1000万', 'created_at': '2026-11-18 01:27:50.432264', 'updated_at': '2026-11-18 01:27:50.432264'}
+{'id': 1071, 'customer_name': '深圳市永源微电子科技有限公司', 'address': '深圳市宝安区福海街道展城社区和秀西路44号锐明工业园C2栋厂房101', 'company_status': '存续', 'paid_in_capital_text': '1878.787878万', 'credit_limit_text': '500万', 'created_at': '2026-11-18 01:27:50.430271', 'updated_at': '2026-11-18 01:27:50.430271'}
+{'id': 1070, 'customer_name': '深圳市鼎欣优电子有限公司', 'address': '深圳市龙华区民治街道北站社区创业花园194-198栋1101、1105、1109（新景大厦）', 'company_status': '存续', 'paid_in_capital_text': '500万', 'credit_limit_text': '150万', 'created_at': '2026-11-18 01:27:50.428248', 'updated_at': '2026-11-18 01:27:50.428248'}
+{'id': 1069, 'customer_name': '泉州亮家电子有限公司', 'address': '福建省泉州市晋江市池店溪头滨江商务区溜溪花园2栋1806', 'company_status': '存续', 'paid_in_capital_text': '50万', 'credit_limit_text': '300万', 'created_at': '2026-11-18 01:27:50.425255', 'updated_at': '2026-11-18 01:27:50.425255'}
+{'id': 1068, 'customer_name': '中思科技（深圳）有限公司', 'address': '深圳市宝安区福海街道新和社区宝安大道6099号星港同创汇天枢座816', 'company_status': '存续', 'paid_in_capital_text': '0', 'credit_limit_text': '30万', 'created_at': '2026-11-18 01:27:50.423288', 'updated_at': '2026-11-18 01:27:50.423288'}
+{'id': 1067, 'customer_name': '深圳市安耐科电子技术有限公司', 'address': '深圳市南山区粤海街道高新区社区高新南六道6号迈科龙大厦1207', 'company_status': '存续', 'paid_in_capital_text': '259.272223万', 'credit_limit_text': '50万', 'created_at': '2026-11-18 01:27:50.421294', 'updated_at': '2026-11-18 01:27:50.421294'}
+{'id': 1066, 'customer_name': '深圳市睿竣科技有限公司', 'address': '深圳市龙华区大浪街道陶元社区陶吓锦华大厦1506', 'company_status': '存续', 'paid_in_capital_text': '315万', 'credit_limit_text': '200万', 'created_at': '2026-11-18 01:27:50.419299', 'updated_at': '2026-11-18 01:27:50.419299'}
+{'id': 1065, 'customer_name': '深圳市富睿微科技有限公司', 'address': '0', 'company_status': '存续', 'paid_in_capital_text': '120万', 'credit_limit_text': '200万', 'created_at': '2026-11-18 01:27:50.417310', 'updated_at': '2026-11-18 01:27:50.417310'}
+{'id': 1064, 'customer_name': '深圳市合创盈电子科技有限公司', 'address': '深圳市宝安区石岩街道石龙社区德政路8号汇裕名都花园2栋A508', 'company_status': '存续', 'paid_in_capital_text': '500万', 'credit_limit_text': '30万', 'created_at': '2026-11-18 01:27:50.415281', 'updated_at': '2026-11-18 01:27:50.415281'}
+{'id': 1063, 'customer_name': '福建省众嘉康科技有限公司', 'address': '福建省莆田市涵江区江口镇赤港涵新路4118号', 'company_status': '存续', 'paid_in_capital_text': '0', 'credit_limit_text': '30万', 'created_at': '2026-11-18 01:27:50.413286', 'updated_at': '2026-11-18 01:27:50.413286'}
+{'id': 1062, 'customer_name': '合肥尧厚电子有限公司', 'address': '安徽长丰双凤经济开发区双墩路与凤亭路交口中南高科智能制造产业园一期32幢二单元102', 'company_status': '存续', 'paid_in_capital_text': '0', 'credit_limit_text': '20万', 'created_at': '2026-11-18 01:27:50.411293', 'updated_at': '2026-11-18 01:27:50.411293'}
+{'id': 1061, 'customer_name': '深圳市国锐资通电子有限公司', 'address': '深圳市宝安区西乡街道富华社区创富磁带厂3号厂房201', 'company_status': '存续', 'paid_in_capital_text': '0', 'credit_limit_text': '100万', 'created_at': '2026-11-18 01:27:50.408300', 'updated_at': '2026-11-18 01:27:50.408300'}
+{'id': 1060, 'customer_name': '深圳市新丽半导体技术有限公司', 'address': '深圳市宝安区西乡街道固兴社区塘东光电研发大厦1-1708', 'company_status': '存续', 'paid_in_capital_text': '100万', 'credit_limit_text': '100万', 'created_at': '2026-11-18 01:27:50.406305', 'updated_at': '2026-11-18 01:27:50.406305'}
+{'id': 1059, 'customer_name': '深圳市英拓芯微电子有限公司', 'address': '深圳市龙华区民治街道上芬社区龙屋工业区2号310', 'company_status': '存续', 'paid_in_capital_text': '100万', 'credit_limit_text': '60万', 'created_at': '2026-11-18 01:27:50.404339', 'updated_at': '2026-11-18 01:27:50.404339'}
+{'id': 1058, 'customer_name': '深圳市晶汐微科技有限公司', 'address': '深圳市宝安区新安街道文汇社区建安一路514号风尚时代D305C', 'company_status': '存续', 'paid_in_capital_text': '365.2万', 'credit_limit_text': '70万', 'created_at': '2026-11-18 01:27:50.402350', 'updated_at': '2026-11-18 01:27:50.402350'}
+{'id': 1057, 'customer_name': '东莞市颢源电子有限公司', 'address': '广东省东莞市塘厦镇东深南路61号佳郡花园11栋2224室', 'company_status': '存续', 'paid_in_capital_text': '185.4万', 'credit_limit_text': '60万', 'created_at': '2026-11-18 01:27:50.400350', 'updated_at': '2026-11-18 01:27:50.400350'}
+
+== ledger id ranges ==
+{'mn': 546, 'mx': 1076, 'c': 531}
+
+== count by id bucket ==
+{'b': 500, 'n': 54}
+{'b': 600, 'n': 100}
+{'b': 700, 'n': 100}
+{'b': 800, 'n': 100}
+{'b': 900, 'n': 100}
+{'b': 1000, 'n': 77}

@@ -1,0 +1,25 @@
+== customertype 字典 ==
+{'id': 1, 'name': '经销商', 'sort_order': 0}
+{'id': 2, 'name': '终端客户', 'sort_order': 1}
+{'id': 3, 'name': '代加工客户', 'sort_order': 2}
+
+== 台账总数/类型分布 ==
+{'c': 531}
+{'name': '经销商', 'n': 276}
+{'name': '终端客户', 'n': 245}
+{'name': '代加工客户', 'n': 1}
+
+== archive_no 重复检查 ==
+
+== JBKH 序列最大/最小 ==
+<sqlite3.Row object at 0x0000029108ACFCA0>
+
+== 附件字段有值的记录 ==
+<sqlite3.Row object at 0x0000029108ACFCA0>
+
+== 列表前 5 条（按 -id）==
+{'id': 1076, 'customer_name': '深圳市美创昇电子科技有限公司', 'customer_category': '代理商', 'responsible_salesperson': '胡雄', 'archive_no': 'JBKH-529'}
+{'id': 1075, 'customer_name': '深圳市永漫数码有限公司', 'customer_category': '代理商', 'responsible_salesperson': '唐东榕', 'archive_no': 'JBKH-43'}
+{'id': 1074, 'customer_name': '深圳市誉芯科技有限公司', 'customer_category': '代理商', 'responsible_salesperson': '叶婷', 'archive_no': 'JBKH-527'}
+{'id': 1073, 'customer_name': '深圳市睿诚兴电子有限公司', 'customer_category': '代理商', 'responsible_salesperson': '周克胜', 'archive_no': 'JBKH-526'}
+{'id': 1072, 'customer_name': '江西兆驰晶显有限公司', 'customer_category': '代理商', 'responsible_salesperson': '陈忠鑫', 'archive_no': 'JBKH-525'}

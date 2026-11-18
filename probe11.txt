@@ -1,0 +1,144 @@
+total lines: 19804
+== ledger-related request lines (last 80) ==
+2026-11-18 08:57:24,951 INFO django.server "GET /accounts/login/?next=/customer_ledger/ HTTP/1.1" 200 2509
+2026-11-18 08:57:32,961 INFO django.server "POST /accounts/login/?next=/customer_ledger/ HTTP/1.1" 302 0
+2026-11-18 08:57:33,088 INFO django.server "GET /customer_ledger/ HTTP/1.1" 200 9973
+2026-11-18 08:57:33,686 INFO django.server "GET /static/js/pages/records/customer_ledger_list.js?v=20261117a HTTP/1.1" 200 9023
+2026-11-18 08:57:37,328 WARNING django.request Not Found: /customer_ledger/batch-delete/
+2026-11-18 08:57:37,329 WARNING django.server "POST /customer_ledger/batch-delete/ HTTP/1.1" 404 76
+2026-11-18 09:04:27,936 INFO django.server "GET /customer_ledger/import/ HTTP/1.1" 200 8339
+2026-11-18 09:04:39,980 INFO django.server "POST /customer_ledger/import/ HTTP/1.1" 200 8421
+2026-11-18 09:05:48,410 INFO django.server "GET /customer_ledger/ HTTP/1.1" 302 0
+2026-11-18 09:05:48,460 INFO django.server "GET /accounts/login/?next=/customer_ledger/ HTTP/1.1" 200 2512
+2026-11-18 09:06:05,526 INFO django.server "GET /customer_ledger/ HTTP/1.1" 200 9969
+2026-11-18 09:06:07,524 INFO django.server "GET /customer_ledger/import/ HTTP/1.1" 200 8321
+2026-11-18 09:06:19,334 INFO django.server "POST /customer_ledger/import/ HTTP/1.1" 200 197188
+2026-11-18 09:20:42,697 INFO django.server "GET /customer_ledger/ HTTP/1.1" 200 9911
+2026-11-18 09:20:45,502 INFO django.server "GET /customer_ledger/import/ HTTP/1.1" 200 8346
+2026-11-18 09:20:55,843 INFO django.server "POST /customer_ledger/import/ HTTP/1.1" 200 196939
+2026-11-18 09:27:08,278 INFO django.server "GET /customer_ledger/import/ HTTP/1.1" 200 8335
+2026-11-18 09:27:25,883 INFO django.server "POST /customer_ledger/import/ HTTP/1.1" 200 196240
+2026-11-18 09:27:50,653 INFO django.server "POST /customer_ledger/import/confirm/ HTTP/1.1" 200 8065
+2026-11-18 09:27:54,287 INFO django.server "GET /customer_ledger/ HTTP/1.1" 200 17834
+2026-11-18 09:27:54,555 INFO django.server "GET /static/js/pages/records/customer_ledger_list.js?v=20261117a HTTP/1.1" 200 9023
+2026-11-18 09:28:22,518 INFO django.server "GET /customer_ledger/detail/1076/ HTTP/1.1" 200 11488
+2026-11-18 09:28:39,215 INFO django.server "GET /customer_ledger/ HTTP/1.1" 200 17804
+2026-11-18 09:29:43,459 INFO django.server "GET /customer_ledger/add/ HTTP/1.1" 200 10482
+2026-11-18 09:29:50,176 INFO django.server "GET /customer_ledger/ HTTP/1.1" 200 17775
+2026-11-18 09:29:53,227 INFO django.server "GET /customer_ledger/edit/1076/ HTTP/1.1" 200 10859
+2026-11-18 09:29:55,416 INFO django.server "GET /customer_ledger/ HTTP/1.1" 200 17827
+2026-11-18 09:30:16,355 INFO django.server "GET /customer_ledger/?page=54 HTTP/1.1" 200 16771
+2026-11-18 09:30:19,741 INFO django.server "GET /customer_ledger/detail/546/ HTTP/1.1" 200 11415
+2026-11-18 09:30:21,611 INFO django.server "GET /customer_ledger/ HTTP/1.1" 200 17785
+2026-11-18 09:35:14,359 INFO django.server "GET /customer_ledger/ HTTP/1.1" 200 17786
+2026-11-18 09:39:21,009 INFO django.server "GET /customer_ledger/ HTTP/1.1" 200 17804
+2026-11-18 09:39:23,055 INFO django.server "GET /customer_ledger/ HTTP/1.1" 200 17768
+2026-11-18 09:39:24,238 INFO django.server "GET /customer_ledger/ HTTP/1.1" 200 17774
+2026-11-18 09:41:05,615 WARNING django.request Not Found: /customer_ledger/1/attachment/
+2026-11-18 09:41:06,690 WARNING django.request Forbidden (Permission denied): /media/customer_ledgers/ledger_A-7dd8cd10.pdf
+2026-11-18 09:41:08,323 WARNING django.request Forbidden: /customer_ledger/
+2026-11-18 09:41:08,657 WARNING django.request Forbidden: /customer_ledger/purge/
+2026-11-18 09:41:09,328 WARNING django.request Not Found: /customer_ledger/purge/
+2026-11-18 09:41:09,532 WARNING django.request Bad Request: /customer_ledger/purge/
+2026-11-18 09:41:09,534 WARNING django.request Bad Request: /customer_ledger/purge/
+2026-11-18 09:41:09,541 WARNING django.request Bad Request: /customer_ledger/purge/
+2026-11-18 09:41:09,745 WARNING django.request Method Not Allowed (GET): /customer_ledger/purge/
+2026-11-18 09:41:25,589 WARNING django.request Not Found: /customer_ledger/1/attachment/
+2026-11-18 09:41:26,666 WARNING django.request Forbidden (Permission denied): /media/customer_ledgers/ledger_A-db001a12.pdf
+2026-11-18 09:41:28,238 WARNING django.request Forbidden: /customer_ledger/
+2026-11-18 09:41:28,465 WARNING django.request Forbidden: /customer_ledger/purge/
+2026-11-18 09:41:29,115 WARNING django.request Not Found: /customer_ledger/purge/
+2026-11-18 09:41:29,317 WARNING django.request Bad Request: /customer_ledger/purge/
+2026-11-18 09:41:29,323 WARNING django.request Bad Request: /customer_ledger/purge/
+2026-11-18 09:41:29,326 WARNING django.request Bad Request: /customer_ledger/purge/
+2026-11-18 09:41:29,647 WARNING django.request Method Not Allowed (GET): /customer_ledger/purge/
+2026-11-18 09:42:11,074 WARNING django.request Not Found: /customer_ledger/1/attachment/
+2026-11-18 09:42:12,167 WARNING django.request Forbidden (Permission denied): /media/customer_ledgers/ledger_A-cd5e8b56.pdf
+2026-11-18 09:42:13,735 WARNING django.request Forbidden: /customer_ledger/
+2026-11-18 09:42:13,952 WARNING django.request Forbidden: /customer_ledger/purge/
+2026-11-18 09:42:14,491 WARNING django.request Not Found: /customer_ledger/purge/
+2026-11-18 09:42:14,641 WARNING django.request Bad Request: /customer_ledger/purge/
+2026-11-18 09:42:14,643 WARNING django.request Bad Request: /customer_ledger/purge/
+2026-11-18 09:42:14,646 WARNING django.request Bad Request: /customer_ledger/purge/
+2026-11-18 09:42:14,795 WARNING django.request Method Not Allowed (GET): /customer_ledger/purge/
+2026-11-18 09:45:08,248 INFO django.server "GET /customer_ledger/ HTTP/1.1" 302 0
+2026-11-18 09:45:08,283 INFO django.server "GET /customer_ledger/batch-delete/ HTTP/1.1" 302 0
+2026-11-18 09:45:08,314 INFO django.server "GET /customer_ledger/purge/ HTTP/1.1" 302 0
+2026-11-18 09:45:11,214 INFO django.server "GET /customer_ledger/ HTTP/1.1" 200 17791
+2026-11-18 09:45:14,458 INFO django.server "GET /customer_ledger/ HTTP/1.1" 200 17751
+2026-11-18 09:45:15,464 INFO django.server "GET /static/js/pages/records/customer_ledger_list.js HTTP/1.1" 200 5141
+2026-11-18 09:45:15,490 INFO django.server "GET /static/js/pages/records/customer_ledger_list.js HTTP/1.1" 200 5141
+2026-11-18 09:45:50,357 INFO django.server "GET /customer_ledger/ HTTP/1.1" 200 17778
+2026-11-18 09:46:40,908 INFO django.server "GET /customer_ledger/?page=3 HTTP/1.1" 200 17788
+2026-11-18 09:46:53,328 INFO django.server "GET /customer_ledger/?page=5 HTTP/1.1" 200 17963
+2026-11-18 09:47:10,967 INFO django.server "GET /customer_ledger/?page=5 HTTP/1.1" 200 17911
+2026-11-18 09:47:44,729 INFO django.server "GET /customer_ledger/?page=5 HTTP/1.1" 200 17365
+2026-11-18 09:47:44,836 INFO django.server "GET /static/js/pages/records/customer_ledger_list.js?v=20261118a HTTP/1.1" 200 5141
+2026-11-18 09:47:52,218 INFO django.server "GET /customer_ledger/?page=54 HTTP/1.1" 200 16261
+2026-11-18 09:48:33,077 INFO django.server "GET /customer_ledger/detail/546/ HTTP/1.1" 200 11382
+2026-11-18 09:48:55,542 INFO django.server "GET /customer_ledger/ HTTP/1.1" 200 17188
+2026-11-18 09:49:19,277 INFO django.server "GET /customer_ledger/detail/1076/ HTTP/1.1" 200 11507
+2026-11-18 09:49:32,621 INFO django.server "GET /customer_ledger/ HTTP/1.1" 200 17252
+2026-11-18 09:50:03,556 INFO django.server "GET /customer_ledger/ HTTP/1.1" 200 16413
+
+== last 60 raw lines ==
+2026-11-18 10:17:37,171 INFO django.server "GET /copilot/conversation/latest/ HTTP/1.1" 200 3128
+2026-11-18 10:17:57,882 INFO django.server "GET /notifications/api/unread/ HTTP/1.1" 302 0
+2026-11-18 10:17:57,891 INFO django.server "GET /notifications/api/unread/ HTTP/1.1" 200 1050
+2026-11-18 10:17:57,934 INFO django.server "GET /accounts/login/?next=/notifications/api/unread/ HTTP/1.1" 200 2489
+2026-11-18 10:18:06,784 INFO django.server "GET /notifications/api/unread/ HTTP/1.1" 200 1146
+2026-11-18 10:18:07,791 INFO django.server "GET / HTTP/1.1" 302 0
+2026-11-18 10:18:36,787 INFO django.server "GET /notifications/api/unread/ HTTP/1.1" 200 1051
+2026-11-18 10:18:57,858 INFO django.server "GET /notifications/api/unread/ HTTP/1.1" 302 0
+2026-11-18 10:18:57,889 INFO django.server "GET /notifications/api/unread/ HTTP/1.1" 200 1080
+2026-11-18 10:18:57,948 INFO django.server "GET /accounts/login/?next=/notifications/api/unread/ HTTP/1.1" 200 2532
+2026-11-18 10:19:06,768 INFO django.server "GET /notifications/api/unread/ HTTP/1.1" 200 1087
+2026-11-18 10:19:07,797 INFO django.server "GET / HTTP/1.1" 302 0
+2026-11-18 10:19:36,779 INFO django.server "GET /notifications/api/unread/ HTTP/1.1" 200 1139
+2026-11-18 10:19:57,864 INFO django.server "GET /notifications/api/unread/ HTTP/1.1" 302 0
+2026-11-18 10:19:57,866 INFO django.server "GET /notifications/api/unread/ HTTP/1.1" 200 1076
+2026-11-18 10:19:57,915 INFO django.server "GET /accounts/login/?next=/notifications/api/unread/ HTTP/1.1" 200 2547
+2026-11-18 10:20:06,769 INFO django.server "GET /notifications/api/unread/ HTTP/1.1" 200 1094
+2026-11-18 10:20:07,785 INFO django.server "GET / HTTP/1.1" 302 0
+2026-11-18 10:20:36,817 INFO django.server "GET /notifications/api/unread/ HTTP/1.1" 200 1065
+2026-11-18 10:20:57,853 INFO django.server "GET /notifications/api/unread/ HTTP/1.1" 302 0
+2026-11-18 10:20:57,860 INFO django.server "GET /accounts/login/?next=/notifications/api/unread/ HTTP/1.1" 200 2509
+2026-11-18 10:20:57,871 INFO django.server "GET /notifications/api/unread/ HTTP/1.1" 200 1136
+2026-11-18 10:21:06,491 INFO django.server "POST /complaint/edit/20/ HTTP/1.1" 302 0
+2026-11-18 10:21:06,536 INFO django.server "GET /complaint/ HTTP/1.1" 200 11449
+2026-11-18 10:21:06,754 INFO django.server "GET /notifications/api/unread/ HTTP/1.1" 200 1049
+2026-11-18 10:21:07,693 INFO django.server "GET /copilot/bootstrap/ HTTP/1.1" 200 832
+2026-11-18 10:21:07,800 INFO django.server "GET /copilot/conversation/latest/ HTTP/1.1" 200 3198
+2026-11-18 10:21:07,812 INFO django.server "GET / HTTP/1.1" 302 0
+2026-11-18 10:21:12,319 INFO django.server "GET /notifications/api/unread/ HTTP/1.1" 200 1096
+2026-11-18 10:21:36,754 INFO django.server "GET /notifications/api/unread/ HTTP/1.1" 200 1073
+2026-11-18 10:21:40,868 INFO django.server "GET /notifications/api/unread/ HTTP/1.1" 200 1129
+2026-11-18 10:21:46,080 INFO django.server "POST /complaint/edit/14/ HTTP/1.1" 302 0
+2026-11-18 10:21:46,120 INFO django.server "GET /complaint/ HTTP/1.1" 200 11431
+2026-11-18 10:21:46,432 INFO django.server "GET /notifications/api/unread/ HTTP/1.1" 200 1140
+2026-11-18 10:21:47,399 INFO django.server "GET /copilot/bootstrap/ HTTP/1.1" 200 774
+2026-11-18 10:21:47,538 INFO django.server "GET /copilot/conversation/latest/ HTTP/1.1" 200 3202
+2026-11-18 10:21:50,470 INFO django.server "GET /complaint/?search=%E4%BA%BA%E4%BF%9D HTTP/1.1" 200 9245
+2026-11-18 10:21:50,578 INFO django.server "GET /notifications/api/unread/ HTTP/1.1" 200 1115
+2026-11-18 10:21:50,769 INFO django.server "GET /copilot/bootstrap/ HTTP/1.1" 200 850
+2026-11-18 10:21:50,873 INFO django.server "GET /copilot/conversation/latest/ HTTP/1.1" 200 3151
+2026-11-18 10:21:57,349 INFO django.server "GET /complaint/?search=%E4%BF%9D%E9%99%A9 HTTP/1.1" 200 9741
+2026-11-18 10:21:57,431 INFO django.server "GET /notifications/api/unread/ HTTP/1.1" 200 1081
+2026-11-18 10:21:57,692 INFO django.server "GET /copilot/bootstrap/ HTTP/1.1" 200 855
+2026-11-18 10:21:57,778 INFO django.server "GET /copilot/conversation/latest/ HTTP/1.1" 200 3192
+2026-11-18 10:21:57,878 INFO django.server "GET /notifications/api/unread/ HTTP/1.1" 302 0
+2026-11-18 10:21:57,899 INFO django.server "GET /accounts/login/?next=/notifications/api/unread/ HTTP/1.1" 200 2514
+2026-11-18 10:21:58,801 INFO django.server "GET /complaint/detail/30/ HTTP/1.1" 200 11492
+2026-11-18 10:21:58,936 INFO django.server "GET /notifications/api/unread/ HTTP/1.1" 200 1055
+2026-11-18 10:21:59,300 INFO django.server "GET /copilot/bootstrap/ HTTP/1.1" 200 774
+2026-11-18 10:21:59,441 INFO django.server "GET /copilot/conversation/latest/ HTTP/1.1" 200 3136
+2026-11-18 10:22:06,915 INFO django.server "GET /complaint/edit/30/ HTTP/1.1" 200 8500
+2026-11-18 10:22:06,922 INFO django.server "GET /notifications/api/unread/ HTTP/1.1" 200 1104
+2026-11-18 10:22:06,999 INFO django.server "GET /notifications/api/unread/ HTTP/1.1" 200 1146
+2026-11-18 10:22:07,246 INFO django.server "GET /copilot/bootstrap/ HTTP/1.1" 200 770
+2026-11-18 10:22:07,338 INFO django.server "GET /copilot/conversation/latest/ HTTP/1.1" 200 3146
+2026-11-18 10:22:07,804 INFO django.server "GET / HTTP/1.1" 302 0
+2026-11-18 10:22:36,902 INFO django.server "GET /notifications/api/unread/ HTTP/1.1" 200 1078
+2026-11-18 10:22:36,962 INFO django.server "GET /notifications/api/unread/ HTTP/1.1" 200 1110
+2026-11-18 10:22:57,855 INFO django.server "GET /notifications/api/unread/ HTTP/1.1" 302 0
+2026-11-18 10:22:57,867 INFO django.server "GET /accounts/login/?next=/notifications/api/unread/ HTTP/1.1" 200 2524
