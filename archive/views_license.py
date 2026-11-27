@@ -28,7 +28,7 @@ from records.models import OperationLog
 from .forms import AnnualReviewForm, LicenseBorrowForm, LicenseForm
 from .models import AnnualReview, License, LicenseBorrowRecord, _add_months
 from .services.common import _is_ajax, _operator
-from .services.import_export import _parse_excel_sheets
+from .services.import_export import _is_empty, _parse_excel_sheets
 from .services.license_query import annotate_status, status_aggregate
 
 
@@ -410,6 +410,8 @@ def import_licenses(request):
 
     # ---- Step 1: 上传文件 → 解析 sheet → 返回列映射页面 ----
     if request.POST.get("step") == "upload":
+        fill_only = request.POST.get("fill_only") == "1"
+        overwrite = not fill_only
         f = request.FILES.get("file")
         if not f:
             messages.error(request, "请选择 Excel 文件（.xlsx / .xls）")
@@ -437,16 +439,20 @@ def import_licenses(request):
         request.session["license_import_sheets"] = sheets
         return render(request, "archive/license_import_step2.html", {
             "sheets": sheets, "field_choices": LICENSE_FIELD_CHOICES,
+            "fill_only": fill_only, "overwrite": overwrite,
         })
 
     # ---- Step 2: 执行导入 ----
     if request.POST.get("step") == "import":
+        fill_only = request.POST.get("fill_only") == "1"
+        overwrite = not fill_only
         sheets = request.session.get("license_import_sheets", {})
         if not sheets:
             messages.error(request, "会话已过期，请重新上传文件")
             return render(request, "archive/license_import_step1.html", {})
 
         total_created = 0
+        total_updated = 0
         total_reviews = 0
         total_errors = []
 
@@ -502,17 +508,34 @@ def import_licenses(request):
                         import string
                         code_val = "LIC" + "".join(random.choices(string.digits, k=8))
 
-                    # 确保 DB 内和本批次内唯一
-                    while code_val in created_codes or License.objects.filter(code=code_val).exists():
-                        code_val = code_val + "D"
-                    obj["code"] = code_val
-                    created_codes.add(code_val)
-
                     if remark_parts:
                         obj["remark"] = " | ".join(remark_parts)
 
-                    lic = License.objects.create(**obj)
-                    total_created += 1
+                    # 仅当 Excel 中带有效编号时才按编号匹配已有证照；
+                    # 编号为占位符（自动生成）时始终新建，避免误改同号证照。
+                    existing = None
+                    if obj.get("code"):
+                        existing = License.objects.filter(code=code_val).first()
+
+                    if existing is not None:
+                        # 已存在同编号证照：按「仅补空 / 覆盖」模式更新
+                        for field, value in obj.items():
+                            if field in ("code", "creator"):
+                                continue
+                            if not overwrite and not _is_empty(getattr(existing, field, None)):
+                                continue
+                            setattr(existing, field, value)
+                        existing.save()
+                        lic = existing
+                        total_updated += 1
+                    else:
+                        # 确保 DB 内和本批次内唯一
+                        while code_val in created_codes or License.objects.filter(code=code_val).exists():
+                            code_val = code_val + "D"
+                        obj["code"] = code_val
+                        created_codes.add(code_val)
+                        lic = License.objects.create(**obj)
+                        total_created += 1
 
                     # 如有最近年审时间，自动创建年审记录
                     if last_review_date:
@@ -528,13 +551,15 @@ def import_licenses(request):
                 except Exception as e:
                     total_errors.append(f"[{sname}]第{i}行：{e}")
 
+        _mode = "覆盖已有字段" if overwrite else "仅补空"
         _license_log(request, "导入", "证照批量导入",
-                     f"成功 {total_created} 条证照，{total_reviews} 条年审记录，失败 {len(total_errors)} 条")
+                     f"新增 {total_created} 条，更新 {total_updated} 条（{_mode}），"
+                     f"{total_reviews} 条年审记录，失败 {len(total_errors)} 条")
 
-        if total_created:
+        if total_created or total_updated:
             messages.success(
                 request,
-                f"成功导入 {total_created} 条证照"
+                f"成功导入 {total_created} 条证照，更新 {total_updated} 条证照"
                 + (f"，{total_reviews} 条年审记录" if total_reviews else ""),
             )
         for err in total_errors[:10]:

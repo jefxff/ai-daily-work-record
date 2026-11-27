@@ -19,13 +19,13 @@
         <div class="card-body u-prose-sm">
             {% if mode == 'single' %}
             <p class="mb-2">1. 推荐先在台账页面「导出本台账」，在导出文件中直接修改后再上传导入。</p>
-            <p class="mb-2">2. <strong>「{{ match_header }}」为匹配键</strong>：系统中已存在同编号档案时<strong>更新</strong>该条（仅更新非空单元格，空白格保留原值）；不存在时<strong>新增</strong>。</p>
+            <p class="mb-2">2. <strong>「{{ match_header }}」为匹配键</strong>：系统中已存在同编号档案时<strong>更新</strong>该条（默认<strong>覆盖</strong>：文件中的非空值直接覆盖原值，空白格保留原值；勾选下方「仅补空」后则只写入原值为空的字段）；不存在时<strong>新增</strong>。</p>
             <p class="mb-2">3. 支持格式：.xlsx / .xls / .csv，表头须在第 1 行且与下方列名一致。</p>
             <p class="mb-2">4. 所有导入数据一律归入台账「{{ ledger.name }}」，文件中「所属台账」列的值将被忽略。</p>
             <p class="mb-0">5. 状态列（借出中/即将到期等）由系统自动计算，导入时忽略。</p>
             {% else %}
             <p class="mb-2">1. 一个 Excel 文件可包含多个工作表，<strong>工作表名 = 台账名</strong>：已有同名台账则更新其中档案，不存在则自动创建台账。</p>
-            <p class="mb-2">2. 每个工作表的表头须在第 1 行且与下方列名一致；<strong>「{{ match_header }}」为匹配键</strong>：已存在同编号档案时<strong>更新</strong>（仅更新非空单元格），不存在时<strong>新增</strong>。</p>
+            <p class="mb-2">2. 每个工作表的表头须在第 1 行且与下方列名一致；<strong>「{{ match_header }}」为匹配键</strong>：已存在同编号档案时<strong>更新</strong>（默认<strong>覆盖</strong>，勾选下方「仅补空」后只写入原值为空的字段），不存在时<strong>新增</strong>。</p>
             <p class="mb-2">3. 推荐先在总览页勾选台账「导出所选」得到文件，修改后直接上传。</p>
             <p class="mb-0">4. 状态列由系统自动计算；文件中「所属台账」列的值将被忽略（以工作表名为准）。</p>
             {% endif %}
@@ -52,6 +52,11 @@
                 <div class="mb-3">
                     <input type="file" name="file" class="form-control" accept=".xlsx,.xls,.csv" required aria-label="选择 Excel 文件">
                 </div>
+                <div class="form-check mb-3">
+                    <input type="checkbox" name="fill_only" value="1" class="form-check-input" id="fill_only">
+                    <label class="form-check-label" for="fill_only">仅补空：只写入系统中原本为空的字段，不覆盖已有的非空字段（默认覆盖）</label>
+                </div>
+
                 <button type="submit" class="btn btn-primary">上传并预览</button>
                 {% if mode == 'single' %}
                 <a href="{% url 'archive:ledger_detail' ledger.pk %}" class="btn btn-outline-secondary ms-2">取消</a>

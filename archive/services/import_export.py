@@ -247,6 +247,7 @@ def _setter_int(field):
             setattr(obj, field, int(float(raw)))
         except (TypeError, ValueError):
             raise ValueError(f"{field} 需为数字，收到「{raw}」")
+    _s.field = field
     return _s
 
 
@@ -256,6 +257,7 @@ def _setter_date(field):
         if v is None:
             raise ValueError(f"日期格式无法识别：{raw}（支持 2026-01-31 / 2026/1/31）")
         setattr(obj, field, v)
+    _s.field = field
     return _s
 
 
@@ -265,12 +267,14 @@ def _setter_datetime(field):
         if v is None:
             raise ValueError(f"时间格式无法识别：{raw}")
         setattr(obj, field, v)
+    _s.field = field
     return _s
 
 
 def _setter_text(field, max_len=200):
     def _s(obj, raw):
         setattr(obj, field, raw[:max_len] if field != "description" and field != "remark" else raw)
+    _s.field = field
     return _s
 
 
@@ -278,8 +282,14 @@ def _setter_fk_ledger(obj, raw):
     obj.ledger, _ = Ledger.objects.get_or_create(name=raw[:200])
 
 
+_setter_fk_ledger.field = "ledger"
+
+
 def _setter_fk_category(obj, raw):
     obj.category = _category_from_path(raw)
+
+
+_setter_fk_category.field = "category"
 
 
 def _setter_fk_cabinet(obj, raw):
@@ -289,6 +299,9 @@ def _setter_fk_cabinet(obj, raw):
     obj.cabinet = cab
 
 
+_setter_fk_cabinet.field = "cabinet"
+
+
 def _setter_fk_archive(obj, raw):
     arc = Archive.objects.filter(code=raw).first()
     if not arc:
@@ -296,11 +309,17 @@ def _setter_fk_archive(obj, raw):
     obj.archive = arc
 
 
+_setter_fk_archive.field = "archive"
+
+
 def _setter_fk_license(obj, raw):
     lic = License.objects.filter(code=raw).first()
     if not lic:
         raise ValueError(f"证照编号「{raw}」不存在")
     obj.license = lic
+
+
+_setter_fk_license.field = "license"
 
 
 def _setter_cabinet_layer_cells(obj, raw):
@@ -312,6 +331,10 @@ def _setter_cabinet_layer_cells(obj, raw):
         obj._pending_layer_cells = [int(float(p)) for p in parts]
     except (TypeError, ValueError):
         raise ValueError(f"各层格数格式无法识别：{raw}（应为逗号分隔数字，如 10,10,8,8）")
+
+
+# 该列没有直接对应字段（写入的是待同步的层配置），覆盖模式下一律视为可写
+_setter_cabinet_layer_cells.field = None
 
 
 def _finalize_cabinet(obj):
@@ -497,11 +520,32 @@ def _match_obj(spec, key_raw):
     return model.objects.filter(**{field: key_raw}).first()
 
 
-def _apply_columns(spec, obj, row, is_created, field_errors=None):
+def _is_empty(value):
+    """空值判定：None / 空串 / 纯空白串视为空；数值 0 与 False 不算空。"""
+    if value is None:
+        return True
+    if isinstance(value, str):
+        return value.strip() == ""
+    return False
+
+
+def _field_of(spec, header):
+    """取列对应的模型字段名；列无 setter 或 setter 未声明字段时返回 None。"""
+    for h, _getter, setter in spec["columns"]:
+        if h == header:
+            return getattr(setter, "field", None) if setter is not None else None
+    return None
+
+
+def _apply_columns(spec, obj, row, is_created, field_errors=None, overwrite=False):
     """按列定义把行数据写入对象；空值跳过（保留原值）。返回是否写入了任何字段。
 
     field_errors 传列表时启用列级容错：某列写值失败（如档案柜编号不存在、日期格式错误）
     则跳过该列保留原值，错误记入 [(列名, 原因)]；不传时保持原语义（抛异常回滚整行）。
+
+    overwrite=False（默认）时为「仅补空」模式：已有非空值的列不会被覆盖；
+    overwrite=True 时为「覆盖」模式：Excel 中的非空单元格直接替换原有值。
+    新建记录（is_created=True）行为一致——本就没有旧值可覆盖。
     """
     changed = False
     for header, _getter, setter in spec["columns"]:
@@ -510,6 +554,11 @@ def _apply_columns(spec, obj, row, is_created, field_errors=None):
         raw = str(row.get(header, "") or "").strip()
         if not raw:
             continue
+        if not is_created and not overwrite:
+            # 仅补空模式：原值非空则保留原值（对齐客户台账导入的默认语义）
+            field = getattr(setter, "field", None)
+            if field is not None and not _is_empty(getattr(obj, field, None)):
+                continue
         if spec["label"] == "年审记录" and header == "年审结果":
             code = _REVIEW_RESULT_MAP.get(raw)
             if not code:
@@ -630,8 +679,11 @@ def _classify_archive_rows(rows):
     return keys, created_n, len(keys) - created_n, existing
 
 
-def _upsert_archive_row(row, ledger):
+def _upsert_archive_row(row, ledger, overwrite=False):
     """单行 upsert：按「编号」匹配更新（仅非空列，无效单元格保留原值），不存在则新建并归入指定台账。
+
+    overwrite=False（默认）仅补空：已有非空值的列不被覆盖；
+    overwrite=True 时以 Excel 中的非空单元格覆盖原值。
 
     返回 (是否新建, 忽略的无效单元格 [(列名, 原因)])。
     """
@@ -645,7 +697,8 @@ def _upsert_archive_row(row, ledger):
                 if not key_raw:
                     raise ValueError("「编号」为空，无法定位或新建")
                 obj = Archive(code=key_raw[:100], ledger=ledger)
-            _apply_columns(TABLE_SPECS["archives"], obj, row, is_created=created, field_errors=field_errors)
+            _apply_columns(TABLE_SPECS["archives"], obj, row, is_created=created,
+                           field_errors=field_errors, overwrite=overwrite)
             obj.ledger = ledger  # 归属以操作维度为准，不信任 Excel 中的台账列
             if hasattr(obj, "refresh_status"):
                 obj.refresh_status()

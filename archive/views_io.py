@@ -29,7 +29,7 @@ from .services.common import _log
 from .services.import_export import (
     FIELD_CHOICES, TABLE_SPECS, _apply_columns, _auto_map_columns,
     _category_from_path, _csv_safe, _export_response, _finalize_cabinet,
-    _get_spec, _match_obj, _parse_excel_sheets, _read_import_rows,
+    _get_spec, _is_empty, _match_obj, _parse_excel_sheets, _read_import_rows,
     _validate_archive_row,
 )
 
@@ -111,6 +111,7 @@ def import_archives(request):
 
     # ---- Step 1: 上传文件 → 解析 sheet → 返回列映射页面 ----
     if request.POST.get("step") == "upload":
+        fill_only = request.POST.get("fill_only") == "1"
         f = request.FILES.get("file")
         if not f:
             messages.error(request, "请选择 Excel 文件（.xlsx / .xls / .csv）")
@@ -143,10 +144,13 @@ def import_archives(request):
         request.session["import_ledger_name"] = default_ledger
         return render(request, "archive/import_step2.html", {
             "sheets": sheets, "field_choices": FIELD_CHOICES, "default_ledger": default_ledger,
+            "fill_only": fill_only,
         })
 
     # ---- Step 2: 执行导入 ----
     if request.POST.get("step") == "import":
+        fill_only = request.POST.get("fill_only") == "1"
+        overwrite = not fill_only
         sheets = request.session.get("import_sheets", {})
         if not sheets:
             messages.error(request, "会话已过期，请重新上传文件")
@@ -157,6 +161,7 @@ def import_archives(request):
         if ledger_name:
             ledger, _ = Ledger.objects.get_or_create(name=ledger_name[:200])
         total_created = 0
+        total_updated = 0
         total_errors = []
         for sname, sdata in sheets.items():
             mapping = {}
@@ -200,11 +205,32 @@ def import_archives(request):
                                 obj[field] = raw_val[:200] if field != "description" else raw_val
                     if not obj.get("name"):
                         continue
-                    if not obj.get("code"):
+                    code_val = str(obj.get("code") or "").strip()
+                    if not code_val:
                         import random, string
-                        obj["code"] = "IMP" + "".join(random.choices(string.digits, k=8))
-                    if Archive.objects.filter(code=obj["code"]).exists():
-                        obj["code"] = obj["code"] + "D"
+                        code_val = "IMP" + "".join(random.choices(string.digits, k=8))
+                        obj["code"] = code_val
+                    existing = Archive.objects.filter(code=code_val).first()
+                    if existing is not None:
+                        # 已存在同编号档案：按「仅补空 / 覆盖」模式更新
+                        for field, value in obj.items():
+                            if field in ("code", "creator"):
+                                continue
+                            if field == "ledger":
+                                if ledger:
+                                    existing.ledger = ledger
+                                continue
+                            if field == "source_sheet":
+                                existing.source_sheet = sname[:100]
+                                continue
+                            if not overwrite and not _is_empty(getattr(existing, field, None)):
+                                continue
+                            setattr(existing, field, value)
+                        if hasattr(existing, "refresh_status"):
+                            existing.refresh_status()
+                        existing.save()
+                        total_updated += 1
+                        continue
                     if ledger:
                         obj["ledger"] = ledger
                     obj["source_sheet"] = sname[:100]
@@ -215,9 +241,13 @@ def import_archives(request):
                     total_errors.append(f"[{sname}]第{i}行：该存放位置（柜/层/格）已被其他档案占用，已跳过")
                 except Exception as e:
                     total_errors.append(f"[{sname}]第{i}行：{e}")
-        _log(request, "导入", "档案批量导入", f"成功 {total_created} 条，失败 {len(total_errors)} 条")
-        if total_created:
-            messages.success(request, f"成功导入 {total_created} 条档案")
+        _mode = "覆盖已有字段" if overwrite else "仅补空"
+        _log(request, "导入", "档案批量导入",
+             f"新增 {total_created} 条，更新 {total_updated} 条（{_mode}），失败 {len(total_errors)} 条")
+        if total_created or total_updated:
+            messages.success(
+                request, f"成功导入 {total_created} 条档案，更新 {total_updated} 条档案"
+            )
         for err in total_errors[:10]:
             messages.warning(request, err)
         if len(total_errors) > 10:
@@ -296,6 +326,8 @@ def table_import(request, table):
         })
 
     if request.POST.get("step") == "upload":
+        fill_only = request.POST.get("fill_only") == "1"
+        overwrite = not fill_only
         f = request.FILES.get("file")
         if not f:
             messages.error(request, "请选择 Excel 文件（.xlsx / .xls / .csv）")
@@ -354,10 +386,12 @@ def table_import(request, table):
             "spec": spec, "table": table, "preview": preview,
             "created_n": created_n, "updated_n": updated_n, "total": len(rows),
             "match_header": spec["match_header"], "preview_fields": preview_fields,
-            "bad_cells": bad_cells,
+            "bad_cells": bad_cells, "fill_only": fill_only, "overwrite": overwrite,
         })
 
     if request.POST.get("step") == "commit":
+        fill_only = request.POST.get("fill_only") == "1"
+        overwrite = not fill_only
         rows = request.session.get(session_key) or []
         if not rows:
             messages.error(request, "会话已过期，请重新上传文件")
@@ -385,7 +419,8 @@ def table_import(request, table):
                                 raise ValueError(f"记录ID「{key_raw}」不存在，新建请走页面登记")
                             obj = spec["model"](**{spec["match_field"]: key_raw[:100]})
                     field_errors = [] if is_archive_spec else None
-                    _apply_columns(spec, obj, row, is_created=created, field_errors=field_errors)
+                    _apply_columns(spec, obj, row, is_created=created,
+                                   field_errors=field_errors, overwrite=overwrite)
                     if hasattr(obj, "refresh_status"):
                         obj.refresh_status()
                     obj.save()
@@ -401,8 +436,9 @@ def table_import(request, table):
                 errors.append(f"第{i}行[{key_raw or '空'}]：该存放位置（柜/层/格）已被其他档案占用，已跳过")
             except Exception as e:
                 errors.append(f"第{i}行[{key_raw or '空'}]：{e}")
+        _mode = "覆盖已有字段" if overwrite else "仅补空"
         _log(request, "导入", f"{spec['label']}导入",
-             f"新增 {created_n} 条，更新 {updated_n} 条，忽略单元格 {len(skipped_cells)}，失败 {len(errors)} 条")
+             f"新增 {created_n} 条，更新 {updated_n} 条（{_mode}），忽略单元格 {len(skipped_cells)}，失败 {len(errors)} 条")
         if created_n or updated_n:
             msg = f"{spec['label']}导入完成：新增 {created_n} 条，更新 {updated_n} 条"
             if skipped_cells:

@@ -37,6 +37,11 @@
                             <input type="file" name="file" class="form-control" accept=".xlsx,.xls,.csv" required aria-label="选择 Excel 文件">
                             <div class="form-text">支持 .xlsx、.xls、.csv 格度。支持多 sheet，表头需在第 1 行。</div>
                         </div>
+                        <div class="form-check mb-3">
+                            <input type="checkbox" name="fill_only" value="1" class="form-check-input" id="fill_only">
+                            <label class="form-check-label" for="fill_only">仅补空：只写入系统中原本为空的字段，不覆盖已有的非空字段（默认覆盖）</label>
+                        </div>
+
                         <div class="alert alert-info py-2 small">
                             <strong>导入说明：</strong>上传后系统会自动解析所有 sheet 并智能匹配列头，你可以在下一步手动调整映射关系。
                         </div>

@@ -448,6 +448,8 @@ def ledger_import(request, pk):
         })
 
     if request.POST.get("step") == "upload":
+        fill_only = request.POST.get("fill_only") == "1"
+        overwrite = not fill_only
         f = request.FILES.get("file")
         if not f:
             messages.error(request, "请选择 Excel 文件（.xlsx / .xls / .csv）")
@@ -487,9 +489,12 @@ def ledger_import(request, pk):
             "preview": preview, "created_n": created_n, "updated_n": updated_n,
             "total": len(rows), "match_header": _ARCHIVE_MATCH_HEADER,
             "preview_fields": preview_fields, "bad_cells": bad_cells,
+            "fill_only": fill_only, "overwrite": overwrite,
         })
 
     if request.POST.get("step") == "commit":
+        fill_only = request.POST.get("fill_only") == "1"
+        overwrite = not fill_only
         rows = request.session.get(session_key) or []
         if not rows:
             messages.error(request, "会话已过期，请重新上传文件")
@@ -500,7 +505,7 @@ def ledger_import(request, pk):
         for i, row in enumerate(rows, start=2):
             key_raw = str(row.get(_ARCHIVE_MATCH_HEADER, "") or "").strip()
             try:
-                created, field_errors = _upsert_archive_row(row, lg)
+                created, field_errors = _upsert_archive_row(row, lg, overwrite=overwrite)
                 if created:
                     created_n += 1
                 else:
@@ -509,8 +514,9 @@ def ledger_import(request, pk):
                     skipped_cells.append(f"第{i}行[{key_raw or '空'}] {col}：{reason}")
             except Exception as e:
                 errors.append(f"第{i}行[{key_raw or '空'}]：{e}")
+        _mode = "覆盖已有字段" if overwrite else "仅补空"
         _log(request, "导入", f"台账#{lg.id}",
-             f"台账「{lg.name}」导入：新增 {created_n}，更新 {updated_n}，忽略单元格 {len(skipped_cells)}，失败 {len(errors)}")
+             f"台账「{lg.name}」导入：新增 {created_n}，更新 {updated_n}（{_mode}），忽略单元格 {len(skipped_cells)}，失败 {len(errors)}")
         if created_n or updated_n:
             msg = f"台账「{lg.name}」导入完成：新增 {created_n} 条，更新 {updated_n} 条"
             if skipped_cells:
@@ -547,6 +553,8 @@ def ledger_batch_import(request):
         })
 
     if request.POST.get("step") == "upload":
+        fill_only = request.POST.get("fill_only") == "1"
+        overwrite = not fill_only
         f = request.FILES.get("file")
         if not f:
             messages.error(request, "请选择 Excel 文件（.xlsx / .xls）")
@@ -603,9 +611,12 @@ def ledger_batch_import(request):
             "preview": preview, "created_n": grand_created, "updated_n": grand_updated,
             "total": total, "match_header": _ARCHIVE_MATCH_HEADER,
             "preview_fields": preview_fields, "sheet_notes": sheet_notes, "bad_cells": bad_cells,
+            "fill_only": fill_only, "overwrite": overwrite,
         })
 
     if request.POST.get("step") == "commit":
+        fill_only = request.POST.get("fill_only") == "1"
+        overwrite = not fill_only
         all_rows = request.session.get(session_key) or {}
         if not all_rows:
             messages.error(request, "会话已过期，请重新上传文件")
@@ -618,7 +629,7 @@ def ledger_batch_import(request):
             for i, row in enumerate(rows, start=2):
                 key_raw = str(row.get(_ARCHIVE_MATCH_HEADER, "") or "").strip()
                 try:
-                    created, field_errors = _upsert_archive_row(row, lg)
+                    created, field_errors = _upsert_archive_row(row, lg, overwrite=overwrite)
                     if created:
                         created_n += 1
                     else:
@@ -627,8 +638,9 @@ def ledger_batch_import(request):
                         skipped_cells.append(f"[{name}] 第{i}行[{key_raw or '空'}] {col}：{reason}")
                 except Exception as e:
                     errors.append(f"[{name}] 第{i}行[{key_raw or '空'}]：{e}")
+        _mode = "覆盖已有字段" if overwrite else "仅补空"
         _log(request, "导入", "台账批量导入",
-             f"批量导入 {len(all_rows)} 个台账：新增 {created_n}，更新 {updated_n}，忽略单元格 {len(skipped_cells)}，失败 {len(errors)}")
+             f"批量导入 {len(all_rows)} 个台账：新增 {created_n}，更新 {updated_n}（{_mode}），忽略单元格 {len(skipped_cells)}，失败 {len(errors)}")
         if created_n or updated_n:
             msg = f"批量导入完成：新增 {created_n} 条，更新 {updated_n} 条"
             if skipped_cells:

@@ -704,3 +704,244 @@ class LicensePageTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, self.lic.code)
         self.assertContains(resp, "返回证照列表")
+
+
+class OverwriteImportModeTests(TestCase):
+    """导入「仅补空（默认覆盖）」开关。
+
+    档案管理模块的导入默认行为是**覆盖**已有记录的非空字段；勾选
+    「仅补空：只写入系统中原本为空的字段，不覆盖已有的非空字段（默认覆盖）」
+    后，才只写入原值为空的字段。空白格在任何模式下都保留原值。
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_superuser("ov_admin", "ov@a.com", "pass")
+        self.client.force_login(self.user)
+        self.ledger = Ledger.objects.create(name="台账A")
+        self.arc = Archive.objects.create(
+            code="L001", name="档案一", ledger=self.ledger,
+            counterpart="甲公司", contract_no="HT-001", creator=self.user,
+        )
+
+    # ---------- helpers ----------
+
+    @staticmethod
+    def _xlsx(rows, headers):
+        import io
+
+        from openpyxl import Workbook
+
+        wb = Workbook()
+        ws = wb.active
+        ws.append(headers)
+        for r in rows:
+            ws.append(r)
+        buf = io.BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+        return buf.read()
+
+    def _upload(self, url, content, fill_only=None):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        f = SimpleUploadedFile(
+            "data.xlsx", content,
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        data = {"step": "upload", "file": f}
+        if fill_only is not None:
+            data["fill_only"] = fill_only
+        return self.client.post(url, data)
+
+    # ---------- 表级导入（archives） ----------
+
+    def _table_import(self, fill_only=None):
+        url = reverse("archive:table_import", args=["archives"])
+        headers = ["编号", "名称", "公司名称/相对方", "合同编号"]
+        rows = [["L001", "新名称", "乙公司", "HT-999"]]
+        resp = self._upload(url, self._xlsx(rows, headers), fill_only)
+        self.assertEqual(resp.status_code, 200)
+        return self.client.post(url, {"step": "commit", "fill_only": fill_only or "0"})
+
+    def test_table_import_default_overwrites_existing(self):
+        """默认（不勾选）：文件中非空值直接覆盖已有非空字段。"""
+        self._table_import()
+        self.arc.refresh_from_db()
+        self.assertEqual(self.arc.name, "新名称")
+        self.assertEqual(self.arc.counterpart, "乙公司")
+        self.assertEqual(self.arc.contract_no, "HT-999")
+
+    def test_table_import_fill_only_keeps_existing(self):
+        """勾选「仅补空」：已有非空字段保留原值，原为空白的字段被补上。"""
+        self.arc.contract_no = ""
+        self.arc.save()
+        self._table_import(fill_only="1")
+        self.arc.refresh_from_db()
+        self.assertEqual(self.arc.name, "档案一")          # 原值非空 → 保留
+        self.assertEqual(self.arc.counterpart, "甲公司")    # 原值非空 → 保留
+        self.assertEqual(self.arc.contract_no, "HT-999")   # 原值为空 → 补上
+
+    def test_table_import_overwrite_keeps_blank_original(self):
+        """任何模式下文件空白格都保留原值。"""
+        url = reverse("archive:table_import", args=["archives"])
+        headers = ["编号", "名称", "公司名称/相对方"]
+        rows = [["L001", "", ""]]
+        self._upload(url, self._xlsx(rows, headers), "0")
+        self.client.post(url, {"step": "commit", "fill_only": "0"})
+        self.arc.refresh_from_db()
+        self.assertEqual(self.arc.name, "档案一")
+        self.assertEqual(self.arc.counterpart, "甲公司")
+
+    def test_table_import_page_has_fill_only_checkbox(self):
+        resp = self.client.get(reverse("archive:table_import", args=["archives"]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'name="fill_only"')
+        self.assertContains(resp, "仅补空：只写入系统中原本为空的字段")
+
+    def test_table_import_confirm_carries_fill_only_mode(self):
+        """确认页展示当前模式，并把 fill_only 传到执行阶段。"""
+        url = reverse("archive:table_import", args=["archives"])
+        headers = ["编号", "名称"]
+        rows = [["L001", "新名称"]]
+        resp = self._upload(url, self._xlsx(rows, headers), "1")
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "仅补空")
+        self.assertContains(resp, 'name="fill_only" value="1"')
+        resp = self.client.post(url, {"step": "commit", "fill_only": "1"})
+        self.assertEqual(resp.status_code, 302)
+        self.arc.refresh_from_db()
+        self.assertEqual(self.arc.name, "档案一")
+
+    # ---------- 台账内导入 ----------
+
+    def test_ledger_import_fill_only_modes(self):
+        url = reverse("archive:ledger_import", args=[self.ledger.pk])
+        headers = ["编号", "名称", "公司名称/相对方"]
+        rows = [["L001", "新名称", "乙公司"]]
+
+        # 仅补空：保留原值
+        self._upload(url, self._xlsx(rows, headers), "1")
+        self.client.post(url, {"step": "commit", "fill_only": "1"})
+        self.arc.refresh_from_db()
+        self.assertEqual(self.arc.name, "档案一")
+        self.assertEqual(self.arc.counterpart, "甲公司")
+
+        # 默认：覆盖原值
+        self._upload(url, self._xlsx(rows, headers), "0")
+        self.client.post(url, {"step": "commit", "fill_only": "0"})
+        self.arc.refresh_from_db()
+        self.assertEqual(self.arc.name, "新名称")
+        self.assertEqual(self.arc.counterpart, "乙公司")
+        self.assertEqual(Archive.objects.count(), 1)
+
+    def test_ledger_batch_import_fill_only_modes(self):
+        url = reverse("archive:ledger_batch_import")
+        headers = ["编号", "名称", "公司名称/相对方"]
+        import io
+
+        from openpyxl import Workbook
+
+        def build():
+            wb = Workbook()
+            ws = wb.active
+            ws.title = "台账A"
+            ws.append(headers)
+            ws.append(["L001", "新名称", "乙公司"])
+            buf = io.BytesIO()
+            wb.save(buf)
+            buf.seek(0)
+            return buf.getvalue()
+
+        # 仅补空：保留原值
+        self._upload(url, build(), "1")
+        self.client.post(url, {"step": "commit", "fill_only": "1"})
+        self.arc.refresh_from_db()
+        self.assertEqual(self.arc.name, "档案一")
+
+        # 默认：覆盖原值
+        self._upload(url, build(), "0")
+        self.client.post(url, {"step": "commit", "fill_only": "0"})
+        self.arc.refresh_from_db()
+        self.assertEqual(self.arc.name, "新名称")
+        self.assertEqual(self.arc.counterpart, "乙公司")
+        self.assertEqual(Archive.objects.count(), 1)
+
+    # ---------- 智能列映射导入（import_archives） ----------
+
+    def _smart_import(self, fill_only=None):
+        url = reverse("archive:import_archives")
+        headers = ["编号", "名称", "公司名称/相对方"]
+        rows = [["L001", "新名称", "乙公司"]]
+        resp = self._upload(url, self._xlsx(rows, headers), fill_only)
+        self.assertEqual(resp.status_code, 200)
+        return self.client.post(url, {
+            "step": "import",
+            "ledger_name": "台账A",
+            "map__Sheet__编号": "code",
+            "map__Sheet__名称": "name",
+            "map__Sheet__公司名称/相对方": "counterpart",
+            "fill_only": fill_only or "0",
+        })
+
+    def test_smart_import_default_overwrites_existing(self):
+        self._smart_import()
+        self.arc.refresh_from_db()
+        self.assertEqual(self.arc.name, "新名称")
+        self.assertEqual(self.arc.counterpart, "乙公司")
+        self.assertEqual(Archive.objects.count(), 1)
+
+    def test_smart_import_fill_only_keeps_existing(self):
+        self._smart_import(fill_only="1")
+        self.arc.refresh_from_db()
+        self.assertEqual(self.arc.name, "档案一")
+        self.assertEqual(self.arc.counterpart, "甲公司")
+        self.assertEqual(Archive.objects.count(), 1)
+
+    def test_smart_import_page_has_fill_only_checkbox(self):
+        resp = self.client.get(reverse("archive:import_archives"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'name="fill_only"')
+        self.assertContains(resp, "仅补空：只写入系统中原本为空的字段")
+
+    # ---------- 证照导入 ----------
+
+    def _license_import(self, fill_only=None):
+        lic = License.objects.filter(code="LIC-001").first()
+        if lic is None:
+            lic = License.objects.create(
+                name="营业执照", code="LIC-001", holder="甲单位",
+                issuer="原发证机关", creator=self.user,
+            )
+        url = reverse("archive:license_import")
+        headers = ["证照名称", "证照编号", "持证单位", "发证机关"]
+        rows = [["营业执照", "LIC-001", "乙单位", "新发证机关"]]
+        resp = self._upload(url, self._xlsx(rows, headers), fill_only)
+        self.assertEqual(resp.status_code, 200)
+        resp = self.client.post(url, {
+            "step": "import",
+            "map__Sheet__证照名称": "name",
+            "map__Sheet__证照编号": "code",
+            "map__Sheet__持证单位": "holder",
+            "map__Sheet__发证机关": "issuer",
+            "fill_only": fill_only or "0",
+        })
+        self.assertEqual(resp.status_code, 302)
+        lic.refresh_from_db()
+        return lic
+
+    def test_license_import_fill_only_modes(self):
+        lic = self._license_import(fill_only="1")
+        self.assertEqual(lic.holder, "甲单位")
+        self.assertEqual(lic.issuer, "原发证机关")
+        self.assertEqual(License.objects.count(), 1)
+
+        lic = self._license_import(fill_only="0")
+        self.assertEqual(lic.holder, "乙单位")
+        self.assertEqual(lic.issuer, "新发证机关")
+        self.assertEqual(License.objects.count(), 1)
+
+    def test_license_import_page_has_fill_only_checkbox(self):
+        resp = self.client.get(reverse("archive:license_import"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'name="fill_only"')
+        self.assertContains(resp, "仅补空：只写入系统中原本为空的字段")

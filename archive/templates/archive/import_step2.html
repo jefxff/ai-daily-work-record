@@ -32,6 +32,14 @@
                     <input type="text" name="ledger_name" value="{{ default_ledger }}" class="form-control" style="max-width:420px" placeholder="如：专利、商标相关合同" aria-label="台账名称" maxlength="100">
                 </div>
 
+                <div class="mb-4 p-3 rounded" style="background:var(--c-primary-subtle);border:1px solid var(--c-border-hover)">
+                    <div class="form-check mb-2">
+                        <input type="checkbox" name="fill_only" value="1" class="form-check-input" id="fill_only"{% if fill_only %} checked{% endif %}>
+                        <label class="form-check-label" for="fill_only">仅补空：只写入系统中原本为空的字段，不覆盖已有的非空字段（默认覆盖）</label>
+                    </div>
+                    <p class="text-muted small mb-0">已存在相同「编号」的档案将按此模式更新：默认覆盖（文件中的非空值直接覆盖原值），勾选「仅补空」后则只写入原值为空的字段。</p>
+                </div>
+
                 {% for sname, sdata in sheets.items %}
                 <div class="mb-4">
                     <h6 class="border-bottom pb-2">

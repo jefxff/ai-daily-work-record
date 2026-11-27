@@ -29,6 +29,18 @@
         </div>
     </div>
 
+    <div class="card mb-4" style="border-left: 3px solid var(--c-primary);">
+        <div class="card-body py-2 small">
+            {% if fill_only %}
+            <strong>导入模式：</strong><span class="status-badge success">仅补空</span>
+            只写入系统中原本为空的字段，已有非空值与空白格均保留原值。
+            {% else %}
+            <strong>导入模式：</strong><span class="status-badge info">覆盖已有字段</span>
+            文件中的非空值会覆盖系统中已有记录的非空字段；空白格仍保留原值。
+            {% endif %}
+        </div>
+    </div>
+
     {% if sheet_notes %}
     <div class="card mb-4">
         <div class="card-header"><h5 class="mb-0">工作表 → 台账</h5></div>
@@ -115,6 +127,7 @@
         <form method="post">
             {% csrf_token %}
             <input type="hidden" name="step" value="commit">
+            <input type="hidden" name="fill_only" value="{% if fill_only %}1{% else %}0{% endif %}">
             <button type="submit" class="btn btn-primary">确认执行导入</button>
         </form>
         {% if reupload_url %}
